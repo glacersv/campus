@@ -1,0 +1,75 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Catch-All Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isTeacher() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      // Admin can read all users, users can read their own
+      allow read: if isAdmin() || isOwner(userId);
+      // Only admin can create users
+      allow create: if isAdmin();
+      // Admin can update all, users can update their own profile
+      allow update: if isAdmin() || isOwner(userId);
+      // Only admin can delete users
+      allow delete: if isAdmin();
+    }
+
+    // Teachers Collection
+    match /teachers/{teacherId} {
+      // Admin and teachers can read
+      allow read: if isAdmin() || isTeacher();
+      // Only admin can create/update/delete teachers
+      allow write: if isAdmin();
+    }
+
+    // Grades Collection
+    match /grades/{gradeId} {
+      // Admin and teachers can read grades
+      allow read: if isAdmin() || isTeacher();
+      // Only admin can create/update/delete grades
+      allow write: if isAdmin();
+    }
+
+    // Students Collection
+    match /students/{studentId} {
+      // Admin and teachers can read students
+      allow read: if isAdmin() || isTeacher();
+      // Only admin can create/update/delete students
+      allow write: if isAdmin();
+    }
+
+    // Attendance Reports Collection
+    match /attendance_reports/{reportId} {
+      // Admin and teachers can read reports
+      allow read: if isAdmin() || isTeacher();
+      // Teachers can create reports
+      allow create: if isTeacher();
+      // Admin can update/delete reports
+      allow update, delete: if isAdmin();
+    }
+  }
+}

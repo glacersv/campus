@@ -1,0 +1,66 @@
+{
+  "entities": {
+    "AttendanceReport": {
+      "title": "AttendanceReport",
+      "description": "Reporte de asistencia y disciplina diaria para un grado específico",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "colegio": {
+          "type": "string"
+        },
+        "fecha": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string"
+        },
+        "grado": {
+          "type": "string"
+        },
+        "gradoId": {
+          "type": "string"
+        },
+        "tutor": {
+          "type": "string"
+        },
+        "tutorId": {
+          "type": "string"
+        },
+        "modalidad": {
+          "type": "string"
+        },
+        "estadisticas": {
+          "type": "object",
+          "properties": {
+            "totalEstudiantes": { "type": "integer" },
+            "presentes": { "type": "integer" },
+            "llegadasTarde": { "type": "integer" },
+            "ausentes": { "type": "integer" },
+            "disciplina": {
+              "type": "object",
+              "properties": {
+                "cabelloLargo": { "type": "integer" },
+                "unasPintadas": { "type": "integer" },
+                "uniformeIncorrecto": { "type": "integer" }
+              }
+            }
+          }
+        },
+        "detalles": {
+          "type": "array",
+          "description": "Lista de estudiantes con sus estados e incidencias de disciplina"
+        }
+      },
+      "required": ["colegio", "fecha", "grado", "tutor", "modalidad", "estadisticas", "detalles"]
+    }
+  },
+  "firestore": {
+    "attendance_reports/{reportId}": {
+      "schema": "AttendanceReport",
+      "description": "Colección de reportes de asistencia y disciplina diaria enviados por los docentes."
+    }
+  }
+}
