@@ -16,19 +16,84 @@ export interface User {
 
 // ==================== ACADEMIC ENTITIES ====================
 
-export interface Teacher {
-  id: string;
-  name: string;
-  email: string;
-  gradeId: string;
-  avatarUrl?: string;
-  createdAt?: Timestamp;
-}
+export type Cycle = '1' | '2' | '3' | '4';
+export type BaccalaureateType = 'general' | 'tecnico';
+
+export const CYCLE_NAMES: Record<Cycle, string> = {
+  '1': 'Primer Ciclo',
+  '2': 'Segundo Ciclo',
+  '3': 'Tercer Ciclo',
+  '4': 'Bachillerato'
+};
 
 export interface Grade {
   id: string;
   name: string;
-  teacherId: string;
+  cycle: Cycle;
+  baccalaureateType?: BaccalaureateType;
+  createdAt?: Timestamp;
+}
+
+export interface BaccalaureateTypeDoc {
+  id: string;
+  name: string;
+  maxGrade: number;
+  createdAt?: Timestamp;
+}
+
+export interface Section {
+  id: string;
+  name: string;
+  gradeId: string;
+  capacity?: number;
+  buildingId?: string;
+  createdAt?: Timestamp;
+}
+
+export interface Building {
+  id: string;
+  name: string;
+  code: string;
+  color: string;
+  description?: string;
+  createdAt?: Timestamp;
+}
+
+export interface ComputerLab {
+  id: string;
+  name: string;
+  buildingId?: string;
+  capacity?: number;
+  devices?: number;
+  createdAt?: Timestamp;
+}
+
+export interface GradeSectionAssignment {
+  id: string;
+  gradeId: string;
+  sectionId: string;
+  computerLabId?: string;
+  buildingId?: string;
+  createdAt?: Timestamp;
+}
+
+export interface Subject {
+  id: string;
+  name: string;
+  createdAt?: Timestamp;
+}
+
+export interface Teacher {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  specialty?: string;
+  avatarUrl?: string;
+  subjects: string[];
+  schedule?: string;
+  guideGradeId?: string;
+  guideSectionId?: string;
   createdAt?: Timestamp;
 }
 
@@ -37,6 +102,7 @@ export interface Student {
   name: string;
   gender: 'M' | 'F';
   gradeId: string;
+  sectionId: string;
   createdAt?: Timestamp;
 }
 
@@ -45,9 +111,9 @@ export interface Student {
 export type AttendanceStatus = 'Presente' | 'Tarde' | 'Ausente';
 
 export interface DisciplineRecord {
-  cabelloLargo: boolean; // Only for males
-  unasPintadas: boolean; // Only for females
-  uniformeIncorrecto: boolean; // For both
+  cabelloLargo: boolean;
+  unasPintadas: boolean;
+  uniformeIncorrecto: boolean;
 }
 
 export interface StudentSessionState {
@@ -61,6 +127,7 @@ export interface AttendanceSession {
   date: string;
   teacherId: string;
   gradeId: string;
+  sectionId: string;
   civicAct: boolean;
   records: Record<string, StudentSessionState>;
 }

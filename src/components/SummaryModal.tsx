@@ -149,7 +149,7 @@ export default function SummaryModal({
 
   // Export functions
   const handleExportCSV = () => {
-    const headers = ['ID Alumno', 'Nombre Completo', 'Género', 'Grado', 'Estado Asistencia', 'Hora Llegada', 'Cabello Largo', 'Uñas Pintadas', 'Uniforme Incorrecto'];
+    const headers = ['ID Alumno', 'Nombre Completo', 'Género', 'Grado', 'Sección', 'Estado Asistencia', 'Hora Llegada', 'Cabello Largo', 'Uñas Pintadas', 'Uniforme Incorrecto'];
     const rows = gradeStudents.map((s) => {
       const rec = records[s.id] || {
         studentId: s.id,
@@ -161,6 +161,7 @@ export default function SummaryModal({
         s.name,
         s.gender === 'M' ? 'Masculino' : 'Femenino',
         activeGrade.name,
+        activeGrade.section,
         rec.status,
         rec.arrivalTime || '',
         rec.discipline.cabelloLargo ? 'SÍ' : 'NO',
@@ -185,6 +186,7 @@ export default function SummaryModal({
       colegio: 'Colegio Salesiano San José',
       fecha: new Date().toLocaleDateString(),
       grado: activeGrade.name,
+      seccion: activeGrade.section,
       tutor: teacher.name,
       modalidad: civicAct ? 'Acto Cívico' : 'Buenos Días',
       estadisticas: {
@@ -241,7 +243,7 @@ export default function SummaryModal({
                 Resumen de Jornada Finalizado
               </h2>
               <p className="text-xs text-emerald-100 font-medium tracking-wider uppercase mt-1">
-                {activeGrade.name} &bull; {civicAct ? 'Acto Cívico' : 'Buenos Días'}
+                {activeGrade.name} "{activeGrade.section}" &bull; {civicAct ? 'Acto Cívico' : 'Buenos Días'}
               </p>
             </div>
             <button

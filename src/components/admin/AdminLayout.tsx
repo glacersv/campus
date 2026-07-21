@@ -1,12 +1,18 @@
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
 import {
   LayoutDashboard,
+  BookOpen,
+  Layers,
+  BookMarked,
+  Monitor,
   GraduationCap,
-  Users,
   UserCheck,
+  Award,
+  Building2,
+  GitBranch,
   LogOut,
-  ChevronLeft,
+  ChevronDown,
+  ChevronRight,
   Menu
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -18,11 +24,49 @@ interface AdminLayoutProps {
   onSectionChange: (section: string) => void;
 }
 
-const menuItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'teachers', label: 'Docentes', icon: GraduationCap },
-  { id: 'grades', label: 'Grados', icon: Users },
-  { id: 'students', label: 'Alumnos', icon: UserCheck },
+interface MenuItem {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  children?: { id: string; label: string }[];
+}
+
+const menuSections = [
+  {
+    title: '',
+    items: [
+      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard }
+    ]
+  },
+  {
+    title: 'GESTIÓN ACADÉMICA',
+    items: [
+      { id: 'grades', label: 'Grados', icon: BookOpen },
+      { id: 'sections', label: 'Secciones', icon: Layers },
+      { id: 'grade-section-assignment', label: 'Asignación Grado-Sección', icon: GitBranch },
+      { id: 'subjects', label: 'Materias', icon: BookMarked },
+      { id: 'buildings', label: 'Edificios', icon: Building2 },
+      { id: 'computer-labs', label: 'Laboratorios', icon: Monitor }
+    ]
+  },
+  {
+    title: 'BACHILLERATO',
+    items: [
+      { id: 'baccalaureate-types', label: 'Tipos de Bachillerato', icon: Award }
+    ]
+  },
+  {
+    title: 'PERSONAL',
+    items: [
+      { id: 'teachers', label: 'Docentes', icon: GraduationCap }
+    ]
+  },
+  {
+    title: 'ALUMNOS',
+    items: [
+      { id: 'students', label: 'Alumnos', icon: UserCheck }
+    ]
+  }
 ];
 
 export default function AdminLayout({ children, activeSection, onSectionChange }: AdminLayoutProps) {
@@ -30,77 +74,93 @@ export default function AdminLayout({ children, activeSection, onSectionChange }
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
+    <div className="flex h-screen bg-[#F9FAFB] overflow-hidden">
       {/* Sidebar */}
-      <aside className={`${sidebarCollapsed ? 'w-20' : 'w-72'} bg-slate-900 flex flex-col justify-between shrink-0 text-white transition-all duration-300`}>
+      <aside className={`${sidebarCollapsed ? 'w-[72px]' : 'w-64'} bg-white border-r border-gray-200 flex flex-col justify-between shrink-0 transition-all duration-300`}>
         <div className="flex flex-col">
-          {/* Header */}
-          <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+          {/* Logo */}
+          <div className={`h-16 px-4 flex items-center justify-between ${sidebarCollapsed ? 'border-b border-gray-100' : 'bg-gradient-to-r from-primary to-primary-dark'}`}>
             {!sidebarCollapsed && (
-              <div className="flex items-center gap-3">
-                <InstitutionLogo className="w-10 h-10" />
+              <div className="flex items-center gap-2.5">
+                <div className="bg-white/20 p-1.5 rounded-lg">
+                  <InstitutionLogo className="w-7 h-7" />
+                </div>
                 <div>
-                  <h2 className="text-sm font-bold text-white">Campus</h2>
-                  <p className="text-[10px] text-slate-400">Panel de Administración</p>
+                  <h1 className="text-sm font-bold text-white">Campus</h1>
+                  <p className="text-[10px] text-white/70 font-medium">Salesiano San José</p>
                 </div>
               </div>
             )}
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+              className={`p-1.5 rounded-lg transition-colors ${sidebarCollapsed ? 'hover:bg-gray-100' : 'hover:bg-white/20'}`}
             >
-              {sidebarCollapsed ? <Menu className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+              {sidebarCollapsed ? <Menu className="w-5 h-5 text-gray-500" /> : <ChevronRight className="w-4 h-4 text-white/80" />}
             </button>
           </div>
 
           {/* Navigation */}
-          <nav className="p-4 space-y-2">
-            {menuItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => onSectionChange(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                  activeSection === item.id
-                    ? 'bg-salesiano-green text-white'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                }`}
-              >
-                <item.icon className="w-5 h-5 shrink-0" />
-                {!sidebarCollapsed && <span>{item.label}</span>}
-              </button>
+          <nav className="flex-1 p-3 space-y-6 overflow-y-auto">
+            {menuSections.map((section, idx) => (
+              <div key={idx}>
+                {section.title && !sidebarCollapsed && (
+                  <p className="sidebar-section-title">
+                    {section.title}
+                  </p>
+                )}
+                <div className="space-y-0.5">
+                  {section.items.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => onSectionChange(item.id)}
+                      className={`sidebar-item w-full ${activeSection === item.id ? 'active' : ''}`}
+                      title={sidebarCollapsed ? item.label : undefined}
+                    >
+                      <item.icon className="w-5 h-5 shrink-0" />
+                      {!sidebarCollapsed && <span>{item.label}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
             ))}
           </nav>
         </div>
 
-        {/* User Info & Logout */}
-        <div className="p-4 border-t border-slate-700">
+        {/* User */}
+        <div className="p-3 border-t border-gray-100">
           {!sidebarCollapsed && (
-            <div className="mb-3 px-3">
-              <p className="text-xs font-bold text-salesiano-yellow">{userProfile?.displayName || 'Super Admin'}</p>
-              <p className="text-[10px] text-slate-400 truncate">{userProfile?.email}</p>
+            <div className="px-3 py-2 mb-2">
+              <p className="text-xs font-semibold text-gray-900 truncate">{userProfile?.displayName || 'Admin'}</p>
+              <p className="text-[10px] text-gray-400 truncate">{userProfile?.email}</p>
             </div>
           )}
           <button
             onClick={signOut}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-red-600 hover:bg-red-700 rounded-lg text-sm font-medium transition-colors"
+            className="sidebar-item w-full text-red-600 hover:bg-red-50 hover:text-red-700"
           >
-            <LogOut className="w-5 h-5" />
+            <LogOut className="w-5 h-5 shrink-0" />
             {!sidebarCollapsed && <span>Cerrar Sesión</span>}
           </button>
         </div>
       </aside>
 
-      {/* Main Content */}
+      {/* Main */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0">
-          <h1 className="text-lg font-bold text-slate-800 capitalize">
-            {menuItems.find(m => m.id === activeSection)?.label || 'Dashboard'}
-          </h1>
-          <div className="text-xs text-slate-500">
-            Colegio Salesiano San José
+        {/* Top Bar */}
+        <header className="h-16 bg-white border-b border-gray-200 px-6 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-4">
+            <h1 className="text-lg font-semibold text-gray-900">
+              {menuSections.flatMap(s => s.items).find(i => i.id === activeSection)?.label || 'Dashboard'}
+            </h1>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-400">Colegio Salesiano San José</span>
+            <div className="w-px h-5 bg-gray-200" />
+            <span className="text-xs font-semibold text-primary bg-primary-light px-2.5 py-1 rounded-md">Admin</span>
           </div>
         </header>
 
+        {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
           {children}
         </div>

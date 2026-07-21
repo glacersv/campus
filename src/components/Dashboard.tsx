@@ -245,7 +245,7 @@ export default function Dashboard({ teacher, onLogout }: DashboardProps) {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-lg font-black font-display tracking-tight uppercase">
-                  {activeGrade.name}
+                  {activeGrade.name} "{activeGrade.section}"
                 </h1>
                 <span className="text-[10px] bg-red-100 text-red-800 border border-red-300 font-bold px-2 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-wider">
                   Acceso Bloqueado

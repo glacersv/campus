@@ -1,325 +1,227 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import {
-  Plus,
-  Edit2,
-  Trash2,
-  Save,
-  X,
-  GraduationCap,
-  Search
-} from 'lucide-react';
-import {
-  getAllTeachers,
-  createTeacher,
-  updateTeacher,
-  deleteTeacher,
-  getAllGrades
-} from '../../lib/firestore';
-import { Teacher, Grade } from '../../types';
-
-interface TeacherFormData {
-  id: string;
-  name: string;
-  email: string;
-  gradeId: string;
-  avatarUrl: string;
-}
-
-const emptyForm: TeacherFormData = {
-  id: '',
-  name: '',
-  email: '',
-  gradeId: '',
-  avatarUrl: ''
-};
+import { GraduationCap, Plus, Edit2, Trash2, Save, X, Search, Phone, Clock, Award, BookOpen, MapPin } from 'lucide-react';
+import { getAllTeachers, createTeacher, updateTeacher, deleteTeacher, getAllGrades, getAllSections, getAllSubjects } from '../../lib/firestore';
+import { Teacher, Grade, Section, Subject } from '../../types';
 
 export default function TeachersManager() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [grades, setGrades] = useState<Grade[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<TeacherFormData>(emptyForm);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [form, setForm] = useState({ name: '', email: '', phone: '', specialty: '', subjects: [] as string[], schedule: '', guideGradeId: '', guideSectionId: '', avatarUrl: '' });
+  const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     try {
-      const [teachersData, gradesData] = await Promise.all([
-        getAllTeachers(),
-        getAllGrades()
-      ]);
-      setTeachers(teachersData);
-      setGrades(gradesData);
-    } catch (error) {
-      console.error('Error loading data:', error);
-    } finally {
-      setLoading(false);
-    }
+      const [t, g, s, sub] = await Promise.all([getAllTeachers(), getAllGrades(), getAllSections(), getAllSubjects()]);
+      setTeachers(t); setGrades(g); setSections(s); setSubjects(sub);
+    } finally { setLoading(false); }
+  };
+
+  const getGradeName = (id?: string) => id ? grades.find(g => g.id === id)?.name : null;
+  const getSectionName = (id?: string) => id ? sections.find(s => s.id === id)?.name : null;
+  const getSubjectName = (id: string) => subjects.find(s => s.id === id)?.name || id;
+
+  const toggleSubject = (id: string) => {
+    setForm(prev => ({
+      ...prev,
+      subjects: prev.subjects.includes(id) ? prev.subjects.filter(s => s !== id) : [...prev.subjects, id]
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.name.trim() || !form.email.trim()) return;
     try {
+      const data: Record<string, any> = {
+        name: form.name.trim(),
+        email: form.email.trim(),
+        subjects: form.subjects,
+        avatarUrl: form.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(form.name)}&background=12562E&color=fff`
+      };
+      if (form.phone.trim()) data.phone = form.phone.trim();
+      if (form.specialty.trim()) data.specialty = form.specialty.trim();
+      if (form.schedule.trim()) data.schedule = form.schedule.trim();
+      if (form.guideGradeId) data.guideGradeId = form.guideGradeId;
+      if (form.guideSectionId) data.guideSectionId = form.guideSectionId;
+      
       if (editingId) {
-        await updateTeacher(editingId, {
-          name: formData.name,
-          email: formData.email,
-          gradeId: formData.gradeId,
-          avatarUrl: formData.avatarUrl
-        });
+        await updateTeacher(editingId, data);
       } else {
-        await createTeacher({
-          id: formData.id || `t${Date.now()}`,
-          name: formData.name,
-          email: formData.email,
-          gradeId: formData.gradeId,
-          avatarUrl: formData.avatarUrl
-        });
+        await createTeacher({ id: `t${Date.now()}`, ...data });
       }
-      setShowForm(false);
-      setEditingId(null);
-      setFormData(emptyForm);
+      setShowForm(false); setEditingId(null);
+      setForm({ name: '', email: '', phone: '', specialty: '', subjects: [], schedule: '', guideGradeId: '', guideSectionId: '', avatarUrl: '' });
       loadData();
-    } catch (error) {
-      console.error('Error saving teacher:', error);
-    }
+    } catch (err) { console.error(err); }
   };
 
-  const handleEdit = (teacher: Teacher) => {
-    setFormData({
-      id: teacher.id,
-      name: teacher.name,
-      email: teacher.email,
-      gradeId: teacher.gradeId,
-      avatarUrl: teacher.avatarUrl || ''
+  const handleEdit = (t: Teacher) => {
+    setEditingId(t.id);
+    setForm({
+      name: t.name, email: t.email, phone: t.phone || '', specialty: t.specialty || '',
+      subjects: t.subjects || [], schedule: t.schedule || '',
+      guideGradeId: t.guideGradeId || '', guideSectionId: t.guideSectionId || '',
+      avatarUrl: t.avatarUrl || ''
     });
-    setEditingId(teacher.id);
     setShowForm(true);
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('¿Estás seguro de eliminar este docente?')) {
-      await deleteTeacher(id);
-      loadData();
-    }
+    if (confirm('¿Eliminar este docente?')) { await deleteTeacher(id); loadData(); }
   };
 
-  const filteredTeachers = teachers.filter(t =>
-    t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    t.email.toLowerCase().includes(searchQuery.toLowerCase())
+  const filtered = teachers.filter(t =>
+    `${t.name} ${t.email} ${t.specialty || ''} ${(t.subjects || []).map(s => getSubjectName(s)).join(' ')}`.toLowerCase().includes(search.toLowerCase())
   );
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-4 border-salesiano-green border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm text-slate-500">Cargando docentes...</span>
-        </div>
-      </div>
-    );
-  }
+  const filteredSections = sections.filter(s => s.gradeId === form.guideGradeId);
+
+  if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Gestión de Docentes</h2>
-          <p className="text-sm text-slate-500">Administra los docentes del sistema</p>
+          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <div className="bg-primary/10 p-2 rounded-lg"><GraduationCap className="w-5 h-5 text-primary" /></div>
+            Docentes
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">Gestiona el personal docente del colegio</p>
         </div>
-        <button
-          onClick={() => {
-            setFormData(emptyForm);
-            setEditingId(null);
-            setShowForm(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-salesiano-green hover:bg-salesiano-green-dark text-white font-semibold rounded-lg transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          Nuevo Docente
+        <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', email: '', phone: '', specialty: '', subjects: [], schedule: '', guideGradeId: '', guideSectionId: '', avatarUrl: '' }); }} className="btn-primary">
+          <Plus className="w-4 h-4" /> Nuevo Docente
         </button>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-        <input
-          type="text"
-          placeholder="Buscar docente..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-salesiano-green"
-        />
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input type="text" placeholder="Buscar docente..." value={search} onChange={e => setSearch(e.target.value)} className="input pl-9" />
       </div>
 
-      {/* Form Modal */}
       {showForm && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm"
-        >
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="card p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-slate-800">
-              {editingId ? 'Editar Docente' : 'Nuevo Docente'}
-            </h3>
-            <button
-              onClick={() => {
-                setShowForm(false);
-                setEditingId(null);
-              }}
-              className="p-2 hover:bg-slate-100 rounded-lg"
-            >
-              <X className="w-5 h-5 text-slate-500" />
-            </button>
+            <h3 className="font-semibold text-gray-900">{editingId ? 'Editar Docente' : 'Nuevo Docente'}</h3>
+            <button onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-4 h-4" /></button>
           </div>
-
-          <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">ID *</label>
-              <input
-                type="text"
-                required
-                disabled={!!editingId}
-                value={formData.id}
-                onChange={(e) => setFormData({ ...formData, id: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-salesiano-green disabled:bg-slate-100"
-                placeholder="Ej: t1"
-              />
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Nombre *</label>
+                <input type="text" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Prof. Nombre" className="input" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Email *</label>
+                <input type="email" required value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="correo@..." className="input" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1"><Phone className="w-3 h-3 inline mr-1" />Teléfono</label>
+                <input type="text" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="7012-3456" className="input" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1"><Award className="w-3 h-3 inline mr-1" />Especialidad</label>
+                <input type="text" value={form.specialty} onChange={e => setForm({ ...form, specialty: e.target.value })} placeholder="Ej: Ciencias Naturales" className="input" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1"><Clock className="w-3 h-3 inline mr-1" />Horario</label>
+                <input type="text" value={form.schedule} onChange={e => setForm({ ...form, schedule: e.target.value })} placeholder="Ej: 06:40 - 12:00" className="input" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Foto URL</label>
+                <input type="url" value={form.avatarUrl} onChange={e => setForm({ ...form, avatarUrl: e.target.value })} placeholder="https://..." className="input" />
+              </div>
             </div>
 
+            {/* Subjects */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Nombre *</label>
-              <input
-                type="text"
-                required
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-salesiano-green"
-                placeholder="Prof. Nombre Apellido"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Email *</label>
-              <input
-                type="email"
-                required
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-salesiano-green"
-                placeholder="correo@salesianosanjose.edu.sv"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Grado Asignado *</label>
-              <select
-                required
-                value={formData.gradeId}
-                onChange={(e) => setFormData({ ...formData, gradeId: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-salesiano-green"
-              >
-                <option value="">Seleccionar grado</option>
-                {grades.map((grade) => (
-                  <option key={grade.id} value={grade.id}>{grade.name}</option>
+              <label className="block text-xs font-medium text-gray-500 mb-2"><BookOpen className="w-3 h-3 inline mr-1" />Materias que Imparte</label>
+              <div className="flex flex-wrap gap-2">
+                {subjects.map(s => (
+                  <button key={s.id} type="button" onClick={() => toggleSubject(s.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${form.subjects.includes(s.id) ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary'}`}>
+                    {s.name}
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
 
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-slate-700 mb-1">URL Avatar (opcional)</label>
-              <input
-                type="url"
-                value={formData.avatarUrl}
-                onChange={(e) => setFormData({ ...formData, avatarUrl: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-salesiano-green"
-                placeholder="https://..."
-              />
+            {/* Guide Assignment */}
+            <div className="border-t border-gray-100 pt-4">
+              <p className="text-xs font-medium text-gray-500 mb-3"><MapPin className="w-3 h-3 inline mr-1" />Asignación como Guía (Opcional)</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Grado Guía</label>
+                  <select value={form.guideGradeId} onChange={e => setForm({ ...form, guideGradeId: e.target.value, guideSectionId: '' })} className="input">
+                    <option value="">Sin grado</option>
+                    {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Sección Guía</label>
+                  <select value={form.guideSectionId} onChange={e => setForm({ ...form, guideSectionId: e.target.value })} className="input" disabled={!form.guideGradeId}>
+                    <option value="">Sin sección</option>
+                    {filteredSections.map(s => <option key={s.id} value={s.id}>Sección {s.name}</option>)}
+                  </select>
+                </div>
+              </div>
             </div>
 
-            <div className="col-span-2 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowForm(false);
-                  setEditingId(null);
-                }}
-                className="px-4 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-salesiano-green text-white rounded-lg hover:bg-salesiano-green-dark flex items-center gap-2"
-              >
-                <Save className="w-4 h-4" />
-                {editingId ? 'Actualizar' : 'Crear'}
-              </button>
+            <div className="flex justify-end gap-2 pt-2">
+              <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="btn-secondary">Cancelar</button>
+              <button type="submit" className="btn-primary"><Save className="w-4 h-4" /> {editingId ? 'Actualizar' : 'Crear'}</button>
             </div>
           </form>
         </motion.div>
       )}
 
-      {/* Teachers List */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="text-left px-6 py-3 text-xs font-bold text-slate-500 uppercase">Docente</th>
-                <th className="text-left px-6 py-3 text-xs font-bold text-slate-500 uppercase">Email</th>
-                <th className="text-left px-6 py-3 text-xs font-bold text-slate-500 uppercase">Grado</th>
-                <th className="text-right px-6 py-3 text-xs font-bold text-slate-500 uppercase">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredTeachers.map((teacher) => (
-                <tr key={teacher.id} className="hover:bg-slate-50">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={teacher.avatarUrl}
-                        alt={teacher.name}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                      <span className="font-semibold text-slate-800">{teacher.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-slate-500">{teacher.email}</td>
-                  <td className="px-6 py-4">
-                    <span className="text-xs bg-salesiano-green/10 text-salesiano-green px-2 py-1 rounded font-medium">
-                      {grades.find(g => g.id === teacher.gradeId)?.name || teacher.gradeId}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => handleEdit(teacher)}
-                        className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                      >
-                        <Edit2 className="w-4 h-4 text-slate-500" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(teacher.id)}
-                        className="p-2 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filtered.map(t => (
+          <div key={t.id} className="card card-hover overflow-hidden group">
+            <div className="bg-gradient-to-r from-gray-800 to-gray-900 p-4">
+              <div className="flex items-center gap-3">
+                <img src={t.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(t.name)}&background=12562E&color=fff`} alt={t.name} className="w-12 h-12 rounded-full border-2 border-secondary object-cover" />
+                <div className="min-w-0">
+                  <h3 className="text-sm font-semibold text-white truncate">{t.name}</h3>
+                  <p className="text-xs text-gray-400 truncate">{t.email}</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 space-y-2">
+              {t.phone && <p className="text-xs text-gray-500 flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" /> {t.phone}</p>}
+              {t.specialty && <p className="text-xs text-gray-500 flex items-center gap-1.5"><Award className="w-3.5 h-3.5" /> {t.specialty}</p>}
+              {t.schedule && <p className="text-xs text-gray-500 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {t.schedule}</p>}
+              {t.guideGradeId && (
+                <p className="text-xs text-primary font-medium flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5" /> Guía: {getGradeName(t.guideGradeId)} "{getSectionName(t.guideSectionId)}"
+                </p>
+              )}
+              <div className="flex flex-wrap gap-1 pt-2 border-t border-gray-100">
+                {(t.subjects || []).map(s => (
+                  <span key={s} className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-medium rounded">{getSubjectName(s)}</span>
+                ))}
+              </div>
+              <div className="flex justify-end gap-1 pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => handleEdit(t)} className="p-1.5 hover:bg-gray-100 rounded-lg"><Edit2 className="w-4 h-4 text-gray-500" /></button>
+                <button onClick={() => handleDelete(t.id)} className="p-1.5 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4 text-red-500" /></button>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
+
+      {filtered.length === 0 && (
+        <div className="text-center py-12 text-gray-400">
+          <GraduationCap className="w-10 h-10 mx-auto mb-2 opacity-50" />
+          <p className="text-sm">No se encontraron docentes</p>
+        </div>
+      )}
     </div>
   );
 }
