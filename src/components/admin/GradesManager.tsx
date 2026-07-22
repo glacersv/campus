@@ -14,7 +14,8 @@ import {
   Trash,
   GraduationCap
 } from 'lucide-react';
-import { getAllGrades, createGrade, updateGrade, deleteGrade } from '../../lib/firestore';
+import { toast } from 'sonner';
+import { getAllGrades, createGrade, updateGrade, deleteGrade, toggleGradeStatus } from '../../lib/firestore';
 import { Grade, Cycle, BaccalaureateType, CYCLE_NAMES } from '../../types';
 
 const CYCLE_COLORS: Record<Cycle, string> = {
@@ -24,10 +25,17 @@ const CYCLE_COLORS: Record<Cycle, string> = {
   '4': 'bg-amber-100 text-amber-700'
 };
 
-const BAC_COLOR: Record<BaccalaureateType, string> = {
-  'general': 'bg-sky-100 text-sky-700',
-  'tecnico': 'bg-orange-100 text-orange-700'
-};
+  const BAC_COLOR: Record<BaccalaureateType, string> = {
+    'general': 'bg-sky-100 text-sky-700',
+    'tecnico': 'bg-orange-100 text-orange-700'
+  };
+
+  const STATUS_COLOR: Record<Cycle, string> = {
+    '1': 'bg-emerald-100 text-emerald-700',
+    '2': 'bg-blue-100 text-blue-700',
+    '3': 'bg-purple-100 text-purple-700',
+    '4': 'bg-amber-100 text-amber-700'
+  };
 
 export default function GradesManager() {
   const [grades, setGrades] = useState<Grade[]>([]);
@@ -37,6 +45,7 @@ export default function GradesManager() {
   const [form, setForm] = useState({ name: '', cycle: '1' as Cycle, baccalaureateType: '' as '' | BaccalaureateType });
   const [search, setSearch] = useState('');
   const [cycleFilter, setCycleFilter] = useState<Cycle | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<'ACTIVO' | 'INACTIVO' | 'all'>('all');
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -58,13 +67,15 @@ export default function GradesManager() {
       };
       if (editingId) {
         await updateGrade(editingId, gradeData);
+        toast.success('Grado actualizado correctamente');
       } else {
         await createGrade(gradeData);
+        toast.success('Grado creado correctamente');
       }
       setShowForm(false); setEditingId(null);
       setForm({ name: '', cycle: '1', baccalaureateType: '' });
       loadData();
-    } catch (err) { console.error(err); }
+    } catch (err) { toast.error('Error al guardar grado'); console.error(err); }
   };
 
   const handleEdit = (g: Grade) => {
@@ -75,18 +86,35 @@ export default function GradesManager() {
 
   const handleDelete = async (id: string) => {
     if (confirm('¿Eliminar este grado?')) {
-      await deleteGrade(id);
-      setSelected(prev => { const n = new Set(prev); n.delete(id); return n; });
+      try {
+        await deleteGrade(id);
+        toast.success('Grado eliminado');
+        setSelected(prev => { const n = new Set(prev); n.delete(id); return n; });
+        loadData();
+      } catch (err) { toast.error('Error al eliminar grado'); }
+    }
+  };
+
+  const handleToggleStatus = async (id: string, current?: string) => {
+    try {
+      await toggleGradeStatus(id, current);
+      toast.success('Estado actualizado');
       loadData();
+    } catch (err) {
+      toast.error('Error al cambiar estado');
+      console.error(err);
     }
   };
 
   const handleBulkDelete = async () => {
     if (selected.size === 0) return;
     if (confirm(`¿Eliminar ${selected.size} grado(s)?`)) {
-      for (const id of selected) await deleteGrade(id);
-      setSelected(new Set());
-      loadData();
+      try {
+        for (const id of selected) await deleteGrade(id);
+        toast.success(`${selected.size} grado(s) eliminados`);
+        setSelected(new Set());
+        loadData();
+      } catch (err) { toast.error('Error al eliminar grados'); }
     }
   };
 
@@ -106,7 +134,8 @@ export default function GradesManager() {
   const filtered = grades.filter(g => {
     const matchesSearch = `${g.name} ${CYCLE_NAMES[g.cycle]}`.toLowerCase().includes(search.toLowerCase());
     const matchesCycle = cycleFilter === 'all' || g.cycle === cycleFilter;
-    return matchesSearch && matchesCycle;
+    const matchesStatus = statusFilter === 'all' || (g.status || 'ACTIVO') === statusFilter;
+    return matchesSearch && matchesCycle && matchesStatus;
   });
 
   const cycleGroups = {
@@ -191,6 +220,13 @@ export default function GradesManager() {
           </motion.div>
         )}
 
+        {/* Status filter */}
+        <div className="flex gap-1.5 ml-auto">
+          <button onClick={() => setStatusFilter('all')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${statusFilter === 'all' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Todos</button>
+          <button onClick={() => setStatusFilter('ACTIVO')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${statusFilter === 'ACTIVO' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Activos</button>
+          <button onClick={() => setStatusFilter('INACTIVO')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${statusFilter === 'INACTIVO' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Inactivos</button>
+        </div>
+
         {/* View toggle */}
         <div className="flex border border-gray-200 rounded-lg overflow-hidden">
           <button
@@ -215,9 +251,9 @@ export default function GradesManager() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="card p-5"
+            className="card p-4"
           >
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-gray-900">
                 {editingId ? 'Editar Grado' : 'Nuevo Grado'}
               </h3>
@@ -284,7 +320,7 @@ export default function GradesManager() {
 
       {/* Card View - Grouped by Cycle */}
       {viewMode === 'card' && cycleFilter === 'all' ? (
-        <div className="space-y-6">
+    <div className="space-y-4">
           {(Object.keys(CYCLE_NAMES) as Cycle[]).map(c => {
             const items = cycleGroups[c];
             if (items.length === 0) return null;
@@ -296,7 +332,7 @@ export default function GradesManager() {
                   </span>
                   <span className="text-xs text-gray-400">({items.length})</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                   {items.map((g, i) => (
                     <GradeCard
                       key={g.id}
@@ -306,6 +342,7 @@ export default function GradesManager() {
                       onToggleSelect={() => toggleSelect(g.id)}
                       onEdit={() => handleEdit(g)}
                       onDelete={() => handleDelete(g.id)}
+                      onToggleStatus={() => handleToggleStatus(g.id, g.status)}
                     />
                   ))}
                 </div>
@@ -314,7 +351,7 @@ export default function GradesManager() {
           })}
         </div>
       ) : viewMode === 'card' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {filtered.map((g, i) => (
             <GradeCard
               key={g.id}
@@ -324,6 +361,7 @@ export default function GradesManager() {
               onToggleSelect={() => toggleSelect(g.id)}
               onEdit={() => handleEdit(g)}
               onDelete={() => handleDelete(g.id)}
+              onToggleStatus={() => handleToggleStatus(g.id, g.status)}
             />
           ))}
         </div>
@@ -333,22 +371,23 @@ export default function GradesManager() {
           <table className="w-full">
             <thead className="table-header">
               <tr>
-                <th className="w-10 px-4 py-3">
+                <th className="w-8 px-3 py-2">
                   <button
                     onClick={toggleSelectAll}
-                    className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                    className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
                       selected.size === filtered.length && filtered.length > 0
                         ? 'bg-primary border-primary text-white'
                         : 'border-gray-300 hover:border-primary'
                     }`}
                   >
-                    {selected.size === filtered.length && filtered.length > 0 && <Check className="w-3 h-3" />}
+                    {selected.size === filtered.length && filtered.length > 0 && <Check className="w-2.5 h-2.5" />}
                   </button>
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Grado</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Ciclo</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Tipo</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Acciones</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Grado</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Ciclo</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Tipo</th>
+                <th className="text-center px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Estado</th>
+                <th className="text-right px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -360,27 +399,27 @@ export default function GradesManager() {
                   transition={{ delay: i * 0.02 }}
                   className={`table-row ${selected.has(g.id) ? 'bg-primary/5' : ''}`}
                 >
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2">
                     <button
                       onClick={() => toggleSelect(g.id)}
-                      className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                      className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
                         selected.has(g.id)
                           ? 'bg-primary border-primary text-white'
                           : 'border-gray-300 hover:border-primary'
                       }`}
                     >
-                      {selected.has(g.id) && <Check className="w-3 h-3" />}
+                      {selected.has(g.id) && <Check className="w-2.5 h-2.5" />}
                     </button>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2">
                     <span className="font-medium text-gray-900">{g.name}</span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2">
                     <span className={`px-2 py-0.5 rounded text-xs font-semibold ${CYCLE_COLORS[g.cycle]}`}>
                       {CYCLE_NAMES[g.cycle]}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2">
                     {g.baccalaureateType ? (
                       <span className={`px-2 py-0.5 rounded text-xs font-semibold ${BAC_COLOR[g.baccalaureateType]}`}>
                         {g.baccalaureateType === 'general' ? 'General' : 'Técnico'}
@@ -389,7 +428,20 @@ export default function GradesManager() {
                       <span className="text-gray-400 text-xs">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-3 py-2 text-center">
+                    <button
+                      onClick={() => handleToggleStatus(g.id, g.status)}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${
+                        (g.status || 'ACTIVO') === 'ACTIVO'
+                          ? `${STATUS_COLOR[g.cycle]} hover:bg-gray-200 hover:text-gray-600`
+                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${(g.status || 'ACTIVO') === 'ACTIVO' ? 'bg-current' : 'bg-gray-400'}`} />
+                      {(g.status || 'ACTIVO') === 'ACTIVO' ? 'ACTIVO' : 'INACTIVO'}
+                    </button>
+                  </td>
+                  <td className="px-3 py-2 text-right">
                     <div className="flex justify-end gap-1">
                       <button
                         onClick={() => handleEdit(g)}
@@ -424,35 +476,49 @@ export default function GradesManager() {
 }
 
 // Grade Card component
-function GradeCard({ grade, index, selected, onToggleSelect, onEdit, onDelete }: {
+function GradeCard({ grade, index, selected, onToggleSelect, onEdit, onDelete, onToggleStatus }: {
   grade: Grade;
   index: number;
   selected: boolean;
   onToggleSelect: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onToggleStatus: () => void;
 }) {
+  const CYCLE_HEX: Record<Cycle, string> = {
+    '1': '#10B981',
+    '2': '#3B82F6',
+    '3': '#8B5CF6',
+    '4': '#F59E0B'
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.03 }}
-      className={`card card-hover p-4 group relative ${selected ? 'ring-2 ring-primary border-primary' : ''}`}
+      className={`card card-hover p-3 group relative ${selected ? 'ring-2 ring-primary border-primary' : ''}`}
     >
+      {/* Hover accent bar */}
+      <div className="absolute top-0 left-0 right-0 h-1 rounded-t-lg opacity-0 group-hover:opacity-100 transition-all duration-300"
+        style={{ backgroundColor: CYCLE_HEX[grade.cycle] }} />
+      <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-[0.04] transition-all duration-300"
+        style={{ backgroundColor: CYCLE_HEX[grade.cycle] }} />
+
       {/* Checkbox */}
-      <div className="absolute top-3 left-3">
+      <div className="absolute top-2.5 left-2.5">
         <button
           onClick={onToggleSelect}
-          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+          className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
             selected ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'
           }`}
         >
-          {selected && <Check className="w-3 h-3" />}
+          {selected && <Check className="w-2.5 h-2.5" />}
         </button>
       </div>
 
       {/* Content */}
-      <div className="pt-2 pl-6">
+      <div className="relative pt-1 pl-5">
         <div className="flex items-center gap-2 flex-wrap">
           <h3 className="font-semibold text-gray-900">{grade.name}</h3>
         </div>
@@ -465,11 +531,27 @@ function GradeCard({ grade, index, selected, onToggleSelect, onEdit, onDelete }:
               {grade.baccalaureateType === 'general' ? 'General' : 'Técnico'}
             </span>
           )}
+          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+            (grade.status || 'ACTIVO') === 'ACTIVO' ? STATUS_COLOR[grade.cycle] : 'bg-gray-100 text-gray-500'
+          }`}>
+            {(grade.status || 'ACTIVO') === 'ACTIVO' ? 'Activo' : 'Inactivo'}
+          </span>
         </div>
+        {grade.schoolYear && (
+          <p className="text-[10px] text-gray-400 mt-1">Año escolar: {grade.schoolYear}</p>
+        )}
       </div>
 
       {/* Actions */}
-      <div className="flex justify-end gap-1 mt-3 pt-3 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="relative flex justify-end gap-1 mt-2 pt-2 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button
+          onClick={onToggleStatus}
+          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+            (grade.status || 'ACTIVO') === 'ACTIVO' ? 'hover:bg-gray-100 text-gray-500' : 'hover:bg-gray-100 text-gray-600'
+          }`}
+        >
+          <Check className="w-3.5 h-3.5" /> {(grade.status || 'ACTIVO') === 'ACTIVO' ? 'Desactivar' : 'Activar'}
+        </button>
         <button
           onClick={onEdit}
           className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-gray-100 rounded-lg text-xs font-medium text-gray-600 transition-colors"

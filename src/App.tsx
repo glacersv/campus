@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import Login from './components/Login';
 import AdminLayout from './components/admin/AdminLayout';
 import AdminDashboard from './components/admin/AdminDashboard';
@@ -13,33 +14,11 @@ import BaccalaureateTypesManager from './components/admin/BaccalaureateTypesMana
 import BuildingsManager from './components/admin/BuildingsManager';
 import GradeSectionAssignment from './components/admin/GradeSectionAssignment';
 import TeacherDashboard from './components/TeacherDashboard';
+import Dashboard from './components/Dashboard';
 import { Teacher } from './types';
 import { getTeacher, seedInitialData } from './lib/firestore';
 
-function AdminPanel() {
-  const [activeSection, setActiveSection] = useState('dashboard');
-
-  const renderSection = () => {
-    switch (activeSection) {
-      case 'grades': return <GradesManager />;
-      case 'sections': return <SectionsManager />;
-      case 'subjects': return <SubjectsManager />;
-      case 'computer-labs': return <ComputerLabsManager />;
-      case 'baccalaureate-types': return <BaccalaureateTypesManager />;
-      case 'buildings': return <BuildingsManager />;
-      case 'grade-section-assignment': return <GradeSectionAssignment />;
-      case 'teachers': return <TeachersManager />;
-      case 'students': return <StudentsManager />;
-      default: return <AdminDashboard />;
-    }
-  };
-
-  return (
-    <AdminLayout activeSection={activeSection} onSectionChange={setActiveSection}>
-      {renderSection()}
-    </AdminLayout>
-  );
-}
+import { Routes, Route, Navigate } from 'react-router-dom';
 
 function AppContent() {
   const { firebaseUser, userProfile, loading, signOut } = useAuth();
@@ -71,23 +50,52 @@ function AppContent() {
 
   // Admin view
   if (userProfile.role === 'admin') {
-    return <AdminPanel />;
+    return (
+      <Routes>
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="grades" element={<GradesManager />} />
+          <Route path="sections" element={<SectionsManager />} />
+          <Route path="subjects" element={<SubjectsManager />} />
+          <Route path="computer-labs" element={<ComputerLabsManager />} />
+          <Route path="baccalaureate-types" element={<BaccalaureateTypesManager />} />
+          <Route path="buildings" element={<BuildingsManager />} />
+          <Route path="grade-section-assignment" element={<GradeSectionAssignment />} />
+          <Route path="teachers" element={<TeachersManager />} />
+          <Route path="students" element={<StudentsManager />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/admin" replace />} />
+      </Routes>
+    );
   }
 
   // Teacher view
   return (
-    <TeacherDashboard
-      teacherName={userProfile.displayName}
-      onLogout={signOut}
-      onModuleClick={(id) => console.log('Module clicked:', id)}
-    />
+    <Routes>
+      <Route path="/" element={
+        <TeacherDashboard
+          teacherName={userProfile.displayName}
+          onLogout={signOut}
+        />
+      } />
+      <Route path="/attendance" element={
+        teacherData ? (
+          <Dashboard teacher={teacherData} onLogout={signOut} />
+        ) : (
+          <div className="min-h-screen flex justify-center items-center">Cargando datos del docente...</div>
+        )
+      } />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

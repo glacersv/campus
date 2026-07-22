@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, FileSpreadsheet, FileJson, CheckCircle2, RefreshCw, Check, CloudLightning, Loader2, Database } from 'lucide-react';
 import { Student, Teacher, Grade, StudentSessionState } from '../types';
-import { STUDENTS } from '../data';
 import { saveAttendanceReport, type AttendanceReportData } from '../firebase';
+import { toast } from 'sonner';
 
 interface SummaryModalProps {
   isOpen: boolean;
@@ -13,6 +13,7 @@ interface SummaryModalProps {
   civicAct: boolean;
   records: Record<string, StudentSessionState>;
   onReset: () => void;
+  students: Student[];
 }
 
 export default function SummaryModal({
@@ -22,7 +23,8 @@ export default function SummaryModal({
   activeGrade,
   civicAct,
   records,
-  onReset
+  onReset,
+  students
 }: SummaryModalProps) {
   if (!isOpen) return null;
 
@@ -30,11 +32,8 @@ export default function SummaryModal({
   const [reportId, setReportId] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
 
-  // Filter students belonging to the active grade
-  const gradeStudents = STUDENTS.filter((s) => s.gradeId === activeGrade.id);
-
   // Compute stats
-  const totalStudents = gradeStudents.length;
+  const totalStudents = students.length;
   let presentCount = 0;
   let tardyCount = 0;
   let absentCount = 0;
@@ -50,7 +49,7 @@ export default function SummaryModal({
     infractions: string[];
   }> = [];
 
-  gradeStudents.forEach((student) => {
+  students.forEach((student) => {
     const record = records[student.id] || {
       studentId: student.id,
       status: 'Ausente',
@@ -110,7 +109,7 @@ export default function SummaryModal({
             uniformeIncorrecto: uniformeIncorrectoCount
           }
         },
-        detalles: gradeStudents.map((s) => {
+        detalles: students.map((s) => {
           const rec = records[s.id] || {
             studentId: s.id,
             status: 'Ausente',
@@ -129,10 +128,13 @@ export default function SummaryModal({
 
       const docId = await saveAttendanceReport(exportData);
       if (docId) {
-        setReportId(docId);
         setSyncStatus('success');
+        setReportId(docId);
+        toast.success('Asistencia guardada correctamente');
       } else {
-        throw new Error('No se recibió el ID del documento.');
+        setSyncStatus('error');
+        setSyncError('Error al guardar reporte');
+        toast.error('Error al guardar el reporte');
       }
     } catch (err: any) {
       console.error(err);
@@ -150,10 +152,12 @@ export default function SummaryModal({
   // Export functions
   const handleExportCSV = () => {
     const headers = ['ID Alumno', 'Nombre Completo', 'Género', 'Grado', 'Sección', 'Estado Asistencia', 'Hora Llegada', 'Cabello Largo', 'Uñas Pintadas', 'Uniforme Incorrecto'];
-    const rows = gradeStudents.map((s) => {
+    const sectionName = teacher.guideSectionId ?? '';
+    const rows = students.map((s) => {
       const rec = records[s.id] || {
         studentId: s.id,
         status: 'Ausente',
+        arrivalTime: undefined,
         discipline: { cabelloLargo: false, unasPintadas: false, uniformeIncorrecto: false }
       };
       return [
@@ -161,7 +165,7 @@ export default function SummaryModal({
         s.name,
         s.gender === 'M' ? 'Masculino' : 'Femenino',
         activeGrade.name,
-        activeGrade.section,
+        sectionName,
         rec.status,
         rec.arrivalTime || '',
         rec.discipline.cabelloLargo ? 'SÍ' : 'NO',
@@ -186,7 +190,7 @@ export default function SummaryModal({
       colegio: 'Colegio Salesiano San José',
       fecha: new Date().toLocaleDateString(),
       grado: activeGrade.name,
-      seccion: activeGrade.section,
+      seccion: teacher.guideSectionId ?? '',
       tutor: teacher.name,
       modalidad: civicAct ? 'Acto Cívico' : 'Buenos Días',
       estadisticas: {
@@ -200,10 +204,11 @@ export default function SummaryModal({
           uniformeIncorrecto: uniformeIncorrectoCount
         }
       },
-      detalles: gradeStudents.map((s) => {
+      detalles: students.map((s) => {
         const rec = records[s.id] || {
           studentId: s.id,
           status: 'Ausente',
+          arrivalTime: undefined,
           discipline: { cabelloLargo: false, unasPintadas: false, uniformeIncorrecto: false }
         };
         return {
@@ -243,7 +248,7 @@ export default function SummaryModal({
                 Resumen de Jornada Finalizado
               </h2>
               <p className="text-xs text-emerald-100 font-medium tracking-wider uppercase mt-1">
-                {activeGrade.name} "{activeGrade.section}" &bull; {civicAct ? 'Acto Cívico' : 'Buenos Días'}
+                {activeGrade.name} {teacher.guideSectionId ? `"${teacher.guideSectionId.toUpperCase()}"` : ''} &bull; {civicAct ? 'Acto Cívico' : 'Buenos Días'}
               </p>
             </div>
             <button

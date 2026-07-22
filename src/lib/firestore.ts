@@ -278,9 +278,14 @@ export async function getTeacherByGrade(gradeId: string): Promise<Teacher | null
 
 // ==================== STUDENTS ====================
 
-export async function createStudent(data: Omit<Student, 'createdAt'>): Promise<void> {
+export async function createStudent(data: Omit<Student, 'createdAt' | 'updatedAt'>): Promise<void> {
   const ref = doc(db, STUDENTS_COLLECTION, data.id);
-  await setDoc(ref, { ...data, createdAt: serverTimestamp() });
+  await setDoc(ref, { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+}
+
+export async function createStudentWithTimestamps(data: Omit<Student, 'createdAt' | 'updatedAt'>, createdAt: Timestamp, updatedAt: Timestamp): Promise<void> {
+  const ref = doc(db, STUDENTS_COLLECTION, data.id);
+  await setDoc(ref, { ...data, createdAt, updatedAt });
 }
 
 export async function getStudent(id: string): Promise<Student | null> {
@@ -292,7 +297,7 @@ export async function getStudent(id: string): Promise<Student | null> {
 
 export async function updateStudent(id: string, data: Partial<Student>): Promise<void> {
   const ref = doc(db, STUDENTS_COLLECTION, id);
-  await updateDoc(ref, data);
+  await updateDoc(ref, { ...data, updatedAt: serverTimestamp() });
 }
 
 export async function deleteStudent(id: string): Promise<void> {
@@ -321,6 +326,36 @@ export async function getStudentsBySection(gradeId: string, sectionId: string): 
   );
   const snapshot = await getDocs(q);
   return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Student));
+}
+
+// ==================== GRADE/SECTION TOGGLE ====================
+
+export async function toggleGradeStatus(id: string, currentStatus?: string): Promise<void> {
+  const ref = doc(db, GRADES_COLLECTION, id);
+  const newStatus = currentStatus === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
+  await updateDoc(ref, { status: newStatus, updatedAt: serverTimestamp() });
+}
+
+export async function toggleSectionStatus(id: string, currentStatus?: string): Promise<void> {
+  const ref = doc(db, SECTIONS_COLLECTION, id);
+  const newStatus = currentStatus === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
+  await updateDoc(ref, { status: newStatus, updatedAt: serverTimestamp() });
+}
+
+export async function startSchoolYear(year: number): Promise<void> {
+  // Mark all active grades with the new school year
+  const gradesSnap = await getDocs(collection(db, GRADES_COLLECTION));
+  gradesSnap.docs.forEach(async (d) => {
+    const ref = d.ref;
+    await updateDoc(ref, { schoolYear: year, status: 'ACTIVO', updatedAt: serverTimestamp() });
+  });
+
+  // Mark all active sections with the new school year
+  const sectionsSnap = await getDocs(collection(db, SECTIONS_COLLECTION));
+  sectionsSnap.docs.forEach(async (d) => {
+    const ref = d.ref;
+    await updateDoc(ref, { schoolYear: year, status: 'ACTIVO', updatedAt: serverTimestamp() });
+  });
 }
 
 // ==================== SEED DATA ====================
@@ -360,56 +395,56 @@ export async function seedInitialData(): Promise<void> {
   ];
   for (const bt of baccalaureateTypesData) await createBaccalaureateType(bt);
 
-  // Grades - Primer Ciclo (1°-3°)
+  const currentYear = new Date().getFullYear();
   const gradesData = [
-    { id: '1', name: '1° Grado', cycle: '1' as const },
-    { id: '2', name: '2° Grado', cycle: '1' as const },
-    { id: '3', name: '3° Grado', cycle: '1' as const },
+    { id: '1', name: '1° Grado', cycle: '1' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '2', name: '2° Grado', cycle: '1' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '3', name: '3° Grado', cycle: '1' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
     // Segundo Ciclo (4°-6°)
-    { id: '4', name: '4° Grado', cycle: '2' as const },
-    { id: '5', name: '5° Grado', cycle: '2' as const },
-    { id: '6', name: '6° Grado', cycle: '2' as const },
+    { id: '4', name: '4° Grado', cycle: '2' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '5', name: '5° Grado', cycle: '2' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '6', name: '6° Grado', cycle: '2' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
     // Tercer Ciclo (7°-9°)
-    { id: '7', name: '7° Grado', cycle: '3' as const },
-    { id: '8', name: '8° Grado', cycle: '3' as const },
-    { id: '9', name: '9° Grado', cycle: '3' as const },
+    { id: '7', name: '7° Grado', cycle: '3' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '8', name: '8° Grado', cycle: '3' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '9', name: '9° Grado', cycle: '3' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
     // Bachillerato General (10°-11°)
-    { id: '10g', name: '10° Bachillerato General', cycle: '4' as const, baccalaureateType: 'general' as const },
-    { id: '11g', name: '11° Bachillerato General', cycle: '4' as const, baccalaureateType: 'general' as const },
+    { id: '10g', name: '10° Bachillerato General', cycle: '4' as const, baccalaureateType: 'general' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '11g', name: '11° Bachillerato General', cycle: '4' as const, baccalaureateType: 'general' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
     // Bachillerato Técnico (10°-12°)
-    { id: '10t', name: '10° Bachillerato Técnico', cycle: '4' as const, baccalaureateType: 'tecnico' as const },
-    { id: '11t', name: '11° Bachillerato Técnico', cycle: '4' as const, baccalaureateType: 'tecnico' as const },
-    { id: '12t', name: '12° Bachillerato Técnico', cycle: '4' as const, baccalaureateType: 'tecnico' as const }
+    { id: '10t', name: '10° Bachillerato Técnico', cycle: '4' as const, baccalaureateType: 'tecnico' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '11t', name: '11° Bachillerato Técnico', cycle: '4' as const, baccalaureateType: 'tecnico' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '12t', name: '12° Bachillerato Técnico', cycle: '4' as const, baccalaureateType: 'tecnico' as const, status: 'ACTIVO' as const, schoolYear: currentYear }
   ];
   for (const g of gradesData) await createGrade(g);
 
   // Sections
   const sectionsData = [
-    { id: '1a', name: 'A', gradeId: '1', capacity: 45, buildingId: 'b2' },
-    { id: '1b', name: 'B', gradeId: '1', capacity: 42, buildingId: 'b2' },
-    { id: '2a', name: 'A', gradeId: '2', capacity: 45, buildingId: 'b2' },
-    { id: '2b', name: 'B', gradeId: '2', capacity: 42, buildingId: 'b2' },
-    { id: '3a', name: 'A', gradeId: '3', capacity: 45, buildingId: 'b2' },
-    { id: '3b', name: 'B', gradeId: '3', capacity: 42, buildingId: 'b2' },
-    { id: '4a', name: 'A', gradeId: '4', capacity: 45, buildingId: 'b2' },
-    { id: '4b', name: 'B', gradeId: '4', capacity: 42, buildingId: 'b2' },
-    { id: '5a', name: 'A', gradeId: '5', capacity: 45, buildingId: 'b2' },
-    { id: '5b', name: 'B', gradeId: '5', capacity: 42, buildingId: 'b2' },
-    { id: '6a', name: 'A', gradeId: '6', capacity: 45, buildingId: 'b2' },
-    { id: '6b', name: 'B', gradeId: '6', capacity: 42, buildingId: 'b2' },
-    { id: '7a', name: 'A', gradeId: '7', capacity: 45, buildingId: 'b2' },
-    { id: '7b', name: 'B', gradeId: '7', capacity: 42, buildingId: 'b2' },
-    { id: '8a', name: 'A', gradeId: '8', capacity: 40, buildingId: 'b2' },
-    { id: '8b', name: 'B', gradeId: '8', capacity: 38, buildingId: 'b2' },
-    { id: '9a', name: 'A', gradeId: '9', capacity: 40, buildingId: 'b2' },
-    { id: '9b', name: 'B', gradeId: '9', capacity: 38, buildingId: 'b2' },
-    { id: '10ga', name: 'A', gradeId: '10g', capacity: 35, buildingId: 'b2' },
-    { id: '10gb', name: 'B', gradeId: '10g', capacity: 35, buildingId: 'b2' },
-    { id: '11ga', name: 'A', gradeId: '11g', capacity: 35, buildingId: 'b2' },
-    { id: '10ta', name: 'A', gradeId: '10t', capacity: 35, buildingId: 'b3' },
-    { id: '10tb', name: 'B', gradeId: '10t', capacity: 35, buildingId: 'b3' },
-    { id: '11ta', name: 'A', gradeId: '11t', capacity: 35, buildingId: 'b3' },
-    { id: '12ta', name: 'A', gradeId: '12t', capacity: 30, buildingId: 'b3' }
+    { id: '1a', name: 'A', gradeId: '1', capacity: 45, buildingId: 'b2', status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '1b', name: 'B', gradeId: '1', capacity: 42, buildingId: 'b2', status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '2a', name: 'A', gradeId: '2', capacity: 45, buildingId: 'b2', status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '2b', name: 'B', gradeId: '2', capacity: 42, buildingId: 'b2', status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '3a', name: 'A', gradeId: '3', capacity: 45, buildingId: 'b2', status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '3b', name: 'B', gradeId: '3', capacity: 42, buildingId: 'b2', status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '4a', name: 'A', gradeId: '4', capacity: 45, buildingId: 'b2', status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '4b', name: 'B', gradeId: '4', capacity: 42, buildingId: 'b2', status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '5a', name: 'A', gradeId: '5', capacity: 45, buildingId: 'b2', status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '5b', name: 'B', gradeId: '5', capacity: 42, buildingId: 'b2', status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '6a', name: 'A', gradeId: '6', capacity: 45, buildingId: 'b2', status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '6b', name: 'B', gradeId: '6', capacity: 42, buildingId: 'b2', status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '7a', name: 'A', gradeId: '7', capacity: 45, buildingId: 'b2', status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '7b', name: 'B', gradeId: '7', capacity: 42, buildingId: 'b2', status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '8a', name: 'A', gradeId: '8', capacity: 40, buildingId: 'b2', status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '8b', name: 'B', gradeId: '8', capacity: 38, buildingId: 'b2', status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '9a', name: 'A', gradeId: '9', capacity: 40, buildingId: 'b2', status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '9b', name: 'B', gradeId: '9', capacity: 38, buildingId: 'b2', status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '10ga', name: 'A', gradeId: '10g', capacity: 35, buildingId: 'b2', status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '10gb', name: 'B', gradeId: '10g', capacity: 35, buildingId: 'b2', status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '11ga', name: 'A', gradeId: '11g', capacity: 35, buildingId: 'b2', status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '10ta', name: 'A', gradeId: '10t', capacity: 35, buildingId: 'b3', status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '10tb', name: 'B', gradeId: '10t', capacity: 35, buildingId: 'b3', status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '11ta', name: 'A', gradeId: '11t', capacity: 35, buildingId: 'b3', status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '12ta', name: 'A', gradeId: '12t', capacity: 30, buildingId: 'b3', status: 'ACTIVO' as const, schoolYear: currentYear }
   ];
   for (const s of sectionsData) await createSection(s);
 
@@ -452,48 +487,48 @@ export async function seedInitialData(): Promise<void> {
   // Students
   const studentsData = [
     // 1° Grado
-    { id: 's01', name: 'Carlos Daniel Henríquez', gender: 'M' as const, gradeId: '1', sectionId: '1a' },
-    { id: 's02', name: 'Gabriela María Melara', gender: 'F' as const, gradeId: '1', sectionId: '1a' },
-    { id: 's03', name: 'Diego Alejandro Solís', gender: 'M' as const, gradeId: '1', sectionId: '1a' },
-    { id: 's04', name: 'Valeria Sofía Paz', gender: 'F' as const, gradeId: '1', sectionId: '1a' },
-    { id: 's05', name: 'Mateo Sebastián Castro', gender: 'M' as const, gradeId: '1', sectionId: '1a' },
-    { id: 's06', name: 'Camila Fernanda Ortiz', gender: 'F' as const, gradeId: '1', sectionId: '1b' },
-    { id: 's07', name: 'Nicolás Alberto Durán', gender: 'M' as const, gradeId: '1', sectionId: '1b' },
-    { id: 's08', name: 'Elena Beatriz Rivas', gender: 'F' as const, gradeId: '1', sectionId: '1b' },
+    { id: 's01', carnet: 'SEED-001', firstName: 'Carlos Daniel', lastName: 'Henríquez', name: 'Carlos Daniel Henríquez', gender: 'M' as const, gradeId: '1', sectionId: '1a', enrollmentYear: 2026 },
+    { id: 's02', carnet: 'SEED-002', firstName: 'Gabriela María', lastName: 'Melara', name: 'Gabriela María Melara', gender: 'F' as const, gradeId: '1', sectionId: '1a', enrollmentYear: 2026 },
+    { id: 's03', carnet: 'SEED-003', firstName: 'Diego Alejandro', lastName: 'Solís', name: 'Diego Alejandro Solís', gender: 'M' as const, gradeId: '1', sectionId: '1a', enrollmentYear: 2026 },
+    { id: 's04', carnet: 'SEED-004', firstName: 'Valeria Sofía', lastName: 'Paz', name: 'Valeria Sofía Paz', gender: 'F' as const, gradeId: '1', sectionId: '1a', enrollmentYear: 2026 },
+    { id: 's05', carnet: 'SEED-005', firstName: 'Mateo Sebastián', lastName: 'Castro', name: 'Mateo Sebastián Castro', gender: 'M' as const, gradeId: '1', sectionId: '1a', enrollmentYear: 2026 },
+    { id: 's06', carnet: 'SEED-006', firstName: 'Camila Fernanda', lastName: 'Ortiz', name: 'Camila Fernanda Ortiz', gender: 'F' as const, gradeId: '1', sectionId: '1b', enrollmentYear: 2026 },
+    { id: 's07', carnet: 'SEED-007', firstName: 'Nicolás Alberto', lastName: 'Durán', name: 'Nicolás Alberto Durán', gender: 'M' as const, gradeId: '1', sectionId: '1b', enrollmentYear: 2026 },
+    { id: 's08', carnet: 'SEED-008', firstName: 'Elena Beatriz', lastName: 'Rivas', name: 'Elena Beatriz Rivas', gender: 'F' as const, gradeId: '1', sectionId: '1b', enrollmentYear: 2026 },
     // 2° Grado
-    { id: 's09', name: 'José Manuel Amaya', gender: 'M' as const, gradeId: '2', sectionId: '2a' },
-    { id: 's10', name: 'Daniela Alejandra Gómez', gender: 'F' as const, gradeId: '2', sectionId: '2a' },
-    { id: 's11', name: 'Andrés Felipe Martínez', gender: 'M' as const, gradeId: '2', sectionId: '2a' },
-    { id: 's12', name: 'Sofía Gabriela Rosa', gender: 'F' as const, gradeId: '2', sectionId: '2b' },
-    { id: 's13', name: 'Emilio José Contreras', gender: 'M' as const, gradeId: '2', sectionId: '2b' },
-    { id: 's14', name: 'Isabella María Guerrero', gender: 'F' as const, gradeId: '2', sectionId: '2b' },
+    { id: 's09', carnet: 'SEED-009', firstName: 'José Manuel', lastName: 'Amaya', name: 'José Manuel Amaya', gender: 'M' as const, gradeId: '2', sectionId: '2a', enrollmentYear: 2025 },
+    { id: 's10', carnet: 'SEED-010', firstName: 'Daniela Alejandra', lastName: 'Gómez', name: 'Daniela Alejandra Gómez', gender: 'F' as const, gradeId: '2', sectionId: '2a', enrollmentYear: 2025 },
+    { id: 's11', carnet: 'SEED-011', firstName: 'Andrés Felipe', lastName: 'Martínez', name: 'Andrés Felipe Martínez', gender: 'M' as const, gradeId: '2', sectionId: '2a', enrollmentYear: 2025 },
+    { id: 's12', carnet: 'SEED-012', firstName: 'Sofía Gabriela', lastName: 'Rosa', name: 'Sofía Gabriela Rosa', gender: 'F' as const, gradeId: '2', sectionId: '2b', enrollmentYear: 2025 },
+    { id: 's13', carnet: 'SEED-013', firstName: 'Emilio José', lastName: 'Contreras', name: 'Emilio José Contreras', gender: 'M' as const, gradeId: '2', sectionId: '2b', enrollmentYear: 2025 },
+    { id: 's14', carnet: 'SEED-014', firstName: 'Isabella María', lastName: 'Guerrero', name: 'Isabella María Guerrero', gender: 'F' as const, gradeId: '2', sectionId: '2b', enrollmentYear: 2025 },
     // 7° Grado
-    { id: 's15', name: 'Roberto Carlos Méndez', gender: 'M' as const, gradeId: '7', sectionId: '7a' },
-    { id: 's16', name: 'Ana Lucía Ponce', gender: 'F' as const, gradeId: '7', sectionId: '7a' },
-    { id: 's17', name: 'Fernando Antonio Salazar', gender: 'M' as const, gradeId: '7', sectionId: '7a' },
-    { id: 's18', name: 'Gabriela Estefanía Rivas', gender: 'F' as const, gradeId: '7', sectionId: '7a' },
-    { id: 's19', name: 'Carlos Eduardo Peña', gender: 'M' as const, gradeId: '7', sectionId: '7b' },
-    { id: 's20', name: 'Daniela Mishell Avilés', gender: 'F' as const, gradeId: '7', sectionId: '7b' },
+    { id: 's15', carnet: 'SEED-015', firstName: 'Roberto Carlos', lastName: 'Méndez', name: 'Roberto Carlos Méndez', gender: 'M' as const, gradeId: '7', sectionId: '7a', enrollmentYear: 2020 },
+    { id: 's16', carnet: 'SEED-016', firstName: 'Ana Lucía', lastName: 'Ponce', name: 'Ana Lucía Ponce', gender: 'F' as const, gradeId: '7', sectionId: '7a', enrollmentYear: 2020 },
+    { id: 's17', carnet: 'SEED-017', firstName: 'Fernando Antonio', lastName: 'Salazar', name: 'Fernando Antonio Salazar', gender: 'M' as const, gradeId: '7', sectionId: '7a', enrollmentYear: 2020 },
+    { id: 's18', carnet: 'SEED-018', firstName: 'Gabriela Estefanía', lastName: 'Rivas', name: 'Gabriela Estefanía Rivas', gender: 'F' as const, gradeId: '7', sectionId: '7a', enrollmentYear: 2020 },
+    { id: 's19', carnet: 'SEED-019', firstName: 'Carlos Eduardo', lastName: 'Peña', name: 'Carlos Eduardo Peña', gender: 'M' as const, gradeId: '7', sectionId: '7b', enrollmentYear: 2020 },
+    { id: 's20', carnet: 'SEED-020', firstName: 'Daniela Mishell', lastName: 'Avilés', name: 'Daniela Mishell Avilés', gender: 'F' as const, gradeId: '7', sectionId: '7b', enrollmentYear: 2020 },
     // 10° Bachillerato General
-    { id: 's21', name: 'Rodrigo Andrés Flores', gender: 'M' as const, gradeId: '10g', sectionId: '10ga' },
-    { id: 's22', name: 'Mariana Isabel Chicas', gender: 'F' as const, gradeId: '10g', sectionId: '10ga' },
-    { id: 's23', name: 'Fernando José Palacios', gender: 'M' as const, gradeId: '10g', sectionId: '10ga' },
-    { id: 's24', name: 'Sofía Alejandra Quintanilla', gender: 'F' as const, gradeId: '10g', sectionId: '10ga' },
-    { id: 's25', name: 'Daniel Eduardo Portillo', gender: 'M' as const, gradeId: '10g', sectionId: '10gb' },
-    { id: 's26', name: 'Lucía Valentina Merino', gender: 'F' as const, gradeId: '10g', sectionId: '10gb' },
+    { id: 's21', carnet: 'SEED-021', firstName: 'Rodrigo Andrés', lastName: 'Flores', name: 'Rodrigo Andrés Flores', gender: 'M' as const, gradeId: '10g', sectionId: '10ga', enrollmentYear: 2025 },
+    { id: 's22', carnet: 'SEED-022', firstName: 'Mariana Isabel', lastName: 'Chicas', name: 'Mariana Isabel Chicas', gender: 'F' as const, gradeId: '10g', sectionId: '10ga', enrollmentYear: 2025 },
+    { id: 's23', carnet: 'SEED-023', firstName: 'Fernando José', lastName: 'Palacios', name: 'Fernando José Palacios', gender: 'M' as const, gradeId: '10g', sectionId: '10ga', enrollmentYear: 2025 },
+    { id: 's24', carnet: 'SEED-024', firstName: 'Sofía Alejandra', lastName: 'Quintanilla', name: 'Sofía Alejandra Quintanilla', gender: 'F' as const, gradeId: '10g', sectionId: '10ga', enrollmentYear: 2025 },
+    { id: 's25', carnet: 'SEED-025', firstName: 'Daniel Eduardo', lastName: 'Portillo', name: 'Daniel Eduardo Portillo', gender: 'M' as const, gradeId: '10g', sectionId: '10gb', enrollmentYear: 2025 },
+    { id: 's26', carnet: 'SEED-026', firstName: 'Lucía Valentina', lastName: 'Merino', name: 'Lucía Valentina Merino', gender: 'F' as const, gradeId: '10g', sectionId: '10gb', enrollmentYear: 2025 },
     // 10° Bachillerato Técnico
-    { id: 's27', name: 'Gerardo Ernesto Alvarado', gender: 'M' as const, gradeId: '10t', sectionId: '10ta' },
-    { id: 's28', name: 'Natalia Estefanía Guardado', gender: 'F' as const, gradeId: '10t', sectionId: '10ta' },
-    { id: 's29', name: 'Josué Daniel Escalante', gender: 'M' as const, gradeId: '10t', sectionId: '10ta' },
-    { id: 's30', name: 'Carolina Michelle García', gender: 'F' as const, gradeId: '10t', sectionId: '10ta' },
+    { id: 's27', carnet: 'SEED-027', firstName: 'Gerardo Ernesto', lastName: 'Alvarado', name: 'Gerardo Ernesto Alvarado', gender: 'M' as const, gradeId: '10t', sectionId: '10ta', enrollmentYear: 2025 },
+    { id: 's28', carnet: 'SEED-028', firstName: 'Natalia Estefanía', lastName: 'Guardado', name: 'Natalia Estefanía Guardado', gender: 'F' as const, gradeId: '10t', sectionId: '10ta', enrollmentYear: 2025 },
+    { id: 's29', carnet: 'SEED-029', firstName: 'Josué Daniel', lastName: 'Escalante', name: 'Josué Daniel Escalante', gender: 'M' as const, gradeId: '10t', sectionId: '10ta', enrollmentYear: 2025 },
+    { id: 's30', carnet: 'SEED-030', firstName: 'Carolina Michelle', lastName: 'García', name: 'Carolina Michelle García', gender: 'F' as const, gradeId: '10t', sectionId: '10ta', enrollmentYear: 2025 },
     // 11° Bachillerato Técnico
-    { id: 's31', name: 'David Alejandro Umaña', gender: 'M' as const, gradeId: '11t', sectionId: '11ta' },
-    { id: 's32', name: 'Jessica Tatiana Martínez', gender: 'F' as const, gradeId: '11t', sectionId: '11ta' },
-    { id: 's33', name: 'Erick Adalberto Cruz', gender: 'M' as const, gradeId: '11t', sectionId: '11ta' },
-    { id: 's34', name: 'Ana Gabriela Ochoa', gender: 'F' as const, gradeId: '11t', sectionId: '11ta' },
+    { id: 's31', carnet: 'SEED-031', firstName: 'David Alejandro', lastName: 'Umaña', name: 'David Alejandro Umaña', gender: 'M' as const, gradeId: '11t', sectionId: '11ta', enrollmentYear: 2024 },
+    { id: 's32', carnet: 'SEED-032', firstName: 'Jessica Tatiana', lastName: 'Martínez', name: 'Jessica Tatiana Martínez', gender: 'F' as const, gradeId: '11t', sectionId: '11ta', enrollmentYear: 2024 },
+    { id: 's33', carnet: 'SEED-033', firstName: 'Erick Adalberto', lastName: 'Cruz', name: 'Erick Adalberto Cruz', gender: 'M' as const, gradeId: '11t', sectionId: '11ta', enrollmentYear: 2024 },
+    { id: 's34', carnet: 'SEED-034', firstName: 'Ana Gabriela', lastName: 'Ochoa', name: 'Ana Gabriela Ochoa', gender: 'F' as const, gradeId: '11t', sectionId: '11ta', enrollmentYear: 2024 },
     // 12° Bachillerato Técnico
-    { id: 's35', name: 'Bryan Alexander Interiano', gender: 'M' as const, gradeId: '12t', sectionId: '12ta' },
-    { id: 's36', name: 'Jennifer Vanessa Guzmán', gender: 'F' as const, gradeId: '12t', sectionId: '12ta' }
+    { id: 's35', carnet: 'SEED-035', firstName: 'Bryan Alexander', lastName: 'Interiano', name: 'Bryan Alexander Interiano', gender: 'M' as const, gradeId: '12t', sectionId: '12ta', enrollmentYear: 2023 },
+    { id: 's36', carnet: 'SEED-036', firstName: 'Jennifer Vanessa', lastName: 'Guzmán', name: 'Jennifer Vanessa Guzmán', gender: 'F' as const, gradeId: '12t', sectionId: '12ta', enrollmentYear: 2023 }
   ];
   for (const s of studentsData) await createStudent(s);
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { GraduationCap, Plus, Edit2, Trash2, Save, X, Search, Phone, Clock, Award, BookOpen, MapPin } from 'lucide-react';
+import { toast } from 'sonner';
 import { getAllTeachers, createTeacher, updateTeacher, deleteTeacher, getAllGrades, getAllSections, getAllSubjects } from '../../lib/firestore';
 import { Teacher, Grade, Section, Subject } from '../../types';
 
@@ -39,7 +40,7 @@ export default function TeachersManager() {
     e.preventDefault();
     if (!form.name.trim() || !form.email.trim()) return;
     try {
-      const data: Record<string, any> = {
+      const data: Partial<Teacher> = {
         name: form.name.trim(),
         email: form.email.trim(),
         subjects: form.subjects,
@@ -53,13 +54,15 @@ export default function TeachersManager() {
       
       if (editingId) {
         await updateTeacher(editingId, data);
+        toast.success('Docente actualizado correctamente');
       } else {
-        await createTeacher({ id: `t${Date.now()}`, ...data });
+        await createTeacher({ id: `t${Date.now()}`, name: data.name!, email: data.email!, subjects: data.subjects!, ...data });
+        toast.success('Docente creado correctamente');
       }
       setShowForm(false); setEditingId(null);
       setForm({ name: '', email: '', phone: '', specialty: '', subjects: [], schedule: '', guideGradeId: '', guideSectionId: '', avatarUrl: '' });
       loadData();
-    } catch (err) { console.error(err); }
+    } catch (err) { toast.error('Error al guardar docente'); console.error(err); }
   };
 
   const handleEdit = (t: Teacher) => {
@@ -74,7 +77,10 @@ export default function TeachersManager() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('¿Eliminar este docente?')) { await deleteTeacher(id); loadData(); }
+    if (confirm('¿Eliminar este docente?')) {
+      try { await deleteTeacher(id); toast.success('Docente eliminado'); loadData(); }
+      catch (err) { toast.error('Error al eliminar docente'); }
+    }
   };
 
   const filtered = teachers.filter(t =>
@@ -86,7 +92,7 @@ export default function TeachersManager() {
   if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
@@ -106,7 +112,7 @@ export default function TeachersManager() {
       </div>
 
       {showForm && (
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="card p-5">
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="card p-4">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-gray-900">{editingId ? 'Editar Docente' : 'Nuevo Docente'}</h3>
             <button onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-4 h-4" /></button>
@@ -184,16 +190,16 @@ export default function TeachersManager() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.map(t => (
           <div key={t.id} className="card card-hover overflow-hidden group">
-            <div className="bg-gradient-to-r from-gray-800 to-gray-900 p-4">
+            <div className="bg-gradient-to-r from-gray-800 to-gray-900 p-3">
               <div className="flex items-center gap-3">
-                <img src={t.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(t.name)}&background=12562E&color=fff`} alt={t.name} className="w-12 h-12 rounded-full border-2 border-secondary object-cover" />
+                <img src={t.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(t.name)}&background=12562E&color=fff`} alt={t.name} className="w-10 h-10 rounded-full border-2 border-secondary object-cover" />
                 <div className="min-w-0">
                   <h3 className="text-sm font-semibold text-white truncate">{t.name}</h3>
                   <p className="text-xs text-gray-400 truncate">{t.email}</p>
                 </div>
               </div>
             </div>
-            <div className="p-4 space-y-2">
+            <div className="p-3 space-y-1.5">
               {t.phone && <p className="text-xs text-gray-500 flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" /> {t.phone}</p>}
               {t.specialty && <p className="text-xs text-gray-500 flex items-center gap-1.5"><Award className="w-3.5 h-3.5" /> {t.specialty}</p>}
               {t.schedule && <p className="text-xs text-gray-500 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {t.schedule}</p>}

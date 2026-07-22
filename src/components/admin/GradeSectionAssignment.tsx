@@ -3,49 +3,48 @@ import { motion } from 'motion/react';
 import {
   GitBranch,
   Save,
-  Check,
+  Building2,
   Monitor,
-  Building2
+  CheckCircle2,
+  XCircle,
+  Filter,
+  X
 } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   getAllGrades,
   getAllSections,
-  getAllComputerLabs,
   getAllBuildings,
   updateSection
 } from '../../lib/firestore';
-import { Grade, Section, ComputerLab, Building, Cycle, CYCLE_NAMES } from '../../types';
+import { Grade, Section, Building, Cycle, CYCLE_NAMES } from '../../types';
 
-const CYCLE_COLORS: Record<Cycle, string> = {
-  '1': 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  '2': 'bg-blue-100 text-blue-700 border-blue-200',
-  '3': 'bg-purple-100 text-purple-700 border-purple-200',
-  '4': 'bg-amber-100 text-amber-700 border-amber-200'
+const CYCLE_STYLES: Record<Cycle, { color: string; bg: string; dot: string }> = {
+  '1': { color: 'text-emerald-700', bg: 'bg-emerald-50', dot: 'bg-emerald-500' },
+  '2': { color: 'text-blue-700', bg: 'bg-blue-50', dot: 'bg-blue-500' },
+  '3': { color: 'text-purple-700', bg: 'bg-purple-50', dot: 'bg-purple-500' },
+  '4': { color: 'text-amber-700', bg: 'bg-amber-50', dot: 'bg-amber-500' }
 };
 
 export default function GradeSectionAssignment() {
   const [grades, setGrades] = useState<Grade[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
-  const [labs, setLabs] = useState<ComputerLab[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedGrade, setSelectedGrade] = useState<string>('');
   const [assignments, setAssignments] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [filterBuilding, setFilterBuilding] = useState<string | null>(null);
 
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     try {
-      const [g, s, l, b] = await Promise.all([
+      const [g, s, b] = await Promise.all([
         getAllGrades(),
         getAllSections(),
-        getAllComputerLabs(),
         getAllBuildings()
       ]);
-      setGrades(g); setSections(s); setLabs(l); setBuildings(b);
-      
-      // Initialize assignments from existing data
+      setGrades(g); setSections(s); setBuildings(b);
       const init: Record<string, string> = {};
       s.forEach(sec => { if (sec.buildingId) init[sec.id] = sec.buildingId; });
       setAssignments(init);
@@ -53,22 +52,28 @@ export default function GradeSectionAssignment() {
   };
 
   const getSectionsByGrade = (gradeId: string) => sections.filter(s => s.gradeId === gradeId);
-  const getBuildingName = (id: string) => buildings.find(b => b.id === id)?.name || '—';
-  const getBuildingColor = (id: string) => buildings.find(b => b.id === id)?.color || '#6B7280';
 
-  const handleAssignmentChange = (sectionId: string, buildingId: string) => {
-    setAssignments(prev => ({ ...prev, [sectionId]: buildingId }));
+  const toggleBuilding = (sectionId: string, buildingId: string) => {
+    setAssignments(prev => ({
+      ...prev,
+      [sectionId]: prev[sectionId] === buildingId ? '' : buildingId
+    }));
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      for (const [sectionId, buildingId] of Object.entries(assignments)) {
+      for (const [sectionId, buildingId] of Object.entries(assignments) as [string, string][]) {
         await updateSection(sectionId, { buildingId: buildingId || undefined });
       }
+      toast.success('Asignaciones guardadas correctamente');
       loadData();
-    } finally { setSaving(false); }
+    } catch (err) { toast.error('Error al guardar asignaciones'); }
+    finally { setSaving(false); }
   };
+
+  const changedCount = Object.values(assignments).filter(Boolean).length;
+  const totalSections = sections.length;
 
   const groupedGrades = {
     '1': grades.filter(g => g.cycle === '1'),
@@ -86,92 +91,166 @@ export default function GradeSectionAssignment() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <div className="bg-secondary/10 p-2 rounded-lg">
-              <GitBranch className="w-5 h-5 text-secondary-dark" />
-            </div>
-            Asignación Grado-Sección-Edificio
-          </h2>
-          <p className="text-sm text-gray-500 mt-1">
-            Asigna edificios y laboratorios a cada sección
-          </p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center shrink-0 border border-amber-100">
+            <GitBranch className="w-6 h-6 text-amber-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Edificios por Sección</h1>
+            <p className="text-sm text-gray-500 mt-0.5">
+              {changedCount} de {totalSections} secciones con edificio asignado
+            </p>
+          </div>
         </div>
-        <button onClick={handleSave} className="btn-primary" disabled={saving}>
+        <button onClick={handleSave} className="btn-primary shrink-0" disabled={saving}>
           <Save className="w-4 h-4" /> {saving ? 'Guardando...' : 'Guardar Cambios'}
         </button>
       </div>
 
-      {/* Legend */}
-      <div className="bg-primary-light/50 border border-primary/20 rounded-xl p-4">
-        <div className="flex items-center gap-6 flex-wrap">
-          <span className="text-xs font-semibold text-gray-600">Ciclos:</span>
-          {(Object.keys(CYCLE_NAMES) as Cycle[]).map(c => (
-            <span key={c} className={`px-2.5 py-1 rounded-md text-xs font-bold ${CYCLE_COLORS[c]}`}>
-              {CYCLE_NAMES[c]}
-            </span>
-          ))}
-        </div>
+      {/* Filter bar - clickable building pills */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <Filter className="w-3.5 h-3.5 text-gray-400" />
+        {buildings.map(b => {
+          const count = Object.values(assignments).filter(v => v === b.id).length;
+          const isActive = filterBuilding === b.id;
+          return (
+            <button
+              key={b.id}
+              onClick={() => setFilterBuilding(isActive ? null : b.id)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                isActive
+                  ? 'text-white shadow-sm'
+                  : 'bg-white text-gray-600 hover:border-gray-300'
+              }`}
+              style={{
+                backgroundColor: isActive ? b.color : undefined,
+                borderColor: isActive ? b.color : '#e5e7eb'
+              }}
+            >
+              <span className={`w-2.5 h-2.5 rounded-full ${isActive ? 'bg-white/80' : ''}`}
+                style={{ backgroundColor: isActive ? undefined : b.color }} />
+              {b.name}
+              <span className={`font-mono ${isActive ? 'text-white/80' : 'text-gray-400'}`}>{count}</span>
+            </button>
+          );
+        })}
+        <button
+          onClick={() => setFilterBuilding('__unassigned__')}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+            filterBuilding === '__unassigned__'
+              ? 'bg-gray-700 text-white border-gray-700 shadow-sm'
+              : 'bg-white text-gray-400 border-gray-200 hover:border-gray-300'
+          }`}
+        >
+          <XCircle className="w-3.5 h-3.5" />
+          Sin asignar
+          <span className="font-mono opacity-70">{totalSections - changedCount}</span>
+        </button>
+        {filterBuilding && (
+          <button onClick={() => setFilterBuilding(null)}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white border border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700 transition-all">
+            <X className="w-3.5 h-3.5" /> Limpiar filtro
+          </button>
+        )}
       </div>
 
       {/* Assignment Grid */}
-      <div className="space-y-6">
+      <div className="space-y-8">
         {(Object.keys(groupedGrades) as Cycle[]).map(cycle => {
           const gradesInCycle = groupedGrades[cycle];
           if (gradesInCycle.length === 0) return null;
-          
+          const cs = CYCLE_STYLES[cycle];
+
+          // Filter grades based on selected building
+          const filteredGrades = filterBuilding
+            ? gradesInCycle.filter(g => {
+                const gradeSections = getSectionsByGrade(g.id);
+                return gradeSections.some(s =>
+                  filterBuilding === '__unassigned__'
+                    ? !assignments[s.id]
+                    : assignments[s.id] === filterBuilding
+                );
+              })
+            : gradesInCycle;
+
+          if (filteredGrades.length === 0) return null;
+
           return (
             <div key={cycle}>
-              <div className="flex items-center gap-2 mb-3">
-                <span className={`px-3 py-1.5 rounded-lg text-xs font-bold ${CYCLE_COLORS[cycle]}`}>
+              <div className="flex items-center gap-3 mb-4">
+                <span className={`w-2 h-2 rounded-full ${cs.dot}`} />
+                <span className={`text-xs font-bold uppercase tracking-wider ${cs.color}`}>
                   {CYCLE_NAMES[cycle]}
                 </span>
+                <span className="text-xs text-gray-300">/</span>
+                <span className="text-xs text-gray-400">
+                  {filteredGrades.reduce((acc, g) => acc + getSectionsByGrade(g.id).length, 0)} secciones
+                </span>
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {gradesInCycle.map(grade => {
-                  const gradeSections = getSectionsByGrade(grade.id);
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                {filteredGrades.map(grade => {
+                  const gradeSections = getSectionsByGrade(grade.id).filter(s =>
+                    filterBuilding
+                      ? filterBuilding === '__unassigned__'
+                        ? !assignments[s.id]
+                        : assignments[s.id] === filterBuilding
+                      : true
+                  );
                   return (
                     <motion.div
                       key={grade.id}
-                      initial={{ opacity: 0, y: 10 }}
+                      initial={{ opacity: 0, y: 4 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="card overflow-hidden"
+                      className="bg-white rounded-xl border border-gray-200 overflow-hidden"
                     >
-                      {/* Grade Header */}
-                      <div className="bg-gradient-to-r from-primary/5 to-primary/10 px-4 py-3 border-b">
-                        <h3 className="font-bold text-gray-900">{grade.name}</h3>
-                        <p className="text-xs text-gray-500">{gradeSections.length} sección(es)</p>
+                      <div className="px-3 py-2 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                        <span className="text-xs font-bold text-gray-800 truncate">{grade.name}</span>
+                        <span className="text-[11px] text-gray-400 ml-1 shrink-0">{gradeSections.length}</span>
                       </div>
-                      
-                      {/* Sections */}
-                      <div className="p-4 space-y-3">
-                        {gradeSections.map(section => (
-                          <div key={section.id} className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                              <span className="text-xs font-bold text-accent">{section.name}</span>
-                            </div>
-                            <div className="flex-1">
-                              <label className="block text-[10px] text-gray-400 mb-0.5">Edificio</label>
-                              <select
-                                value={assignments[section.id] || ''}
-                                onChange={e => handleAssignmentChange(section.id, e.target.value)}
-                                className="w-full text-xs px-2 py-1.5 rounded-lg border border-gray-200 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-white"
-                              >
-                                <option value="">Sin asignar</option>
-                                {buildings.map(b => (
-                                  <option key={b.id} value={b.id}>{b.name}</option>
-                                ))}
-                              </select>
-                            </div>
-                            {assignments[section.id] && (
-                              <div className="flex items-center gap-1 text-xs text-green-600">
-                                <Check className="w-3 h-3" />
+
+                      <div className="p-3 space-y-2">
+                        {gradeSections.map(section => {
+                          const currentBuilding = buildings.find(b => assignments[section.id] === b.id);
+                          return (
+                            <div key={section.id} className="flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center text-[11px] font-bold text-gray-600 shrink-0">
+                                {section.name}
+                              </span>
+                              <div className="flex-1 flex flex-wrap gap-1.5">
+                                {buildings.map(b => {
+                                  const isActive = assignments[section.id] === b.id;
+                                  return (
+                                    <button
+                                      key={b.id}
+                                      onClick={() => toggleBuilding(section.id, b.id)}
+                                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all ${
+                                        isActive
+                                          ? 'text-white shadow-sm'
+                                          : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700'
+                                      }`}
+                                      style={{
+                                        backgroundColor: isActive ? b.color : undefined,
+                                        borderColor: isActive ? b.color : undefined
+                                      }}
+                                    >
+                                      <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-white/70' : ''}`}
+                                        style={{ backgroundColor: isActive ? undefined : b.color }} />
+                                      {b.code}
+                                    </button>
+                                  );
+                                })}
+                                {!assignments[section.id] && (
+                                  <span className="text-[11px] text-gray-300 italic px-1">—</span>
+                                )}
                               </div>
-                            )}
-                          </div>
-                        ))}
+                              {assignments[section.id] && (
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </motion.div>
                   );

@@ -3,24 +3,19 @@ import { motion } from 'motion/react';
 import {
   LogOut,
   Search,
-  UserCheck,
-  Clock,
-  Scissors,
   CheckCircle,
-  FileText,
   Sparkles,
   Calendar,
-  AlertCircle,
   AlertTriangle,
-  Flame,
-  CheckSquare,
-  Square,
   UserX
 } from 'lucide-react';
-import { Teacher, StudentSessionState, Grade, AttendanceStatus } from '../types';
-import { STUDENTS, GRADES } from '../data';
+import { Teacher, StudentSessionState, Grade, AttendanceStatus, Student } from '../types';
+import { getGrade, getStudentsByGrade } from '../lib/firestore';
 import InstitutionLogo from './InstitutionLogo';
 import SummaryModal from './SummaryModal';
+import StudentCard from './dashboard/StudentCard';
+import AttendanceStats from './dashboard/AttendanceStats';
+import SimulatorControls from './dashboard/SimulatorControls';
 
 interface DashboardProps {
   teacher: Teacher;
@@ -28,7 +23,9 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ teacher, onLogout }: DashboardProps) {
-  const activeGrade = GRADES.find((g) => g.id === teacher.gradeId) || GRADES[0];
+  const [activeGrade, setActiveGrade] = useState<Grade | null>(null);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
 
   // Simulator State
   const [simulatedTime, setSimulatedTime] = useState('06:40 AM'); // Default on time
@@ -39,22 +36,42 @@ export default function Dashboard({ teacher, onLogout }: DashboardProps) {
   const [records, setRecords] = useState<Record<string, StudentSessionState>>({});
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
 
-  // Initialize records for this grade's students
+  // Fetch grade and students
   useEffect(() => {
-    const initialRecords: Record<string, StudentSessionState> = {};
-    STUDENTS.filter((s) => s.gradeId === activeGrade.id).forEach((s) => {
-      initialRecords[s.id] = {
-        studentId: s.id,
-        status: 'Presente', // Default to present
-        discipline: {
-          cabelloLargo: false,
-          unasPintadas: false,
-          uniformeIncorrecto: false
+    async function loadData() {
+      if (!teacher.guideGradeId) {
+        setLoadingData(false);
+        return;
+      }
+      try {
+        const gradeData = await getGrade(teacher.guideGradeId);
+        setActiveGrade(gradeData);
+        if (gradeData) {
+          const studentsData = await getStudentsByGrade(gradeData.id);
+          setStudents(studentsData);
+          
+          const initialRecords: Record<string, StudentSessionState> = {};
+          studentsData.forEach((s) => {
+            initialRecords[s.id] = {
+              studentId: s.id,
+              status: 'Presente',
+              discipline: {
+                cabelloLargo: false,
+                unasPintadas: false,
+                uniformeIncorrecto: false
+              }
+            };
+          });
+          setRecords(initialRecords);
         }
-      };
-    });
-    setRecords(initialRecords);
-  }, [activeGrade, teacher]);
+      } catch (err) {
+        console.error('Error loading dashboard data:', err);
+      } finally {
+        setLoadingData(false);
+      }
+    }
+    loadData();
+  }, [teacher.guideGradeId]);
 
   const updateAttendance = (studentId: string, status: AttendanceStatus) => {
     setRecords((prev) => {
@@ -101,7 +118,7 @@ export default function Dashboard({ teacher, onLogout }: DashboardProps) {
 
   const handleReset = () => {
     const cleared: Record<string, StudentSessionState> = {};
-    STUDENTS.filter((s) => s.gradeId === activeGrade.id).forEach((s) => {
+    students.forEach((s) => {
       cleared[s.id] = {
         studentId: s.id,
         status: 'Presente',
@@ -117,14 +134,13 @@ export default function Dashboard({ teacher, onLogout }: DashboardProps) {
   };
 
   // Filter students
-  const filteredStudents = STUDENTS.filter(
+  const filteredStudents = students.filter(
     (student) =>
-      student.gradeId === activeGrade.id &&
       student.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
   );
 
   // Stats calculation
-  const totalStudents = STUDENTS.filter((s) => s.gradeId === activeGrade.id).length;
+  const totalStudents = students.length;
   let presentCount = 0;
   let tardyCount = 0;
   let absentCount = 0;
@@ -141,6 +157,26 @@ export default function Dashboard({ teacher, onLogout }: DashboardProps) {
       disciplineAlertsCount++;
     }
   });
+
+  if (loadingData) {
+    return (
+      <div className="flex h-screen bg-slate-50 items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Cargando Asistencia...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!activeGrade) {
+    return (
+      <div className="flex h-screen bg-slate-50 items-center justify-center flex-col gap-4">
+        <h2 className="text-xl font-bold text-slate-800">No tienes un grado guía asignado</h2>
+        <button onClick={onLogout} className="px-4 py-2 bg-red-600 text-white rounded-lg">Cerrar Sesión</button>
+      </div>
+    );
+  }
 
   return (
     <div id="app-dashboard" className="flex h-screen bg-slate-50 overflow-hidden font-sans">
@@ -241,51 +277,28 @@ export default function Dashboard({ teacher, onLogout }: DashboardProps) {
           }`}
         >
           {/* Grade display & Locker status */}
-          <div className="flex items-center gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg font-black font-display tracking-tight uppercase">
-                  {activeGrade.name} "{activeGrade.section}"
-                </h1>
-                <span className="text-[10px] bg-red-100 text-red-800 border border-red-300 font-bold px-2 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-wider">
-                  Acceso Bloqueado
-                </span>
+          <div className="flex-1 bg-white/40 backdrop-blur-md p-8 overflow-y-auto relative">
+            {/* Header section with Stats */}
+            <header className="mb-8 relative z-10">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-3">
+                    <h1 className="text-3xl font-black font-display tracking-tight text-slate-800 uppercase">
+                      {activeGrade.name} {teacher.guideSectionId ? `"${teacher.guideSectionId.toUpperCase()}"` : ''}
+                    </h1>
+                    <span className="text-xs bg-red-100/80 backdrop-blur-sm text-red-800 border border-red-300 font-bold px-2 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-wider">
+                      Acceso Bloqueado
+                    </span>
+                  </div>
+                  <p className={`text-xs ${civicAct ? 'text-slate-700 font-medium' : 'text-slate-500'}`}>
+                    Nómina oficial asignada exclusivamente al docente tutor.
+                  </p>
+                </div>
               </div>
-              <p className={`text-xs ${civicAct ? 'text-slate-700 font-medium' : 'text-slate-500'}`}>
-                Nómina oficial asignada exclusivamente al docente tutor.
-              </p>
-            </div>
+            </header>
           </div>
 
-          {/* Time & Clock Simulator Control */}
-          <div className="flex items-center gap-3 bg-slate-900/10 p-2 rounded-lg border border-slate-900/10 text-xs font-semibold">
-            <div className="flex items-center gap-1.5 pr-2 border-r border-slate-900/20">
-              <Clock className="w-4 h-4 text-slate-700" />
-              <span>Simulador de Hora:</span>
-            </div>
-            <div className="flex gap-1">
-              <button
-                onClick={() => setSimulatedTime('06:40 AM')}
-                className={`px-3 py-1 rounded text-[11px] font-bold font-mono transition-colors ${
-                  simulatedTime === '06:40 AM'
-                    ? 'bg-slate-900 text-white'
-                    : 'hover:bg-slate-900/10 text-slate-700'
-                }`}
-              >
-                06:40 AM (A tiempo)
-              </button>
-              <button
-                onClick={() => setSimulatedTime('06:46 AM')}
-                className={`px-3 py-1 rounded text-[11px] font-bold font-mono transition-colors ${
-                  simulatedTime === '06:46 AM'
-                    ? 'bg-salesiano-red text-white'
-                    : 'hover:bg-slate-900/10 text-slate-700'
-                }`}
-              >
-                06:46 AM (Tarde)
-              </button>
-            </div>
-          </div>
+          <SimulatorControls simulatedTime={simulatedTime} onTimeChange={setSimulatedTime} />
         </header>
 
         {/* Scrollable Dashboard view */}
@@ -317,54 +330,16 @@ export default function Dashboard({ teacher, onLogout }: DashboardProps) {
             </motion.div>
           )}
 
-          {/* Interactive Statistics Cards (No gradients, clear border design) */}
-          <section className="grid grid-cols-5 gap-4">
-            <div className="bg-white border-2 border-slate-200 rounded-xl p-4 flex flex-col justify-between shadow-premium">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Estudiantes</span>
-              <div className="flex items-baseline gap-1 mt-2">
-                <span className="text-3xl font-extrabold text-slate-800 font-mono">{totalStudents}</span>
-              </div>
-              <span className="text-[10px] text-slate-400 font-medium mt-1">Nómina total</span>
-            </div>
-
-            <div className="bg-white border-2 border-slate-200 rounded-xl p-4 flex flex-col justify-between shadow-premium border-l-4 border-l-emerald-600">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Presentes</span>
-              <div className="flex items-baseline gap-1 mt-2">
-                <span className="text-3xl font-extrabold text-slate-850 font-mono text-emerald-700">{presentCount}</span>
-                <span className="text-xs text-slate-400">/{totalStudents}</span>
-              </div>
-              <span className="text-[10px] text-emerald-600 font-bold mt-1">
-                {((presentCount / (totalStudents || 1)) * 100).toFixed(0)}% de asistencia
-              </span>
-            </div>
-
-            <div className="bg-white border-2 border-slate-200 rounded-xl p-4 flex flex-col justify-between shadow-premium border-l-4 border-l-amber-500">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Llegadas Tarde</span>
-              <div className="flex items-baseline gap-1 mt-2">
-                <span className="text-3xl font-extrabold text-amber-700 font-mono">{tardyCount}</span>
-              </div>
-              <span className="text-[10px] text-slate-400 font-medium mt-1">Con retardo</span>
-            </div>
-
-            <div className="bg-white border-2 border-slate-200 rounded-xl p-4 flex flex-col justify-between shadow-premium border-l-4 border-l-salesiano-red">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Ausentes</span>
-              <div className="flex items-baseline gap-1 mt-2">
-                <span className="text-3xl font-extrabold text-salesiano-red font-mono">{absentCount}</span>
-              </div>
-              <span className="text-[10px] text-salesiano-red font-bold mt-1">Inasistencias</span>
-            </div>
-
-            <div className="bg-white border-2 border-slate-200 rounded-xl p-4 flex flex-col justify-between shadow-premium border-l-4 border-l-indigo-600">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Faltas de Disciplina</span>
-              <div className="flex items-baseline gap-1 mt-2">
-                <span className="text-3xl font-extrabold text-indigo-700 font-mono">{disciplineAlertsCount}</span>
-              </div>
-              <span className="text-[10px] text-slate-400 font-medium mt-1">Alumnos observados</span>
-            </div>
-          </section>
+          <AttendanceStats
+            presentCount={presentCount}
+            tardyCount={tardyCount}
+            absentCount={absentCount}
+            disciplineAlertsCount={disciplineAlertsCount}
+            totalStudents={totalStudents}
+          />
 
           {/* Student list controls */}
-          <div className="flex justify-between items-center bg-white p-4 border-2 border-slate-200 rounded-xl shadow-premium gap-4">
+          <div className="flex justify-between items-center card p-4 mb-6 gap-4 relative z-10">
             <div className="relative flex-1 max-w-md">
               <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
                 <Search className="w-5 h-5" />
@@ -374,10 +349,10 @@ export default function Dashboard({ teacher, onLogout }: DashboardProps) {
                 placeholder="Buscar alumno por nombre..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-salesiano-green focus:border-transparent transition-all"
+                className="input pl-10"
               />
             </div>
-            <div className="text-xs text-slate-500 font-semibold">
+            <div className="text-xs text-slate-600 font-bold bg-white/50 px-3 py-1.5 rounded-md">
               Mostrando {filteredStudents.length} de {totalStudents} alumnos inscritos
             </div>
           </div>
@@ -398,130 +373,14 @@ export default function Dashboard({ teacher, onLogout }: DashboardProps) {
                   discipline: { cabelloLargo: false, unasPintadas: false, uniformeIncorrecto: false }
                 };
 
-                const cardBorderColor =
-                  record.status === 'Ausente'
-                    ? 'border-l-salesiano-red'
-                    : record.status === 'Tarde'
-                    ? 'border-l-amber-500'
-                    : 'border-l-emerald-600';
-
                 return (
-                  <motion.div
+                  <StudentCard
                     key={student.id}
-                    layout
-                    className={`bg-white border-2 border-slate-200 rounded-xl p-5 shadow-premium flex flex-col justify-between relative border-l-4 ${cardBorderColor}`}
-                  >
-                    <div className="flex justify-between items-start gap-3">
-                      {/* Name and Gender Indicator */}
-                      <div className="flex gap-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold font-display shrink-0 ${
-                          student.gender === 'M' ? 'bg-blue-50 text-salesiano-blue' : 'bg-pink-50 text-pink-700'
-                        }`}>
-                          {student.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-bold text-slate-800 leading-snug">{student.name}</h3>
-                          <div className="flex gap-2 items-center mt-0.5">
-                            <span className="text-[10px] text-slate-400 font-mono font-semibold uppercase">
-                              {student.gender === 'M' ? 'Varonil (V)' : 'Femenino (S)'}
-                            </span>
-                            {record.status === 'Tarde' && record.arrivalTime && (
-                              <span className="text-[10px] bg-amber-50 text-amber-800 border border-amber-200 font-bold px-1.5 py-0.2 rounded font-mono">
-                                Retardo {record.arrivalTime}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Attendance Selector Group */}
-                      <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 gap-1">
-                        <button
-                          onClick={() => updateAttendance(student.id, 'Presente')}
-                          className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${
-                            record.status === 'Presente'
-                              ? 'bg-emerald-600 text-white'
-                              : 'text-slate-500 hover:bg-slate-200'
-                          }`}
-                        >
-                          Presente
-                        </button>
-                        <button
-                          onClick={() => updateAttendance(student.id, 'Tarde')}
-                          className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${
-                            record.status === 'Tarde'
-                              ? 'bg-amber-500 text-white'
-                              : 'text-slate-500 hover:bg-slate-200'
-                          }`}
-                        >
-                          Tarde
-                        </button>
-                        <button
-                          onClick={() => updateAttendance(student.id, 'Ausente')}
-                          className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${
-                            record.status === 'Ausente'
-                              ? 'bg-salesiano-red text-white'
-                              : 'text-slate-500 hover:bg-slate-200'
-                          }`}
-                        >
-                          Ausente
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Gender Specific Discipline Controls */}
-                    {record.status !== 'Ausente' && (
-                      <div className="mt-4 pt-3 border-t border-slate-100 flex flex-col gap-2">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
-                          Incidencias de Uniforme o Aspecto
-                        </span>
-                        <div className="flex flex-wrap gap-2">
-                          {/* 1. Cabello Largo (Male only) */}
-                          {student.gender === 'M' && (
-                            <button
-                              onClick={() => toggleDiscipline(student.id, 'cabelloLargo')}
-                              className={`px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all ${
-                                record.discipline.cabelloLargo
-                                  ? 'bg-amber-100 border-amber-400 text-amber-900 shadow-xs'
-                                  : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'
-                              }`}
-                            >
-                              <Scissors className="w-3.5 h-3.5 shrink-0" />
-                              Cabello Largo
-                            </button>
-                          )}
-
-                          {/* 2. Uñas Pintadas (Female only) */}
-                          {student.gender === 'F' && (
-                            <button
-                              onClick={() => toggleDiscipline(student.id, 'unasPintadas')}
-                              className={`px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all ${
-                                record.discipline.unasPintadas
-                                  ? 'bg-red-100 border-red-350 text-red-900 shadow-xs'
-                                  : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'
-                              }`}
-                            >
-                              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                              Uñas Pintadas/Acrílicas
-                            </button>
-                          )}
-
-                          {/* 3. Uniforme Incorrecto (Both) */}
-                          <button
-                            onClick={() => toggleDiscipline(student.id, 'uniformeIncorrecto')}
-                            className={`px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all ${
-                              record.discipline.uniformeIncorrecto
-                                ? 'bg-orange-100 border-orange-400 text-orange-900 shadow-xs'
-                                : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'
-                            }`}
-                          >
-                            <UserCheck className="w-3.5 h-3.5 shrink-0" />
-                            Uniforme Incorrecto
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </motion.div>
+                    student={student}
+                    record={record}
+                    onUpdateAttendance={updateAttendance}
+                    onToggleDiscipline={toggleDiscipline}
+                  />
                 );
               })
             )}
@@ -529,14 +388,14 @@ export default function Dashboard({ teacher, onLogout }: DashboardProps) {
         </div>
 
         {/* Action Bar Footer */}
-        <footer className="h-20 bg-white border-t-2 border-slate-900 px-8 flex items-center justify-between shrink-0">
-          <div className="text-xs text-slate-500 font-bold uppercase tracking-wider">
+        <footer className="h-20 bg-white/80 backdrop-blur-md border-t border-slate-200/50 px-8 flex items-center justify-between shrink-0 relative z-20">
+          <div className="text-xs text-slate-600 font-bold uppercase tracking-wider">
             Fecha: {new Date().toLocaleDateString('es-SV', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </div>
 
           <button
             onClick={() => setIsSummaryOpen(true)}
-            className="px-6 py-3 bg-salesiano-green hover:bg-salesiano-green-dark text-white font-extrabold rounded-lg shadow-sm flex items-center gap-2 text-sm transition-all"
+            className="btn-primary"
           >
             <CheckCircle className="w-4 h-4 text-salesiano-yellow" />
             Finalizar y Reportar
@@ -553,6 +412,7 @@ export default function Dashboard({ teacher, onLogout }: DashboardProps) {
         civicAct={civicAct}
         records={records}
         onReset={handleReset}
+        students={students}
       />
     </div>
   );

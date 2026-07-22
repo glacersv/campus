@@ -15,13 +15,14 @@ import {
   ChevronRight,
   Menu
 } from 'lucide-react';
+import { useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import InstitutionLogo from '../InstitutionLogo';
+import ThemeSwitcher from '../ThemeSwitcher';
 
 interface AdminLayoutProps {
-  children: React.ReactNode;
-  activeSection: string;
-  onSectionChange: (section: string) => void;
+  children?: React.ReactNode;
 }
 
 interface MenuItem {
@@ -43,7 +44,7 @@ const menuSections = [
     items: [
       { id: 'grades', label: 'Grados', icon: BookOpen },
       { id: 'sections', label: 'Secciones', icon: Layers },
-      { id: 'grade-section-assignment', label: 'Asignación Grado-Sección', icon: GitBranch },
+      { id: 'grade-section-assignment', label: 'Asignar Edificios', icon: GitBranch },
       { id: 'subjects', label: 'Materias', icon: BookMarked },
       { id: 'buildings', label: 'Edificios', icon: Building2 },
       { id: 'computer-labs', label: 'Laboratorios', icon: Monitor }
@@ -69,9 +70,13 @@ const menuSections = [
   }
 ];
 
-export default function AdminLayout({ children, activeSection, onSectionChange }: AdminLayoutProps) {
+export default function AdminLayout({ children }: AdminLayoutProps) {
   const { userProfile, signOut } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const currentPath = location.pathname.split('/').pop() || 'dashboard';
 
   return (
     <div className="flex h-screen bg-[#F9FAFB] overflow-hidden">
@@ -112,8 +117,8 @@ export default function AdminLayout({ children, activeSection, onSectionChange }
                   {section.items.map((item) => (
                     <button
                       key={item.id}
-                      onClick={() => onSectionChange(item.id)}
-                      className={`sidebar-item w-full ${activeSection === item.id ? 'active' : ''}`}
+                      onClick={() => navigate(`/admin/${item.id === 'dashboard' ? '' : item.id}`)}
+                      className={`sidebar-item w-full ${currentPath === item.id || (currentPath === 'admin' && item.id === 'dashboard') ? 'active' : ''}`}
                       title={sidebarCollapsed ? item.label : undefined}
                     >
                       <item.icon className="w-5 h-5 shrink-0" />
@@ -147,13 +152,15 @@ export default function AdminLayout({ children, activeSection, onSectionChange }
       {/* Main */}
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Top Bar */}
-        <header className="h-16 bg-white border-b border-gray-200 px-6 flex items-center justify-between shrink-0">
+        <header className="h-14 bg-white border-b border-gray-200 px-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-4">
-            <h1 className="text-lg font-semibold text-gray-900">
-              {menuSections.flatMap(s => s.items).find(i => i.id === activeSection)?.label || 'Dashboard'}
+            <h1 className="text-base font-semibold text-gray-900">
+              {menuSections.flatMap(s => s.items).find(i => i.id === currentPath || (currentPath === 'admin' && i.id === 'dashboard'))?.label || 'Dashboard'}
             </h1>
           </div>
           <div className="flex items-center gap-3">
+            <ThemeSwitcher />
+            <div className="w-px h-5 bg-gray-200" />
             <span className="text-xs text-gray-400">Colegio Salesiano San José</span>
             <div className="w-px h-5 bg-gray-200" />
             <span className="text-xs font-semibold text-primary bg-primary-light px-2.5 py-1 rounded-md">Admin</span>
@@ -161,8 +168,8 @@ export default function AdminLayout({ children, activeSection, onSectionChange }
         </header>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {children}
+        <div className="flex-1 overflow-y-auto p-4">
+          {children || <Outlet />}
         </div>
       </main>
     </div>

@@ -13,6 +13,7 @@ import {
   Check,
   Trash
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { getAllBaccalaureateTypes, createBaccalaureateType, updateBaccalaureateType, deleteBaccalaureateType } from '../../lib/firestore';
 import { BaccalaureateTypeDoc } from '../../types';
 
@@ -43,13 +44,15 @@ export default function BaccalaureateTypesManager() {
       };
       if (editingId) {
         await updateBaccalaureateType(editingId, data);
+        toast.success('Tipo de bachillerato actualizado');
       } else {
         await createBaccalaureateType(data);
+        toast.success('Tipo de bachillerato creado');
       }
       setShowForm(false); setEditingId(null);
       setForm({ name: '', maxGrade: '11' });
       loadData();
-    } catch (err) { console.error(err); }
+    } catch (err) { toast.error('Error al guardar tipo de bachillerato'); console.error(err); }
   };
 
   const handleEdit = (t: BaccalaureateTypeDoc) => {
@@ -60,18 +63,24 @@ export default function BaccalaureateTypesManager() {
 
   const handleDelete = async (id: string) => {
     if (confirm('¿Eliminar este tipo de bachillerato?')) {
-      await deleteBaccalaureateType(id);
-      setSelected(prev => { const n = new Set(prev); n.delete(id); return n; });
-      loadData();
+      try {
+        await deleteBaccalaureateType(id);
+        toast.success('Tipo de bachillerato eliminado');
+        setSelected(prev => { const n = new Set(prev); n.delete(id); return n; });
+        loadData();
+      } catch (err) { toast.error('Error al eliminar tipo de bachillerato'); }
     }
   };
 
   const handleBulkDelete = async () => {
     if (selected.size === 0) return;
     if (confirm(`¿Eliminar ${selected.size} tipo(s)?`)) {
-      for (const id of selected) await deleteBaccalaureateType(id);
-      setSelected(new Set());
-      loadData();
+      try {
+        for (const id of selected) await deleteBaccalaureateType(id);
+        toast.success(`${selected.size} tipo(s) eliminados`);
+        setSelected(new Set());
+        loadData();
+      } catch (err) { toast.error('Error al eliminar tipos'); }
     }
   };
 
@@ -97,7 +106,7 @@ export default function BaccalaureateTypesManager() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -184,9 +193,9 @@ export default function BaccalaureateTypesManager() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="card p-5"
+            className="card p-4"
           >
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-gray-900">
                 {editingId ? 'Editar Tipo' : 'Nuevo Tipo de Bachillerato'}
               </h3>
@@ -245,22 +254,22 @@ export default function BaccalaureateTypesManager() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.03 }}
-              className={`card card-hover p-4 group relative ${selected.has(t.id) ? 'ring-2 ring-primary border-primary' : ''}`}
+              className={`card card-hover p-3 group relative ${selected.has(t.id) ? 'ring-2 ring-primary border-primary' : ''}`}
             >
               {/* Checkbox */}
-              <div className="absolute top-3 left-3">
+              <div className="absolute top-2.5 left-2.5">
                 <button
                   onClick={() => toggleSelect(t.id)}
-                  className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                  className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
                     selected.has(t.id) ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'
                   }`}
                 >
-                  {selected.has(t.id) && <Check className="w-3 h-3" />}
+                  {selected.has(t.id) && <Check className="w-2.5 h-2.5" />}
                 </button>
               </div>
 
               {/* Content */}
-              <div className="pt-2 pl-6">
+              <div className="pt-1 pl-5">
                 <h3 className="font-semibold text-gray-900">{t.name}</h3>
                 <div className="flex items-center gap-2 mt-1.5">
                   <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700">
@@ -271,7 +280,7 @@ export default function BaccalaureateTypesManager() {
               </div>
 
               {/* Actions */}
-              <div className="flex justify-end gap-1 mt-3 pt-3 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex justify-end gap-1 mt-2 pt-2 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                   onClick={() => handleEdit(t)}
                   className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-gray-100 rounded-lg text-xs font-medium text-gray-600 transition-colors"
@@ -296,22 +305,22 @@ export default function BaccalaureateTypesManager() {
           <table className="w-full">
             <thead className="table-header">
               <tr>
-                <th className="w-10 px-4 py-3">
+                <th className="w-8 px-3 py-2">
                   <button
                     onClick={toggleSelectAll}
-                    className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                    className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
                       selected.size === filtered.length && filtered.length > 0
                         ? 'bg-primary border-primary text-white'
                         : 'border-gray-300 hover:border-primary'
                     }`}
                   >
-                    {selected.size === filtered.length && filtered.length > 0 && <Check className="w-3 h-3" />}
+                    {selected.size === filtered.length && filtered.length > 0 && <Check className="w-2.5 h-2.5" />}
                   </button>
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Nombre</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Grado Máximo</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Rango</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Acciones</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Nombre</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Grado Máximo</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Rango</th>
+                <th className="text-right px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -323,26 +332,26 @@ export default function BaccalaureateTypesManager() {
                   transition={{ delay: i * 0.02 }}
                   className={`table-row ${selected.has(t.id) ? 'bg-primary/5' : ''}`}
                 >
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2">
                     <button
                       onClick={() => toggleSelect(t.id)}
-                      className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                      className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
                         selected.has(t.id) ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'
                       }`}
                     >
-                      {selected.has(t.id) && <Check className="w-3 h-3" />}
+                      {selected.has(t.id) && <Check className="w-2.5 h-2.5" />}
                     </button>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2">
                     <span className="font-medium text-gray-900">{t.name}</span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2">
                     <span className="px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700">
                       {t.maxGrade}°
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">10° - {t.maxGrade}°</td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-3 py-2 text-sm text-gray-500">10° - {t.maxGrade}°</td>
+                  <td className="px-3 py-2 text-right">
                     <div className="flex justify-end gap-1">
                       <button
                         onClick={() => handleEdit(t)}

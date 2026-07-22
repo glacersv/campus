@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { LogIn, Mail, Lock, AlertTriangle, UserPlus } from 'lucide-react';
 import InstitutionLogo from './InstitutionLogo';
 import { useAuth } from '../contexts/AuthContext';
+import { toast } from 'sonner';
 
 export default function Login() {
   const { signIn, signUp } = useAuth();
@@ -10,12 +11,10 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     setLoading(true);
     try {
       if (isSignUp) {
@@ -25,36 +24,34 @@ export default function Login() {
       }
     } catch (err: any) {
       console.error('Auth error:', err);
-      if (err.code === 'auth/user-not-found') setError('No existe una cuenta con este correo.');
-      else if (err.code === 'auth/wrong-password') setError('Contraseña incorrecta.');
-      else if (err.code === 'auth/email-already-in-use') setError('Este correo ya está registrado.');
-      else if (err.code === 'auth/weak-password') setError('La contraseña debe tener al menos 6 caracteres.');
-      else if (err.code === 'auth/invalid-email') setError('El correo electrónico no es válido.');
-      else setError('Error al iniciar sesión. Intente nuevamente.');
+      if (err.code === 'auth/user-not-found') toast.error('No existe una cuenta con este correo.');
+      else if (err.code === 'auth/wrong-password') toast.error('Contraseña incorrecta.');
+      else if (err.code === 'auth/email-already-in-use') toast.error('Este correo ya está registrado.');
+      else if (err.code === 'auth/weak-password') toast.error('La contraseña debe tener al menos 6 caracteres.');
+      else if (err.code === 'auth/invalid-email') toast.error('El correo electrónico no es válido.');
+      else toast.error('Error al iniciar sesión. Intente nuevamente.');
     } finally { setLoading(false); }
   };
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] flex flex-col justify-center items-center p-4">
-      <div className="absolute top-0 left-0 w-full h-1 bg-primary" />
-      <div className="absolute bottom-0 left-0 w-full h-1 bg-secondary" />
+    <div className="min-h-screen flex flex-col justify-center items-center p-4 relative overflow-hidden">
+      {/* Abstract Background Orbs */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-salesiano-green/10 blur-[100px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-salesiano-yellow/10 blur-[100px] rounded-full pointer-events-none" />
+      
+      <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-salesiano-green via-salesiano-yellow to-salesiano-red" />
 
-      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
-        className="w-full max-w-md bg-white border border-gray-200 rounded-xl shadow-sm p-8 relative z-10">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95, y: 10 }} 
+        animate={{ opacity: 1, scale: 1, y: 0 }} 
+        transition={{ duration: 0.5, type: 'spring', bounce: 0.4 }}
+        className="card w-full max-w-md p-8 relative z-10">
         <div className="flex flex-col items-center text-center mb-8">
           <InstitutionLogo className="w-20 h-20 mb-4" />
           <h1 className="text-xl font-bold text-gray-900 tracking-tight uppercase leading-tight">
             Campus Colegio<br />Salesiano San José
           </h1>
         </div>
-
-        {error && (
-          <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
-            className="mb-5 p-3 bg-red-50 border-l-4 border-red-500 text-red-700 rounded flex items-start gap-2 text-sm">
-            <AlertTriangle className="w-5 h-5 shrink-0 text-red-500" />
-            <span>{error}</span>
-          </motion.div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {isSignUp && (
@@ -99,17 +96,17 @@ export default function Login() {
           </button>
         </div>
 
-        <div className="mt-5 pt-4 border-t border-gray-100 text-center">
-          <button onClick={() => { setIsSignUp(!isSignUp); setError(null); }} className="text-xs font-medium text-primary hover:text-primary-dark transition-colors">
+        <div className="mt-6 pt-4 border-t border-slate-200/50 text-center">
+          <button onClick={() => { setIsSignUp(!isSignUp); }} className="text-xs font-bold text-salesiano-green hover:text-salesiano-green-dark transition-colors uppercase tracking-wider">
             {isSignUp ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate'}
           </button>
         </div>
       </motion.div>
 
-      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 0.6 }} transition={{ delay: 0.3 }}
-        className="mt-6 text-sm text-gray-500 italic text-center max-w-sm">
+      <motion.p initial={{ opacity: 0, y: 5 }} animate={{ opacity: 0.8, y: 0 }} transition={{ delay: 0.4 }}
+        className="mt-8 text-sm text-slate-600 italic text-center max-w-sm relative z-10">
         "La educación es cosa del corazón."
-        <span className="block text-xs font-semibold text-gray-400 mt-1 not-italic">— San Juan Bosco</span>
+        <span className="block text-xs font-black text-slate-400 mt-2 not-italic font-display uppercase tracking-widest">— San Juan Bosco</span>
       </motion.p>
     </div>
   );

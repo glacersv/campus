@@ -10,12 +10,12 @@ import {
   Lock,
   LogOut
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import InstitutionLogo from './InstitutionLogo';
 
 interface TeacherDashboardProps {
   teacherName: string;
   onLogout: () => void;
-  onModuleClick?: (moduleId: string) => void;
 }
 
 const modules = [
@@ -27,7 +27,8 @@ const modules = [
   { id: 'avisos', label: 'Avisos', desc: 'Comunicados y anuncios', icon: Bell, color: 'bg-amber-500', active: false },
 ];
 
-export default function TeacherDashboard({ teacherName, onLogout, onModuleClick }: TeacherDashboardProps) {
+export default function TeacherDashboard({ teacherName, onLogout }: TeacherDashboardProps) {
+  const navigate = useNavigate();
   const today = new Date();
   const dayOfWeek = today.getDay();
   const isMonday = dayOfWeek === 1;
@@ -84,7 +85,11 @@ export default function TeacherDashboard({ teacherName, onLogout, onModuleClick 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.08 }}
-              onClick={() => mod.active && onModuleClick?.(mod.id)}
+              onClick={() => {
+                if (mod.active) {
+                  if (mod.id === 'formacion') navigate('/attendance');
+                }
+              }}
               className={`module-card text-left ${mod.active ? 'cursor-pointer' : 'disabled'}`}
             >
               <div className="flex items-start gap-4">

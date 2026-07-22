@@ -31,6 +31,8 @@ export interface Grade {
   name: string;
   cycle: Cycle;
   baccalaureateType?: BaccalaureateType;
+  status?: 'ACTIVO' | 'INACTIVO';
+  schoolYear?: number;
   createdAt?: Timestamp;
 }
 
@@ -47,6 +49,9 @@ export interface Section {
   gradeId: string;
   capacity?: number;
   buildingId?: string;
+  computerLabId?: string;
+  status?: 'ACTIVO' | 'INACTIVO';
+  schoolYear?: number;
   createdAt?: Timestamp;
 }
 
@@ -97,13 +102,26 @@ export interface Teacher {
   createdAt?: Timestamp;
 }
 
+export interface EnrollmentRecord {
+  year: number;
+  gradeId: string;
+  sectionId?: string;
+}
+
 export interface Student {
   id: string;
+  carnet?: string;
+  firstName?: string;
+  lastName?: string;
   name: string;
   gender: 'M' | 'F';
   gradeId: string;
   sectionId: string;
+  enrollmentYear?: number;
+  status?: 'ACTIVO' | 'INACTIVO' | 'GRADUADO';
+  enrollmentHistory?: EnrollmentRecord[];
   createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 }
 
 // ==================== ATTENDANCE ====================
