@@ -32,7 +32,6 @@ export default function StudentCard({
       className={`card p-5 flex flex-col justify-between relative border-l-4 ${cardBorderColor}`}
     >
       <div className="flex justify-between items-start gap-3">
-        {/* Name and Gender Indicator */}
         <div className="flex gap-3">
           <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold font-display shrink-0 ${
             student.gender === 'M' ? 'bg-blue-50 text-salesiano-blue' : 'bg-pink-50 text-pink-700'
@@ -54,7 +53,6 @@ export default function StudentCard({
           </div>
         </div>
 
-        {/* Attendance Selector Group */}
         <div className="flex bg-slate-100/50 backdrop-blur-sm p-1 rounded-lg border border-slate-200 gap-1 shadow-inner">
           <button
             onClick={() => onUpdateAttendance(student.id, 'Presente')}
@@ -89,14 +87,12 @@ export default function StudentCard({
         </div>
       </div>
 
-      {/* Gender Specific Discipline Controls */}
       {record.status !== 'Ausente' && (
         <div className="mt-4 pt-3 border-t border-slate-100 flex flex-col gap-2">
           <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
             Incidencias de Uniforme o Aspecto
           </span>
           <div className="flex flex-wrap gap-2">
-            {/* 1. Cabello Largo (Male only) */}
             {student.gender === 'M' && (
               <button
                 onClick={() => onToggleDiscipline(student.id, 'cabelloLargo')}
@@ -111,7 +107,6 @@ export default function StudentCard({
               </button>
             )}
 
-            {/* 2. Uñas Pintadas (Female only) */}
             {student.gender === 'F' && (
               <button
                 onClick={() => onToggleDiscipline(student.id, 'unasPintadas')}
@@ -126,7 +121,6 @@ export default function StudentCard({
               </button>
             )}
 
-            {/* 3. Uniforme Incorrecto (Both) */}
             <button
               onClick={() => onToggleDiscipline(student.id, 'uniformeIncorrecto')}
               className={`px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all ${

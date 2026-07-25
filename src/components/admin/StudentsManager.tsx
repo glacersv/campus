@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { UserCheck, Plus, Edit2, Trash2, Save, X, Search, Filter, Download, Upload } from 'lucide-react';
+import { UserCheck, Plus, Edit2, Trash2, Save, X, Search, Filter, Download, Upload, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAllStudents, createStudent, updateStudent, deleteStudent, getAllGrades, getAllSections } from '../../lib/firestore';
 import { Student, Grade, Section } from '../../types';
+import StudentHistory from './StudentHistory';
 
 export default function StudentsManager() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -16,6 +17,7 @@ export default function StudentsManager() {
   const [search, setSearch] = useState('');
   const [filterGrade, setFilterGrade] = useState('all');
   const [filterSection, setFilterSection] = useState('all');
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -42,16 +44,37 @@ export default function StudentsManager() {
         gender: form.gender,
         gradeId: form.gradeId,
         sectionId: form.sectionId,
-        enrollmentYear: form.enrollmentYear,
-        enrollmentHistory: [{ year: form.enrollmentYear, gradeId: form.gradeId, sectionId: form.sectionId }]
+        enrollmentYear: form.enrollmentYear
       };
       if (editingId) {
-        await updateStudent(editingId, data);
-        toast.success('Alumno actualizado correctamente');
+        const existing = students.find(item => item.id === editingId);
+        const existingHistory = existing?.enrollmentHistory || [];
+        const updatedHistory = existingHistory.map(record => ({ ...record }));
+        const currentRecord = {
+          year: form.enrollmentYear,
+          gradeId: form.gradeId,
+          sectionId: form.sectionId,
+          status: 'EN_CURSO' as const
+        };
+        updatedHistory.push(currentRecord);
+        await updateStudent(editingId, {
+          ...data,
+          enrollmentHistory: updatedHistory
+        });
       } else {
-        await createStudent({ id: `s${Date.now()}`, ...data });
-        toast.success('Alumno creado correctamente');
+        const newRecord = {
+          year: form.enrollmentYear,
+          gradeId: form.gradeId,
+          sectionId: form.sectionId,
+          status: 'EN_CURSO' as const
+        };
+        await createStudent({
+          id: `s${Date.now()}`,
+          ...data,
+          enrollmentHistory: [newRecord]
+        });
       }
+      toast.success('Alumno guardado con historial');
       setShowForm(false); setEditingId(null);
       setForm({ firstName: '', lastName: '', carnet: '', gender: 'M', gradeId: '', sectionId: '', enrollmentYear: new Date().getFullYear() });
       loadData();
@@ -79,6 +102,14 @@ export default function StudentsManager() {
     }
   };
 
+  const onViewHistory = (student: Student) => {
+    setSelectedStudent(student);
+  };
+
+  const closeHistory = () => {
+    setSelectedStudent(null);
+  };
+
   const filtered = students.filter(s => {
     const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.carnet?.toLowerCase().includes(search.toLowerCase());
     const matchGrade = filterGrade === 'all' || s.gradeId === filterGrade;
@@ -94,74 +125,116 @@ export default function StudentsManager() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
             <div className="bg-accent/10 p-2 rounded-lg"><UserCheck className="w-5 h-5 text-accent" /></div>
             Alumnos
           </h2>
-          <p className="text-sm text-gray-500 mt-1">{filtered.length} alumno(s) registrado(s)</p>
+          <p className="text-sm text-slate-500 mt-1">{filtered.length} alumno(s) registrado(s)</p>
         </div>
         <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ firstName: '', lastName: '', carnet: '', gender: 'M', gradeId: '', sectionId: '', enrollmentYear: new Date().getFullYear() }); }} className="btn-primary">
           <Plus className="w-4 h-4" /> Nuevo Alumno
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-[250px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input type="text" placeholder="Buscar alumno..." value={search} onChange={e => setSearch(e.target.value)} className="input pl-9" />
+      <div className="space-y-3">
+        {/* Buscador por nombre y apellido */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input 
+            type="text" 
+            placeholder="Buscar por nombre o apellido..." 
+            value={search} 
+            onChange={e => setSearch(e.target.value)} 
+            className="input pl-9 w-full"
+          />
         </div>
-        <select value={filterGrade} onChange={e => { setFilterGrade(e.target.value); setFilterSection('all'); }} className="input w-auto">
-          <option value="all">Todos los grados</option>
-          {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-        </select>
-        <select value={filterSection} onChange={e => setFilterSection(e.target.value)} className="input w-auto" disabled={filterGrade === 'all'}>
-          <option value="all">Todas las secciones</option>
-          {sections.filter(s => s.gradeId === filterGrade).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
+
+        {/* Filtros por grado y sección con botones */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Grados:</span>
+            <button 
+              onClick={() => { setFilterGrade('all'); setFilterSection('all'); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${filterGrade === 'all' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+            >
+              Todos
+            </button>
+            {grades.map(g => (
+              <button
+                key={g.id}
+                onClick={() => { setFilterGrade(g.id); setFilterSection('all'); }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${filterGrade === g.id ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+              >
+                {g.name}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Secciones:</span>
+            <button 
+              onClick={() => setFilterSection('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${filterSection === 'all' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+              disabled={filterGrade === 'all'}
+            >
+              Todas
+            </button>
+            {sections.filter(s => s.gradeId === filterGrade).map(section => (
+              <button
+                key={section.id}
+                onClick={() => setFilterSection(section.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${filterSection === section.id ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                disabled={filterGrade === 'all'}
+              >
+                {section.name}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {showForm && (
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="card p-4">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-gray-900">{editingId ? 'Editar Alumno' : 'Nuevo Alumno'}</h3>
+            <h3 className="font-semibold text-slate-900">{editingId ? 'Editar Alumno' : 'Nuevo Alumno'}</h3>
             <button onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-4 h-4" /></button>
           </div>
           <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Nombres *</label>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Nombres *</label>
               <input type="text" required value={form.firstName} onChange={e => setForm({ ...form, firstName: e.target.value })} placeholder="Nombres" className="input" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Apellidos *</label>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Apellidos *</label>
               <input type="text" required value={form.lastName} onChange={e => setForm({ ...form, lastName: e.target.value })} placeholder="Apellidos" className="input" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Carnet</label>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Carnet</label>
               <input type="text" value={form.carnet} onChange={e => setForm({ ...form, carnet: e.target.value })} placeholder="Ej: 20270001" className="input" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Género *</label>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Género *</label>
               <select value={form.gender} onChange={e => setForm({ ...form, gender: e.target.value as 'M' | 'F' })} className="input">
                 <option value="M">Masculino</option>
                 <option value="F">Femenino</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Grado *</label>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Grado *</label>
               <select required value={form.gradeId} onChange={e => setForm({ ...form, gradeId: e.target.value, sectionId: '' })} className="input">
                 <option value="">Seleccionar grado</option>
                 {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Sección *</label>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Sección *</label>
               <select required value={form.sectionId} onChange={e => setForm({ ...form, sectionId: e.target.value })} className="input" disabled={!form.gradeId}>
                 <option value="">Seleccionar sección</option>
                 {filteredSections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Año de Ingreso</label>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Año de Ingreso</label>
               <input type="number" min="2000" max="2099" value={form.enrollmentYear} onChange={e => setForm({ ...form, enrollmentYear: parseInt(e.target.value) || 2027 })} className="input" />
             </div>
             <div className="flex justify-end gap-2 col-span-2 pt-2">
@@ -176,13 +249,13 @@ export default function StudentsManager() {
         <table className="w-full">
           <thead className="table-header">
             <tr>
-              <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase">Alumno</th>
-              <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase">Carnet</th>
-              <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase">Género</th>
-              <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase">Grado</th>
-              <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase">Sección</th>
-              <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase">Ingreso</th>
-              <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase">Acciones</th>
+              <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase">Alumno</th>
+              <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase">Carnet</th>
+              <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase">Género</th>
+              <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase">Grado</th>
+              <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase">Sección</th>
+              <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase">Ingreso</th>
+              <th className="text-right px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -193,18 +266,19 @@ export default function StudentsManager() {
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${s.gender === 'M' ? 'bg-blue-50 text-blue-600' : 'bg-pink-50 text-pink-600'}`}>
                       {s.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
                     </div>
-                    <span className="text-sm font-medium text-gray-900">{s.name}</span>
+                    <span className="text-sm font-medium text-slate-900">{s.name}</span>
                   </div>
                 </td>
-                <td className="px-4 py-2.5 text-sm text-gray-500 font-mono">{s.carnet || '—'}</td>
-                <td className="px-4 py-2.5 text-sm text-gray-500">{s.gender === 'M' ? 'Masculino' : 'Femenino'}</td>
+                <td className="px-4 py-2.5 text-sm text-slate-500 font-mono">{s.carnet || '—'}</td>
+                <td className="px-4 py-2.5 text-sm text-slate-500">{s.gender === 'M' ? 'Masculino' : 'Femenino'}</td>
                 <td className="px-4 py-2.5"><span className="badge badge-green">{getGradeName(s.gradeId)}</span></td>
                 <td className="px-4 py-2.5"><span className="badge badge-blue">{getSectionName(s.sectionId)}</span></td>
-                <td className="px-4 py-2.5 text-sm text-gray-500">{s.enrollmentYear || '—'}</td>
+                <td className="px-4 py-2.5 text-sm text-slate-500">{s.enrollmentYear || '—'}</td>
                 <td className="px-4 py-2.5 text-right">
                   <div className="flex justify-end gap-1">
-                    <button onClick={() => handleEdit(s)} className="p-1.5 hover:bg-gray-100 rounded-lg"><Edit2 className="w-4 h-4 text-gray-500" /></button>
-                    <button onClick={() => handleDelete(s.id)} className="p-1.5 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4 text-red-500" /></button>
+                    <button onClick={() => onViewHistory(s)} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors" title="Ver historial"><BookOpen className="w-4 h-4 text-slate-500" /></button>
+                    <button onClick={() => handleEdit(s)} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors" title="Editar"><Edit2 className="w-4 h-4 text-slate-500" /></button>
+                    <button onClick={() => handleDelete(s.id)} className="p-1.5 hover:bg-red-50 rounded-lg transition-colors" title="Eliminar"><Trash2 className="w-4 h-4 text-red-500" /></button>
                   </div>
                 </td>
               </tr>
@@ -212,12 +286,21 @@ export default function StudentsManager() {
           </tbody>
         </table>
         {filtered.length === 0 && (
-          <div className="text-center py-12 text-gray-400">
+          <div className="text-center py-12 text-slate-400">
             <UserCheck className="w-10 h-10 mx-auto mb-2 opacity-50" />
             <p className="text-sm">No se encontraron alumnos</p>
           </div>
         )}
       </div>
+
+      {selectedStudent && (
+        <StudentHistory
+          student={selectedStudent}
+          grades={grades}
+          sections={sections}
+          onClose={closeHistory}
+        />
+      )}
     </div>
   );
 }

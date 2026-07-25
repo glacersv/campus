@@ -2,7 +2,14 @@ import { Timestamp } from 'firebase/firestore';
 
 // ==================== USER & AUTH ====================
 
-export type UserRole = 'admin' | 'teacher';
+export type UserRole =
+  | 'admin'
+  | 'docente'
+  | 'alumno'
+  | 'coordinacion'
+  | 'registro_academico'
+  | 'enfermeria'
+  | 'psicopedagogio';
 
 export interface User {
   uid: string;
@@ -13,6 +20,46 @@ export interface User {
   createdAt?: Timestamp;
   microsoftId?: string;
 }
+
+// ==================== ROLES & PERMISSIONS ====================
+
+export type SystemModuleId =
+  | 'formacion'
+  | 'notas'
+  | 'clase'
+  | 'horario'
+  | 'eventos'
+  | 'avisos'
+  | 'proyectos';
+
+export const SYSTEM_MODULES: { id: SystemModuleId; label: string; desc: string }[] = [
+  { id: 'formacion', label: 'Formación Buenos Días', desc: 'Registro de asistencia y disciplina' },
+  { id: 'notas', label: 'Notas', desc: 'Calificaciones y evaluaciones' },
+  { id: 'clase', label: 'Clase', desc: 'Control de clases del día' },
+  { id: 'horario', label: 'Horario', desc: 'Horarios de clases' },
+  { id: 'eventos', label: 'Eventos', desc: 'Eventos del colegio' },
+  { id: 'avisos', label: 'Avisos', desc: 'Comunicados y anuncios' },
+  { id: 'proyectos', label: 'Semana de la Juventud', desc: 'Gestión de proyectos estudiantiles' },
+];
+
+export interface RoleConfig {
+  id: string;
+  name: string;
+  description?: string;
+  permissions: SystemModuleId[];
+  isSystem?: boolean;
+  createdAt?: Timestamp;
+}
+
+export const ROLE_LABELS: Record<UserRole, string> = {
+  admin: 'Administrador',
+  docente: 'Docente',
+  alumno: 'Alumno',
+  coordinacion: 'Coordinación',
+  registro_academico: 'Registro Académico',
+  enfermeria: 'Enfermería',
+  psicopedagogio: 'Psicopedagogía',
+};
 
 // ==================== ACADEMIC ENTITIES ====================
 
@@ -105,7 +152,11 @@ export interface Teacher {
 export interface EnrollmentRecord {
   year: number;
   gradeId: string;
+  gradeName?: string;
   sectionId?: string;
+  status: 'EN_CURSO' | 'FINALIZADO' | 'RETIRADO';
+  startDate?: Timestamp;
+  endDate?: Timestamp;
 }
 
 export interface Student {

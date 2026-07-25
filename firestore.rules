@@ -2,11 +2,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Global Catch-All Safety Net (Default Deny)
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
     // Helper Functions
     function isAuthenticated() {
       return request.auth != null;
@@ -82,11 +77,22 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // School Year Status Collection
+    match /school_year_status/{docId} {
+      allow read: if isAdmin() || isTeacher();
+      allow write: if isAdmin();
+    }
+
     // Attendance Reports Collection
     match /attendance_reports/{reportId} {
       allow read: if isAdmin() || isTeacher();
       allow create: if isTeacher();
       allow update, delete: if isAdmin();
+    }
+
+    // Global Catch-All Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

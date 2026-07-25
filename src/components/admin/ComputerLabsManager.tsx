@@ -167,17 +167,17 @@ export default function ComputerLabsManager() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <div className="bg-accent/10 p-2 rounded-lg">
+          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+            <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
               <Monitor className="w-5 h-5 text-accent" />
             </div>
             Laboratorios de Cómputo
           </h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-slate-500 mt-1">
             {labs.length} laboratorio(s) registrado(s)
           </p>
         </div>
@@ -206,13 +206,13 @@ export default function ComputerLabsManager() {
         <div className="flex border border-gray-200 rounded-lg overflow-hidden ml-auto">
           <button
             onClick={() => setViewMode('card')}
-            className={`p-2 transition-colors ${viewMode === 'card' ? 'bg-primary text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+            className={`p-2 transition-colors ${viewMode === 'card' ? 'bg-primary text-white' : 'bg-white text-slate-500 hover:bg-gray-50'}`}
           >
             <LayoutGrid className="w-4 h-4" />
           </button>
           <button
             onClick={() => setViewMode('list')}
-            className={`p-2 transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+            className={`p-2 transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-white text-slate-500 hover:bg-gray-50'}`}
           >
             <List className="w-4 h-4" />
           </button>
@@ -226,30 +226,30 @@ export default function ComputerLabsManager() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="card p-4"
+            className="card p-5"
           >
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-gray-900">{editingId ? 'Editar Laboratorio' : 'Nuevo Laboratorio'}</h3>
-              <button onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-4 h-4" /></button>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-slate-900">{editingId ? 'Editar Laboratorio' : 'Nuevo Laboratorio'}</h3>
+              <button onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1 hover:bg-slate-100 rounded-lg transition-colors"><X className="w-4 h-4" /></button>
             </div>
             <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Nombre *</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Nombre *</label>
                 <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ej: Lab 1" className="input" autoFocus required />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Edificio</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Edificio</label>
                 <select value={form.buildingId} onChange={e => setForm({ ...form, buildingId: e.target.value })} className="input">
                   <option value="">Sin edificio</option>
                   {buildings.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Capacidad</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Capacidad</label>
                 <input type="number" min="1" value={form.capacity} onChange={e => setForm({ ...form, capacity: e.target.value })} placeholder="Ej: 30" className="input" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Dispositivos</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Dispositivos</label>
                 <input type="number" min="1" value={form.devices} onChange={e => setForm({ ...form, devices: e.target.value })} placeholder="Ej: 30" className="input" />
               </div>
               <div className="col-span-2 flex justify-end gap-2">
@@ -288,7 +288,7 @@ export default function ComputerLabsManager() {
                     <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
                       <Monitor className="w-4 h-4 text-accent" />
                     </div>
-                    <h3 className="font-semibold text-gray-900">{l.name}</h3>
+                    <h3 className="font-semibold text-slate-900">{l.name}</h3>
                   </div>
                   <div className="mt-2 space-y-1">
                     {l.buildingId && (
@@ -297,16 +297,16 @@ export default function ComputerLabsManager() {
                         {getBuildingName(l.buildingId)}
                       </p>
                     )}
-                    {l.capacity && <p className="text-xs text-gray-500">Capacidad: {l.capacity}</p>}
-                    {l.devices && <p className="text-xs text-gray-500">Dispositivos: {l.devices}</p>}
+                    {l.capacity && <p className="text-xs text-slate-500">Capacidad: {l.capacity}</p>}
+                    {l.devices && <p className="text-xs text-slate-500">Dispositivos: {l.devices}</p>}
                     {stats.assignedSections.length > 0 && (
-                      <p className="text-[10px] text-gray-400 pt-1">
+                      <p className="text-[10px] text-slate-400 pt-1">
                         {stats.assignedSections.length} sección(es) · {stats.totalEnrolled} alumno(s)
                       </p>
                     )}
                   </div>
                   {stats.assignedSections.length > 0 && (
-                    <div className="mt-2 flex items-center gap-2 text-[10px] text-gray-400">
+                    <div className="mt-2 flex items-center gap-2 text-[10px] text-slate-400">
                       <span className="w-14 shrink-0">Uso:</span>
                       <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                         <motion.div initial={{ width: 0 }} animate={{ width: `${stats.usagePct}%` }}
@@ -317,7 +317,7 @@ export default function ComputerLabsManager() {
                   )}
                 </div>
                 <div className="flex justify-end gap-1 mt-2 pt-2 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={(e) => { e.stopPropagation(); handleEdit(l); }} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-gray-100 rounded-lg text-xs font-medium text-gray-600"><Edit2 className="w-3.5 h-3.5" /> Editar</button>
+                  <button onClick={(e) => { e.stopPropagation(); handleEdit(l); }} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-gray-100 rounded-lg text-xs font-medium text-slate-600"><Edit2 className="w-3.5 h-3.5" /> Editar</button>
                   <button onClick={(e) => { e.stopPropagation(); handleDelete(l.id); }} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-red-50 rounded-lg text-xs font-medium text-red-600"><Trash2 className="w-3.5 h-3.5" /> Eliminar</button>
                 </div>
               </motion.div>
@@ -338,11 +338,11 @@ export default function ComputerLabsManager() {
                     {selected.size === labs.length && labs.length > 0 && <Check className="w-2.5 h-2.5" />}
                   </button>
                 </th>
-                <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Nombre</th>
-                <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Edificio</th>
-                <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Capacidad</th>
-                <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Dispositivos</th>
-                <th className="text-right px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Acciones</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Nombre</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Edificio</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Capacidad</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Dispositivos</th>
+                <th className="text-right px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -356,18 +356,18 @@ export default function ComputerLabsManager() {
                       {selected.has(l.id) && <Check className="w-2.5 h-2.5" />}
                     </button>
                   </td>
-                  <td className="px-3 py-2 text-sm font-medium text-gray-900">{l.name}</td>
+                  <td className="px-3 py-2 text-sm font-medium text-slate-900">{l.name}</td>
                   <td className="px-3 py-2">{l.buildingId ? (
                     <span className="flex items-center gap-1.5 text-sm">
                       <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getBuildingColor(l.buildingId) }} />
                       {getBuildingName(l.buildingId)}
                     </span>
                   ) : '—'}</td>
-                  <td className="px-3 py-2 text-sm text-gray-500">{l.capacity || '—'}</td>
-                  <td className="px-3 py-2 text-sm text-gray-500">{l.devices || '—'}</td>
+                  <td className="px-3 py-2 text-sm text-slate-500">{l.capacity || '—'}</td>
+                  <td className="px-3 py-2 text-sm text-slate-500">{l.devices || '—'}</td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex justify-end gap-1">
-                      <button onClick={(e) => { e.stopPropagation(); handleEdit(l); }} className="p-1.5 hover:bg-gray-100 rounded-lg"><Edit2 className="w-4 h-4 text-gray-500" /></button>
+                      <button onClick={(e) => { e.stopPropagation(); handleEdit(l); }} className="p-1.5 hover:bg-gray-100 rounded-lg"><Edit2 className="w-4 h-4 text-slate-500" /></button>
                       <button onClick={(e) => { e.stopPropagation(); handleDelete(l.id); }} className="p-1.5 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4 text-red-500" /></button>
                     </div>
                   </td>
@@ -380,7 +380,7 @@ export default function ComputerLabsManager() {
 
       {/* Empty state */}
       {labs.length === 0 && (
-        <div className="text-center py-12 text-gray-400">
+        <div className="text-center py-12 text-slate-400">
           <Monitor className="w-10 h-10 mx-auto mb-2 opacity-50" />
           <p className="text-sm">No se encontraron laboratorios</p>
         </div>
@@ -399,8 +399,8 @@ export default function ComputerLabsManager() {
                   <Monitor className="w-5 h-5 text-indigo-600" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900">{l.name}</h3>
-                  <p className="text-sm text-gray-500 flex items-center gap-1">
+                  <h3 className="text-xl font-bold text-slate-900">{l.name}</h3>
+                  <p className="text-sm text-slate-500 flex items-center gap-1">
                     {l.buildingId && (
                       <><MapPin className="w-3.5 h-3.5" /> {getBuildingName(l.buildingId)} · </>  
                     )}
@@ -408,7 +408,7 @@ export default function ComputerLabsManager() {
                   </p>
                 </div>
               </div>
-              <button onClick={() => setSelectedLabId(null)} className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
+              <button onClick={() => setSelectedLabId(null)} className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1">
                 <X className="w-3.5 h-3.5" /> Cerrar
               </button>
             </div>
@@ -426,10 +426,10 @@ export default function ComputerLabsManager() {
                     <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-indigo-50">
                       <Icon className="w-5 h-5 text-indigo-500" />
                     </div>
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{label}</span>
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{label}</span>
                   </div>
-                  <p className="text-4xl font-black text-gray-900 font-mono">{value}</p>
-                  <p className="text-sm text-gray-400 mt-1">{sub}</p>
+                  <p className="text-4xl font-black text-slate-900 font-mono">{value}</p>
+                  <p className="text-sm text-slate-400 mt-1">{sub}</p>
                 </div>
               ))}
             </div>
@@ -439,7 +439,7 @@ export default function ComputerLabsManager() {
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <BarChart3 className="w-5 h-5 text-indigo-500" />
-                  <h4 className="text-sm font-bold text-gray-700 uppercase tracking-wider">Secciones Asignadas por Grado</h4>
+                  <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Secciones Asignadas por Grado</h4>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {stats.sectionsByGrade.map(sg => {
@@ -448,12 +448,12 @@ export default function ComputerLabsManager() {
                       <div key={sg.gradeName} className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-gray-900">{sg.gradeName}</span>
+                            <span className="text-sm font-bold text-slate-900">{sg.gradeName}</span>
                             <span className="text-xs bg-indigo-50 text-indigo-600 font-medium px-2 py-0.5 rounded-full">{sg.sections.length} secc{(sg.sections.length > 1 ? 'iones' : 'ión')}</span>
                           </div>
                           <div className="flex items-baseline gap-1.5 font-mono">
-                            <span className="text-2xl font-black text-gray-900">{sg.enrolled}</span>
-                            <span className="text-sm text-gray-400">/ {sg.capacity}</span>
+                            <span className="text-2xl font-black text-slate-900">{sg.enrolled}</span>
+                            <span className="text-sm text-slate-400">/ {sg.capacity}</span>
                           </div>
                         </div>
                         <div className="relative h-4 bg-gray-100 rounded-full overflow-hidden mb-3">
@@ -469,12 +469,12 @@ export default function ComputerLabsManager() {
                             const enrolled = students.filter(st => st.sectionId === sec.id && st.gradeId === sec.gradeId).length;
                             return (
                               <span key={sec.id} className={`inline-flex items-center gap-1.5 text-xs font-mono px-2.5 py-1 rounded-lg border ${
-                                enrolled > 0 ? 'bg-white border-gray-200 text-gray-700' : 'bg-gray-50 border-dashed border-gray-200 text-gray-400'
+                                enrolled > 0 ? 'bg-white border-gray-200 text-slate-700' : 'bg-gray-50 border-dashed border-gray-200 text-slate-400'
                               }`}>
                                 <span className="font-semibold">Sección {sec.name}</span>
                                 <span className="font-bold text-indigo-600">{enrolled}</span>
-                                <span className="text-gray-300">/</span>
-                                <span className="text-gray-400">{sec.capacity || '?'}</span>
+                                <span className="text-slate-300">/</span>
+                                <span className="text-slate-400">{sec.capacity || '?'}</span>
                               </span>
                             );
                           })}
@@ -487,7 +487,7 @@ export default function ComputerLabsManager() {
             )}
 
             {stats.assignedSections.length === 0 && (
-              <div className="text-center py-16 text-gray-400 bg-white border border-gray-200 rounded-xl">
+              <div className="text-center py-16 text-slate-400 bg-white border border-gray-200 rounded-xl">
                 <Monitor className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p className="text-base font-medium">No hay secciones asignadas a este laboratorio</p>
                 <p className="text-sm mt-1">Asigna este laboratorio desde el módulo de Secciones</p>
@@ -498,7 +498,7 @@ export default function ComputerLabsManager() {
       })()}
 
       {!selectedLabId && labs.length > 0 && (
-        <div className="mt-6 text-center py-12 text-gray-400 bg-white border border-dashed border-gray-200 rounded-xl">
+        <div className="mt-6 text-center py-12 text-slate-400 bg-white border border-dashed border-gray-200 rounded-xl">
           <BarChart3 className="w-10 h-10 mx-auto mb-2 opacity-40" />
           <p className="text-sm font-medium">Selecciona un laboratorio para ver sus estadísticas</p>
           <p className="text-xs mt-1">Haz clic en cualquier laboratorio de arriba</p>

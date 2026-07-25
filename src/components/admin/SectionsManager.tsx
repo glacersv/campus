@@ -1,31 +1,42 @@
 import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Layers, Plus, Edit2, Trash2, Save, X, Search, LayoutGrid, List, Check, Trash } from 'lucide-react';
+import { motion } from 'motion/react';
+import { Layers, Plus, Edit2, Trash2, Save, X, Search, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import { getAllSections, createSection, updateSection, deleteSection, getAllGrades, getAllBuildings, getAllComputerLabs, toggleSectionStatus } from '../../lib/firestore';
-import { Section, Grade, Building, ComputerLab, Cycle, CYCLE_NAMES } from '../../types';
+import { getAllSections, createSection, updateSection, deleteSection, getAllGrades, getAllBuildings, getAllComputerLabs, toggleSectionStatus, getAllBaccalaureateTypes, getAllStudents } from '../../lib/firestore';
+import { Section, Grade, Building, ComputerLab, BaccalaureateTypeDoc, Student } from '../../types';
+
+const CYCLE_LABEL: Record<string, string> = {
+  '1': 'Primer Ciclo (1° - 3°)',
+  '2': 'Segundo Ciclo (4° - 6°)',
+  '3': 'Tercer Ciclo (7° - 9°)',
+};
 
 export default function SectionsManager() {
   const [sections, setSections] = useState<Section[]>([]);
   const [grades, setGrades] = useState<Grade[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [computerLabs, setComputerLabs] = useState<ComputerLab[]>([]);
+  const [baccalaureateTypes, setBaccalaureateTypes] = useState<BaccalaureateTypeDoc[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabId: '' });
   const [search, setSearch] = useState('');
-  const [cycleFilter, setCycleFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<'ACTIVO' | 'INACTIVO' | 'all'>('all');
-  const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selectedGroup, setSelectedGroup] = useState<{ letter: string; levels: { label: string; count: number }[]; totalGrades: number; totalStudents: number; totalCapacity: number; occupancyPercentage: number; gradeDetails: { gradeId: string; gradeName: string; capacity: number; enrolled: number; percentage: number }[] } | null>(null);
+
+  const openAnalytics = (group: { letter: string; levels: { label: string; count: number }[]; totalGrades: number; totalStudents: number; totalCapacity: number; occupancyPercentage: number; gradeDetails: { gradeId: string; gradeName: string; capacity: number; enrolled: number; percentage: number }[] }) => {
+    setSelectedGroup(group);
+  };
+
+  const closeAnalytics = () => setSelectedGroup(null);
 
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     try {
-      const [s, g, b, cl] = await Promise.all([getAllSections(), getAllGrades(), getAllBuildings(), getAllComputerLabs()]);
-      setSections(s); setGrades(g); setBuildings(b); setComputerLabs(cl);
+      const [s, g, b, cl, bt, st] = await Promise.all([getAllSections(), getAllGrades(), getAllBuildings(), getAllComputerLabs(), getAllBaccalaureateTypes(), getAllStudents()]);
+      setSections(s); setGrades(g); setBuildings(b); setComputerLabs(cl); setBaccalaureateTypes(bt); setStudents(st);
     } catch (err) {
       console.error('Error loading data:', err);
     } finally { setLoading(false); }
@@ -48,20 +59,20 @@ export default function SectionsManager() {
       if (form.capacity) data.capacity = parseInt(form.capacity);
       if (form.buildingId) data.buildingId = form.buildingId;
       if (form.computerLabId) data.computerLabId = form.computerLabId;
-      
+
       if (editingId) {
         await updateSection(editingId, data);
-        toast.success('Sección actualizada correctamente');
+        toast.success('Sección actualizada');
       } else {
         const newId = `${form.gradeId}-${form.name.trim().toLowerCase()}`;
         await createSection({ id: newId, name: data.name!, gradeId: data.gradeId!, ...data });
-        toast.success('Sección creada correctamente');
+        toast.success('Sección creada');
       }
       setShowForm(false); setEditingId(null); setForm({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabId: '' });
       loadData();
     } catch (err) {
       toast.error('Error al guardar sección');
-      console.error('Error creating section:', err);
+      console.error(err);
     }
   };
 
@@ -76,374 +87,315 @@ export default function SectionsManager() {
       try {
         await deleteSection(id);
         toast.success('Sección eliminada');
-        setSelected(prev => { const n = new Set(prev); n.delete(id); return n; });
         loadData();
-      } catch (err) { toast.error('Error al eliminar sección'); }
+      } catch (err) { toast.error('Error al eliminar'); }
     }
   };
 
-  const handleToggleStatus = async (id: string, current?: string) => {
-    try {
-      await toggleSectionStatus(id, current);
-      toast.success('Estado actualizado');
-      loadData();
-    } catch (err) {
-      toast.error('Error al cambiar estado');
-      console.error(err);
-    }
+  const getSectionLetter = (name: string): string => {
+    const upper = name.trim().toUpperCase();
+    const parts = upper.split('-');
+    const possibleLetter = parts[parts.length - 1];
+    if (/^[A-Z]$/.test(possibleLetter)) return possibleLetter;
+    if (upper.length === 1 && /^[A-Z]$/.test(upper)) return upper;
+    return upper;
   };
 
-  const handleBulkDelete = async () => {
-    if (selected.size === 0) return;
-    if (confirm(`¿Eliminar ${selected.size} sección(es)?`)) {
-      try {
-        for (const id of selected) await deleteSection(id);
-        toast.success(`${selected.size} sección(es) eliminadas`);
-        setSelected(new Set());
-        loadData();
-      } catch (err) { toast.error('Error al eliminar secciones'); }
-    }
-  };
+  const letterGroups = sections.reduce<Record<string, Section[]>>((acc, s) => {
+    const letter = getSectionLetter(s.name);
+    if (!acc[letter]) acc[letter] = [];
+    acc[letter].push(s);
+    return acc;
+  }, {});
 
-  const toggleSelect = (id: string) => {
-    setSelected(prev => {
-      const n = new Set(prev);
-      if (n.has(id)) n.delete(id); else n.add(id);
-      return n;
+  const groupStats = Object.entries(letterGroups).map(([letter, group]) => {
+    const totalGrades = group.length;
+
+    const gradeCounts: Record<string, number> = {};
+    group.forEach(s => {
+      gradeCounts[s.gradeId] = (gradeCounts[s.gradeId] || 0) + 1;
     });
-  };
 
-  const toggleSelectAll = () => {
-    if (selected.size === filtered.length) setSelected(new Set());
-    else setSelected(new Set(filtered.map(s => s.id)));
-  };
+    const cycleCounts: Record<string, number> = {};
+    Object.entries(gradeCounts).forEach(([gradeId, count]) => {
+      const grade = grades.find(g => g.id === gradeId);
+      const cycle = grade?.cycle || '1';
+      if (cycle === '4' && grade?.baccalaureateType) {
+        const key = `4-${grade.baccalaureateType}`;
+        cycleCounts[key] = (cycleCounts[key] || 0) + count;
+      } else {
+        cycleCounts[cycle] = (cycleCounts[cycle] || 0) + count;
+      }
+    });
 
-  const filtered = sections.filter(s => {
-    const matchesSearch = `${s.name} ${getGradeName(s.gradeId)} ${getBuildingName(s.buildingId || '')}`.toLowerCase().includes(search.toLowerCase());
-    const matchesCycle = cycleFilter === 'all' || getGradeCycle(s.gradeId) === cycleFilter;
-    const matchesStatus = statusFilter === 'all' || (s.status || 'ACTIVO') === statusFilter;
-    return matchesSearch && matchesCycle && matchesStatus;
+    const levels = [
+      { key: '1', label: 'Primer Ciclo (1° - 3°)', count: cycleCounts['1'] || 0 },
+      { key: '2', label: 'Segundo Ciclo (4° - 6°)', count: cycleCounts['2'] || 0 },
+      { key: '3', label: 'Tercer Ciclo (7° - 9°)', count: cycleCounts['3'] || 0 },
+    ];
+
+    const gradeNumbers = grades
+      .filter(g => g.cycle === '4')
+      .sort((a, b) => parseInt(a.name) - parseInt(b.name));
+
+    gradeNumbers.forEach(grade => {
+      const count = gradeCounts[grade.id] || 0;
+      if (count > 0) {
+        const bt = baccalaureateTypes.find(b => b.id === grade.baccalaureateType);
+        const btName = bt?.name || 'Bachillerato';
+        levels.push({ key: grade.id, label: `${btName} (${grade.name}°)`, count });
+      }
+    });
+
+    const totalStudents = students.filter(st => group.some(section => section.id === st.sectionId)).length;
+    const totalCapacity = group.reduce((sum, section) => sum + (section.capacity || 0), 0);
+    const occupancyPercentage = totalCapacity > 0 ? Math.round((totalStudents / totalCapacity) * 100) : 0;
+    
+    // Detalle por grado: capacidad vs matriculados
+    const gradeDetails = group.map(section => {
+      const grade = grades.find(g => g.id === section.gradeId);
+      const gradeName = grade ? (grade.cycle === '4' && grade.baccalaureateType ? `${baccalaureateTypes.find(b => b.id === grade.baccalaureateType)?.name || 'Bachillerato'} ${grade.name}°` : `${grade.name}°`) : section.gradeId;
+      const enrolledInGrade = students.filter(st => st.sectionId === section.id).length;
+      const capacity = section.capacity || 0;
+      
+      return {
+        gradeId: section.gradeId,
+        gradeName,
+        capacity,
+        enrolled: enrolledInGrade,
+        percentage: capacity > 0 ? Math.round((enrolledInGrade / capacity) * 100) : 0
+      };
+    });
+    
+    // Debug temporal
+    console.log(`Sección ${letter}:`, { 
+      totalStudents, 
+      totalCapacity, 
+      occupancyPercentage,
+      sectionIds: group.map(s => s.id),
+      studentsInSection: students.filter(st => group.some(section => section.id === st.sectionId)).map(st => ({ id: st.id, name: st.name, sectionId: st.sectionId }))
+    });
+
+    return {
+      letter: letter.toUpperCase(),
+      totalGrades,
+      levels,
+      totalStudents,
+      totalCapacity,
+      occupancyPercentage,
+      gradeDetails
+    };
   });
-
-  const CYCLE_COLORS: Record<string, string> = {
-    '1': 'bg-emerald-100 text-emerald-700 border-emerald-200',
-    '2': 'bg-blue-100 text-blue-700 border-blue-200',
-    '3': 'bg-purple-100 text-purple-700 border-purple-200',
-    '4': 'bg-amber-100 text-amber-700 border-amber-200'
-  };
-  const CYCLE_HEX: Record<string, string> = {
-    '1': '#10B981',
-    '2': '#3B82F6',
-    '3': '#8B5CF6',
-    '4': '#F59E0B'
-  };
-  const STATUS_COLOR: Record<string, string> = {
-    '1': 'bg-emerald-100 text-emerald-700',
-    '2': 'bg-blue-100 text-blue-700',
-    '3': 'bg-purple-100 text-purple-700',
-    '4': 'bg-amber-100 text-amber-700'
-  };
 
   if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
             <div className="bg-accent/10 p-2 rounded-lg"><Layers className="w-5 h-5 text-accent" /></div>
             Secciones
           </h2>
-          <p className="text-sm text-gray-500 mt-1">{filtered.length} sección(es) registrada(s)</p>
+          <p className="text-sm text-slate-500 mt-1">{groupStats.length} sección(es) registrada(s)</p>
         </div>
         <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabId: '' }); }} className="btn-primary">
           <Plus className="w-4 h-4" /> Nueva Sección
         </button>
       </div>
 
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input type="text" placeholder="Buscar sección..." value={search} onChange={e => setSearch(e.target.value)} className="input pl-9" />
-        </div>
-        <div className="flex gap-1.5">
-          <button onClick={() => setCycleFilter('all')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${cycleFilter === 'all' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Todos</button>
-          {Object.entries(CYCLE_NAMES).map(([k, v]) => (
-            <button key={k} onClick={() => setCycleFilter(k)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${cycleFilter === k ? 'bg-accent text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{v}</button>
-          ))}
-        </div>
-        <div className="flex gap-1.5">
-          <button onClick={() => setStatusFilter('all')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${statusFilter === 'all' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Todos</button>
-          <button onClick={() => setStatusFilter('ACTIVO')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${statusFilter === 'ACTIVO' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Activos</button>
-          <button onClick={() => setStatusFilter('INACTIVO')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${statusFilter === 'INACTIVO' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Inactivos</button>
-        </div>
-        {selected.size > 0 && (
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-            className="flex items-center gap-2 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
-            <span className="text-sm text-red-700 font-medium">{selected.size} seleccionado(s)</span>
-            <button onClick={handleBulkDelete} className="p-1.5 hover:bg-red-100 rounded-lg"><Trash className="w-4 h-4 text-red-600" /></button>
-            <button onClick={() => setSelected(new Set())} className="p-1.5 hover:bg-red-100 rounded-lg"><X className="w-4 h-4 text-red-600" /></button>
-          </motion.div>
-        )}
-        <div className="flex border border-gray-200 rounded-lg overflow-hidden">
-          <button onClick={() => setViewMode('card')} className={`p-2 transition-colors ${viewMode === 'card' ? 'bg-primary text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}><LayoutGrid className="w-4 h-4" /></button>
-          <button onClick={() => setViewMode('list')} className={`p-2 transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}><List className="w-4 h-4" /></button>
-        </div>
+      <div className="relative flex-1 max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <input type="text" placeholder="Buscar sección..." value={search} onChange={e => setSearch(e.target.value)} className="input pl-9" />
       </div>
 
-      <AnimatePresence>
-        {showForm && (
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="card p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900">{editingId ? 'Editar Sección' : 'Nueva Sección'}</h3>
-              <button onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-4 h-4" /></button>
+      {showForm && (
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl p-5 border border-slate-200/80">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-slate-900">{editingId ? 'Editar Sección' : 'Nueva Sección'}</h3>
+            <button onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1 hover:bg-slate-100 rounded-lg"><X className="w-4 h-4 text-slate-500" /></button>
+          </div>
+          <form onSubmit={handleSubmit} className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Grado *</label>
+              <select required value={form.gradeId} onChange={e => setForm({ ...form, gradeId: e.target.value })} className="input">
+                <option value="">Seleccionar grado</option>
+                {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+              </select>
             </div>
-            <form onSubmit={handleSubmit} className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Grado *</label>
-                <select required value={form.gradeId} onChange={e => setForm({ ...form, gradeId: e.target.value })} className="input">
-                  <option value="">Seleccionar grado</option>
-                  {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Nombre Sección *</label>
-                <input type="text" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ej: A" className="input" maxLength={3} />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Capacidad</label>
-                <input type="number" min="1" value={form.capacity} onChange={e => setForm({ ...form, capacity: e.target.value })} placeholder="Ej: 40" className="input" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Edificio</label>
-                <select value={form.buildingId} onChange={e => setForm({ ...form, buildingId: e.target.value })} className="input">
-                  <option value="">Sin edificio</option>
-                  {buildings.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Laboratorio / Centro de Cómputo</label>
-                <select value={form.computerLabId} onChange={e => setForm({ ...form, computerLabId: e.target.value })} className="input">
-                  <option value="">Sin laboratorio</option>
-                  {computerLabs.map(cl => <option key={cl.id} value={cl.id}>{cl.name}</option>)}
-                </select>
-              </div>
-              <div className="flex items-end justify-end lg:col-span-3 gap-2">
-                <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="btn-secondary">Cancelar</button>
-                <button type="submit" className="btn-primary"><Save className="w-4 h-4" /> {editingId ? 'Actualizar' : 'Crear'}</button>
-              </div>
-            </form>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Nombre *</label>
+              <input type="text" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ej: A" className="input" maxLength={3} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Capacidad</label>
+              <input type="number" min="1" value={form.capacity} onChange={e => setForm({ ...form, capacity: e.target.value })} placeholder="Ej: 40" className="input" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Edificio</label>
+              <select value={form.buildingId} onChange={e => setForm({ ...form, buildingId: e.target.value })} className="input">
+                <option value="">Sin edificio</option>
+                {buildings.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Laboratorio</label>
+              <select value={form.computerLabId} onChange={e => setForm({ ...form, computerLabId: e.target.value })} className="input">
+                <option value="">Sin laboratorio</option>
+                {computerLabs.map(cl => <option key={cl.id} value={cl.id}>{cl.name}</option>)}
+              </select>
+            </div>
+            <div className="flex items-end justify-end lg:col-span-3 gap-2">
+              <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="btn-secondary">Cancelar</button>
+              <button type="submit" className="btn-primary"><Save className="w-4 h-4" /> {editingId ? 'Actualizar' : 'Crear'}</button>
+            </div>
+          </form>
+        </motion.div>
+      )}
 
-      {viewMode === 'card' && cycleFilter === 'all' ? (
-        <div className="space-y-6">
-          {(Object.keys(CYCLE_NAMES) as Cycle[]).map(c => {
-            const items = filtered.filter(s => getGradeCycle(s.gradeId) === c);
-            if (items.length === 0) return null;
-            return (
-              <div key={c}>
-                <div className="flex items-center gap-2 mb-3">
-                  <span className={`px-2.5 py-1 rounded-md text-xs font-bold ${CYCLE_COLORS[c]}`}>
-                    {CYCLE_NAMES[c]}
-                  </span>
-                  <span className="text-xs text-gray-400">({items.length})</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                  {items.map((s, i) => (
-                    <motion.div key={s.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
-                      className={`card card-hover p-3 group relative ${selected.has(s.id) ? 'ring-2 ring-primary border-primary' : ''}`}>
-                      <div className="absolute top-0 left-0 right-0 h-1 rounded-t-lg opacity-0 group-hover:opacity-100 transition-all duration-300"
-                        style={{ backgroundColor: CYCLE_HEX[getGradeCycle(s.gradeId)] || '#6B7280' }} />
-                      <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-[0.04] transition-all duration-300"
-                        style={{ backgroundColor: CYCLE_HEX[getGradeCycle(s.gradeId)] || '#6B7280' }} />
-                      <div className="absolute top-2.5 left-2.5">
-                        <button onClick={() => toggleSelect(s.id)}
-                          className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.has(s.id) ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'}`}>
-                          {selected.has(s.id) && <Check className="w-2.5 h-2.5" />}
-                        </button>
-                      </div>
-                      <div className="relative pt-1 pl-5">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-gray-900">Sección {s.name}</h3>
-                          <span className="badge badge-blue">{getGradeName(s.gradeId)}</span>
-                        </div>
-                        <div className="mt-2 space-y-1">
-                          {s.capacity && <p className="text-xs text-gray-500">Capacidad: {s.capacity} alumnos</p>}
-                          {s.buildingId && (
-                            <p className="text-xs flex items-center gap-1">
-                              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getBuildingColor(s.buildingId) }} />
-                              {getBuildingName(s.buildingId)}
-                            </p>
-                          )}
-                          {s.computerLabId && (
-                            <p className="text-xs text-indigo-600 font-medium">
-                              Lab: {getComputerLabName(s.computerLabId)}
-                            </p>
-                          )}
-                          <div className="flex items-center gap-2 pt-1">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              (s.status || 'ACTIVO') === 'ACTIVO' ? STATUS_COLOR[getGradeCycle(s.gradeId)] || 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'
-                            }`}>
-                              {(s.status || 'ACTIVO') === 'ACTIVO' ? 'Activo' : 'Inactivo'}
-                            </span>
-                            {s.schoolYear && (
-                              <span className="text-[10px] text-gray-400">{s.schoolYear}</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="relative flex justify-end gap-1 mt-2 pt-2 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => handleToggleStatus(s.id, s.status)} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                          (s.status || 'ACTIVO') === 'ACTIVO' ? 'hover:bg-gray-100 text-gray-500' : 'hover:bg-gray-100 text-gray-600'
-                        }`}>
-                          <Check className="w-3.5 h-3.5" /> {(s.status || 'ACTIVO') === 'ACTIVO' ? 'Desactivar' : 'Activar'}
-                        </button>
-                        <button onClick={() => handleEdit(s)} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-gray-100 rounded-lg text-xs font-medium text-gray-600"><Edit2 className="w-3.5 h-3.5" /> Editar</button>
-                        <button onClick={() => handleDelete(s.id)} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-red-50 rounded-lg text-xs font-medium text-red-600"><Trash2 className="w-3.5 h-3.5" /> Eliminar</button>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+      {groupStats.length === 0 ? (
+        <div className="text-center py-12 text-slate-400">
+          <p className="text-sm">No hay secciones creadas</p>
         </div>
-      ) : viewMode === 'card' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-          {filtered.map((s, i) => (
-            <motion.div key={s.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
-              className={`card card-hover p-3 group relative ${selected.has(s.id) ? 'ring-2 ring-primary border-primary' : ''}`}>
-              <div className="absolute top-0 left-0 right-0 h-1 rounded-t-lg opacity-0 group-hover:opacity-100 transition-all duration-300"
-                style={{ backgroundColor: CYCLE_HEX[getGradeCycle(s.gradeId)] || '#6B7280' }} />
-              <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-[0.04] transition-all duration-300"
-                style={{ backgroundColor: CYCLE_HEX[getGradeCycle(s.gradeId)] || '#6B7280' }} />
-              <div className="absolute top-2.5 left-2.5">
-                <button onClick={() => toggleSelect(s.id)}
-                  className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.has(s.id) ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'}`}>
-                  {selected.has(s.id) && <Check className="w-2.5 h-2.5" />}
-                </button>
-              </div>
-              <div className="relative pt-1 pl-5">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-gray-900">Sección {s.name}</h3>
-                  <span className="badge badge-blue">{getGradeName(s.gradeId)}</span>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {groupStats.map((group, i) => (
+            <motion.div key={group.letter} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all cursor-pointer" onClick={() => openAnalytics(group)}>
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Sección {group.letter}</span>
+                <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center">
+                  <Users className="w-4 h-4" />
                 </div>
-                <div className="mt-2 space-y-1">
-                  {s.capacity && <p className="text-xs text-gray-500">Capacidad: {s.capacity} alumnos</p>}
-                  {s.buildingId && (
-                    <p className="text-xs flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getBuildingColor(s.buildingId) }} />
-                      {getBuildingName(s.buildingId)}
-                    </p>
-                  )}
-                  {s.computerLabId && (
-                    <p className="text-xs text-indigo-600 font-medium">
-                      Lab: {getComputerLabName(s.computerLabId)}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-2 pt-1">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                      (s.status || 'ACTIVO') === 'ACTIVO' ? STATUS_COLOR[getGradeCycle(s.gradeId)] || 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'
-                    }`}>
-                      {(s.status || 'ACTIVO') === 'ACTIVO' ? 'Activo' : 'Inactivo'}
-                    </span>
-                    {s.schoolYear && (
-                      <span className="text-[10px] text-gray-400">{s.schoolYear}</span>
-                    )}
+              </div>
+              <div className="mb-3">
+                <div className="text-[40px] font-extrabold text-slate-900 leading-none tracking-tight">{group.totalGrades}</div>
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full bg-slate-100 text-slate-600 mt-2">Grados totales</span>
+              </div>
+              <div className="border-t border-slate-100 pt-3 flex flex-col gap-2">
+                {group.levels.map(level => (
+                  <div key={level.label} className="flex justify-between items-center text-[12px] font-medium text-slate-500">
+                    <span>{level.label}</span>
+                    <span className="font-bold text-slate-900 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-md text-[11px]">{level.count} Grados</span>
                   </div>
-                </div>
-              </div>
-              <div className="relative flex justify-end gap-1 mt-2 pt-2 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => handleToggleStatus(s.id, s.status)} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  (s.status || 'ACTIVO') === 'ACTIVO' ? 'hover:bg-gray-100 text-gray-500' : 'hover:bg-gray-100 text-gray-600'
-                }`}>
-                  <Check className="w-3.5 h-3.5" /> {(s.status || 'ACTIVO') === 'ACTIVO' ? 'Desactivar' : 'Activar'}
-                </button>
-                <button onClick={() => handleEdit(s)} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-gray-100 rounded-lg text-xs font-medium text-gray-600"><Edit2 className="w-3.5 h-3.5" /> Editar</button>
-                <button onClick={() => handleDelete(s.id)} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-red-50 rounded-lg text-xs font-medium text-red-600"><Trash2 className="w-3.5 h-3.5" /> Eliminar</button>
+                ))}
               </div>
             </motion.div>
           ))}
         </div>
-      ) : (
-        <div className="card overflow-hidden">
-          <table className="w-full">
-            <thead className="table-header">
-              <tr>
-                <th className="w-8 px-3 py-2">
-                  <button onClick={toggleSelectAll}
-                    className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.size === filtered.length && filtered.length > 0 ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'}`}>
-                    {selected.size === filtered.length && filtered.length > 0 && <Check className="w-2.5 h-2.5" />}
-                  </button>
-                </th>
-                <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Sección</th>
-                <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Grado</th>
-                <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Capacidad</th>
-                <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Edificio</th>
-                <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Laboratorio</th>
-                <th className="text-center px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Estado</th>
-                <th className="text-right px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((s, i) => (
-                <motion.tr key={s.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}
-                  className={`table-row ${selected.has(s.id) ? 'bg-primary/5' : ''}`}>
-                  <td className="px-3 py-2">
-                    <button onClick={() => toggleSelect(s.id)}
-                      className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.has(s.id) ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'}`}>
-                      {selected.has(s.id) && <Check className="w-2.5 h-2.5" />}
-                    </button>
-                  </td>
-                  <td className="px-3 py-2 text-sm font-medium text-gray-900">{s.name}</td>
-                  <td className="px-3 py-2"><span className="badge badge-green">{getGradeName(s.gradeId)}</span></td>
-                  <td className="px-3 py-2 text-sm text-gray-500">{s.capacity || '—'}</td>
-                  <td className="px-3 py-2">
-                    {s.buildingId ? (
-                      <span className="flex items-center gap-1.5 text-sm">
-                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getBuildingColor(s.buildingId) }} />
-                        {getBuildingName(s.buildingId)}
-                      </span>
-                    ) : '—'}
-                  </td>
-                  <td className="px-3 py-2 text-sm text-gray-500">
-                    {s.computerLabId ? (
-                      <span className="text-indigo-600 font-medium text-xs">{getComputerLabName(s.computerLabId)}</span>
-                    ) : '—'}
-                  </td>
-                  <td className="px-3 py-2 text-center">
-                    <button
-                      onClick={() => handleToggleStatus(s.id, s.status)}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${
-                        (s.status || 'ACTIVO') === 'ACTIVO'
-                          ? `${STATUS_COLOR[getGradeCycle(s.gradeId)] || 'bg-emerald-100 text-emerald-800'} hover:bg-gray-200 hover:text-gray-600`
-                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                      }`}
-                    >
-                      <span className={`w-1.5 h-1.5 rounded-full ${(s.status || 'ACTIVO') === 'ACTIVO' ? 'bg-current' : 'bg-gray-400'}`} />
-                      {(s.status || 'ACTIVO') === 'ACTIVO' ? 'ACTIVO' : 'INACTIVO'}
-                    </button>
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    <div className="flex justify-end gap-1">
-                      <button onClick={() => handleEdit(s)} className="p-1.5 hover:bg-gray-100 rounded-lg"><Edit2 className="w-4 h-4 text-gray-500" /></button>
-                      <button onClick={() => handleDelete(s.id)} className="p-1.5 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4 text-red-500" /></button>
-                    </div>
-                  </td>
-                </motion.tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
       )}
 
-      {filtered.length === 0 && (
-        <div className="text-center py-12 text-gray-400">
-          <Layers className="w-10 h-10 mx-auto mb-2 opacity-50" />
-          <p className="text-sm">No se encontraron secciones</p>
-        </div>
+      {selectedGroup && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold text-slate-900">Analytics - Sección {selectedGroup.letter}</h3>
+            <button onClick={closeAnalytics} className="text-xs text-slate-500 hover:text-slate-700">Cerrar</button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+              <h4 className="text-sm font-bold text-slate-900 mb-4">Distribución por Niveles</h4>
+              <div className="space-y-3">
+                {selectedGroup.levels.map((level, idx) => {
+                  const maxCount = Math.max(...selectedGroup.levels.map(l => l.count), 1);
+                  const percentage = Math.round((level.count / maxCount) * 100);
+                  const barColors = [
+                    'bg-gradient-to-r from-emerald-600 to-emerald-400',
+                    'bg-gradient-to-r from-emerald-500 to-emerald-300',
+                    'bg-gradient-to-r from-emerald-700 to-emerald-500',
+                    'bg-gradient-to-r from-emerald-400 to-emerald-200',
+                    'bg-gradient-to-r from-emerald-800 to-emerald-600',
+                    'bg-gradient-to-r from-emerald-600 to-emerald-400'
+                  ];
+                  const barColor = barColors[idx % barColors.length];
+                  return (
+                    <div key={level.label} className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600">
+                        <span className="truncate pr-2">{level.label}</span>
+                        <span className="text-slate-900 font-bold">{level.count} Grados</span>
+                      </div>
+                      <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full rounded-full ${barColor} transition-all duration-500`}
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100 flex flex-col items-center">
+              <h4 className="text-sm font-bold text-slate-900 mb-4">Ocupación de la Sección</h4>
+              <div className="relative w-48 h-24">
+                <svg viewBox="0 0 200 110" className="w-full h-full">
+                  <path d="M 25 100 A 75 75 0 0 1 175 100" fill="none" stroke="#e2e8f0" strokeWidth="20" />
+                  <path d="M 25 100 A 75 75 0 0 1 175 100" fill="none" stroke="#2e8b57" strokeWidth="20" strokeDasharray={`${selectedGroup.occupancyPercentage * 2.35}, 235`} strokeLinecap="round" />
+                </svg>
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center">
+                  <div className="text-2xl font-extrabold text-slate-900">{selectedGroup.occupancyPercentage}%</div>
+                  <div className="text-[10px] font-semibold text-slate-500">Ocupación</div>
+                </div>
+              </div>
+              <div className="mt-4 text-center">
+                <div className="text-2xl font-extrabold text-slate-900">{selectedGroup.totalStudents}</div>
+                <div className="text-[10px] font-semibold text-slate-500">Alumnos matriculados</div>
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 bg-slate-50 rounded-2xl p-4 border border-slate-100">
+            <div className="flex items-center justify-between text-sm font-semibold text-slate-700">
+              <span>Total Alumnos</span>
+              <span className="text-slate-900">{selectedGroup.totalStudents}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm font-semibold text-slate-700 mt-2">
+              <span>Capacidad</span>
+              <span className="text-slate-900">{selectedGroup.totalCapacity}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm font-semibold text-slate-700 mt-2">
+              <span>% Ocupación</span>
+              <span className="text-slate-900">{selectedGroup.occupancyPercentage}%</span>
+            </div>
+          </div>
+
+          <div className="mt-4 bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm">
+            <h4 className="text-sm font-bold text-slate-900 mb-4">Capacidad vs Matriculados por Grado</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {selectedGroup.gradeDetails.map((detail, idx) => {
+                const strokeColor = detail.percentage >= 90 ? '#dc2626' : detail.percentage >= 70 ? '#d97706' : '#059669';
+                const bgColor = detail.percentage >= 90 ? 'bg-red-50' : detail.percentage >= 70 ? 'bg-amber-50' : 'bg-emerald-50';
+                const textColor = detail.percentage >= 90 ? 'text-red-700' : detail.percentage >= 70 ? 'text-amber-700' : 'text-emerald-700';
+                const circumference = 2 * Math.PI * 40;
+                const strokeDashoffset = circumference - (detail.percentage / 100) * circumference;
+                
+                return (
+                  <div key={detail.gradeId} className={`${bgColor} rounded-2xl p-4 border border-slate-200/80`}>
+                    <div className="text-center mb-3">
+                      <span className="text-xs font-bold text-slate-700">{detail.gradeName}</span>
+                    </div>
+                    <div className="relative w-24 h-24 mx-auto mb-3">
+                      <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                        <circle cx="50" cy="50" r="40" fill="none" stroke="#e2e8f0" strokeWidth="8" />
+                        <circle cx="50" cy="50" r="40" fill="none" stroke={strokeColor} strokeWidth="8" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className={`text-lg font-extrabold ${textColor}`}>{detail.percentage}%</span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between text-[11px] font-semibold text-slate-600">
+                      <div className="text-center">
+                        <div className="text-slate-900 font-bold">{detail.capacity}</div>
+                        <div className="text-[10px] text-slate-500">Capacidad</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-slate-900 font-bold">{detail.enrolled}</div>
+                        <div className="text-[10px] text-slate-500">Matriculados</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </motion.div>
       )}
     </div>
   );

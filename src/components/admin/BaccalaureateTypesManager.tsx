@@ -106,17 +106,16 @@ export default function BaccalaureateTypesManager() {
   );
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <div className="bg-secondary/10 p-2 rounded-lg">
+          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+            <div className="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center">
               <GraduationCap className="w-5 h-5 text-secondary-dark" />
             </div>
             Tipos de Bachillerato
           </h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-slate-500 mt-1">
             {filtered.length} tipo(s) registrado(s)
           </p>
         </div>
@@ -129,7 +128,7 @@ export default function BaccalaureateTypesManager() {
       </div>
 
       {/* Info banner */}
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
         <div className="flex items-start gap-3">
           <GraduationCap className="w-5 h-5 text-amber-600 mt-0.5" />
           <div>
@@ -145,7 +144,7 @@ export default function BaccalaureateTypesManager() {
       {/* Toolbar */}
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
             placeholder="Buscar tipo..."
@@ -170,16 +169,16 @@ export default function BaccalaureateTypesManager() {
         )}
 
         {/* View toggle */}
-        <div className="flex border border-gray-200 rounded-lg overflow-hidden">
+        <div className="flex border border-slate-200 rounded-lg overflow-hidden">
           <button
             onClick={() => setViewMode('card')}
-            className={`p-2 transition-colors ${viewMode === 'card' ? 'bg-primary text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+            className={`p-2 transition-colors ${viewMode === 'card' ? 'bg-primary text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
           >
             <LayoutGrid className="w-4 h-4" />
           </button>
           <button
             onClick={() => setViewMode('list')}
-            className={`p-2 transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+            className={`p-2 transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
           >
             <List className="w-4 h-4" />
           </button>
@@ -193,22 +192,22 @@ export default function BaccalaureateTypesManager() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="card p-4"
+            className="card p-5"
           >
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-gray-900">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-slate-900">
                 {editingId ? 'Editar Tipo' : 'Nuevo Tipo de Bachillerato'}
               </h3>
               <button
                 onClick={() => { setShowForm(false); setEditingId(null); }}
-                className="p-1 hover:bg-gray-100 rounded-lg"
+                className="p-1 hover:bg-slate-100 rounded-lg transition-colors"
               >
-                <X className="w-4 h-4" />
+                <X className="w-4 h-4 text-slate-500" />
               </button>
             </div>
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Nombre *</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Nombre *</label>
                 <input
                   type="text"
                   value={form.name}
@@ -220,7 +219,7 @@ export default function BaccalaureateTypesManager() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Grado Máximo *</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Grado Máximo *</label>
                 <select
                   value={form.maxGrade}
                   onChange={e => setForm({ ...form, maxGrade: e.target.value })}
@@ -269,32 +268,32 @@ export default function BaccalaureateTypesManager() {
               </div>
 
               {/* Content */}
-              <div className="pt-1 pl-5">
-                <h3 className="font-semibold text-gray-900">{t.name}</h3>
-                <div className="flex items-center gap-2 mt-1.5">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700">
-                    Hasta {t.maxGrade}°
-                  </span>
-                </div>
-                <p className="text-xs text-gray-400 mt-1">Grados: 10° - {t.maxGrade}°</p>
-              </div>
+               <div className="pt-1 pl-5">
+                 <h3 className="font-semibold text-slate-900">{t.name}</h3>
+                 <div className="flex items-center gap-2 mt-1.5">
+                   <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700">
+                     Hasta {t.maxGrade}°
+                   </span>
+                 </div>
+                 <p className="text-xs text-slate-400 mt-1">Grados: 10° - {t.maxGrade}°</p>
+               </div>
 
-              {/* Actions */}
-              <div className="flex justify-end gap-1 mt-2 pt-2 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                  onClick={() => handleEdit(t)}
-                  className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-gray-100 rounded-lg text-xs font-medium text-gray-600 transition-colors"
-                >
-                  <Edit2 className="w-3.5 h-3.5" /> Editar
-                </button>
-                <button
-                  onClick={() => handleDelete(t.id)}
-                  className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-red-50 rounded-lg text-xs font-medium text-red-600 transition-colors"
-                >
-                  <Trash2 className="w-3.5 h-3.5" /> Eliminar
-                </button>
-              </div>
-            </motion.div>
+               {/* Actions */}
+               <div className="flex justify-end gap-1 mt-2 pt-2 border-t border-slate-100 opacity-0 group-hover:opacity-100 transition-opacity">
+                 <button
+                   onClick={() => handleEdit(t)}
+                   className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-slate-100 rounded-lg text-xs font-medium text-slate-600 transition-colors"
+                 >
+                   <Edit2 className="w-3.5 h-3.5" /> Editar
+                 </button>
+                 <button
+                   onClick={() => handleDelete(t.id)}
+                   className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-red-50 rounded-lg text-xs font-medium text-red-600 transition-colors"
+                 >
+                   <Trash2 className="w-3.5 h-3.5" /> Eliminar
+                 </button>
+               </div>
+             </motion.div>
           ))}
         </div>
       )}

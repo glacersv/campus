@@ -12,11 +12,27 @@ import {
   List,
   Check,
   Trash,
-  GraduationCap
+  GraduationCap,
+  Building2,
+  Baby,
+  User,
+  UserRound,
+  DoorOpen,
+  CalendarDays,
+  Clock,
+  Calendar
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getAllGrades, createGrade, updateGrade, deleteGrade, toggleGradeStatus } from '../../lib/firestore';
-import { Grade, Cycle, BaccalaureateType, CYCLE_NAMES } from '../../types';
+import {
+  getAllGrades,
+  createGrade,
+  updateGrade,
+  deleteGrade,
+  toggleGradeStatus,
+  getAllSections,
+  getAllBuildings
+} from '../../lib/firestore';
+import { Grade, Section, Building, Cycle, BaccalaureateType, CYCLE_NAMES } from '../../types';
 
 const CYCLE_COLORS: Record<Cycle, string> = {
   '1': 'bg-emerald-100 text-emerald-700',
@@ -25,20 +41,36 @@ const CYCLE_COLORS: Record<Cycle, string> = {
   '4': 'bg-amber-100 text-amber-700'
 };
 
-  const BAC_COLOR: Record<BaccalaureateType, string> = {
-    'general': 'bg-sky-100 text-sky-700',
-    'tecnico': 'bg-orange-100 text-orange-700'
-  };
+const BAC_COLOR: Record<BaccalaureateType, string> = {
+  general: 'bg-sky-100 text-sky-700',
+  tecnico: 'bg-orange-100 text-orange-700'
+};
 
-  const STATUS_COLOR: Record<Cycle, string> = {
-    '1': 'bg-emerald-100 text-emerald-700',
-    '2': 'bg-blue-100 text-blue-700',
-    '3': 'bg-purple-100 text-purple-700',
-    '4': 'bg-amber-100 text-amber-700'
-  };
+const STATUS_COLOR: Record<Cycle, string> = {
+  '1': 'bg-emerald-100 text-emerald-700',
+  '2': 'bg-blue-100 text-blue-700',
+  '3': 'bg-purple-100 text-purple-700',
+  '4': 'bg-amber-100 text-amber-700'
+};
+
+const CYCLE_HEX: Record<Cycle, string> = {
+  '1': '#10B981',
+  '2': '#3B82F6',
+  '3': '#8B5CF6',
+  '4': '#F59E0B'
+};
+
+const CYCLE_LABEL: Record<Cycle, { label: string; Icon: React.ElementType; size: string }> = {
+  '1': { label: 'Primer Ciclo', Icon: Baby, size: 'w-4 h-4' },
+  '2': { label: 'Segundo Ciclo', Icon: User, size: 'w-5 h-5' },
+  '3': { label: 'Tercer Ciclo', Icon: UserRound, size: 'w-6 h-6' },
+  '4': { label: 'Bachillerato', Icon: GraduationCap, size: 'w-7 h-7' }
+};
 
 export default function GradesManager() {
   const [grades, setGrades] = useState<Grade[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
+  const [buildings, setBuildings] = useState<Building[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -52,24 +84,36 @@ export default function GradesManager() {
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
-    try { setGrades(await getAllGrades()); } finally { setLoading(false); }
+    try {
+      const [g, s, b] = await Promise.all([getAllGrades(), getAllSections(), getAllBuildings()]);
+      setGrades(g); setSections(s); setBuildings(b);
+    } finally { setLoading(false); }
+  };
+
+  const getBuildingName = (id: string) => buildings.find((b) => b.id === id)?.name || '—';
+
+  const getGradeBuildingName = (gradeId: string) => {
+    const gradeSections = sections.filter((s) => s.gradeId === gradeId && s.buildingId);
+    if (gradeSections.length === 0) return null;
+    const buildingIds = Array.from(new Set(gradeSections.map((s) => s.buildingId!)));
+    if (buildingIds.length === 1) return getBuildingName(buildingIds[0]);
+    return `${getBuildingName(buildingIds[0])} +${buildingIds.length - 1}`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) return;
     try {
-      const gradeData: Omit<Grade, 'createdAt'> = {
-        id: editingId || form.name.trim().toLowerCase().replace(/\s+/g, '-').replace(/°/g, ''),
+      const data: Partial<Grade> = {
         name: form.name.trim(),
         cycle: form.cycle,
-        ...(form.cycle === '4' && form.baccalaureateType ? { baccalaureateType: form.baccalaureateType } : {})
+        baccalaureateType: form.baccalaureateType || undefined
       };
       if (editingId) {
-        await updateGrade(editingId, gradeData);
+        await updateGrade(editingId, data);
         toast.success('Grado actualizado correctamente');
       } else {
-        await createGrade(gradeData);
+        await createGrade({ id: `${form.cycle}-${form.name.trim().toLowerCase().replace(/\s+/g, '-')}`, name: form.name.trim(), cycle: form.cycle, baccalaureateType: form.baccalaureateType || undefined });
         toast.success('Grado creado correctamente');
       }
       setShowForm(false); setEditingId(null);
@@ -86,24 +130,14 @@ export default function GradesManager() {
 
   const handleDelete = async (id: string) => {
     if (confirm('¿Eliminar este grado?')) {
-      try {
-        await deleteGrade(id);
-        toast.success('Grado eliminado');
-        setSelected(prev => { const n = new Set(prev); n.delete(id); return n; });
-        loadData();
-      } catch (err) { toast.error('Error al eliminar grado'); }
+      try { await deleteGrade(id); toast.success('Grado eliminado'); loadData(); }
+      catch (err) { toast.error('Error al eliminar grado'); }
     }
   };
 
   const handleToggleStatus = async (id: string, current?: string) => {
-    try {
-      await toggleGradeStatus(id, current);
-      toast.success('Estado actualizado');
-      loadData();
-    } catch (err) {
-      toast.error('Error al cambiar estado');
-      console.error(err);
-    }
+    try { await toggleGradeStatus(id, current); toast.success('Estado actualizado'); loadData(); }
+    catch (err) { toast.error('Error al cambiar estado'); console.error(err); }
   };
 
   const handleBulkDelete = async () => {
@@ -119,342 +153,229 @@ export default function GradesManager() {
   };
 
   const toggleSelect = (id: string) => {
-    setSelected(prev => {
-      const n = new Set(prev);
-      if (n.has(id)) n.delete(id); else n.add(id);
-      return n;
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
     });
   };
 
   const toggleSelectAll = () => {
     if (selected.size === filtered.length) setSelected(new Set());
-    else setSelected(new Set(filtered.map(g => g.id)));
+    else setSelected(new Set(filtered.map((g) => g.id)));
   };
 
-  const filtered = grades.filter(g => {
-    const matchesSearch = `${g.name} ${CYCLE_NAMES[g.cycle]}`.toLowerCase().includes(search.toLowerCase());
+  const filtered = grades.filter((g) => {
+    const matchesSearch = g.name.toLowerCase().includes(search.toLowerCase());
     const matchesCycle = cycleFilter === 'all' || g.cycle === cycleFilter;
     const matchesStatus = statusFilter === 'all' || (g.status || 'ACTIVO') === statusFilter;
     return matchesSearch && matchesCycle && matchesStatus;
   });
 
   const cycleGroups = {
-    '1': filtered.filter(g => g.cycle === '1'),
-    '2': filtered.filter(g => g.cycle === '2'),
-    '3': filtered.filter(g => g.cycle === '3'),
-    '4': filtered.filter(g => g.cycle === '4')
+    '1': filtered.filter((g) => g.cycle === '1').sort((a, b) => extractGradeNumber(a) - extractGradeNumber(b)),
+    '2': filtered.filter((g) => g.cycle === '2').sort((a, b) => extractGradeNumber(a) - extractGradeNumber(b)),
+    '3': filtered.filter((g) => g.cycle === '3').sort((a, b) => extractGradeNumber(a) - extractGradeNumber(b)),
+    '4': filtered.filter((g) => g.cycle === '4').sort((a, b) => sortBaccalaureate(a, b))
   };
 
-  if (loading) return (
-    <div className="flex justify-center py-12">
-      <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
+  function extractGradeNumber(grade: Grade): number {
+    const match = grade.name.match(/(\d+)/);
+    return match ? parseInt(match[1]) : 0;
+  }
+
+  function sortBaccalaureate(a: Grade, b: Grade): number {
+    const aType = a.baccalaureateType === 'tecnico' ? 1 : 0;
+    const bType = b.baccalaureateType === 'tecnico' ? 1 : 0;
+    if (aType !== bType) return aType - bType;
+    return extractGradeNumber(a) - extractGradeNumber(b);
+  }
+
+  if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <div className="bg-primary/10 p-2 rounded-lg">
-              <BookOpen className="w-5 h-5 text-primary" />
-            </div>
-            Grados
-          </h2>
-          <p className="text-sm text-gray-500 mt-1">
-            {filtered.length} grado(s) registrado(s)
-          </p>
-        </div>
-        <button
-          onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', cycle: '1', baccalaureateType: '' }); }}
-          className="btn-primary"
-        >
-          <Plus className="w-4 h-4" /> Nuevo Grado
-        </button>
-      </div>
-
-      {/* Toolbar */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Buscar grado..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="input pl-9"
-          />
-        </div>
-
-        {/* Cycle filter pills */}
-        <div className="flex gap-1.5">
-          <button
-            onClick={() => setCycleFilter('all')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${cycleFilter === 'all' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-          >
-            Todos
-          </button>
-          {(Object.keys(CYCLE_NAMES) as Cycle[]).map(c => (
-            <button
-              key={c}
-              onClick={() => setCycleFilter(c)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${cycleFilter === c ? CYCLE_COLORS[c] : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-            >
-              {CYCLE_NAMES[c]}
-            </button>
-          ))}
-        </div>
-
-        {/* Bulk actions */}
-        {selected.size > 0 && (
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-            className="flex items-center gap-2 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
-            <span className="text-sm text-red-700 font-medium">{selected.size} seleccionado(s)</span>
-            <button onClick={handleBulkDelete} className="p-1.5 hover:bg-red-100 rounded-lg transition-colors">
-              <Trash className="w-4 h-4 text-red-600" />
-            </button>
-            <button onClick={() => setSelected(new Set())} className="p-1.5 hover:bg-red-100 rounded-lg transition-colors">
-              <X className="w-4 h-4 text-red-600" />
-            </button>
-          </motion.div>
-        )}
-
-        {/* Status filter */}
-        <div className="flex gap-1.5 ml-auto">
-          <button onClick={() => setStatusFilter('all')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${statusFilter === 'all' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Todos</button>
-          <button onClick={() => setStatusFilter('ACTIVO')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${statusFilter === 'ACTIVO' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Activos</button>
-          <button onClick={() => setStatusFilter('INACTIVO')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${statusFilter === 'INACTIVO' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Inactivos</button>
-        </div>
-
-        {/* View toggle */}
-        <div className="flex border border-gray-200 rounded-lg overflow-hidden">
-          <button
-            onClick={() => setViewMode('card')}
-            className={`p-2 transition-colors ${viewMode === 'card' ? 'bg-primary text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
-          >
-            <LayoutGrid className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`p-2 transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
-          >
-            <List className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Form */}
-      <AnimatePresence>
-        {showForm && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="card p-4"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-gray-900">
-                {editingId ? 'Editar Grado' : 'Nuevo Grado'}
-              </h3>
-              <button
-                onClick={() => { setShowForm(false); setEditingId(null); }}
-                className="p-1 hover:bg-gray-100 rounded-lg"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Nombre del Grado *</label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={e => setForm({ ...form, name: e.target.value })}
-                  placeholder="Ej: 10° Bachillerato General"
-                  className="input"
-                  autoFocus
-                  required
-                />
+    <div className="grid grid-cols-12 gap-6">
+      {/* Main content - 8 columns */}
+      <div className="col-span-8 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <BookOpen className="w-5 h-5 text-primary" />
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Ciclo *</label>
-                <select
-                  value={form.cycle}
-                  onChange={e => setForm({ ...form, cycle: e.target.value as Cycle, baccalaureateType: e.target.value !== '4' ? '' : form.baccalaureateType })}
-                  className="input"
-                  required
-                >
-                  {(Object.keys(CYCLE_NAMES) as Cycle[]).map(c => (
-                    <option key={c} value={c}>{CYCLE_NAMES[c]}</option>
-                  ))}
-                </select>
+              Grados
+            </h2>
+            <p className="text-sm text-slate-500 mt-1">{filtered.length} grado(s) registrado(s)</p>
+          </div>
+          <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', cycle: '1', baccalaureateType: '' }); }} className="btn-primary">
+            <Plus className="w-4 h-4" /> Nuevo Grado
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input type="text" placeholder="Buscar grado..." value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-9" />
+          </div>
+          <div className="flex gap-1.5">
+            <button onClick={() => setCycleFilter('all')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${cycleFilter === 'all' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>Todos</button>
+            {(Object.keys(CYCLE_NAMES) as Cycle[]).map((c) => (
+              <button key={c} onClick={() => setCycleFilter(c)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${cycleFilter === c ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{CYCLE_NAMES[c]}</button>
+            ))}
+          </div>
+          <div className="flex gap-1.5">
+            <button onClick={() => setStatusFilter('all')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${statusFilter === 'all' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>Todos</button>
+            <button onClick={() => setStatusFilter('ACTIVO')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${statusFilter === 'ACTIVO' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>Activos</button>
+            <button onClick={() => setStatusFilter('INACTIVO')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${statusFilter === 'INACTIVO' ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>Inactivos</button>
+          </div>
+          {selected.size > 0 && (
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-2 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
+              <span className="text-sm text-red-700 font-medium">{selected.size} seleccionado(s)</span>
+              <button onClick={handleBulkDelete} className="p-1.5 hover:bg-red-100 rounded-lg"><Trash className="w-4 h-4 text-red-600" /></button>
+              <button onClick={() => setSelected(new Set())} className="p-1.5 hover:bg-red-100 rounded-lg"><X className="w-4 h-4 text-red-600" /></button>
+            </motion.div>
+          )}
+          <div className="flex border border-slate-200 rounded-lg overflow-hidden">
+            <button onClick={() => setViewMode('card')} className={`p-2 transition-colors ${viewMode === 'card' ? 'bg-primary text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}><LayoutGrid className="w-4 h-4" /></button>
+            <button onClick={() => setViewMode('list')} className={`p-2 transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}><List className="w-4 h-4" /></button>
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {showForm && (
+            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="card p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-slate-900">{editingId ? 'Editar Grado' : 'Nuevo Grado'}</h3>
+                <button onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1 hover:bg-slate-100 rounded-lg transition-colors"><X className="w-4 h-4 text-slate-500" /></button>
               </div>
-              {form.cycle === '4' && (
+              <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Tipo de Bachillerato *</label>
-                  <select
-                    value={form.baccalaureateType}
-                    onChange={e => setForm({ ...form, baccalaureateType: e.target.value as BaccalaureateType })}
-                    className="input"
-                    required
-                  >
-                    <option value="">Seleccionar tipo</option>
-                    <option value="general">General (hasta 11°)</option>
-                    <option value="tecnico">Técnico (hasta 12°)</option>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Nombre *</label>
+                  <input type="text" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ej: 10mo Grado" className="input" autoFocus />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Ciclo *</label>
+                  <select value={form.cycle} onChange={(e) => setForm({ ...form, cycle: e.target.value as Cycle })} className="input">
+                    {(Object.keys(CYCLE_NAMES) as Cycle[]).map((c) => (
+                      <option key={c} value={c}>{CYCLE_NAMES[c]}</option>
+                    ))}
                   </select>
                 </div>
-              )}
-              <div className={`flex justify-end gap-2 ${form.cycle === '4' ? 'col-span-3' : 'col-span-2'}`}>
-                <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="btn-secondary">
-                  Cancelar
-                </button>
-                <button type="submit" className="btn-primary">
-                  <Save className="w-4 h-4" /> {editingId ? 'Actualizar' : 'Crear'}
-                </button>
-              </div>
-            </form>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Tipo de Bachillerato</label>
+                  <select value={form.baccalaureateType} onChange={(e) => setForm({ ...form, baccalaureateType: e.target.value as '' | BaccalaureateType })} className="input">
+                    <option value="">Ninguno</option>
+                    <option value="general">General</option>
+                    <option value="tecnico">Técnico</option>
+                  </select>
+                </div>
+                <div className="md:col-span-3 flex justify-end gap-2 pt-2">
+                  <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="btn-secondary">Cancelar</button>
+                  <button type="submit" className="btn-primary"><Save className="w-4 h-4" /> {editingId ? 'Actualizar' : 'Crear'}</button>
+                </div>
+              </form>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      {/* Card View - Grouped by Cycle */}
       {viewMode === 'card' && cycleFilter === 'all' ? (
-    <div className="space-y-4">
-          {(Object.keys(CYCLE_NAMES) as Cycle[]).map(c => {
+        <div className="space-y-4">
+          {(Object.keys(CYCLE_NAMES) as Cycle[]).map((c) => {
             const items = cycleGroups[c];
             if (items.length === 0) return null;
             return (
               <div key={c}>
                 <div className="flex items-center gap-2 mb-3">
-                  <span className={`px-2.5 py-1 rounded-md text-xs font-bold ${CYCLE_COLORS[c]}`}>
-                    {CYCLE_NAMES[c]}
-                  </span>
-                  <span className="text-xs text-gray-400">({items.length})</span>
+                  <span className={`px-2.5 py-1 rounded-md text-xs font-bold ${CYCLE_COLORS[c]}`}>{CYCLE_NAMES[c]}</span>
+                  <span className="text-xs text-slate-400">({items.length})</span>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                  {items.map((g, i) => (
-                    <GradeCard
-                      key={g.id}
-                      grade={g}
-                      index={i}
-                      selected={selected.has(g.id)}
-                      onToggleSelect={() => toggleSelect(g.id)}
-                      onEdit={() => handleEdit(g)}
-                      onDelete={() => handleDelete(g.id)}
-                      onToggleStatus={() => handleToggleStatus(g.id, g.status)}
-                    />
-                  ))}
+                <div className="grid grid-cols-3 gap-3">
+                  {items.map((g, i) => {
+                    const sectionsCount = sections.filter((s) => s.gradeId === g.id).length;
+                    const buildingName = getGradeBuildingName(g.id);
+                    return (
+                      <GradeCard
+                        key={g.id}
+                        grade={g}
+                        index={i}
+                        sectionsCount={sectionsCount}
+                        buildingName={buildingName}
+                        selected={selected.has(g.id)}
+                        onToggleSelect={() => toggleSelect(g.id)}
+                        onEdit={() => handleEdit(g)}
+                        onDelete={() => handleDelete(g.id)}
+                        onToggleStatus={() => handleToggleStatus(g.id, g.status)}
+                      />
+                    );
+                  })}
                 </div>
               </div>
             );
           })}
         </div>
       ) : viewMode === 'card' ? (
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-          {filtered.map((g, i) => (
-            <GradeCard
-              key={g.id}
-              grade={g}
-              index={i}
-              selected={selected.has(g.id)}
-              onToggleSelect={() => toggleSelect(g.id)}
-              onEdit={() => handleEdit(g)}
-              onDelete={() => handleDelete(g.id)}
-              onToggleStatus={() => handleToggleStatus(g.id, g.status)}
-            />
-          ))}
+        <div className="grid grid-cols-3 gap-3">
+          {filtered.map((g, i) => {
+            const sectionsCount = sections.filter((s) => s.gradeId === g.id).length;
+            const buildingName = getGradeBuildingName(g.id);
+            return (
+              <GradeCard
+                key={g.id}
+                grade={g}
+                index={i}
+                sectionsCount={sectionsCount}
+                buildingName={buildingName}
+                selected={selected.has(g.id)}
+                onToggleSelect={() => toggleSelect(g.id)}
+                onEdit={() => handleEdit(g)}
+                onDelete={() => handleDelete(g.id)}
+                onToggleStatus={() => handleToggleStatus(g.id, g.status)}
+              />
+            );
+          })}
         </div>
       ) : (
-        /* List View */
         <div className="card overflow-hidden">
           <table className="w-full">
             <thead className="table-header">
               <tr>
                 <th className="w-8 px-3 py-2">
-                  <button
-                    onClick={toggleSelectAll}
-                    className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
-                      selected.size === filtered.length && filtered.length > 0
-                        ? 'bg-primary border-primary text-white'
-                        : 'border-gray-300 hover:border-primary'
-                    }`}
-                  >
+                  <button onClick={toggleSelectAll} className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.size === filtered.length && filtered.length > 0 ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'}`}>
                     {selected.size === filtered.length && filtered.length > 0 && <Check className="w-2.5 h-2.5" />}
                   </button>
                 </th>
-                <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Grado</th>
-                <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Ciclo</th>
-                <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Tipo</th>
-                <th className="text-center px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Estado</th>
-                <th className="text-right px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Acciones</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Grado</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Ciclo</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Tipo</th>
+                <th className="text-center px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Estado</th>
+                <th className="text-right px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((g, i) => (
-                <motion.tr
-                  key={g.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: i * 0.02 }}
-                  className={`table-row ${selected.has(g.id) ? 'bg-primary/5' : ''}`}
-                >
+                <motion.tr key={g.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }} className={`table-row ${selected.has(g.id) ? 'bg-primary/5' : ''}`}>
                   <td className="px-3 py-2">
-                    <button
-                      onClick={() => toggleSelect(g.id)}
-                      className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
-                        selected.has(g.id)
-                          ? 'bg-primary border-primary text-white'
-                          : 'border-gray-300 hover:border-primary'
-                      }`}
-                    >
+                    <button onClick={() => toggleSelect(g.id)} className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.has(g.id) ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'}`}>
                       {selected.has(g.id) && <Check className="w-2.5 h-2.5" />}
                     </button>
                   </td>
-                  <td className="px-3 py-2">
-                    <span className="font-medium text-gray-900">{g.name}</span>
-                  </td>
-                  <td className="px-3 py-2">
-                    <span className={`px-2 py-0.5 rounded text-xs font-semibold ${CYCLE_COLORS[g.cycle]}`}>
-                      {CYCLE_NAMES[g.cycle]}
-                    </span>
-                  </td>
+                  <td className="px-3 py-2"><span className="font-medium text-slate-900">{g.name}</span></td>
+                  <td className="px-3 py-2"><span className={`px-2 py-0.5 rounded text-xs font-semibold ${CYCLE_COLORS[g.cycle]}`}>{CYCLE_NAMES[g.cycle]}</span></td>
                   <td className="px-3 py-2">
                     {g.baccalaureateType ? (
-                      <span className={`px-2 py-0.5 rounded text-xs font-semibold ${BAC_COLOR[g.baccalaureateType]}`}>
-                        {g.baccalaureateType === 'general' ? 'General' : 'Técnico'}
-                      </span>
-                    ) : (
-                      <span className="text-gray-400 text-xs">—</span>
-                    )}
+                      <span className={`px-2 py-0.5 rounded text-xs font-semibold ${BAC_COLOR[g.baccalaureateType]}`}>{g.baccalaureateType === 'general' ? 'General' : 'Técnico'}</span>
+                    ) : (<span className="text-slate-400 text-xs">—</span>)}
                   </td>
                   <td className="px-3 py-2 text-center">
-                    <button
-                      onClick={() => handleToggleStatus(g.id, g.status)}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${
-                        (g.status || 'ACTIVO') === 'ACTIVO'
-                          ? `${STATUS_COLOR[g.cycle]} hover:bg-gray-200 hover:text-gray-600`
-                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                      }`}
-                    >
+                    <button onClick={() => handleToggleStatus(g.id, g.status)} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${(g.status || 'ACTIVO') === 'ACTIVO' ? `${STATUS_COLOR[g.cycle]} hover:bg-gray-200 hover:text-slate-600` : 'bg-gray-100 text-slate-500 hover:bg-gray-200'}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${(g.status || 'ACTIVO') === 'ACTIVO' ? 'bg-current' : 'bg-gray-400'}`} />
                       {(g.status || 'ACTIVO') === 'ACTIVO' ? 'ACTIVO' : 'INACTIVO'}
                     </button>
                   </td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex justify-end gap-1">
-                      <button
-                        onClick={() => handleEdit(g)}
-                        className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-                      >
-                        <Edit2 className="w-4 h-4 text-gray-500" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(g.id)}
-                        className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </button>
+                      <button onClick={() => handleEdit(g)} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"><Edit2 className="w-4 h-4 text-slate-500" /></button>
+                      <button onClick={() => handleDelete(g.id)} className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4 text-red-500" /></button>
                     </div>
                   </td>
                 </motion.tr>
@@ -464,106 +385,142 @@ export default function GradesManager() {
         </div>
       )}
 
-      {/* Empty state */}
       {filtered.length === 0 && (
-        <div className="text-center py-12 text-gray-400">
+        <div className="text-center py-12 text-slate-400">
           <BookOpen className="w-10 h-10 mx-auto mb-2 opacity-50" />
           <p className="text-sm">No se encontraron grados</p>
         </div>
       )}
+      </div>
+
+      {/* Sidebar derecha - 4 columnas */}
+      <div className="col-span-4 space-y-4">
+        <SideCards />
+      </div>
     </div>
   );
 }
 
-// Grade Card component
-function GradeCard({ grade, index, selected, onToggleSelect, onEdit, onDelete, onToggleStatus }: {
+function SideCards() {
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const dateStr = now.toLocaleDateString('es-SV', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const timeStr = now.toLocaleTimeString('es-SV', { hour: '2-digit', minute: '2-digit' });
+  const dayName = now.toLocaleDateString('es-SV', { weekday: 'long' });
+
+  return (
+    <div className="space-y-4">
+      {/* Fecha actual */}
+      <div className="bg-emerald-50 rounded-2xl p-5 border border-emerald-100">
+        <div className="flex items-center gap-2 mb-3">
+          <CalendarDays className="w-5 h-5 text-emerald-600" />
+          <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Fecha Actual</span>
+        </div>
+        <p className="text-2xl font-bold text-slate-900 font-display tracking-tight">{dateStr}</p>
+        <p className="text-xs text-slate-500 mt-1">{dayName}</p>
+      </div>
+
+      {/* Hora actual */}
+      <div className="bg-white rounded-2xl p-5 border border-slate-200/80">
+        <div className="flex items-center gap-2 mb-3">
+          <Clock className="w-5 h-5 text-primary" />
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Hora Actual</span>
+        </div>
+        <p className="text-3xl font-bold text-slate-900 font-display tracking-tight">{timeStr}</p>
+      </div>
+
+      {/* Info rápida - Total grados activos */}
+      <div className="bg-primary text-white rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <BookOpen className="w-5 h-5 text-white/80" />
+          <span className="text-xs font-bold text-white/80 uppercase tracking-wider">Grados Activos</span>
+        </div>
+        <p className="text-4xl font-bold font-display tracking-tight">12</p>
+        <p className="text-xs text-white/70 mt-1"> de 14 totales</p>
+      </div>
+
+      {/* Próximo evento / recordatorio */}
+      <div className="bg-white rounded-2xl p-5 border border-slate-200/80">
+        <div className="flex items-center gap-2 mb-3">
+          <Calendar className="w-5 h-5 text-secondary-dark" />
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Próximo Evento</span>
+        </div>
+        <p className="text-sm font-bold text-slate-900">Reunión de Docentes</p>
+        <p className="text-xs text-slate-500 mt-1">Viernes, 25 de Julio</p>
+        <p className="text-xs text-slate-400 mt-0.5">2:00 PM - 4:00 PM</p>
+      </div>
+    </div>
+  );
+}
+
+function GradeCard({ grade, index, sectionsCount, buildingName, selected, onToggleSelect, onEdit, onDelete, onToggleStatus }: {
   grade: Grade;
   index: number;
+  sectionsCount: number;
+  buildingName: string | null;
   selected: boolean;
   onToggleSelect: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onToggleStatus: () => void;
 }) {
-  const CYCLE_HEX: Record<Cycle, string> = {
-    '1': '#10B981',
-    '2': '#3B82F6',
-    '3': '#8B5CF6',
-    '4': '#F59E0B'
-  };
-
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.03 }}
-      className={`card card-hover p-3 group relative ${selected ? 'ring-2 ring-primary border-primary' : ''}`}
-    >
-      {/* Hover accent bar */}
-      <div className="absolute top-0 left-0 right-0 h-1 rounded-t-lg opacity-0 group-hover:opacity-100 transition-all duration-300"
-        style={{ backgroundColor: CYCLE_HEX[grade.cycle] }} />
-      <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-[0.04] transition-all duration-300"
-        style={{ backgroundColor: CYCLE_HEX[grade.cycle] }} />
-
-      {/* Checkbox */}
-      <div className="absolute top-2.5 left-2.5">
-        <button
-          onClick={onToggleSelect}
-          className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
-            selected ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'
-          }`}
-        >
-          {selected && <Check className="w-2.5 h-2.5" />}
-        </button>
-      </div>
-
-      {/* Content */}
-      <div className="relative pt-1 pl-5">
-        <div className="flex items-center gap-2 flex-wrap">
-          <h3 className="font-semibold text-gray-900">{grade.name}</h3>
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }} className={`bg-white rounded-2xl p-5 border border-slate-200/80 transition-all ${selected ? 'ring-2 ring-primary border-primary' : 'hover:shadow-md'}`}>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-700 border border-slate-200 bg-white">
+            <DoorOpen className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 leading-tight">{grade.name}</h3>
+          </div>
         </div>
-        <div className="flex items-center gap-2 mt-1.5">
-          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${CYCLE_COLORS[grade.cycle]}`}>
-            {CYCLE_NAMES[grade.cycle]}
-          </span>
-          {grade.baccalaureateType && (
-            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${BAC_COLOR[grade.baccalaureateType]}`}>
-              {grade.baccalaureateType === 'general' ? 'General' : 'Técnico'}
-            </span>
-          )}
-          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-            (grade.status || 'ACTIVO') === 'ACTIVO' ? STATUS_COLOR[grade.cycle] : 'bg-gray-100 text-gray-500'
-          }`}>
+        <div className="flex items-center gap-2">
+          <button onClick={onToggleStatus} className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-colors ${(grade.status || 'ACTIVO') === 'ACTIVO' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
             {(grade.status || 'ACTIVO') === 'ACTIVO' ? 'Activo' : 'Inactivo'}
-          </span>
+          </button>
+          <button className="p-1 hover:bg-slate-100 rounded-lg transition-colors"><span className="text-slate-400 text-xs font-bold tracking-widest">•••</span></button>
         </div>
-        {grade.schoolYear && (
-          <p className="text-[10px] text-gray-400 mt-1">Año escolar: {grade.schoolYear}</p>
-        )}
       </div>
 
-      {/* Actions */}
-      <div className="relative flex justify-end gap-1 mt-2 pt-2 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button
-          onClick={onToggleStatus}
-          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-            (grade.status || 'ACTIVO') === 'ACTIVO' ? 'hover:bg-gray-100 text-gray-500' : 'hover:bg-gray-100 text-gray-600'
-          }`}
-        >
-          <Check className="w-3.5 h-3.5" /> {(grade.status || 'ACTIVO') === 'ACTIVO' ? 'Desactivar' : 'Activar'}
-        </button>
-        <button
-          onClick={onEdit}
-          className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-gray-100 rounded-lg text-xs font-medium text-gray-600 transition-colors"
-        >
-          <Edit2 className="w-3.5 h-3.5" /> Editar
-        </button>
-        <button
-          onClick={onDelete}
-          className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-red-50 rounded-lg text-xs font-medium text-red-600 transition-colors"
-        >
-          <Trash2 className="w-3.5 h-3.5" /> Eliminar
-        </button>
+      <div className="mb-5">
+        <div className="flex items-baseline gap-1">
+          <span className="text-3xl font-bold text-slate-900 font-display tracking-tight">{sectionsCount ?? '—'}</span>
+          <span className="text-sm text-slate-400 font-medium">secciones</span>
+        </div>
+        <p className="text-[11px] text-slate-400 mt-1">{grade.baccalaureateType ? (grade.baccalaureateType === 'general' ? 'Bachillerato General' : 'Bachillerato Técnico') : 'Educación Básica'}</p>
+      </div>
+
+      <div className="mb-4">
+        <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
+          <Building2 className="w-4 h-4 text-slate-400" />
+          {buildingName ? (<span className="truncate">{buildingName}</span>) : (<span className="text-slate-400">Sin edificio asignado</span>)}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+        <div className="flex items-center gap-2">
+          {(() => {
+            const cycle = grade.cycle as Cycle;
+            const cfg = CYCLE_LABEL[cycle] || CYCLE_LABEL['1'];
+            const Icon = cfg.Icon;
+            return (
+              <>
+                <Icon className={`${cfg.size} text-slate-500`} />
+                <span className="text-[11px] font-semibold text-slate-600">{cfg.label}</span>
+              </>
+            );
+          })()}
+        </div>
+        <div className="flex gap-1">
+          <button onClick={onEdit} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors" title="Editar"><Edit2 className="w-3.5 h-3.5 text-slate-500" /></button>
+          <button onClick={onDelete} className="p-1.5 hover:bg-red-50 rounded-lg transition-colors" title="Eliminar"><Trash2 className="w-3.5 h-3.5 text-red-500" /></button>
+        </div>
       </div>
     </motion.div>
   );

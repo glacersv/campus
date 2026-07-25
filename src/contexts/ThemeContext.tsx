@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-export type ThemePalette = 'salesiano' | 'oceano' | 'violeta' | 'noche';
+export type ThemePalette = 'salesiano' | 'oceano' | 'violeta' | 'noche' | 'donezo';
 
 interface ThemePaletteColors {
   primary: string;
@@ -34,6 +34,11 @@ const PALETTES: Record<ThemePalette, ThemePaletteColors> = {
     primary: '#1E293B', primaryDark: '#0F172A', primaryLight: '#F1F5F9',
     secondary: '#F59E0B', secondaryDark: '#D97706', accent: '#3B82F6', danger: '#EF4444',
     label: 'Noche', icon: '🌙'
+  },
+  donezo: {
+    primary: '#25855A', primaryDark: '#124D37', primaryLight: '#48BB78',
+    secondary: '#FAB700', secondaryDark: '#D99E00', accent: '#0D71B9', danger: '#D32F2F',
+    label: 'Donezo', icon: '✨'
   }
 };
 

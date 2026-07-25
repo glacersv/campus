@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
-import Login from './components/Login';
+import Login from './components/shared/Login';
 import AdminLayout from './components/admin/AdminLayout';
 import AdminDashboard from './components/admin/AdminDashboard';
 import TeachersManager from './components/admin/TeachersManager';
@@ -13,15 +13,47 @@ import StudentsManager from './components/admin/StudentsManager';
 import BaccalaureateTypesManager from './components/admin/BaccalaureateTypesManager';
 import BuildingsManager from './components/admin/BuildingsManager';
 import GradeSectionAssignment from './components/admin/GradeSectionAssignment';
-import TeacherDashboard from './components/TeacherDashboard';
-import Dashboard from './components/Dashboard';
-import { Teacher } from './types';
+import RolesManager from './components/admin/RolesManager';
+import RoleLayout from './components/shared/RoleLayout';
+import CoordinacionDashboard from './components/coordinacion/CoordinacionDashboard';
+import RegistroDashboard from './components/registro/RegistroDashboard';
+import EnfermeriaDashboard from './components/enfermeria/EnfermeriaDashboard';
+import PsicopedagogiaDashboard from './components/psicopedagogia/PsicopedagogiaDashboard';
+import TeacherDashboard from './components/docente/TeacherDashboard';
+import StudentDashboard from './components/alumno/StudentDashboard';
+import Dashboard from './components/docente/Dashboard';
+import TeacherProjects from './components/docente/TeacherProjects';
+import StudentProjects from './components/alumno/StudentProjects';
+import { Teacher, SystemModuleId } from './types';
 import { getTeacher, seedInitialData } from './lib/firestore';
 
 import { Routes, Route, Navigate } from 'react-router-dom';
 
+// Icons for role layouts
+import { ClipboardCheck, BookOpen, School, Calendar, CalendarDays, Bell, Medal } from 'lucide-react';
+
+const roleModuleIcons: Record<SystemModuleId, React.ElementType> = {
+  formacion: ClipboardCheck,
+  notas: BookOpen,
+  clase: School,
+  horario: Calendar,
+  eventos: CalendarDays,
+  avisos: Bell,
+  proyectos: Medal,
+};
+
+const roleModuleColors: Record<SystemModuleId, string> = {
+  formacion: 'bg-primary',
+  notas: 'bg-accent',
+  clase: 'bg-secondary',
+  horario: 'bg-purple-500',
+  eventos: 'bg-emerald-500',
+  avisos: 'bg-amber-500',
+  proyectos: 'bg-orange-500',
+};
+
 function AppContent() {
-  const { firebaseUser, userProfile, loading, signOut } = useAuth();
+  const { firebaseUser, userProfile, loading, signOut, userRole, hasPermission } = useAuth();
   const [teacherData, setTeacherData] = useState<Teacher | null>(null);
 
   useEffect(() => {
@@ -48,8 +80,18 @@ function AppContent() {
     return <Login />;
   }
 
+  const getModulesForRole = (role: string): SystemModuleId[] => {
+    const moduleMap: Record<string, SystemModuleId[]> = {
+      coordinacion: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'],
+      registro_academico: ['notas', 'horario'],
+      enfermeria: ['formacion', 'avisos'],
+      psicopedagogio: ['formacion', 'notas', 'avisos'],
+    };
+    return moduleMap[role] || [];
+  };
+
   // Admin view
-  if (userProfile.role === 'admin') {
+  if (userRole === 'admin') {
     return (
       <Routes>
         <Route path="/admin" element={<AdminLayout />}>
@@ -63,28 +105,106 @@ function AppContent() {
           <Route path="grade-section-assignment" element={<GradeSectionAssignment />} />
           <Route path="teachers" element={<TeachersManager />} />
           <Route path="students" element={<StudentsManager />} />
+          <Route path="roles" element={<RolesManager />} />
         </Route>
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>
     );
   }
 
+  // Coordinacion view
+  if (userRole === 'coordinacion') {
+    const modules = getModulesForRole('coordinacion');
+    return (
+      <Routes>
+        <Route path="/coordinacion" element={
+          <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
+            <CoordinacionDashboard />
+          </RoleLayout>
+        } />
+        <Route path="*" element={<Navigate to="/coordinacion" replace />} />
+      </Routes>
+    );
+  }
+
+  // Registro academico view
+  if (userRole === 'registro_academico') {
+    const modules = getModulesForRole('registro_academico');
+    return (
+      <Routes>
+        <Route path="/registro" element={
+          <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
+            <RegistroDashboard />
+          </RoleLayout>
+        } />
+        <Route path="*" element={<Navigate to="/registro" replace />} />
+      </Routes>
+    );
+  }
+
+  // Enfermeria view
+  if (userRole === 'enfermeria') {
+    const modules = getModulesForRole('enfermeria');
+    return (
+      <Routes>
+        <Route path="/enfermeria" element={
+          <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
+            <EnfermeriaDashboard />
+          </RoleLayout>
+        } />
+        <Route path="*" element={<Navigate to="/enfermeria" replace />} />
+      </Routes>
+    );
+  }
+
+  // Psicopedagogia view
+  if (userRole === 'psicopedagogio') {
+    const modules = getModulesForRole('psicopedagogio');
+    return (
+      <Routes>
+        <Route path="/psicopedagogia" element={
+          <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
+            <PsicopedagogiaDashboard />
+          </RoleLayout>
+        } />
+        <Route path="*" element={<Navigate to="/psicopedagogia" replace />} />
+      </Routes>
+    );
+  }
+
   // Teacher view
+  if (userRole === 'docente') {
+    return (
+      <Routes>
+        <Route path="/" element={
+          <TeacherDashboard
+            teacherName={userProfile.displayName}
+            onLogout={signOut}
+          />
+        } />
+        <Route path="/attendance" element={
+          teacherData ? (
+            <Dashboard teacher={teacherData} onLogout={signOut} />
+          ) : (
+            <div className="min-h-screen flex justify-center items-center">Cargando datos del docente...</div>
+          )
+        } />
+        <Route path="/proyectos" element={<TeacherProjects />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    );
+  }
+
+  // Student view (alumno)
   return (
     <Routes>
       <Route path="/" element={
-        <TeacherDashboard
-          teacherName={userProfile.displayName}
+        <StudentDashboard
+          studentName={userProfile.displayName}
           onLogout={signOut}
         />
       } />
-      <Route path="/attendance" element={
-        teacherData ? (
-          <Dashboard teacher={teacherData} onLogout={signOut} />
-        ) : (
-          <div className="min-h-screen flex justify-center items-center">Cargando datos del docente...</div>
-        )
-      } />
+      <Route path="/estudiante" element={<StudentProjects />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

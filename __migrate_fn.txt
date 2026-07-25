@@ -1,0 +1,28 @@
+export async function migrateStudentHistory(): Promise<void> {
+  const studentsSnap = await getDocs(collection(db, STUDENTS_COLLECTION));
+  const updates: Promise<void>[] = [];
+
+  studentsSnap.docs.forEach((d) => {
+    const data = d.data() as Student;
+    const ref = d.ref;
+
+    if (data.enrollmentHistory && data.enrollmentHistory.length > 0) {
+      return;
+    }
+
+    const enrollmentYear = data.enrollmentYear || new Date().getFullYear();
+    const newRecord = {
+      year: enrollmentYear,
+      gradeId: data.gradeId,
+      sectionId: data.sectionId,
+      status: 'EN_CURSO' as const
+    };
+
+    updates.push(updateDoc(ref, {
+      enrollmentHistory: [newRecord],
+      updatedAt: serverTimestamp()
+    }));
+  });
+
+  await Promise.all(updates);
+}

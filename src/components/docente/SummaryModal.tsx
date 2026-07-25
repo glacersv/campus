@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, FileSpreadsheet, FileJson, CheckCircle2, RefreshCw, Check, CloudLightning, Loader2, Database } from 'lucide-react';
-import { Student, Teacher, Grade, StudentSessionState } from '../types';
-import { saveAttendanceReport, type AttendanceReportData } from '../firebase';
+import { Student, Teacher, Grade, StudentSessionState } from '../../types';
+import { saveAttendanceReport, type AttendanceReportData } from '../../firebase';
 import { toast } from 'sonner';
 
 interface SummaryModalProps {
@@ -415,7 +415,7 @@ export default function SummaryModal({
             <div className="flex gap-3">
               <button
                 onClick={handleExportCSV}
-                className="py-2.5 px-4 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 transition-colors"
+                className="py-2.5 px-4 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-full text-xs flex items-center gap-1.5 transition-colors"
               >
                 <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
                 Descargar CSV
@@ -423,9 +423,9 @@ export default function SummaryModal({
 
               <button
                 onClick={handleExportJSON}
-                className="py-2.5 px-4 bg-salesiano-blue hover:bg-blue-700 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 transition-colors"
+                className="py-2.5 px-4 bg-primary hover:bg-primary-dark text-white font-bold rounded-full text-xs flex items-center gap-1.5 transition-colors"
               >
-                <FileJson className="w-4 h-4 text-blue-200" />
+                <FileJson className="w-4 h-4 text-white/80" />
                 Descargar JSON
               </button>
             </div>

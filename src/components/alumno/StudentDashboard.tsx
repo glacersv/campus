@@ -8,26 +8,31 @@ import {
   CalendarDays,
   Bell,
   Lock,
-  LogOut
+  LogOut,
+  Users,
+  Medal,
+  FolderOpen,
+  Plus,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import InstitutionLogo from './InstitutionLogo';
+import InstitutionLogo from '../shared/InstitutionLogo';
 
-interface TeacherDashboardProps {
-  teacherName: string;
+interface StudentDashboardProps {
+  studentName: string;
   onLogout: () => void;
 }
 
 const modules = [
   { id: 'formacion', label: 'Formación Buenos Días', desc: 'Registro de asistencia y disciplina', icon: ClipboardCheck, color: 'bg-primary', active: true },
-  { id: 'notas', label: 'Notas', desc: 'Calificaciones de alumnos', icon: BookOpen, color: 'bg-accent', active: false },
+  { id: 'notas', label: 'Notas', desc: 'Calificaciones y evaluaciones', icon: BookOpen, color: 'bg-accent', active: false },
   { id: 'clase', label: 'Clase', desc: 'Control de clases del día', icon: School, color: 'bg-secondary', active: false },
   { id: 'horario', label: 'Horario', desc: 'Horarios de clases', icon: Calendar, color: 'bg-purple-500', active: false },
   { id: 'eventos', label: 'Eventos', desc: 'Eventos del colegio', icon: CalendarDays, color: 'bg-emerald-500', active: false },
   { id: 'avisos', label: 'Avisos', desc: 'Comunicados y anuncios', icon: Bell, color: 'bg-amber-500', active: false },
+  { id: 'proyectos', label: 'Semana de la Juventud', desc: 'Sube y gestiona tu proyecto', icon: Medal, color: 'bg-orange-500', active: true, to: '/estudiante' },
 ];
 
-export default function TeacherDashboard({ teacherName, onLogout }: TeacherDashboardProps) {
+export default function StudentDashboard({ studentName, onLogout }: StudentDashboardProps) {
   const navigate = useNavigate();
   const today = new Date();
   const dayOfWeek = today.getDay();
@@ -41,19 +46,19 @@ export default function TeacherDashboard({ teacherName, onLogout }: TeacherDashb
           <div className="flex items-center gap-3">
             <InstitutionLogo className="w-10 h-10" />
             <div>
-              <h1 className="text-lg font-bold text-gray-900">Campus Salesiano</h1>
-              <p className="text-xs text-gray-400">San José</p>
+              <h1 className="text-lg font-bold text-slate-900">Campus Salesiano</h1>
+              <p className="text-xs text-slate-400">San José</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="text-sm font-medium text-gray-900">{teacherName}</p>
-              <p className="text-xs text-gray-400">
+              <p className="text-sm font-medium text-slate-900">{studentName}</p>
+              <p className="text-xs text-slate-400">
                 {today.toLocaleDateString('es-SV', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               </p>
             </div>
             <button onClick={onLogout} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-              <LogOut className="w-5 h-5 text-gray-500" />
+              <LogOut className="w-5 h-5 text-slate-500" />
             </button>
           </div>
         </div>
@@ -63,8 +68,8 @@ export default function TeacherDashboard({ teacherName, onLogout }: TeacherDashb
       <main className="max-w-6xl mx-auto p-6">
         {/* Welcome */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900">Bienvenido, {teacherName}</h2>
-          <p className="text-gray-500 mt-1">Selecciona un módulo para comenzar</p>
+          <h2 className="text-2xl font-bold text-slate-900">Bienvenido, {studentName}</h2>
+          <p className="text-slate-500 mt-1">Selecciona un módulo para comenzar</p>
         </div>
 
         {/* Monday Notice */}
@@ -86,23 +91,23 @@ export default function TeacherDashboard({ teacherName, onLogout }: TeacherDashb
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.08 }}
               onClick={() => {
-                if (mod.active) {
-                  if (mod.id === 'formacion') navigate('/attendance');
+                if (mod.active && mod.to) {
+                  navigate(mod.to);
                 }
               }}
-              className={`module-card text-left ${mod.active ? 'cursor-pointer' : 'disabled'}`}
+              className={`module-card text-left ${mod.active && mod.to ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}
             >
               <div className="flex items-start gap-4">
                 <div className={`${mod.color} w-12 h-12 rounded-xl flex items-center justify-center shrink-0`}>
                   <mod.icon className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-base font-semibold text-gray-900">{mod.label}</h3>
-                  <p className="text-xs text-gray-400 mt-0.5">{mod.desc}</p>
+                  <h3 className="text-base font-semibold text-slate-900">{mod.label}</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">{mod.desc}</p>
                   {!mod.active && (
                     <div className="flex items-center gap-1 mt-2">
-                      <Lock className="w-3 h-3 text-gray-400" />
-                      <span className="text-[10px] text-gray-400 font-medium">Próximamente</span>
+                      <Lock className="w-3 h-3 text-slate-400" />
+                      <span className="text-[10px] text-slate-400 font-medium">Próximamente</span>
                     </div>
                   )}
                 </div>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { LogIn, Mail, Lock, AlertTriangle, UserPlus } from 'lucide-react';
 import InstitutionLogo from './InstitutionLogo';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'sonner';
 
 export default function Login() {
@@ -45,43 +45,43 @@ export default function Login() {
         initial={{ opacity: 0, scale: 0.95, y: 10 }} 
         animate={{ opacity: 1, scale: 1, y: 0 }} 
         transition={{ duration: 0.5, type: 'spring', bounce: 0.4 }}
-        className="card w-full max-w-md p-8 relative z-10">
-        <div className="flex flex-col items-center text-center mb-8">
-          <InstitutionLogo className="w-20 h-20 mb-4" />
-          <h1 className="text-xl font-bold text-gray-900 tracking-tight uppercase leading-tight">
-            Campus Colegio<br />Salesiano San José
-          </h1>
-        </div>
+        className="w-full max-w-md bg-white rounded-2xl border border-slate-200 p-8 relative z-10">
+          <div className="flex flex-col items-center text-center mb-8">
+            <InstitutionLogo className="w-20 h-20 mb-4" />
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight uppercase leading-tight">
+              Campus Colegio<br />Salesiano San José
+            </h1>
+          </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {isSignUp && (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {isSignUp && (
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Nombre Completo</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><UserPlus className="w-4 h-4" /></span>
+                  <input type="text" required placeholder="Nombre del docente" value={displayName} onChange={e => setDisplayName(e.target.value)} className="input pl-9" />
+                </div>
+              </div>
+            )}
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Nombre Completo</label>
+              <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Correo Electrónico</label>
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><UserPlus className="w-4 h-4" /></span>
-                <input type="text" required placeholder="Nombre del docente" value={displayName} onChange={e => setDisplayName(e.target.value)} className="input pl-9" />
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><Mail className="w-4 h-4" /></span>
+                <input type="email" required placeholder="correo@salesianosanjose.edu.sv" value={email} onChange={e => setEmail(e.target.value)} className="input pl-9" />
               </div>
             </div>
-          )}
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Correo Electrónico</label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><Mail className="w-4 h-4" /></span>
-              <input type="email" required placeholder="correo@salesianosanjose.edu.sv" value={email} onChange={e => setEmail(e.target.value)} className="input pl-9" />
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Contraseña</label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><Lock className="w-4 h-4" /></span>
+                <input type="password" required placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="input pl-9" />
+              </div>
             </div>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Contraseña</label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><Lock className="w-4 h-4" /></span>
-              <input type="password" required placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="input pl-9" />
-            </div>
-          </div>
-          <button type="submit" disabled={loading} className="btn-primary w-full justify-center py-3 disabled:opacity-50">
-            <LogIn className="w-4 h-4" />
-            {loading ? 'Procesando...' : isSignUp ? 'Crear Cuenta' : 'Iniciar Sesión'}
-          </button>
-        </form>
+            <button type="submit" disabled={loading} className="btn-primary w-full justify-center py-3 rounded-full disabled:opacity-50">
+              <LogIn className="w-4 h-4" />
+              {loading ? 'Procesando...' : isSignUp ? 'Crear Cuenta' : 'Iniciar Sesión'}
+            </button>
+          </form>
 
         {/* Microsoft Button (placeholder) */}
         <div className="mt-4">

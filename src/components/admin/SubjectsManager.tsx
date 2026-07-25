@@ -80,14 +80,16 @@ export default function SubjectsManager() {
   if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <div className="bg-secondary/10 p-2 rounded-lg"><BookMarked className="w-5 h-5 text-secondary-dark" /></div>
+          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+            <div className="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center">
+              <BookMarked className="w-5 h-5 text-secondary-dark" />
+            </div>
             Materias
           </h2>
-          <p className="text-sm text-gray-500 mt-1">{filtered.length} materia(s) registrada(s)</p>
+          <p className="text-sm text-slate-500 mt-1">{filtered.length} materia(s) registrada(s)</p>
         </div>
         <button onClick={() => { setShowForm(true); setEditingId(null); setName(''); }} className="btn-primary">
           <Plus className="w-4 h-4" /> Nueva Materia
@@ -96,7 +98,7 @@ export default function SubjectsManager() {
 
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input type="text" placeholder="Buscar materia..." value={search} onChange={e => setSearch(e.target.value)} className="input pl-9" />
         </div>
         {selected.size > 0 && (
@@ -107,9 +109,9 @@ export default function SubjectsManager() {
             <button onClick={() => setSelected(new Set())} className="p-1.5 hover:bg-red-100 rounded-lg"><X className="w-4 h-4 text-red-600" /></button>
           </motion.div>
         )}
-        <div className="flex border border-gray-200 rounded-lg overflow-hidden">
-          <button onClick={() => setViewMode('card')} className={`p-2 transition-colors ${viewMode === 'card' ? 'bg-primary text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}><LayoutGrid className="w-4 h-4" /></button>
-          <button onClick={() => setViewMode('list')} className={`p-2 transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}><List className="w-4 h-4" /></button>
+        <div className="flex border border-slate-200 rounded-lg overflow-hidden">
+          <button onClick={() => setViewMode('card')} className={`p-2 transition-colors ${viewMode === 'card' ? 'bg-primary text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}><LayoutGrid className="w-4 h-4" /></button>
+          <button onClick={() => setViewMode('list')} className={`p-2 transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}><List className="w-4 h-4" /></button>
         </div>
       </div>
 
@@ -117,8 +119,8 @@ export default function SubjectsManager() {
         {showForm && (
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="card p-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900">{editingId ? 'Editar Materia' : 'Nueva Materia'}</h3>
-              <button onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-4 h-4" /></button>
+              <h3 className="font-semibold text-slate-900">{editingId ? 'Editar Materia' : 'Nueva Materia'}</h3>
+              <button onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1 hover:bg-slate-100 rounded-lg"><X className="w-4 h-4" /></button>
             </div>
             <form onSubmit={handleSubmit} className="flex gap-3">
               <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Matemáticas" className="input flex-1" autoFocus />
@@ -140,12 +142,12 @@ export default function SubjectsManager() {
                 </button>
               </div>
               <div className="pt-1 pl-5">
-                <h3 className="font-semibold text-gray-900">{s.name}</h3>
-                <p className="text-xs text-gray-400 mt-0.5">ID: {s.id}</p>
+                <h3 className="font-semibold text-slate-900">{s.name}</h3>
+                <p className="text-xs text-slate-400 mt-0.5">ID: {s.id}</p>
               </div>
-              <div className="flex justify-end gap-1 mt-2 pt-2 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => handleEdit(s)} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-gray-100 rounded-lg text-xs font-medium text-gray-600"><Edit2 className="w-3.5 h-3.5" /> Editar</button>
-                <button onClick={() => handleDelete(s.id)} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-red-50 rounded-lg text-xs font-medium text-red-600"><Trash2 className="w-3.5 h-3.5" /> Eliminar</button>
+              <div className="flex justify-end gap-1 mt-2 pt-2 border-t border-slate-100 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => handleEdit(s)} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-slate-100 rounded-lg text-xs font-medium text-slate-600 transition-colors"><Edit2 className="w-3.5 h-3.5" /> Editar</button>
+                <button onClick={() => handleDelete(s.id)} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-red-50 rounded-lg text-xs font-medium text-red-600 transition-colors"><Trash2 className="w-3.5 h-3.5" /> Eliminar</button>
               </div>
             </motion.div>
           ))}
@@ -161,9 +163,9 @@ export default function SubjectsManager() {
                     {selected.size === filtered.length && filtered.length > 0 && <Check className="w-2.5 h-2.5" />}
                   </button>
                 </th>
-                <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Nombre</th>
-                <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">ID</th>
-                <th className="text-right px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Acciones</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Nombre</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">ID</th>
+                <th className="text-right px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -176,12 +178,12 @@ export default function SubjectsManager() {
                       {selected.has(s.id) && <Check className="w-2.5 h-2.5" />}
                     </button>
                   </td>
-                  <td className="px-3 py-2 text-sm font-medium text-gray-900">{s.name}</td>
-                  <td className="px-3 py-2 text-sm text-gray-500 font-mono">{s.id}</td>
+                  <td className="px-3 py-2 text-sm font-medium text-slate-900">{s.name}</td>
+                  <td className="px-3 py-2 text-sm text-slate-500 font-mono">{s.id}</td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex justify-end gap-1">
-                      <button onClick={() => handleEdit(s)} className="p-1.5 hover:bg-gray-100 rounded-lg"><Edit2 className="w-4 h-4 text-gray-500" /></button>
-                      <button onClick={() => handleDelete(s.id)} className="p-1.5 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4 text-red-500" /></button>
+                      <button onClick={() => handleEdit(s)} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"><Edit2 className="w-4 h-4 text-slate-500" /></button>
+                      <button onClick={() => handleDelete(s.id)} className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4 text-red-500" /></button>
                     </div>
                   </td>
                 </motion.tr>
@@ -192,9 +194,9 @@ export default function SubjectsManager() {
       )}
 
       {filtered.length === 0 && (
-        <div className="text-center py-12 text-gray-400">
+        <div className="text-center py-12 text-slate-400">
           <BookMarked className="w-10 h-10 mx-auto mb-2 opacity-50" />
-          <p className="text-sm">No se encontraron materias</p>
+          <p className="text-sm font-medium">No se encontraron materias</p>
         </div>
       )}
     </div>

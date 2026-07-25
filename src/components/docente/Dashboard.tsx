@@ -9,13 +9,14 @@ import {
   AlertTriangle,
   UserX
 } from 'lucide-react';
-import { Teacher, StudentSessionState, Grade, AttendanceStatus, Student } from '../types';
-import { getGrade, getStudentsByGrade } from '../lib/firestore';
-import InstitutionLogo from './InstitutionLogo';
+import { Teacher, StudentSessionState, Grade, AttendanceStatus, Student } from '../../types';
+import { getGrade, getStudentsByGrade } from '../../lib/firestore';
+import InstitutionLogo from '../shared/InstitutionLogo';
 import SummaryModal from './SummaryModal';
-import StudentCard from './dashboard/StudentCard';
-import AttendanceStats from './dashboard/AttendanceStats';
-import SimulatorControls from './dashboard/SimulatorControls';
+import StudentCard from './StudentCard';
+import AttendanceStats from './AttendanceStats';
+import SimulatorControls from './SimulatorControls';
+import ThemeSwitcher from '../shared/ThemeSwitcher';
 
 interface DashboardProps {
   teacher: Teacher;
@@ -160,10 +161,10 @@ export default function Dashboard({ teacher, onLogout }: DashboardProps) {
 
   if (loadingData) {
     return (
-      <div className="flex h-screen bg-slate-50 items-center justify-center">
+      <div className="flex h-screen bg-[#F3F5F6] items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Cargando Asistencia...</span>
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Cargando Asistencia...</span>
         </div>
       </div>
     );
@@ -171,96 +172,99 @@ export default function Dashboard({ teacher, onLogout }: DashboardProps) {
 
   if (!activeGrade) {
     return (
-      <div className="flex h-screen bg-slate-50 items-center justify-center flex-col gap-4">
-        <h2 className="text-xl font-bold text-slate-800">No tienes un grado guía asignado</h2>
-        <button onClick={onLogout} className="px-4 py-2 bg-red-600 text-white rounded-lg">Cerrar Sesión</button>
+      <div className="flex h-screen bg-[#F3F5F6] items-center justify-center flex-col gap-4">
+        <h2 className="text-xl font-bold text-slate-900">No tienes un grado guía asignado</h2>
+        <button onClick={onLogout} className="btn-primary">Cerrar Sesión</button>
       </div>
     );
   }
 
   return (
-    <div id="app-dashboard" className="flex h-screen bg-slate-50 overflow-hidden font-sans">
-      {/* 1. Sidebar Navigation (Solid green, no gradients) */}
-      <aside className="w-80 bg-salesiano-green-dark border-r-2 border-slate-900 flex flex-col justify-between shrink-0 text-white z-20">
+    <div id="app-dashboard" className="flex h-screen bg-[#F3F5F6] overflow-hidden font-sans">
+      {/* 1. Sidebar Navigation */}
+      <aside className="w-80 bg-white border-r border-slate-200 flex flex-col justify-between shrink-0 text-slate-900 z-20">
         <div className="flex flex-col">
-          {/* Institution Header with high-fidelity Logo */}
-          <div className="p-6 bg-salesiano-green border-b border-slate-900 flex flex-col items-center">
-            <InstitutionLogo className="w-20 h-20 mb-3" />
-            <h2 className="text-sm font-bold font-display uppercase tracking-widest text-salesiano-yellow text-center">
+          {/* Institution Header */}
+          <div className="p-6 border-b border-slate-100 flex flex-col items-center">
+            <InstitutionLogo className="w-16 h-16 mb-3" />
+            <h2 className="text-sm font-bold font-display uppercase tracking-widest text-primary text-center">
               Salesiano San José
             </h2>
-            <p className="text-[10px] text-emerald-100 font-medium tracking-wider uppercase mt-0.5 text-center">
+            <p className="text-[10px] text-slate-500 font-medium tracking-wider uppercase mt-0.5 text-center">
               Educación para el Corazón
             </p>
           </div>
 
           {/* Teacher Profile Info */}
-          <div className="p-6 border-b border-slate-900 bg-slate-900/40 flex items-center gap-3">
+          <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
             <img
               src={teacher.avatarUrl}
               alt={teacher.name}
-              className="w-12 h-12 rounded-full object-cover border-2 border-salesiano-yellow shadow-sm"
+              className="w-10 h-10 rounded-full object-cover border-2 border-primary shadow-sm"
               referrerPolicy="no-referrer"
             />
             <div className="overflow-hidden">
-              <span className="text-xs font-bold text-salesiano-yellow uppercase tracking-wider block">
+              <span className="text-[10px] font-bold text-primary uppercase tracking-wider block">
                 Docente Logueado
               </span>
-              <span className="text-sm font-bold block truncate font-display text-slate-100">
+              <span className="text-sm font-bold block truncate font-display text-slate-900">
                 {teacher.name}
               </span>
-              <span className="text-[11px] text-emerald-100 truncate block font-medium">
+              <span className="text-[11px] text-slate-500 truncate block font-medium">
                 {teacher.email}
               </span>
             </div>
           </div>
 
           {/* Configuration and Mode selection */}
-          <div className="p-6 space-y-4">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-100 uppercase tracking-widest mb-2">
-              <Calendar className="w-4 h-4 text-salesiano-yellow" />
+          <div className="p-5 space-y-4">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600 uppercase tracking-widest mb-2">
+              <Calendar className="w-4 h-4 text-secondary-dark" />
               <span>Modalidad de Jornada:</span>
             </div>
 
             <div className="space-y-2.5">
               <button
                 onClick={() => setCivicAct(false)}
-                className={`w-full p-3 rounded-lg border-2 text-left text-xs font-semibold flex items-center justify-between transition-all ${
+                className={`w-full p-3 rounded-xl border text-left text-xs font-semibold flex items-center justify-between transition-all ${
                   !civicAct
-                    ? 'bg-salesiano-green border-salesiano-yellow text-white font-bold'
-                    : 'bg-slate-900/30 border-transparent text-slate-300 hover:bg-slate-900/50'
+                    ? 'bg-primary/10 border-primary text-primary font-bold shadow-sm'
+                    : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
                 }`}
               >
                 <div>
                   <span className="block font-bold">Buenos Días Regular</span>
-                  <span className="text-[10px] text-emerald-100 opacity-90 block font-normal">Formación matutina tradicional</span>
+                  <span className="text-[10px] text-slate-400 block font-normal">Formación matutina tradicional</span>
                 </div>
-                {!civicAct && <div className="w-2 h-2 rounded-full bg-salesiano-yellow shrink-0 ml-2" />}
+                {!civicAct && <div className="w-2 h-2 rounded-full bg-primary shrink-0 ml-2" />}
               </button>
 
               <button
                 onClick={() => setCivicAct(true)}
-                className={`w-full p-3 rounded-lg border-2 text-left text-xs font-semibold flex items-center justify-between transition-all ${
+                className={`w-full p-3 rounded-xl border text-left text-xs font-semibold flex items-center justify-between transition-all ${
                   civicAct
-                    ? 'bg-salesiano-yellow border-slate-900 text-slate-900 font-bold'
-                    : 'bg-slate-900/30 border-transparent text-slate-300 hover:bg-slate-900/50'
+                    ? 'bg-secondary text-primary border-secondary shadow-sm'
+                    : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
                 }`}
               >
                 <div>
                   <span className="block font-bold">Acto Cívico</span>
-                  <span className="text-[10px] opacity-90 block font-normal text-slate-700">Lunes o efemérides patrias</span>
+                  <span className="text-[10px] text-slate-400 block font-normal">Lunes o efemérides patrias</span>
                 </div>
-                {civicAct && <div className="w-2 h-2 rounded-full bg-slate-900 shrink-0 ml-2" />}
+                {civicAct && <div className="w-2 h-2 rounded-full bg-primary shrink-0 ml-2" />}
               </button>
             </div>
           </div>
         </div>
 
         {/* Footer with sign out */}
-        <div className="p-6 border-t border-slate-900 bg-slate-900/20">
+        <div className="p-5 border-t border-slate-100 space-y-3">
+          <div className="flex justify-center">
+            <ThemeSwitcher />
+          </div>
           <button
             onClick={onLogout}
-            className="w-full py-2.5 px-4 bg-red-800 hover:bg-red-900 border border-red-950 text-white font-bold text-xs rounded-lg transition-colors flex items-center justify-center gap-2"
+            className="w-full py-2.5 px-4 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-bold text-xs rounded-full transition-colors flex items-center justify-center gap-2"
           >
             <LogOut className="w-4 h-4" />
             Cerrar Sesión
@@ -270,27 +274,25 @@ export default function Dashboard({ teacher, onLogout }: DashboardProps) {
 
       {/* 2. Main Work Area */}
       <main className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* Dynamic Header Banner (Civic Act Shift - Golden yellow vs Green, no gradients) */}
+        {/* Dynamic Header Banner */}
         <header
-          className={`h-20 px-8 flex items-center justify-between border-b-2 border-slate-900 shrink-0 transition-all ${
-            civicAct ? 'bg-salesiano-yellow text-slate-900' : 'bg-white text-slate-800'
+          className={`h-20 px-8 flex items-center justify-between border-b border-slate-200 shrink-0 transition-all ${
+            civicAct ? 'bg-secondary text-primary' : 'bg-white text-slate-800'
           }`}
         >
-          {/* Grade display & Locker status */}
-          <div className="flex-1 bg-white/40 backdrop-blur-md p-8 overflow-y-auto relative">
-            {/* Header section with Stats */}
+          <div className="flex-1 p-8 overflow-y-auto relative">
             <header className="mb-8 relative z-10">
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-3">
-                    <h1 className="text-3xl font-black font-display tracking-tight text-slate-800 uppercase">
+                    <h1 className="text-3xl font-black font-display tracking-tight text-slate-900 uppercase">
                       {activeGrade.name} {teacher.guideSectionId ? `"${teacher.guideSectionId.toUpperCase()}"` : ''}
                     </h1>
-                    <span className="text-xs bg-red-100/80 backdrop-blur-sm text-red-800 border border-red-300 font-bold px-2 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-wider">
+                    <span className="text-xs bg-red-100 text-red-800 border border-red-200 font-bold px-2 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-wider">
                       Acceso Bloqueado
                     </span>
                   </div>
-                  <p className={`text-xs ${civicAct ? 'text-slate-700 font-medium' : 'text-slate-500'}`}>
+                  <p className={`text-xs ${civicAct ? 'text-primary/80 font-medium' : 'text-slate-500'}`}>
                     Nómina oficial asignada exclusivamente al docente tutor.
                   </p>
                 </div>
@@ -308,7 +310,7 @@ export default function Dashboard({ teacher, onLogout }: DashboardProps) {
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-3 bg-amber-50 border-2 border-amber-300 rounded-lg text-amber-900 text-xs flex items-center gap-2.5 font-medium"
+              className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex items-center gap-2.5 font-medium"
             >
               <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
               <span>
@@ -321,7 +323,7 @@ export default function Dashboard({ teacher, onLogout }: DashboardProps) {
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-3 bg-indigo-50 border-2 border-indigo-300 rounded-lg text-indigo-900 text-xs flex items-center gap-2.5 font-medium"
+              className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-indigo-900 text-xs flex items-center gap-2.5 font-medium"
             >
               <Sparkles className="w-5 h-5 text-indigo-600 shrink-0" />
               <span>
@@ -339,7 +341,7 @@ export default function Dashboard({ teacher, onLogout }: DashboardProps) {
           />
 
           {/* Student list controls */}
-          <div className="flex justify-between items-center card p-4 mb-6 gap-4 relative z-10">
+          <div className="flex justify-between items-center bg-white rounded-2xl p-4 border border-slate-200/80 gap-4 relative z-10">
             <div className="relative flex-1 max-w-md">
               <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
                 <Search className="w-5 h-5" />
@@ -352,7 +354,7 @@ export default function Dashboard({ teacher, onLogout }: DashboardProps) {
                 className="input pl-10"
               />
             </div>
-            <div className="text-xs text-slate-600 font-bold bg-white/50 px-3 py-1.5 rounded-md">
+            <div className="text-xs text-slate-600 font-bold bg-slate-50 px-3 py-1.5 rounded-full">
               Mostrando {filteredStudents.length} de {totalStudents} alumnos inscritos
             </div>
           </div>
@@ -388,16 +390,16 @@ export default function Dashboard({ teacher, onLogout }: DashboardProps) {
         </div>
 
         {/* Action Bar Footer */}
-        <footer className="h-20 bg-white/80 backdrop-blur-md border-t border-slate-200/50 px-8 flex items-center justify-between shrink-0 relative z-20">
+        <footer className="h-20 bg-white border-t border-slate-200 px-8 flex items-center justify-between shrink-0 relative z-20">
           <div className="text-xs text-slate-600 font-bold uppercase tracking-wider">
             Fecha: {new Date().toLocaleDateString('es-SV', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </div>
 
           <button
             onClick={() => setIsSummaryOpen(true)}
-            className="btn-primary"
+            className="btn-primary rounded-full"
           >
-            <CheckCircle className="w-4 h-4 text-salesiano-yellow" />
+            <CheckCircle className="w-4 h-4 text-secondary" />
             Finalizar y Reportar
           </button>
         </footer>
