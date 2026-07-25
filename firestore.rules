@@ -7,14 +7,41 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isAdmin() {
-      return isAuthenticated() && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
 
-    function isTeacher() {
-      return isAuthenticated() && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() == 'admin';
+    }
+
+    function isDocente() {
+      return isAuthenticated() && getUserRole() == 'docente';
+    }
+
+    function isAlumno() {
+      return isAuthenticated() && getUserRole() == 'alumno';
+    }
+
+    function isCoordinacion() {
+      return isAuthenticated() && getUserRole() == 'coordinacion';
+    }
+
+    function isRegistroAcademico() {
+      return isAuthenticated() && getUserRole() == 'registro_academico';
+    }
+
+    function isEnfermeria() {
+      return isAuthenticated() && getUserRole() == 'enfermeria';
+    }
+
+    function isPsicopedagogia() {
+      return isAuthenticated() && getUserRole() == 'psicopedagogio';
+    }
+
+    function isStaff() {
+      return isAdmin() || isDocente() || isCoordinacion() || 
+             isRegistroAcademico() || isEnfermeria() || isPsicopedagogia();
     }
 
     function isOwner(userId) {
@@ -29,65 +56,79 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Roles Collection
+    match /roles/{roleId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
     // Teachers Collection
     match /teachers/{teacherId} {
-      allow read: if isAdmin() || isTeacher();
+      allow read: if isStaff();
       allow write: if isAdmin();
     }
 
     // Grades Collection
     match /grades/{gradeId} {
-      allow read: if isAdmin() || isTeacher();
+      allow read: if isStaff();
       allow write: if isAdmin();
     }
 
     // Sections Collection
     match /sections/{sectionId} {
-      allow read: if isAdmin() || isTeacher();
+      allow read: if isStaff();
       allow write: if isAdmin();
     }
 
     // Subjects Collection
     match /subjects/{subjectId} {
-      allow read: if isAdmin() || isTeacher();
+      allow read: if isStaff();
       allow write: if isAdmin();
     }
 
     // Students Collection
     match /students/{studentId} {
-      allow read: if isAdmin() || isTeacher();
+      allow read: if isStaff() || (isAlumno() && studentId == request.auth.uid);
       allow write: if isAdmin();
     }
 
     // Baccalaureate Types Collection
     match /baccalaureate_types/{typeId} {
-      allow read: if isAdmin() || isTeacher();
+      allow read: if isStaff();
       allow write: if isAdmin();
     }
 
     // Buildings Collection
     match /buildings/{buildingId} {
-      allow read: if isAdmin() || isTeacher();
+      allow read: if isStaff();
       allow write: if isAdmin();
     }
 
     // Computer Labs Collection
     match /computer_labs/{labId} {
-      allow read: if isAdmin() || isTeacher();
+      allow read: if isStaff();
       allow write: if isAdmin();
     }
 
     // School Year Status Collection
     match /school_year_status/{docId} {
-      allow read: if isAdmin() || isTeacher();
+      allow read: if isStaff();
       allow write: if isAdmin();
     }
 
     // Attendance Reports Collection
     match /attendance_reports/{reportId} {
-      allow read: if isAdmin() || isTeacher();
-      allow create: if isTeacher();
+      allow read: if isStaff();
+      allow create: if isDocente();
       allow update, delete: if isAdmin();
+    }
+
+    // Projects Collection (Semana de la Juventud)
+    match /projects/{projectId} {
+      allow read: if isStaff() || (isAlumno() && resource.data.studentId == request.auth.uid);
+      allow create: if isAlumno() || isDocente();
+      allow update: if isStaff();
+      allow delete: if isAdmin();
     }
 
     // Global Catch-All Safety Net (Default Deny)
