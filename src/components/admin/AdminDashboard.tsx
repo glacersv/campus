@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { getAllTeachers, getAllGrades, getAllStudents, getAllSections, getAllSubjects, startSchoolYear, resetTestData, getCurrentSchoolYear, fixAllStudentHistories } from '../../lib/firestore';
 import { toast } from 'sonner';
+import ProjectsModule from '../proyectos/ProjectsModule';
 
 interface Stats {
   teachers: number;
@@ -213,6 +214,9 @@ export default function AdminDashboard() {
           ))}
         </div>
       </div>
+
+      {/* Projects Module */}
+      <ProjectsModule view="admin" />
     </div>
   );
 }

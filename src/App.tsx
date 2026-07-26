@@ -14,11 +14,18 @@ import BaccalaureateTypesManager from './components/admin/BaccalaureateTypesMana
 import BuildingsManager from './components/admin/BuildingsManager';
 import GradeSectionAssignment from './components/admin/GradeSectionAssignment';
 import RolesManager from './components/admin/RolesManager';
+import UsersManager from './components/admin/UsersManager';
+import CoordinacionesConfig from './components/admin/CoordinacionesConfig';
+import ConvivenciaPanel from './components/admin/ConvivenciaPanel';
 import RoleLayout from './components/shared/RoleLayout';
 import CoordinacionDashboard from './components/coordinacion/CoordinacionDashboard';
+import AcademicaDashboard from './components/coordinacion/AcademicaDashboard';
+import ConvivenciaDashboard from './components/coordinacion/ConvivenciaDashboard';
+import PrimariaDashboard from './components/coordinacion/PrimariaDashboard';
+import ParvulariaDashboard from './components/coordinacion/ParvulariaDashboard';
 import RegistroDashboard from './components/registro/RegistroDashboard';
 import EnfermeriaDashboard from './components/enfermeria/EnfermeriaDashboard';
-import PsicopedagogiaDashboard from './components/psicopedagogia/PsicopedagogiaDashboard';
+import PsicopedagogiaDashboard from './components/psicopedagogico/PsicopedagogicoDashboard';
 import TeacherDashboard from './components/docente/TeacherDashboard';
 import StudentDashboard from './components/alumno/StudentDashboard';
 import Dashboard from './components/docente/Dashboard';
@@ -83,9 +90,13 @@ function AppContent() {
   const getModulesForRole = (role: string): SystemModuleId[] => {
     const moduleMap: Record<string, SystemModuleId[]> = {
       coordinacion: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'],
+      coordinacion_academica: ['notas', 'horario', 'clase'],
+      coordinacion_convivencia: ['formacion', 'notas'],
+      coordinacion_primaria: ['formacion', 'notas', 'horario'],
+      coordinacion_parvularia: ['formacion'],
       registro_academico: ['notas', 'horario'],
       enfermeria: ['formacion', 'avisos'],
-      psicopedagogio: ['formacion', 'notas', 'avisos'],
+      psicopedagogico: ['formacion', 'notas', 'avisos'],
     };
     return moduleMap[role] || [];
   };
@@ -106,6 +117,9 @@ function AppContent() {
           <Route path="teachers" element={<TeachersManager />} />
           <Route path="students" element={<StudentsManager />} />
           <Route path="roles" element={<RolesManager />} />
+          <Route path="users" element={<UsersManager />} />
+          <Route path="coordinaciones-config" element={<CoordinacionesConfig />} />
+          <Route path="convivencia" element={<ConvivenciaPanel />} />
         </Route>
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>
@@ -123,6 +137,66 @@ function AppContent() {
           </RoleLayout>
         } />
         <Route path="*" element={<Navigate to="/coordinacion" replace />} />
+      </Routes>
+    );
+  }
+
+  // Coordinacion Academica view
+  if (userRole === 'coordinacion_academica') {
+    const modules = getModulesForRole('coordinacion_academica');
+    return (
+      <Routes>
+        <Route path="/coordinacion-academica" element={
+          <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
+            <AcademicaDashboard />
+          </RoleLayout>
+        } />
+        <Route path="*" element={<Navigate to="/coordinacion-academica" replace />} />
+      </Routes>
+    );
+  }
+
+  // Coordinacion Convivencia view
+  if (userRole === 'coordinacion_convivencia') {
+    const modules = getModulesForRole('coordinacion_convivencia');
+    return (
+      <Routes>
+        <Route path="/coordinacion-convivencia" element={
+          <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
+            <ConvivenciaDashboard />
+          </RoleLayout>
+        } />
+        <Route path="*" element={<Navigate to="/coordinacion-convivencia" replace />} />
+      </Routes>
+    );
+  }
+
+  // Coordinacion Primaria view
+  if (userRole === 'coordinacion_primaria') {
+    const modules = getModulesForRole('coordinacion_primaria');
+    return (
+      <Routes>
+        <Route path="/coordinacion-primaria" element={
+          <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
+            <PrimariaDashboard />
+          </RoleLayout>
+        } />
+        <Route path="*" element={<Navigate to="/coordinacion-primaria" replace />} />
+      </Routes>
+    );
+  }
+
+  // Coordinacion Parvularia view
+  if (userRole === 'coordinacion_parvularia') {
+    const modules = getModulesForRole('coordinacion_parvularia');
+    return (
+      <Routes>
+        <Route path="/coordinacion-parvularia" element={
+          <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
+            <ParvulariaDashboard />
+          </RoleLayout>
+        } />
+        <Route path="*" element={<Navigate to="/coordinacion-parvularia" replace />} />
       </Routes>
     );
   }
@@ -158,16 +232,16 @@ function AppContent() {
   }
 
   // Psicopedagogia view
-  if (userRole === 'psicopedagogio') {
-    const modules = getModulesForRole('psicopedagogio');
+  if (userRole === 'psicopedagogico') {
+    const modules = getModulesForRole('psicopedagogico');
     return (
       <Routes>
-        <Route path="/psicopedagogia" element={
+        <Route path="/psicopedagogico" element={
           <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
             <PsicopedagogiaDashboard />
           </RoleLayout>
         } />
-        <Route path="*" element={<Navigate to="/psicopedagogia" replace />} />
+        <Route path="*" element={<Navigate to="/psicopedagogico" replace />} />
       </Routes>
     );
   }
@@ -189,7 +263,6 @@ function AppContent() {
             <div className="min-h-screen flex justify-center items-center">Cargando datos del docente...</div>
           )
         } />
-        <Route path="/proyectos" element={<TeacherProjects />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
@@ -204,7 +277,6 @@ function AppContent() {
           onLogout={signOut}
         />
       } />
-      <Route path="/estudiante" element={<StudentProjects />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

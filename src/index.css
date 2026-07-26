@@ -406,3 +406,135 @@ h1, h2, h3, h4, h5, h6, .font-display {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* ==================== MODULE HEADER (ESTÁNDAR) ==================== */
+.module-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.module-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.module-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.module-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.module-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  font-family: var(--font-display);
+}
+
+.module-subtitle {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin-top: 0.25rem;
+}
+
+/* ==================== FORM LABEL (ESTÁNDAR) ==================== */
+.form-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 0.375rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.form-label-normal {
+  display: block;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-bottom: 0.25rem;
+}
+
+/* ==================== CARD ESTÁNDAR ==================== */
+.card-std {
+  background: #ffffff;
+  border-radius: 1rem;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  transition: all 0.2s ease;
+}
+
+.card-std:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  transform: translateY(-2px);
+}
+
+/* ==================== FILTER PILLS (ESTÁNDAR) ==================== */
+.filter-pill {
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.filter-pill:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.filter-pill.active {
+  background: var(--color-primary);
+  color: #ffffff;
+  border-color: var(--color-primary);
+  box-shadow: 0 2px 6px rgba(var(--color-primary-rgb, 37, 133, 90), 0.25);
+}
+
+/* ==================== GRID CARDS (ESTÁNDAR) ==================== */
+.grid-cards {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .grid-cards { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (min-width: 1024px) {
+  .grid-cards { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ==================== EMPTY STATE (ESTÁNDAR) ==================== */
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #94a3b8;
+}
+
+.empty-state svg {
+  width: 2.5rem;
+  height: 2.5rem;
+  margin: 0 auto 0.5rem;
+  opacity: 0.5;
+}
+
+.empty-state p {
+  font-size: 0.875rem;
+  font-weight: 500;
+}

@@ -169,22 +169,17 @@ export default function ComputerLabsManager() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-              <Monitor className="w-5 h-5 text-accent" />
-            </div>
-            Laboratorios de Cómputo
-          </h2>
-          <p className="text-sm text-slate-500 mt-1">
-            {labs.length} laboratorio(s) registrado(s)
-          </p>
+      <div className="module-header">
+        <div className="module-title-group">
+          <div className="module-icon bg-accent/10">
+            <Monitor className="w-5 h-5 text-accent" />
+          </div>
+          <div>
+            <h1 className="module-title">Laboratorios de Cómputo</h1>
+            <p className="module-subtitle">{labs.length} laboratorio(s) registrado(s)</p>
+          </div>
         </div>
-        <button
-          onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', buildingId: '', capacity: '', devices: '' }); }}
-          className="btn-primary"
-        >
+        <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', buildingId: '', capacity: '', devices: '' }); }} className="btn-primary">
           <Plus className="w-4 h-4" /> Nuevo Laboratorio
         </button>
       </div>
@@ -203,16 +198,16 @@ export default function ComputerLabsManager() {
             </button>
           </motion.div>
         )}
-        <div className="flex border border-gray-200 rounded-lg overflow-hidden ml-auto">
+        <div className="flex border border-slate-200 rounded-lg overflow-hidden ml-auto">
           <button
             onClick={() => setViewMode('card')}
-            className={`p-2 transition-colors ${viewMode === 'card' ? 'bg-primary text-white' : 'bg-white text-slate-500 hover:bg-gray-50'}`}
+            className={`p-2 transition-colors ${viewMode === 'card' ? 'bg-primary text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
           >
             <LayoutGrid className="w-4 h-4" />
           </button>
           <button
             onClick={() => setViewMode('list')}
-            className={`p-2 transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-white text-slate-500 hover:bg-gray-50'}`}
+            className={`p-2 transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
           >
             <List className="w-4 h-4" />
           </button>
@@ -234,22 +229,22 @@ export default function ComputerLabsManager() {
             </div>
             <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Nombre *</label>
+                <label className="form-label">Nombre *</label>
                 <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ej: Lab 1" className="input" autoFocus required />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Edificio</label>
+                <label className="form-label">Edificio</label>
                 <select value={form.buildingId} onChange={e => setForm({ ...form, buildingId: e.target.value })} className="input">
                   <option value="">Sin edificio</option>
                   {buildings.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Capacidad</label>
+                <label className="form-label">Capacidad</label>
                 <input type="number" min="1" value={form.capacity} onChange={e => setForm({ ...form, capacity: e.target.value })} placeholder="Ej: 30" className="input" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Dispositivos</label>
+                <label className="form-label">Dispositivos</label>
                 <input type="number" min="1" value={form.devices} onChange={e => setForm({ ...form, devices: e.target.value })} placeholder="Ej: 30" className="input" />
               </div>
               <div className="col-span-2 flex justify-end gap-2">
@@ -308,7 +303,7 @@ export default function ComputerLabsManager() {
                   {stats.assignedSections.length > 0 && (
                     <div className="mt-2 flex items-center gap-2 text-[10px] text-slate-400">
                       <span className="w-14 shrink-0">Uso:</span>
-                      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                         <motion.div initial={{ width: 0 }} animate={{ width: `${stats.usagePct}%` }}
                           className="h-full rounded-full" style={{ backgroundColor: '#6366F1' }} />
                       </div>
@@ -317,7 +312,7 @@ export default function ComputerLabsManager() {
                   )}
                 </div>
                 <div className="flex justify-end gap-1 mt-2 pt-2 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={(e) => { e.stopPropagation(); handleEdit(l); }} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-gray-100 rounded-lg text-xs font-medium text-slate-600"><Edit2 className="w-3.5 h-3.5" /> Editar</button>
+                  <button onClick={(e) => { e.stopPropagation(); handleEdit(l); }} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-slate-100 rounded-lg text-xs font-medium text-slate-600"><Edit2 className="w-3.5 h-3.5" /> Editar</button>
                   <button onClick={(e) => { e.stopPropagation(); handleDelete(l.id); }} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-red-50 rounded-lg text-xs font-medium text-red-600"><Trash2 className="w-3.5 h-3.5" /> Eliminar</button>
                 </div>
               </motion.div>
@@ -367,7 +362,7 @@ export default function ComputerLabsManager() {
                   <td className="px-3 py-2 text-sm text-slate-500">{l.devices || '—'}</td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex justify-end gap-1">
-                      <button onClick={(e) => { e.stopPropagation(); handleEdit(l); }} className="p-1.5 hover:bg-gray-100 rounded-lg"><Edit2 className="w-4 h-4 text-slate-500" /></button>
+                      <button onClick={(e) => { e.stopPropagation(); handleEdit(l); }} className="p-1.5 hover:bg-slate-100 rounded-lg"><Edit2 className="w-4 h-4 text-slate-500" /></button>
                       <button onClick={(e) => { e.stopPropagation(); handleDelete(l.id); }} className="p-1.5 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4 text-red-500" /></button>
                     </div>
                   </td>
@@ -421,7 +416,7 @@ export default function ComputerLabsManager() {
                 { icon: GraduationCap, label: 'Alumnos Matriculados', value: stats.totalEnrolled, sub: `de ${stats.totalCapacity} cupos` },
                 { icon: Cpu, label: 'Dispositivos', value: l.devices || 0, sub: 'equipos disponibles' }
               ].map(({ icon: Icon, label, value, sub }) => (
-                <div key={label} className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                <div key={label} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-indigo-50">
                       <Icon className="w-5 h-5 text-indigo-500" />
@@ -445,7 +440,7 @@ export default function ComputerLabsManager() {
                   {stats.sectionsByGrade.map(sg => {
                     const pct = sg.capacity > 0 ? Math.round((sg.enrolled / sg.capacity) * 100) : 0;
                     return (
-                      <div key={sg.gradeName} className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                      <div key={sg.gradeName} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-bold text-slate-900">{sg.gradeName}</span>
@@ -456,7 +451,7 @@ export default function ComputerLabsManager() {
                             <span className="text-sm text-slate-400">/ {sg.capacity}</span>
                           </div>
                         </div>
-                        <div className="relative h-4 bg-gray-100 rounded-full overflow-hidden mb-3">
+                        <div className="relative h-4 bg-slate-100 rounded-full overflow-hidden mb-3">
                           <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${pct}%` }}
@@ -469,7 +464,7 @@ export default function ComputerLabsManager() {
                             const enrolled = students.filter(st => st.sectionId === sec.id && st.gradeId === sec.gradeId).length;
                             return (
                               <span key={sec.id} className={`inline-flex items-center gap-1.5 text-xs font-mono px-2.5 py-1 rounded-lg border ${
-                                enrolled > 0 ? 'bg-white border-gray-200 text-slate-700' : 'bg-gray-50 border-dashed border-gray-200 text-slate-400'
+                                enrolled > 0 ? 'bg-white border-slate-200 text-slate-700' : 'bg-slate-50 border-dashed border-slate-200 text-slate-400'
                               }`}>
                                 <span className="font-semibold">Sección {sec.name}</span>
                                 <span className="font-bold text-indigo-600">{enrolled}</span>
@@ -487,7 +482,7 @@ export default function ComputerLabsManager() {
             )}
 
             {stats.assignedSections.length === 0 && (
-              <div className="text-center py-16 text-slate-400 bg-white border border-gray-200 rounded-xl">
+              <div className="text-center py-16 text-slate-400 bg-white border border-slate-200 rounded-xl">
                 <Monitor className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p className="text-base font-medium">No hay secciones asignadas a este laboratorio</p>
                 <p className="text-sm mt-1">Asigna este laboratorio desde el módulo de Secciones</p>
@@ -498,7 +493,7 @@ export default function ComputerLabsManager() {
       })()}
 
       {!selectedLabId && labs.length > 0 && (
-        <div className="mt-6 text-center py-12 text-slate-400 bg-white border border-dashed border-gray-200 rounded-xl">
+        <div className="mt-6 text-center py-12 text-slate-400 bg-white border border-dashed border-slate-200 rounded-xl">
           <BarChart3 className="w-10 h-10 mx-auto mb-2 opacity-40" />
           <p className="text-sm font-medium">Selecciona un laboratorio para ver sus estadísticas</p>
           <p className="text-xs mt-1">Haz clic en cualquier laboratorio de arriba</p>

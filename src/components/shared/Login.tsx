@@ -18,15 +18,21 @@ export default function Login() {
     setLoading(true);
     try {
       if (isSignUp) {
+        // Restrict registration to institutional email domain
+        if (!email.endsWith('@salesianosanjose.edu.sv')) {
+          toast.error('Solo se permiten correos institucionales (@salesianosanjose.edu.sv)');
+          setLoading(false);
+          return;
+        }
         await signUp(email, password, displayName);
       } else {
         await signIn(email, password);
       }
     } catch (err: any) {
-      console.error('Auth error:', err);
-      if (err.code === 'auth/user-not-found') toast.error('No existe una cuenta con este correo.');
-      else if (err.code === 'auth/wrong-password') toast.error('Contraseña incorrecta.');
-      else if (err.code === 'auth/email-already-in-use') toast.error('Este correo ya está registrado.');
+      console.error('Auth error:', err.code);
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        toast.error('Correo o contraseña incorrectos.');
+      } else if (err.code === 'auth/email-already-in-use') toast.error('Este correo ya está registrado.');
       else if (err.code === 'auth/weak-password') toast.error('La contraseña debe tener al menos 6 caracteres.');
       else if (err.code === 'auth/invalid-email') toast.error('El correo electrónico no es válido.');
       else toast.error('Error al iniciar sesión. Intente nuevamente.');

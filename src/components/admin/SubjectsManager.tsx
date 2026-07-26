@@ -3,17 +3,26 @@ import { motion, AnimatePresence } from 'motion/react';
 import { BookMarked, Plus, Edit2, Trash2, Save, X, Search, LayoutGrid, List, Check, Trash } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAllSubjects, createSubject, updateSubject, deleteSubject } from '../../lib/firestore';
-import { Subject } from '../../types';
+import { Subject, CYCLE_NAMES, Cycle } from '../../types';
 
 export default function SubjectsManager() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [name, setName] = useState('');
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [filterCycle, setFilterCycle] = useState<string>('');
+  const [filterStatus, setFilterStatus] = useState<string>('');
+
+  const [form, setForm] = useState({
+    name: '',
+    description: '',
+    cycle: '' as Cycle | '',
+    status: 'ACTIVO' as 'ACTIVO' | 'INACTIVO',
+    weeklyHours: 4,
+  });
 
   useEffect(() => { loadData(); }, []);
 
@@ -21,53 +30,86 @@ export default function SubjectsManager() {
     try { setSubjects(await getAllSubjects()); } finally { setLoading(false); }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return;
-    try {
-      if (editingId) {
-        await updateSubject(editingId, { name: name.trim() });
-        toast.success('Materia actualizada correctamente');
-      } else {
-        await createSubject({ id: name.trim().toLowerCase().replace(/\s+/g, '-'), name: name.trim() });
-        toast.success('Materia creada correctamente');
-      }
-      setShowForm(false); setEditingId(null); setName('');
-      loadData();
-    } catch (err) { toast.error('Error al guardar materia'); console.error(err); }
+  const resetForm = () => {
+    setForm({ name: '', description: '', cycle: '', status: 'ACTIVO', weeklyHours: 4 });
+    setEditingId(null);
   };
 
-  const handleEdit = (s: Subject) => { setEditingId(s.id); setName(s.name); setShowForm(true); };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim()) { toast.error('El nombre es obligatorio'); return; }
+
+    try {
+      const data = {
+        name: form.name.trim(),
+        description: form.description.trim() || undefined,
+        cycle: form.cycle || undefined,
+        status: form.status,
+        weeklyHours: form.weeklyHours,
+      };
+
+      if (editingId) {
+        await updateSubject(editingId, data);
+        toast.success('Materia actualizada correctamente');
+      } else {
+        const id = form.name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        await createSubject({ id, ...data });
+        toast.success('Materia creada correctamente');
+      }
+      setShowForm(false);
+      resetForm();
+      loadData();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al guardar materia';
+      toast.error(msg);
+      console.error(err);
+    }
+  };
+
+  const handleEdit = (s: Subject) => {
+    setEditingId(s.id);
+    setForm({
+      name: s.name,
+      description: s.description || '',
+      cycle: s.cycle || '',
+      status: s.status || 'ACTIVO',
+      weeklyHours: s.weeklyHours || 4,
+    });
+    setShowForm(true);
+  };
 
   const handleDelete = async (id: string) => {
-    if (confirm('¿Eliminar esta materia?')) {
+    if (confirm('¿Eliminar esta materia? Se verificará que no esté en uso.')) {
       try {
         await deleteSubject(id);
         toast.success('Materia eliminada');
         setSelected(prev => { const n = new Set(prev); n.delete(id); return n; });
         loadData();
-      } catch (err) { toast.error('Error al eliminar materia'); }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Error al eliminar materia';
+        toast.error(msg);
+      }
     }
   };
 
   const handleBulkDelete = async () => {
     if (selected.size === 0) return;
     if (confirm(`¿Eliminar ${selected.size} materia(s)?`)) {
-      try {
-        for (const id of selected) await deleteSubject(id);
-        toast.success(`${selected.size} materia(s) eliminadas`);
-        setSelected(new Set());
-        loadData();
-      } catch (err) { toast.error('Error al eliminar materias'); }
+      let deleted = 0;
+      let errors = 0;
+      for (const id of selected) {
+        try { await deleteSubject(id); deleted++; }
+        catch { errors++; }
+      }
+      if (deleted > 0) toast.success(`${deleted} materia(s) eliminada(s)`);
+      if (errors > 0) toast.error(`${errors} materia(s) no se pudieron eliminar (en uso)`);
+      setSelected(new Set());
+      loadData();
     }
   };
 
   const toggleSelect = (id: string) => {
-    setSelected(prev => {
-      const n = new Set(prev);
-      if (n.has(id)) n.delete(id); else n.add(id);
-      return n;
-    });
+    setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   };
 
   const toggleSelectAll = () => {
@@ -75,32 +117,46 @@ export default function SubjectsManager() {
     else setSelected(new Set(filtered.map(s => s.id)));
   };
 
-  const filtered = subjects.filter(s => s.name.toLowerCase().includes(search.toLowerCase()));
+  const filtered = subjects.filter(s => {
+    const matchSearch = s.name.toLowerCase().includes(search.toLowerCase());
+    const matchCycle = !filterCycle || s.cycle === filterCycle;
+    const matchStatus = !filterStatus || s.status === filterStatus;
+    return matchSearch && matchCycle && matchStatus;
+  });
 
   if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center">
-              <BookMarked className="w-5 h-5 text-secondary-dark" />
-            </div>
-            Materias
-          </h2>
-          <p className="text-sm text-slate-500 mt-1">{filtered.length} materia(s) registrada(s)</p>
+      <div className="module-header">
+        <div className="module-title-group">
+          <div className="module-icon bg-secondary/10">
+            <BookMarked className="w-5 h-5 text-secondary-dark" />
+          </div>
+          <div>
+            <h1 className="module-title">Materias</h1>
+            <p className="module-subtitle">{filtered.length} materia(s) registrada(s)</p>
+          </div>
         </div>
-        <button onClick={() => { setShowForm(true); setEditingId(null); setName(''); }} className="btn-primary">
+        <button onClick={() => { setShowForm(true); resetForm(); }} className="btn-primary">
           <Plus className="w-4 h-4" /> Nueva Materia
         </button>
       </div>
 
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input type="text" placeholder="Buscar materia..." value={search} onChange={e => setSearch(e.target.value)} className="input pl-9" />
         </div>
+        <select value={filterCycle} onChange={e => setFilterCycle(e.target.value)} className="input w-auto">
+          <option value="">Todos los ciclos</option>
+          {Object.entries(CYCLE_NAMES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="input w-auto">
+          <option value="">Todos</option>
+          <option value="ACTIVO">Activos</option>
+          <option value="INACTIVO">Inactivos</option>
+        </select>
         {selected.size > 0 && (
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
             className="flex items-center gap-2 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
@@ -117,14 +173,48 @@ export default function SubjectsManager() {
 
       <AnimatePresence>
         {showForm && (
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="card p-4">
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="card p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-slate-900">{editingId ? 'Editar Materia' : 'Nueva Materia'}</h3>
-              <button onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1 hover:bg-slate-100 rounded-lg"><X className="w-4 h-4" /></button>
+              <button onClick={() => { setShowForm(false); resetForm(); }} className="p-1 hover:bg-slate-100 rounded-lg"><X className="w-4 h-4" /></button>
             </div>
-            <form onSubmit={handleSubmit} className="flex gap-3">
-              <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Matemáticas" className="input flex-1" autoFocus />
-              <button type="submit" className="btn-primary"><Save className="w-4 h-4" /> {editingId ? 'Actualizar' : 'Crear'}</button>
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nombre *</label>
+                <input type="text" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                  placeholder="Ej: Matemáticas" className="input w-full" autoFocus />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1">Descripción</label>
+                <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                  placeholder="Descripción breve de la materia..." className="input w-full h-20 resize-none" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Ciclo</label>
+                <select value={form.cycle} onChange={e => setForm(p => ({ ...p, cycle: e.target.value as Cycle | '' }))}
+                  className="input w-full">
+                  <option value="">Sin asignar</option>
+                  {Object.entries(CYCLE_NAMES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Horas semanales</label>
+                <input type="number" min={1} max={40} value={form.weeklyHours}
+                  onChange={e => setForm(p => ({ ...p, weeklyHours: parseInt(e.target.value) || 4 }))}
+                  className="input w-full" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Estado</label>
+                <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as 'ACTIVO' | 'INACTIVO' }))}
+                  className="input w-full">
+                  <option value="ACTIVO">Activo</option>
+                  <option value="INACTIVO">Inactivo</option>
+                </select>
+              </div>
+              <div className="md:col-span-2 flex justify-end gap-2">
+                <button type="button" onClick={() => { setShowForm(false); resetForm(); }} className="btn-secondary">Cancelar</button>
+                <button type="submit" className="btn-primary"><Save className="w-4 h-4" /> {editingId ? 'Actualizar' : 'Crear'}</button>
+              </div>
             </form>
           </motion.div>
         )}
@@ -134,18 +224,27 @@ export default function SubjectsManager() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((s, i) => (
             <motion.div key={s.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
-              className={`card card-hover p-3 group relative ${selected.has(s.id) ? 'ring-2 ring-primary border-primary' : ''}`}>
+              className={`card card-hover p-4 group relative ${selected.has(s.id) ? 'ring-2 ring-primary border-primary' : ''}`}>
               <div className="absolute top-2.5 left-2.5">
                 <button onClick={() => toggleSelect(s.id)}
-                  className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.has(s.id) ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'}`}>
+                  className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.has(s.id) ? 'bg-primary border-primary text-white' : 'border-slate-300 hover:border-primary'}`}>
                   {selected.has(s.id) && <Check className="w-2.5 h-2.5" />}
                 </button>
               </div>
               <div className="pt-1 pl-5">
-                <h3 className="font-semibold text-slate-900">{s.name}</h3>
-                <p className="text-xs text-slate-400 mt-0.5">ID: {s.id}</p>
+                <div className="flex items-start justify-between">
+                  <h3 className="font-semibold text-slate-900">{s.name}</h3>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${s.status === 'INACTIVO' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                    {s.status || 'ACTIVO'}
+                  </span>
+                </div>
+                {s.description && <p className="text-xs text-slate-500 mt-1 line-clamp-2">{s.description}</p>}
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {s.cycle && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{CYCLE_NAMES[s.cycle]}</span>}
+                  {s.weeklyHours && <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{s.weeklyHours}h/semana</span>}
+                </div>
               </div>
-              <div className="flex justify-end gap-1 mt-2 pt-2 border-t border-slate-100 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex justify-end gap-1 mt-3 pt-2 border-t border-slate-100 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button onClick={() => handleEdit(s)} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-slate-100 rounded-lg text-xs font-medium text-slate-600 transition-colors"><Edit2 className="w-3.5 h-3.5" /> Editar</button>
                 <button onClick={() => handleDelete(s.id)} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-red-50 rounded-lg text-xs font-medium text-red-600 transition-colors"><Trash2 className="w-3.5 h-3.5" /> Eliminar</button>
               </div>
@@ -159,12 +258,14 @@ export default function SubjectsManager() {
               <tr>
                 <th className="w-8 px-3 py-2">
                   <button onClick={toggleSelectAll}
-                    className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.size === filtered.length && filtered.length > 0 ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'}`}>
+                    className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.size === filtered.length && filtered.length > 0 ? 'bg-primary border-primary text-white' : 'border-slate-300 hover:border-primary'}`}>
                     {selected.size === filtered.length && filtered.length > 0 && <Check className="w-2.5 h-2.5" />}
                   </button>
                 </th>
                 <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Nombre</th>
-                <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">ID</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Ciclo</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Horas</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Estado</th>
                 <th className="text-right px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Acciones</th>
               </tr>
             </thead>
@@ -174,12 +275,21 @@ export default function SubjectsManager() {
                   className={`table-row ${selected.has(s.id) ? 'bg-primary/5' : ''}`}>
                   <td className="px-3 py-2">
                     <button onClick={() => toggleSelect(s.id)}
-                      className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.has(s.id) ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'}`}>
+                      className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.has(s.id) ? 'bg-primary border-primary text-white' : 'border-slate-300 hover:border-primary'}`}>
                       {selected.has(s.id) && <Check className="w-2.5 h-2.5" />}
                     </button>
                   </td>
-                  <td className="px-3 py-2 text-sm font-medium text-slate-900">{s.name}</td>
-                  <td className="px-3 py-2 text-sm text-slate-500 font-mono">{s.id}</td>
+                  <td className="px-3 py-2">
+                    <div className="text-sm font-medium text-slate-900">{s.name}</div>
+                    {s.description && <div className="text-xs text-slate-400 truncate max-w-[200px]">{s.description}</div>}
+                  </td>
+                  <td className="px-3 py-2 text-sm text-slate-600">{s.cycle ? CYCLE_NAMES[s.cycle] : '—'}</td>
+                  <td className="px-3 py-2 text-sm text-slate-600">{s.weeklyHours || '—'}h</td>
+                  <td className="px-3 py-2">
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${s.status === 'INACTIVO' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                      {s.status || 'ACTIVO'}
+                    </span>
+                  </td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex justify-end gap-1">
                       <button onClick={() => handleEdit(s)} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"><Edit2 className="w-4 h-4 text-slate-500" /></button>

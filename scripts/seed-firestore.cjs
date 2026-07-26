@@ -1,7 +1,48 @@
+/**
+ * Script de seed: crear datos iniciales en Firestore.
+ * Ejecutar con: node scripts/seed-firestore.cjs
+ * 
+ * Requiere: GOOGLE_APPLICATION_CREDENTIALS=/ruta/al/service-account.json
+ * o configura OLD_PROJECT_CREDENTIALS en .env para migración.
+ */
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
-const serviceAccount = require('C:/Users/ADMIN/Downloads/campus-27248-firebase-adminsdk-fbsvc-226a4833db.json');
+const { readFileSync } = require('fs');
+const { resolve } = require('path');
 
+// Load .env
+function loadEnv() {
+  try {
+    const envPath = resolve(__dirname, '..', '.env');
+    const lines = readFileSync(envPath, 'utf-8').split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eqIdx = trimmed.indexOf('=');
+      if (eqIdx === -1) continue;
+      const key = trimmed.slice(0, eqIdx).trim();
+      const val = trimmed.slice(eqIdx + 1).trim().replace(/^["']|["']$/g, '');
+      if (!process.env[key]) process.env[key] = val;
+    }
+  } catch {
+    // .env not found, rely on system env vars
+  }
+}
+
+loadEnv();
+
+// Use GOOGLE_APPLICATION_CREDENTIALS env var (standard for Firebase Admin SDK)
+// Or fall back to explicit path from .env
+const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.FIREBASE_CREDENTIALS;
+
+if (!credentialsPath) {
+  console.error('❌ No se encontró credencial de servicio.');
+  console.error('   Configura GOOGLE_APPLICATION_CREDENTIALS en tu .env o como variable de entorno:');
+  console.error('   GOOGLE_APPLICATION_CREDENTIALS=/ruta/a/tu/service-account.json');
+  process.exit(1);
+}
+
+const serviceAccount = require(credentialsPath);
 const app = initializeApp({ credential: cert(serviceAccount) });
 const db = getFirestore(app);
 

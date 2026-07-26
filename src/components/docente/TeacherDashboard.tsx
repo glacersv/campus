@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import InstitutionLogo from '../shared/InstitutionLogo';
+import ProjectsModule from '../proyectos/ProjectsModule';
 
 interface TeacherDashboardProps {
   teacherName: string;
@@ -35,6 +36,7 @@ export default function TeacherDashboard({ teacherName, onLogout }: TeacherDashb
   const today = new Date();
   const dayOfWeek = today.getDay();
   const isMonday = dayOfWeek === 1;
+  const [activeModule, setActiveModule] = React.useState<string | null>(null);
 
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
@@ -64,56 +66,67 @@ export default function TeacherDashboard({ teacherName, onLogout }: TeacherDashb
 
       {/* Content */}
       <main className="max-w-6xl mx-auto p-6">
-        {/* Welcome */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-slate-900">Bienvenido, {teacherName}</h2>
-          <p className="text-slate-500 mt-1">Selecciona un módulo para comenzar</p>
-        </div>
+        {activeModule === 'proyectos' ? (
+          <div>
+            <button onClick={() => setActiveModule(null)} className="text-xs text-slate-400 hover:text-slate-600 mb-4 flex items-center gap-1">
+              ← Volver al menú
+            </button>
+            <ProjectsModule view="docente" />
+          </div>
+        ) : (
+          <>
+            {/* Welcome */}
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold text-slate-900">Bienvenido, {teacherName}</h2>
+              <p className="text-slate-500 mt-1">Selecciona un módulo para comenzar</p>
+            </div>
 
-        {/* Monday Notice */}
-        {isMonday && (
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-            <p className="text-sm text-amber-800 font-medium">
-              Hoy es Lunes - <span className="font-bold">Acto Cívico Automático</span>
-            </p>
-            <p className="text-xs text-amber-600 mt-1">La formación de hoy será en modalidad Acto Cívico</p>
-          </motion.div>
-        )}
+            {/* Monday Notice */}
+            {isMonday && (
+              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                <p className="text-sm text-amber-800 font-medium">
+                  Hoy es Lunes - <span className="font-bold">Acto Cívico Automático</span>
+                </p>
+                <p className="text-xs text-amber-600 mt-1">La formación de hoy será en modalidad Acto Cívico</p>
+              </motion.div>
+            )}
 
-        {/* Module Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {modules.map((mod, i) => (
-            <motion.div
-              key={mod.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.08 }}
-onClick={() => {
-                if (mod.active) {
-                  if (mod.id === 'formacion') navigate('/attendance');
-                  if (mod.id === 'proyectos') navigate('/proyectos');
-                }
-              }}
-              className={`module-card text-left ${mod.active ? 'cursor-pointer' : 'disabled'}`}
-            >
-              <div className="flex items-start gap-4">
-                <div className={`${mod.color} w-12 h-12 rounded-xl flex items-center justify-center shrink-0`}>
-                  <mod.icon className="w-6 h-6 text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-base font-semibold text-slate-900">{mod.label}</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">{mod.desc}</p>
-                  {!mod.active && (
-                    <div className="flex items-center gap-1 mt-2">
-                      <Lock className="w-3 h-3 text-slate-400" />
-                      <span className="text-[10px] text-slate-400 font-medium">Próximamente</span>
+            {/* Module Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {modules.map((mod, i) => (
+                <motion.div
+                  key={mod.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.08 }}
+                  onClick={() => {
+                    if (mod.active) {
+                      if (mod.id === 'formacion') navigate('/attendance');
+                      if (mod.id === 'proyectos') setActiveModule('proyectos');
+                    }
+                  }}
+                  className={`module-card text-left ${mod.active ? 'cursor-pointer' : 'disabled'}`}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className={`${mod.color} w-12 h-12 rounded-xl flex items-center justify-center shrink-0`}>
+                      <mod.icon className="w-6 h-6 text-white" />
                     </div>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-semibold text-slate-900">{mod.label}</h3>
+                      <p className="text-xs text-slate-400 mt-0.5">{mod.desc}</p>
+                      {!mod.active && (
+                        <div className="flex items-center gap-1 mt-2">
+                          <Lock className="w-3 h-3 text-slate-400" />
+                          <span className="text-[10px] text-slate-400 font-medium">Próximamente</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </>
+        )}
       </main>
     </div>
   );

@@ -14,6 +14,19 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { User, Grade, Section, Subject, Teacher, Student, BaccalaureateTypeDoc, Building, ComputerLab, RoleConfig, UserRole } from '../types';
+import {
+  validateUser,
+  validateGrade,
+  validateSection,
+  validateTeacher,
+  validateStudent,
+  validateBuilding,
+  validateSubject,
+  validateBaccalaureateType,
+  validateComputerLab,
+  validateRoleConfig,
+  validate
+} from './validation';
 
 // ==================== COLLECTIONS ====================
 
@@ -32,6 +45,9 @@ const ROLES_COLLECTION = 'roles';
 // ==================== USERS ====================
 
 export async function createUser(userData: Omit<User, 'createdAt'>): Promise<void> {
+  // Validate input data
+  validate(userData, validateUser);
+  
   const userRef = doc(db, USERS_COLLECTION, userData.uid);
   await setDoc(userRef, { ...userData, createdAt: serverTimestamp() });
 }
@@ -62,6 +78,9 @@ export async function getAllUsers(): Promise<User[]> {
 // ==================== ROLES & PERMISSIONS ====================
 
 export async function createRole(data: Omit<RoleConfig, 'createdAt'>): Promise<void> {
+  // Validate input data
+  validate(data, validateRoleConfig);
+  
   const ref = doc(db, ROLES_COLLECTION, data.id);
   await setDoc(ref, { ...data, createdAt: serverTimestamp() });
 }
@@ -92,8 +111,14 @@ export async function getAllRoles(): Promise<RoleConfig[]> {
 // ==================== GRADES ====================
 
 export async function createGrade(data: Omit<Grade, 'createdAt'>): Promise<void> {
+  // Validate input data
+  validate(data, validateGrade);
+  
   const ref = doc(db, GRADES_COLLECTION, data.id);
-  await setDoc(ref, { ...data, createdAt: serverTimestamp() });
+  const cleanData = Object.fromEntries(
+    Object.entries(data).filter(([, v]) => v !== undefined)
+  );
+  await setDoc(ref, { ...cleanData, createdAt: serverTimestamp() });
 }
 
 export async function getGrade(id: string): Promise<Grade | null> {
@@ -105,7 +130,10 @@ export async function getGrade(id: string): Promise<Grade | null> {
 
 export async function updateGrade(id: string, data: Partial<Grade>): Promise<void> {
   const ref = doc(db, GRADES_COLLECTION, id);
-  await updateDoc(ref, data);
+  const cleanData = Object.fromEntries(
+    Object.entries(data).filter(([, v]) => v !== undefined)
+  );
+  await updateDoc(ref, cleanData);
 }
 
 export async function deleteGrade(id: string): Promise<void> {
@@ -122,6 +150,9 @@ export async function getAllGrades(): Promise<Grade[]> {
 // ==================== BACCALAUREATE TYPES ====================
 
 export async function createBaccalaureateType(data: Omit<BaccalaureateTypeDoc, 'createdAt'>): Promise<void> {
+  // Validate input data
+  validate(data, validateBaccalaureateType);
+  
   const ref = doc(db, BACCALAUREATE_TYPES_COLLECTION, data.id);
   await setDoc(ref, { ...data, createdAt: serverTimestamp() });
 }
@@ -152,6 +183,9 @@ export async function getAllBaccalaureateTypes(): Promise<BaccalaureateTypeDoc[]
 // ==================== BUILDINGS ====================
 
 export async function createBuilding(data: Omit<Building, 'createdAt'>): Promise<void> {
+  // Validate input data
+  validate(data, validateBuilding);
+  
   const ref = doc(db, BUILDINGS_COLLECTION, data.id);
   await setDoc(ref, { ...data, createdAt: serverTimestamp() });
 }
@@ -182,6 +216,9 @@ export async function getAllBuildings(): Promise<Building[]> {
 // ==================== COMPUTER LABS ====================
 
 export async function createComputerLab(data: Omit<ComputerLab, 'createdAt'>): Promise<void> {
+  // Validate input data
+  validate(data, validateComputerLab);
+  
   const ref = doc(db, COMPUTER_LABS_COLLECTION, data.id);
   await setDoc(ref, { ...data, createdAt: serverTimestamp() });
 }
@@ -212,6 +249,9 @@ export async function getAllComputerLabs(): Promise<ComputerLab[]> {
 // ==================== SECTIONS ====================
 
 export async function createSection(data: Omit<Section, 'createdAt'>): Promise<void> {
+  // Validate input data
+  validate(data, validateSection);
+  
   const ref = doc(db, SECTIONS_COLLECTION, data.id);
   await setDoc(ref, { ...data, createdAt: serverTimestamp() });
 }
@@ -248,6 +288,9 @@ export async function getSectionsByGrade(gradeId: string): Promise<Section[]> {
 // ==================== SUBJECTS ====================
 
 export async function createSubject(data: Omit<Subject, 'createdAt'>): Promise<void> {
+  // Validate input data
+  validate(data, validateSubject);
+  
   const ref = doc(db, SUBJECTS_COLLECTION, data.id);
   await setDoc(ref, { ...data, createdAt: serverTimestamp() });
 }
@@ -278,6 +321,9 @@ export async function getAllSubjects(): Promise<Subject[]> {
 // ==================== TEACHERS ====================
 
 export async function createTeacher(data: Omit<Teacher, 'createdAt'>): Promise<void> {
+  // Validate input data
+  validate(data, validateTeacher);
+  
   const ref = doc(db, TEACHERS_COLLECTION, data.id);
   await setDoc(ref, { ...data, createdAt: serverTimestamp() });
 }
@@ -316,6 +362,9 @@ export async function getTeacherByGrade(gradeId: string): Promise<Teacher | null
 // ==================== STUDENTS ====================
 
 export async function createStudent(data: Omit<Student, 'createdAt' | 'updatedAt'>): Promise<void> {
+  // Validate input data
+  validate(data, validateStudent);
+  
   const ref = doc(db, STUDENTS_COLLECTION, data.id);
   await setDoc(ref, { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
 }
@@ -586,10 +635,14 @@ export async function seedInitialData(): Promise<void> {
     { id: 'admin', name: 'Administrador', description: 'Control total del sistema', permissions: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'], isSystem: true },
     { id: 'docente', name: 'Docente', description: 'Profesor de aula', permissions: ['formacion', 'proyectos'], isSystem: true },
     { id: 'alumno', name: 'Alumno', description: 'Estudiante del colegio', permissions: ['formacion', 'proyectos'], isSystem: true },
-    { id: 'coordinacion', name: 'Coordinación', description: 'Coordinación académica', permissions: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'], isSystem: true },
+    { id: 'coordinacion', name: 'Coordinación', description: 'Coordinación académica general', permissions: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'], isSystem: true },
+    { id: 'coordinacion_academica', name: 'Coord. Académica', description: 'Coordinación de áreas académicas y horarios', permissions: ['notas', 'horario', 'clase'], isSystem: true },
+    { id: 'coordinacion_convivencia', name: 'Coord. Convivencia', description: 'Coordinación de formación y disciplina', permissions: ['formacion', 'notas'], isSystem: true },
+    { id: 'coordinacion_primaria', name: 'Coord. Primaria', description: 'Coordinación de grados 1° - 6°', permissions: ['formacion', 'notas', 'horario'], isSystem: true },
+    { id: 'coordinacion_parvularia', name: 'Coord. Parvularia', description: 'Coordinación de grados K4 - K6', permissions: ['formacion'], isSystem: true },
     { id: 'registro_academico', name: 'Registro Académico', description: 'Gestión de registros y matrícula', permissions: ['notas', 'horario'], isSystem: true },
     { id: 'enfermeria', name: 'Enfermería', description: 'Control de salud estudiantil', permissions: ['formacion', 'avisos'], isSystem: true },
-    { id: 'psicopedagogio', name: 'Psicopedagogía', description: 'Apoyo psicológico y pedagógico', permissions: ['formacion', 'notas', 'avisos'], isSystem: true },
+    { id: 'psicopedagogico', name: 'Psicopedagógico', description: 'Apoyo psicológico y pedagógico', permissions: ['formacion', 'notas', 'avisos'], isSystem: true },
   ];
   for (const r of rolesData) await createRole(r);
 
@@ -626,6 +679,9 @@ export async function seedInitialData(): Promise<void> {
 
   const currentYear = new Date().getFullYear();
   const gradesData = [
+    { id: 'k4', name: 'Kinder 4', cycle: 'parvularia' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: 'k5', name: 'Kinder 5', cycle: 'parvularia' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: 'k6', name: 'Preparatoria', cycle: 'parvularia' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
     { id: '1', name: '1° Grado', cycle: '1' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
     { id: '2', name: '2° Grado', cycle: '1' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
     { id: '3', name: '3° Grado', cycle: '1' as const, status: 'ACTIVO' as const, schoolYear: currentYear },

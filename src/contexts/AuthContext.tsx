@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User as FirebaseUser, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
-import { auth } from '../firebase';
+import { httpsCallable } from 'firebase/functions';
+import { auth, functions } from '../firebase';
 import { getUser, createUser, getRole } from '../lib/firestore';
 import { User, UserRole, SystemModuleId, RoleConfig } from '../types';
 
@@ -52,13 +53,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, displayName: string, role: UserRole = 'docente') => {
+    // Restrict registration to institutional email domain
+    if (!email.endsWith('@salesianosanjose.edu.sv')) {
+      throw new Error('Solo se permiten correos institucionales (@salesianosanjose.edu.sv)');
+    }
+
+    // First create the user with Firebase Auth
     const result = await createUserWithEmailAndPassword(auth, email, password);
+    
+    // Then create the user profile in Firestore with the default role
+    // The role will be validated by Cloud Function if needed
     await createUser({
       uid: result.user.uid,
       email,
       displayName,
-      role
+      role: 'docente' // Always default to docente for security
     });
+    
+    // If an admin is creating a user with a different role, they should use assignUserRole Cloud Function
+    // For self-registration, we always use 'docente' as default
   };
 
   const signOut = async () => {

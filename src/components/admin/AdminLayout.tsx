@@ -13,7 +13,10 @@ import {
   Shield,
   LogOut,
   ChevronRight,
-  Menu
+  Menu,
+  Users,
+  Settings,
+  Handshake
 } from 'lucide-react';
 import { useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -45,21 +48,36 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   const fullMenuSections: MenuSection[] = [
     { title: '', items: [{ id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard }] },
-    { title: 'GESTIÓN ACADÉMICA', items: [
+    { title: 'ACADÉMICA', items: [
       { id: 'grades', label: 'Grados', icon: BookOpen },
       { id: 'sections', label: 'Secciones', icon: Layers },
       { id: 'grade-section-assignment', label: 'Asignar Edificios', icon: GitBranch },
       { id: 'subjects', label: 'Materias', icon: BookMarked },
+    ]},
+    { title: 'CONVIVENCIA', items: [
+      { id: 'convivencia', label: 'Panel Convivencia', icon: Handshake },
+    ]},
+    { title: 'INFRAESTRUCTURA', items: [
       { id: 'buildings', label: 'Edificios', icon: Building2 },
       { id: 'computer-labs', label: 'Laboratorios', icon: Monitor },
     ]},
-    { title: 'BACHILLERATO', items: [{ id: 'baccalaureate-types', label: 'Tipos de Bachillerato', icon: Award }] },
-    { title: 'PERSONAL', items: [{ id: 'teachers', label: 'Docentes', icon: GraduationCap }] },
-    { title: 'ALUMNOS', items: [{ id: 'students', label: 'Alumnos', icon: UserCheck }] },
-    { title: 'SEGURIDAD', items: [{ id: 'roles', label: 'Roles', icon: Shield }] },
+    { title: 'PERSONAL', items: [
+      { id: 'teachers', label: 'Docentes', icon: GraduationCap },
+    ]},
+    { title: 'ALUMNOS', items: [
+      { id: 'students', label: 'Alumnos', icon: UserCheck },
+    ]},
+    { title: 'SEGURIDAD', items: [
+      { id: 'users', label: 'Usuarios', icon: Users },
+      { id: 'roles', label: 'Roles y Permisos', icon: Shield },
+    ]},
+    { title: 'SISTEMA', items: [
+      { id: 'baccalaureate-types', label: 'Tipos de Bachillerato', icon: Award },
+      { id: 'coordinaciones-config', label: 'Config. Coordinaciones', icon: Settings },
+    ]},
   ];
 
-  const adminOnly = ['grades', 'sections', 'grade-section-assignment', 'subjects', 'buildings', 'computer-labs', 'baccalaureate-types', 'teachers', 'students'];
+  const adminOnly = ['grades', 'sections', 'grade-section-assignment', 'subjects', 'buildings', 'computer-labs', 'baccalaureate-types', 'teachers', 'students', 'coordinaciones-config'];
 
   const menuSections = userRole === 'admin'
     ? fullMenuSections

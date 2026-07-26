@@ -191,13 +191,15 @@ export default function SectionsManager() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <div className="bg-accent/10 p-2 rounded-lg"><Layers className="w-5 h-5 text-accent" /></div>
-            Secciones
-          </h2>
-          <p className="text-sm text-slate-500 mt-1">{groupStats.length} sección(es) registrada(s)</p>
+      <div className="module-header">
+        <div className="module-title-group">
+          <div className="module-icon bg-accent/10">
+            <Layers className="w-5 h-5 text-accent" />
+          </div>
+          <div>
+            <h1 className="module-title">Secciones</h1>
+            <p className="module-subtitle">{groupStats.length} sección(es) registrada(s)</p>
+          </div>
         </div>
         <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabId: '' }); }} className="btn-primary">
           <Plus className="w-4 h-4" /> Nueva Sección
@@ -210,36 +212,36 @@ export default function SectionsManager() {
       </div>
 
       {showForm && (
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl p-5 border border-slate-200/80">
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="card p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-slate-900">{editingId ? 'Editar Sección' : 'Nueva Sección'}</h3>
             <button onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1 hover:bg-slate-100 rounded-lg"><X className="w-4 h-4 text-slate-500" /></button>
           </div>
           <form onSubmit={handleSubmit} className="grid grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Grado *</label>
+              <label className="form-label">Grado *</label>
               <select required value={form.gradeId} onChange={e => setForm({ ...form, gradeId: e.target.value })} className="input">
                 <option value="">Seleccionar grado</option>
                 {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Nombre *</label>
+              <label className="form-label">Nombre *</label>
               <input type="text" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ej: A" className="input" maxLength={3} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Capacidad</label>
+              <label className="form-label">Capacidad</label>
               <input type="number" min="1" value={form.capacity} onChange={e => setForm({ ...form, capacity: e.target.value })} placeholder="Ej: 40" className="input" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Edificio</label>
+              <label className="form-label">Edificio</label>
               <select value={form.buildingId} onChange={e => setForm({ ...form, buildingId: e.target.value })} className="input">
                 <option value="">Sin edificio</option>
                 {buildings.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Laboratorio</label>
+              <label className="form-label">Laboratorio</label>
               <select value={form.computerLabId} onChange={e => setForm({ ...form, computerLabId: e.target.value })} className="input">
                 <option value="">Sin laboratorio</option>
                 {computerLabs.map(cl => <option key={cl.id} value={cl.id}>{cl.name}</option>)}

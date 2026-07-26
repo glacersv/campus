@@ -35,6 +35,7 @@ import {
 import { Grade, Section, Building, Cycle, BaccalaureateType, CYCLE_NAMES } from '../../types';
 
 const CYCLE_COLORS: Record<Cycle, string> = {
+  'parvularia': 'bg-pink-100 text-pink-700',
   '1': 'bg-emerald-100 text-emerald-700',
   '2': 'bg-blue-100 text-blue-700',
   '3': 'bg-purple-100 text-purple-700',
@@ -47,6 +48,7 @@ const BAC_COLOR: Record<BaccalaureateType, string> = {
 };
 
 const STATUS_COLOR: Record<Cycle, string> = {
+  'parvularia': 'bg-pink-100 text-pink-700',
   '1': 'bg-emerald-100 text-emerald-700',
   '2': 'bg-blue-100 text-blue-700',
   '3': 'bg-purple-100 text-purple-700',
@@ -54,6 +56,7 @@ const STATUS_COLOR: Record<Cycle, string> = {
 };
 
 const CYCLE_HEX: Record<Cycle, string> = {
+  'parvularia': '#EC4899',
   '1': '#10B981',
   '2': '#3B82F6',
   '3': '#8B5CF6',
@@ -61,6 +64,7 @@ const CYCLE_HEX: Record<Cycle, string> = {
 };
 
 const CYCLE_LABEL: Record<Cycle, { label: string; Icon: React.ElementType; size: string }> = {
+  'parvularia': { label: 'Parvularia', Icon: Baby, size: 'w-3 h-3' },
   '1': { label: 'Primer Ciclo', Icon: Baby, size: 'w-4 h-4' },
   '2': { label: 'Segundo Ciclo', Icon: User, size: 'w-5 h-5' },
   '3': { label: 'Tercer Ciclo', Icon: UserRound, size: 'w-6 h-6' },
@@ -173,11 +177,12 @@ export default function GradesManager() {
   });
 
   const cycleGroups = {
+    'parvularia': filtered.filter((g) => g.cycle === 'parvularia').sort((a, b) => extractGradeNumber(a) - extractGradeNumber(b)),
     '1': filtered.filter((g) => g.cycle === '1').sort((a, b) => extractGradeNumber(a) - extractGradeNumber(b)),
     '2': filtered.filter((g) => g.cycle === '2').sort((a, b) => extractGradeNumber(a) - extractGradeNumber(b)),
     '3': filtered.filter((g) => g.cycle === '3').sort((a, b) => extractGradeNumber(a) - extractGradeNumber(b)),
     '4': filtered.filter((g) => g.cycle === '4').sort((a, b) => sortBaccalaureate(a, b))
-  };
+  } as const;
 
   function extractGradeNumber(grade: Grade): number {
     const match = grade.name.match(/(\d+)/);
@@ -197,15 +202,15 @@ export default function GradesManager() {
     <div className="grid grid-cols-12 gap-6">
       {/* Main content - 8 columns */}
       <div className="col-span-8 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-primary" />
-              </div>
-              Grados
-            </h2>
-            <p className="text-sm text-slate-500 mt-1">{filtered.length} grado(s) registrado(s)</p>
+        <div className="module-header">
+          <div className="module-title-group">
+            <div className="module-icon bg-primary/10">
+              <BookOpen className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h1 className="module-title">Grados</h1>
+              <p className="module-subtitle">{filtered.length} grado(s) registrado(s)</p>
+            </div>
           </div>
           <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', cycle: '1', baccalaureateType: '' }); }} className="btn-primary">
             <Plus className="w-4 h-4" /> Nuevo Grado
@@ -218,15 +223,15 @@ export default function GradesManager() {
             <input type="text" placeholder="Buscar grado..." value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-9" />
           </div>
           <div className="flex gap-1.5">
-            <button onClick={() => setCycleFilter('all')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${cycleFilter === 'all' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>Todos</button>
+            <button onClick={() => setCycleFilter('all')} className={`filter-pill ${cycleFilter === 'all' ? 'active' : ''}`}>Todos</button>
             {(Object.keys(CYCLE_NAMES) as Cycle[]).map((c) => (
-              <button key={c} onClick={() => setCycleFilter(c)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${cycleFilter === c ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{CYCLE_NAMES[c]}</button>
+              <button key={c} onClick={() => setCycleFilter(c)} className={`filter-pill ${cycleFilter === c ? 'active' : ''}`}>{CYCLE_NAMES[c]}</button>
             ))}
           </div>
           <div className="flex gap-1.5">
-            <button onClick={() => setStatusFilter('all')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${statusFilter === 'all' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>Todos</button>
-            <button onClick={() => setStatusFilter('ACTIVO')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${statusFilter === 'ACTIVO' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>Activos</button>
-            <button onClick={() => setStatusFilter('INACTIVO')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${statusFilter === 'INACTIVO' ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>Inactivos</button>
+            <button onClick={() => setStatusFilter('all')} className={`filter-pill ${statusFilter === 'all' ? 'active' : ''}`}>Todos</button>
+            <button onClick={() => setStatusFilter('ACTIVO')} className={`filter-pill ${statusFilter === 'ACTIVO' ? 'active' : ''}`}>Activos</button>
+            <button onClick={() => setStatusFilter('INACTIVO')} className={`filter-pill ${statusFilter === 'INACTIVO' ? 'active' : ''}`}>Inactivos</button>
           </div>
           {selected.size > 0 && (
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-2 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
@@ -250,11 +255,11 @@ export default function GradesManager() {
               </div>
               <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Nombre *</label>
+                  <label className="form-label">Nombre *</label>
                   <input type="text" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ej: 10mo Grado" className="input" autoFocus />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Ciclo *</label>
+                  <label className="form-label">Ciclo *</label>
                   <select value={form.cycle} onChange={(e) => setForm({ ...form, cycle: e.target.value as Cycle })} className="input">
                     {(Object.keys(CYCLE_NAMES) as Cycle[]).map((c) => (
                       <option key={c} value={c}>{CYCLE_NAMES[c]}</option>
@@ -262,7 +267,7 @@ export default function GradesManager() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Tipo de Bachillerato</label>
+                  <label className="form-label">Tipo de Bachillerato</label>
                   <select value={form.baccalaureateType} onChange={(e) => setForm({ ...form, baccalaureateType: e.target.value as '' | BaccalaureateType })} className="input">
                     <option value="">Ninguno</option>
                     <option value="general">General</option>
@@ -340,7 +345,7 @@ export default function GradesManager() {
             <thead className="table-header">
               <tr>
                 <th className="w-8 px-3 py-2">
-                  <button onClick={toggleSelectAll} className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.size === filtered.length && filtered.length > 0 ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'}`}>
+                  <button onClick={toggleSelectAll} className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.size === filtered.length && filtered.length > 0 ? 'bg-primary border-primary text-white' : 'border-slate-300 hover:border-primary'}`}>
                     {selected.size === filtered.length && filtered.length > 0 && <Check className="w-2.5 h-2.5" />}
                   </button>
                 </th>
@@ -355,7 +360,7 @@ export default function GradesManager() {
               {filtered.map((g, i) => (
                 <motion.tr key={g.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }} className={`table-row ${selected.has(g.id) ? 'bg-primary/5' : ''}`}>
                   <td className="px-3 py-2">
-                    <button onClick={() => toggleSelect(g.id)} className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.has(g.id) ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'}`}>
+                    <button onClick={() => toggleSelect(g.id)} className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.has(g.id) ? 'bg-primary border-primary text-white' : 'border-slate-300 hover:border-primary'}`}>
                       {selected.has(g.id) && <Check className="w-2.5 h-2.5" />}
                     </button>
                   </td>
@@ -367,8 +372,8 @@ export default function GradesManager() {
                     ) : (<span className="text-slate-400 text-xs">—</span>)}
                   </td>
                   <td className="px-3 py-2 text-center">
-                    <button onClick={() => handleToggleStatus(g.id, g.status)} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${(g.status || 'ACTIVO') === 'ACTIVO' ? `${STATUS_COLOR[g.cycle]} hover:bg-gray-200 hover:text-slate-600` : 'bg-gray-100 text-slate-500 hover:bg-gray-200'}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${(g.status || 'ACTIVO') === 'ACTIVO' ? 'bg-current' : 'bg-gray-400'}`} />
+                    <button onClick={() => handleToggleStatus(g.id, g.status)} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${(g.status || 'ACTIVO') === 'ACTIVO' ? `${STATUS_COLOR[g.cycle]} hover:bg-slate-200 hover:text-slate-600` : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${(g.status || 'ACTIVO') === 'ACTIVO' ? 'bg-current' : 'bg-slate-400'}`} />
                       {(g.status || 'ACTIVO') === 'ACTIVO' ? 'ACTIVO' : 'INACTIVO'}
                     </button>
                   </td>

@@ -144,22 +144,17 @@ export default function BuildingsManager() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Building2 className="w-5 h-5 text-primary" />
-            </div>
-            Edificios
-          </h2>
-          <p className="text-sm text-slate-500 mt-1">
-            {buildings.length} edificio(s) registrado(s)
-          </p>
+      <div className="module-header">
+        <div className="module-title-group">
+          <div className="module-icon bg-primary/10">
+            <Building2 className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="module-title">Edificios</h1>
+            <p className="module-subtitle">{buildings.length} edificio(s) registrado(s)</p>
+          </div>
         </div>
-        <button
-          onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', code: '', color: '#12562E', description: '' }); }}
-          className="btn-primary"
-        >
+        <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', code: '', color: '#12562E', description: '' }); }} className="btn-primary">
           <Plus className="w-4 h-4" /> Nuevo Edificio
         </button>
       </div>
@@ -186,7 +181,7 @@ export default function BuildingsManager() {
             </div>
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Nombre *</label>
+                <label className="form-label">Nombre *</label>
                 <input
                   type="text"
                   value={form.name}
@@ -198,7 +193,7 @@ export default function BuildingsManager() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Código *</label>
+                <label className="form-label">Código *</label>
                 <input
                   type="text"
                   value={form.code}
@@ -210,7 +205,7 @@ export default function BuildingsManager() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Color</label>
+                <label className="form-label">Color</label>
                 <div className="flex gap-2 flex-wrap">
                   {BUILDING_COLORS.map(c => (
                     <button
@@ -224,7 +219,7 @@ export default function BuildingsManager() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Descripción</label>
+                <label className="form-label">Descripción</label>
                 <input
                   type="text"
                   value={form.description}
@@ -297,7 +292,7 @@ export default function BuildingsManager() {
                 <div className="px-4 pb-3">
                   <div className="flex items-center gap-2 text-[10px] text-slate-400">
                     <span className="w-16 shrink-0">Ocupación:</span>
-                    <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${Math.min((stats.totalEnrolled / Math.max(stats.totalCapacity, 1)) * 100, 100)}%` }}
@@ -367,7 +362,7 @@ export default function BuildingsManager() {
                 { icon: Users, label: 'Capacidad Total', value: stats.totalCapacity, sub: 'cupos disponibles' },
                 { icon: GraduationCap, label: 'Alumnos Matriculados', value: stats.totalEnrolled, sub: `de ${stats.totalCapacity} cupos` }
               ].map(({ icon: Icon, label, value, sub }) => (
-                <div key={label} className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                <div key={label} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: b.color + '18' }}>
                       <Icon className="w-5 h-5" style={{ color: b.color }} />
@@ -391,18 +386,18 @@ export default function BuildingsManager() {
                   {stats.gradeStats.map(gs => {
                     const pct = Math.min((gs.enrolledStudents / Math.max(gs.totalCapacity, 1)) * 100, 100);
                     return (
-                      <div key={gs.gradeId} className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                      <div key={gs.gradeId} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-bold text-slate-900">{gs.gradeName}</span>
-                            <span className="text-xs bg-gray-100 text-slate-500 font-medium px-2 py-0.5 rounded-full">{gs.sections.length} secc{(gs.sections.length > 1 ? 'iones' : 'ión')}</span>
+                            <span className="text-xs bg-slate-100 text-slate-500 font-medium px-2 py-0.5 rounded-full">{gs.sections.length} secc{(gs.sections.length > 1 ? 'iones' : 'ión')}</span>
                           </div>
                           <div className="flex items-baseline gap-1.5 font-mono">
                             <span className="text-2xl font-black text-slate-900">{gs.enrolledStudents}</span>
                             <span className="text-sm text-slate-400">/ {gs.totalCapacity}</span>
                           </div>
                         </div>
-                        <div className="relative h-4 bg-gray-100 rounded-full overflow-hidden mb-3">
+                        <div className="relative h-4 bg-slate-100 rounded-full overflow-hidden mb-3">
                           <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${pct}%` }}
@@ -416,7 +411,7 @@ export default function BuildingsManager() {
                             const enrolled = students.filter(st => st.sectionId === sec.id && st.gradeId === sec.gradeId).length;
                             return (
                               <span key={sec.id} className={`inline-flex items-center gap-1.5 text-xs font-mono px-2.5 py-1 rounded-lg border ${
-                                enrolled > 0 ? 'bg-white border-gray-200 text-slate-700' : 'bg-gray-50 border-dashed border-gray-200 text-slate-400'
+                                enrolled > 0 ? 'bg-white border-slate-200 text-slate-700' : 'bg-slate-50 border-dashed border-slate-200 text-slate-400'
                               }`}>
                                 <span className="font-semibold">Sección {sec.name}</span>
                                 <span className="font-bold" style={{ color: b.color }}>{enrolled}</span>
@@ -437,7 +432,7 @@ export default function BuildingsManager() {
             )}
 
             {stats.gradeStats.length === 0 && (
-              <div className="text-center py-16 text-slate-400 bg-white border border-gray-200 rounded-xl">
+              <div className="text-center py-16 text-slate-400 bg-white border border-slate-200 rounded-xl">
                 <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p className="text-base font-medium">No hay secciones asignadas a este edificio</p>
                 <p className="text-sm mt-1">Asigna secciones desde el módulo de Secciones</p>
@@ -448,7 +443,7 @@ export default function BuildingsManager() {
       })()}
 
       {!selectedBuildingId && buildings.length > 0 && (
-        <div className="mt-6 text-center py-12 text-slate-400 bg-white border border-dashed border-gray-200 rounded-xl">
+        <div className="mt-6 text-center py-12 text-slate-400 bg-white border border-dashed border-slate-200 rounded-xl">
           <BarChart3 className="w-10 h-10 mx-auto mb-2 opacity-40" />
           <p className="text-sm font-medium">Selecciona un edificio para ver sus estadísticas</p>
           <p className="text-xs mt-1">Haz clic en cualquier edificio de arriba</p>

@@ -107,22 +107,17 @@ export default function BaccalaureateTypesManager() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center">
-              <GraduationCap className="w-5 h-5 text-secondary-dark" />
-            </div>
-            Tipos de Bachillerato
-          </h2>
-          <p className="text-sm text-slate-500 mt-1">
-            {filtered.length} tipo(s) registrado(s)
-          </p>
+      <div className="module-header">
+        <div className="module-title-group">
+          <div className="module-icon bg-secondary/10">
+            <GraduationCap className="w-5 h-5 text-secondary-dark" />
+          </div>
+          <div>
+            <h1 className="module-title">Tipos de Bachillerato</h1>
+            <p className="module-subtitle">{filtered.length} tipo(s) registrado(s)</p>
+          </div>
         </div>
-        <button
-          onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', maxGrade: '11' }); }}
-          className="btn-primary"
-        >
+        <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', maxGrade: '11' }); }} className="btn-primary">
           <Plus className="w-4 h-4" /> Nuevo Tipo
         </button>
       </div>
@@ -207,7 +202,7 @@ export default function BaccalaureateTypesManager() {
             </div>
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Nombre *</label>
+                <label className="form-label">Nombre *</label>
                 <input
                   type="text"
                   value={form.name}
@@ -219,7 +214,7 @@ export default function BaccalaureateTypesManager() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Grado Máximo *</label>
+                <label className="form-label">Grado Máximo *</label>
                 <select
                   value={form.maxGrade}
                   onChange={e => setForm({ ...form, maxGrade: e.target.value })}
@@ -260,7 +255,7 @@ export default function BaccalaureateTypesManager() {
                 <button
                   onClick={() => toggleSelect(t.id)}
                   className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
-                    selected.has(t.id) ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'
+                    selected.has(t.id) ? 'bg-primary border-primary text-white' : 'border-slate-300 hover:border-primary'
                   }`}
                 >
                   {selected.has(t.id) && <Check className="w-2.5 h-2.5" />}
@@ -310,16 +305,16 @@ export default function BaccalaureateTypesManager() {
                     className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
                       selected.size === filtered.length && filtered.length > 0
                         ? 'bg-primary border-primary text-white'
-                        : 'border-gray-300 hover:border-primary'
+                        : 'border-slate-300 hover:border-primary'
                     }`}
                   >
                     {selected.size === filtered.length && filtered.length > 0 && <Check className="w-2.5 h-2.5" />}
                   </button>
                 </th>
-                <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Nombre</th>
-                <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Grado Máximo</th>
-                <th className="text-left px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Rango</th>
-                <th className="text-right px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Acciones</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Nombre</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Grado Máximo</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Rango</th>
+                <th className="text-right px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -335,28 +330,28 @@ export default function BaccalaureateTypesManager() {
                     <button
                       onClick={() => toggleSelect(t.id)}
                       className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
-                        selected.has(t.id) ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'
+                        selected.has(t.id) ? 'bg-primary border-primary text-white' : 'border-slate-300 hover:border-primary'
                       }`}
                     >
                       {selected.has(t.id) && <Check className="w-2.5 h-2.5" />}
                     </button>
                   </td>
                   <td className="px-3 py-2">
-                    <span className="font-medium text-gray-900">{t.name}</span>
+                    <span className="font-medium text-slate-900">{t.name}</span>
                   </td>
                   <td className="px-3 py-2">
                     <span className="px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700">
                       {t.maxGrade}°
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-sm text-gray-500">10° - {t.maxGrade}°</td>
+                  <td className="px-3 py-2 text-sm text-slate-500">10° - {t.maxGrade}°</td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex justify-end gap-1">
                       <button
                         onClick={() => handleEdit(t)}
-                        className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                        className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
                       >
-                        <Edit2 className="w-4 h-4 text-gray-500" />
+                        <Edit2 className="w-4 h-4 text-slate-500" />
                       </button>
                       <button
                         onClick={() => handleDelete(t.id)}
@@ -375,7 +370,7 @@ export default function BaccalaureateTypesManager() {
 
       {/* Empty state */}
       {filtered.length === 0 && (
-        <div className="text-center py-12 text-gray-400">
+        <div className="text-center py-12 text-slate-400">
           <GraduationCap className="w-10 h-10 mx-auto mb-2 opacity-50" />
           <p className="text-sm">No se encontraron tipos de bachillerato</p>
         </div>

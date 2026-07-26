@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { GraduationCap, Plus, Edit2, Trash2, Save, X, Search, Phone, Clock, Award, BookOpen, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAllTeachers, createTeacher, updateTeacher, deleteTeacher, getAllGrades, getAllSections, getAllSubjects } from '../../lib/firestore';
@@ -13,8 +13,13 @@ export default function TeachersManager() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', email: '', phone: '', specialty: '', subjects: [] as string[], schedule: '', guideGradeId: '', guideSectionId: '', avatarUrl: '' });
+  const [form, setForm] = useState({
+    name: '', email: '', phone: '', specialty: '', subjects: [] as string[],
+    schedule: '', guideGradeId: '', guideSectionId: '', avatarUrl: '',
+    status: 'ACTIVO' as 'ACTIVO' | 'INACTIVO'
+  });
   const [search, setSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState<string>('');
 
   useEffect(() => { loadData(); }, []);
 
@@ -36,14 +41,33 @@ export default function TeachersManager() {
     }));
   };
 
+  const resetForm = () => {
+    setForm({
+      name: '', email: '', phone: '', specialty: '', subjects: [],
+      schedule: '', guideGradeId: '', guideSectionId: '', avatarUrl: '',
+      status: 'ACTIVO'
+    });
+  };
+
+  const checkEmailUnique = (email: string, excludeId?: string): boolean => {
+    return !teachers.some(t => t.email.toLowerCase() === email.toLowerCase() && t.id !== excludeId);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim() || !form.email.trim()) return;
+    if (!form.name.trim() || !form.email.trim()) { toast.error('Nombre y email son obligatorios'); return; }
+
+    if (!checkEmailUnique(form.email, editingId || undefined)) {
+      toast.error('Ya existe un docente con ese email');
+      return;
+    }
+
     try {
       const data: Partial<Teacher> = {
         name: form.name.trim(),
         email: form.email.trim(),
         subjects: form.subjects,
+        status: form.status,
         avatarUrl: form.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(form.name)}&background=12562E&color=fff`
       };
       if (form.phone.trim()) data.phone = form.phone.trim();
@@ -51,7 +75,7 @@ export default function TeachersManager() {
       if (form.schedule.trim()) data.schedule = form.schedule.trim();
       if (form.guideGradeId) data.guideGradeId = form.guideGradeId;
       if (form.guideSectionId) data.guideSectionId = form.guideSectionId;
-      
+
       if (editingId) {
         await updateTeacher(editingId, data);
         toast.success('Docente actualizado correctamente');
@@ -59,10 +83,12 @@ export default function TeachersManager() {
         await createTeacher({ id: `t${Date.now()}`, name: data.name!, email: data.email!, subjects: data.subjects!, ...data });
         toast.success('Docente creado correctamente');
       }
-      setShowForm(false); setEditingId(null);
-      setForm({ name: '', email: '', phone: '', specialty: '', subjects: [], schedule: '', guideGradeId: '', guideSectionId: '', avatarUrl: '' });
-      loadData();
-    } catch (err) { toast.error('Error al guardar docente'); console.error(err); }
+      setShowForm(false); setEditingId(null); resetForm(); loadData();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al guardar docente';
+      toast.error(msg);
+      console.error(err);
+    }
   };
 
   const handleEdit = (t: Teacher) => {
@@ -71,7 +97,7 @@ export default function TeachersManager() {
       name: t.name, email: t.email, phone: t.phone || '', specialty: t.specialty || '',
       subjects: t.subjects || [], schedule: t.schedule || '',
       guideGradeId: t.guideGradeId || '', guideSectionId: t.guideSectionId || '',
-      avatarUrl: t.avatarUrl || ''
+      avatarUrl: t.avatarUrl || '', status: t.status || 'ACTIVO'
     });
     setShowForm(true);
   };
@@ -83,9 +109,11 @@ export default function TeachersManager() {
     }
   };
 
-  const filtered = teachers.filter(t =>
-    `${t.name} ${t.email} ${t.specialty || ''} ${(t.subjects || []).map(s => getSubjectName(s)).join(' ')}`.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = teachers.filter(t => {
+    const matchSearch = `${t.name} ${t.email} ${t.specialty || ''} ${(t.subjects || []).map(s => getSubjectName(s)).join(' ')}`.toLowerCase().includes(search.toLowerCase());
+    const matchStatus = !filterStatus || (t.status || 'ACTIVO') === filterStatus;
+    return matchSearch && matchStatus;
+  });
 
   const filteredSections = sections.filter(s => s.gradeId === form.guideGradeId);
 
@@ -93,108 +121,129 @@ export default function TeachersManager() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-              <GraduationCap className="w-5 h-5 text-primary" />
-            </div>
-            Docentes
-          </h2>
-          <p className="text-sm text-slate-500 mt-1">Gestiona el personal docente del colegio</p>
+      <div className="module-header">
+        <div className="module-title-group">
+          <div className="module-icon bg-primary/10">
+            <GraduationCap className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="module-title">Docentes</h1>
+            <p className="module-subtitle">{filtered.length} docente(s) registrado(s)</p>
+          </div>
         </div>
-        <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', email: '', phone: '', specialty: '', subjects: [], schedule: '', guideGradeId: '', guideSectionId: '', avatarUrl: '' }); }} className="btn-primary">
+        <button onClick={() => { setShowForm(true); setEditingId(null); resetForm(); }} className="btn-primary">
           <Plus className="w-4 h-4" /> Nuevo Docente
         </button>
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-        <input type="text" placeholder="Buscar docente..." value={search} onChange={e => setSearch(e.target.value)} className="input pl-9" />
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input type="text" placeholder="Buscar docente..." value={search} onChange={e => setSearch(e.target.value)} className="input pl-9" />
+        </div>
+        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="input w-auto">
+          <option value="">Todos</option>
+          <option value="ACTIVO">Activos</option>
+          <option value="INACTIVO">Inactivos</option>
+        </select>
       </div>
 
-      {showForm && (
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-slate-900">{editingId ? 'Editar Docente' : 'Nuevo Docente'}</h3>
-            <button onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1 hover:bg-slate-100 rounded-lg"><X className="w-4 h-4 text-slate-500" /></button>
-          </div>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Nombre *</label>
-                <input type="text" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Prof. Nombre" className="input" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Email *</label>
-                <input type="email" required value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="correo@..." className="input" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Teléfono</label>
-                <input type="text" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="7012-3456" className="input" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Especialidad</label>
-                <input type="text" value={form.specialty} onChange={e => setForm({ ...form, specialty: e.target.value })} placeholder="Ej: Ciencias Naturales" className="input" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Horario</label>
-                <input type="text" value={form.schedule} onChange={e => setForm({ ...form, schedule: e.target.value })} placeholder="Ej: 06:40 - 12:00" className="input" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">Foto URL</label>
-                <input type="url" value={form.avatarUrl} onChange={e => setForm({ ...form, avatarUrl: e.target.value })} placeholder="https://..." className="input" />
-              </div>
+      <AnimatePresence>
+        {showForm && (
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="card p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-slate-900">{editingId ? 'Editar Docente' : 'Nuevo Docente'}</h3>
+              <button onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1 hover:bg-slate-100 rounded-lg"><X className="w-4 h-4 text-slate-500" /></button>
             </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-2 uppercase tracking-wider">Materias que Imparte</label>
-              <div className="flex flex-wrap gap-2">
-                {subjects.map(s => (
-                  <button key={s.id} type="button" onClick={() => toggleSubject(s.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${form.subjects.includes(s.id) ? 'bg-primary text-white border-primary shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:border-primary hover:text-primary'}`}>
-                    {s.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="border-t border-slate-100 pt-4">
-              <p className="text-xs font-semibold text-slate-600 mb-3 uppercase tracking-wider">Asignación como Guía (Opcional)</p>
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1">Grado Guía</label>
-                  <select value={form.guideGradeId} onChange={e => setForm({ ...form, guideGradeId: e.target.value, guideSectionId: '' })} className="input">
-                    <option value="">Sin grado</option>
-                    {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                  </select>
+                  <label className="form-label">Nombre *</label>
+                  <input type="text" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Prof. Nombre" className="input" />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1">Sección Guía</label>
-                  <select value={form.guideSectionId} onChange={e => setForm({ ...form, guideSectionId: e.target.value })} className="input" disabled={!form.guideGradeId}>
-                    <option value="">Sin sección</option>
-                    {filteredSections.map(s => <option key={s.id} value={s.id}>Sección {s.name}</option>)}
+                  <label className="form-label">Email *</label>
+                  <input type="email" required value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="correo@..." className="input" />
+                </div>
+                <div>
+                  <label className="form-label">Teléfono</label>
+                  <input type="text" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="7012-3456" className="input" />
+                </div>
+                <div>
+                  <label className="form-label">Especialidad</label>
+                  <input type="text" value={form.specialty} onChange={e => setForm({ ...form, specialty: e.target.value })} placeholder="Ej: Ciencias Naturales" className="input" />
+                </div>
+                <div>
+                  <label className="form-label">Horario</label>
+                  <input type="text" value={form.schedule} onChange={e => setForm({ ...form, schedule: e.target.value })} placeholder="Ej: 06:40 - 12:00" className="input" />
+                </div>
+                <div>
+                  <label className="form-label">Estado</label>
+                  <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as 'ACTIVO' | 'INACTIVO' })} className="input">
+                    <option value="ACTIVO">Activo</option>
+                    <option value="INACTIVO">Inactivo</option>
                   </select>
                 </div>
+                <div className="col-span-2">
+                  <label className="form-label">Foto URL</label>
+                  <input type="url" value={form.avatarUrl} onChange={e => setForm({ ...form, avatarUrl: e.target.value })} placeholder="https://..." className="input" />
+                </div>
               </div>
-            </div>
 
-            <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="btn-secondary">Cancelar</button>
-              <button type="submit" className="btn-primary"><Save className="w-4 h-4" /> {editingId ? 'Actualizar' : 'Crear'}</button>
-            </div>
-          </form>
-        </motion.div>
-      )}
+              <div>
+                <label className="form-label mb-2">Materias que Imparte</label>
+                <div className="flex flex-wrap gap-2">
+                  {subjects.map(s => (
+                    <button key={s.id} type="button" onClick={() => toggleSubject(s.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${form.subjects.includes(s.id) ? 'bg-primary text-white border-primary shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:border-primary hover:text-primary'}`}>
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="border-t border-slate-100 pt-4">
+                <p className="form-label mb-3">Asignación como Guía (Opcional)</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="form-label-normal">Grado Guía</label>
+                    <select value={form.guideGradeId} onChange={e => setForm({ ...form, guideGradeId: e.target.value, guideSectionId: '' })} className="input">
+                      <option value="">Sin grado</option>
+                      {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="form-label-normal">Sección Guía</label>
+                    <select value={form.guideSectionId} onChange={e => setForm({ ...form, guideSectionId: e.target.value })} className="input" disabled={!form.guideGradeId}>
+                      <option value="">Sin sección</option>
+                      {filteredSections.map(s => <option key={s.id} value={s.id}>Sección {s.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="btn-secondary">Cancelar</button>
+                <button type="submit" className="btn-primary"><Save className="w-4 h-4" /> {editingId ? 'Actualizar' : 'Crear'}</button>
+              </div>
+            </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="grid-cards">
         {filtered.map(t => (
           <div key={t.id} className="card-hover bg-white rounded-2xl border border-slate-200/80 overflow-hidden group">
             <div className="bg-gradient-to-r from-slate-800 to-slate-900 p-4">
               <div className="flex items-center gap-3">
                 <img src={t.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(t.name)}&background=25855A&color=fff`} alt={t.name} className="w-11 h-11 rounded-full border-2 border-secondary object-cover" />
-                <div className="min-w-0">
-                  <h3 className="text-sm font-semibold text-white truncate">{t.name}</h3>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-semibold text-white truncate">{t.name}</h3>
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${(t.status || 'ACTIVO') === 'INACTIVO' ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'}`}>
+                      {t.status || 'ACTIVO'}
+                    </span>
+                  </div>
                   <p className="text-xs text-slate-400 truncate">{t.email}</p>
                 </div>
               </div>

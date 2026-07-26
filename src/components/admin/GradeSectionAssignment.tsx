@@ -8,7 +8,9 @@ import {
   CheckCircle2,
   XCircle,
   Filter,
-  X
+  X,
+  DoorOpen,
+  Edit2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -20,6 +22,7 @@ import {
 import { Grade, Section, Building, Cycle, CYCLE_NAMES } from '../../types';
 
 const CYCLE_STYLES: Record<Cycle, { color: string; bg: string; dot: string }> = {
+  'parvularia': { color: 'text-pink-700', bg: 'bg-pink-50', dot: 'bg-pink-500' },
   '1': { color: 'text-emerald-700', bg: 'bg-emerald-50', dot: 'bg-emerald-500' },
   '2': { color: 'text-blue-700', bg: 'bg-blue-50', dot: 'bg-blue-500' },
   '3': { color: 'text-purple-700', bg: 'bg-purple-50', dot: 'bg-purple-500' },
@@ -210,20 +213,18 @@ export default function GradeSectionAssignment() {
                   return (
                     <motion.div
                       key={grade.id}
-                      initial={{ opacity: 0, y: 4 }}
+                      initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       className="bg-white rounded-2xl p-5 border border-slate-200/80 transition-all hover:shadow-md"
                     >
                       {/* Header */}
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-sm"
-                            style={{ backgroundColor: cycleHex }}>
-                            {grade.name.charAt(0)}
+                          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-700 border border-slate-200 bg-white">
+                            <DoorOpen className="w-5 h-5" />
                           </div>
                           <div>
                             <h3 className="text-sm font-bold text-slate-900 leading-tight">{grade.name}</h3>
-                            <p className="text-[11px] text-slate-400 mt-0.5">{gradeSections.length} secciones</p>
                           </div>
                         </div>
                         <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border ${
@@ -235,40 +236,43 @@ export default function GradeSectionAssignment() {
                         </span>
                       </div>
 
-                      {/* Mini Bar Chart */}
-                      <div className="mb-4">
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className="text-[11px] font-semibold text-slate-500 w-12">Asignadas</span>
-                          <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                            <div
-                              className="h-full rounded-full transition-all duration-500"
-                              style={{
-                                width: `${gradeSections.length > 0 ? (assignedCount / gradeSections.length) * 100 : 0}%`,
-                                backgroundColor: cycleHex
-                              }}
-                            />
-                          </div>
+                      {/* Secciones */}
+                      <div className="mb-5">
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-3xl font-bold text-slate-900 font-display tracking-tight">{gradeSections.length}</span>
+                          <span className="text-sm text-slate-400 font-medium">secciones</span>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-[11px] font-semibold text-slate-500 w-12">Pendientes</span>
-                          <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                            <div
-                              className="h-full rounded-full transition-all duration-500"
-                              style={{
-                                width: `${gradeSections.length > 0 ? ((gradeSections.length - assignedCount) / gradeSections.length) * 100 : 0}%`,
-                                backgroundColor: '#CBD5E0'
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex justify-between text-[10px] text-slate-300 font-mono mb-4">
-                        <span>0%</span>
-                        <span>50%</span>
-                        <span>100%</span>
                       </div>
 
-                      {/* Legend / Footer */}
+                      {/* Edificios asignados */}
+                      <div className="mb-4">
+                        <div className="flex flex-wrap gap-1.5">
+                          {gradeSections.map(sec => {
+                            const buildingId = assignments[sec.id];
+                            const building = buildings.find(b => b.id === buildingId);
+                            return (
+                              <span key={sec.id} className={`inline-flex items-center gap-1.5 text-xs font-mono px-2.5 py-1 rounded-lg border ${
+                                building ? 'bg-white border-slate-200 text-slate-700' : 'bg-slate-50 border-dashed border-slate-200 text-slate-400'
+                              }`}>
+                                <span className="font-semibold">Sección {sec.name}</span>
+                                {building ? (
+                                  <>
+                                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: building.color }} />
+                                    <span className="font-bold" style={{ color: building.color }}>{building.name}</span>
+                                  </>
+                                ) : (
+                                  <span className="italic">Sin asignar</span>
+                                )}
+                              </span>
+                            );
+                          })}
+                          {gradeSections.length === 0 && (
+                            <span className="text-xs text-slate-400 italic">Sin secciones</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Footer */}
                       <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: cycleHex }} />

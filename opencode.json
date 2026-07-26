@@ -8,13 +8,30 @@
         "baseURL": "http://localhost:11434/v1"
       },
       "models": {
-        "qwen2.5-coder:7b": {
-          "name": "Qwen 2.5 Coder 7B"
+        "qwen2.5-coder:1.5b": {
+          "name": "Qwen 2.5 Coder 1.5B"
         },
-        "deepseek-r1:7b": {
-          "name": "DeepSeek R1 7B"
+        "deepseek-r1:1.5b": {
+          "name": "DeepSeek R1 1.5B"
+        }
+      }
+    },
+    "gemini": {
+      "npm": "@ai-sdk/google",
+      "name": "Gemini Cloud",
+      "options": {
+        "apiKey": "${GEMINI_API_KEY}"
+      },
+      "models": {
+        "gemini-2.0-flash": {
+          "name": "Gemini 2.0 Flash"
+        },
+        "gemini-2.5-flash": {
+          "name": "Gemini 2.5 Flash"
         }
       }
     }
-  }
+  },
+  "model": "gemini/gemini-2.5-flash",
+  "small_model": "ollama/deepseek-r1:1.5b"
 }

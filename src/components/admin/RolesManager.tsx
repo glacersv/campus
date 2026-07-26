@@ -92,14 +92,19 @@ export default function RolesManager() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900">Gestión de Roles</h2>
-          <p className="text-sm text-slate-500 mt-1">Define roles y asigna módulos del sistema</p>
+      <div className="module-header">
+        <div className="module-title-group">
+          <div className="module-icon bg-primary/10">
+            <Shield className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="module-title">Gestión de Roles</h1>
+            <p className="module-subtitle">Define roles y asigna módulos del sistema</p>
+          </div>
         </div>
         <button
           onClick={() => { setEditingRole({ id: '', name: '', description: '', permissions: [] }); setIsCreating(true); }}
-          className="btn-primary rounded-full"
+          className="btn-primary"
         >
           <Plus className="w-4 h-4" /> Nuevo Rol
         </button>
@@ -195,7 +200,7 @@ export default function RolesManager() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">ID del Rol</label>
+                  <label className="form-label">ID del Rol</label>
                   <input
                     type="text"
                     value={editingRole.id || ''}
@@ -206,7 +211,7 @@ export default function RolesManager() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Nombre</label>
+                  <label className="form-label">Nombre</label>
                   <input
                     type="text"
                     value={editingRole.name || ''}
@@ -216,7 +221,7 @@ export default function RolesManager() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Descripción</label>
+                  <label className="form-label">Descripción</label>
                   <input
                     type="text"
                     value={editingRole.description || ''}
@@ -226,7 +231,7 @@ export default function RolesManager() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-2">Módulos Habilitados</label>
+                  <label className="form-label mb-2">Módulos Habilitados</label>
                   <div className="grid grid-cols-2 gap-2">
                     {SYSTEM_MODULES.map(mod => {
                       const isActive = editingRole.permissions?.includes(mod.id);
