@@ -19,7 +19,14 @@ export default function StudentsManager() {
   const [filterSection, setFilterSection] = useState('all');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+
   useEffect(() => { loadData(); }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterGrade, filterSection]);
 
   const loadData = async () => {
     try {
@@ -110,6 +117,10 @@ export default function StudentsManager() {
     const matchSection = filterSection === 'all' || s.sectionId === filterSection;
     return matchSearch && matchGrade && matchSection;
   });
+
+  const itemsPerPage = 20;
+  const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+  const paginatedStudents = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const filteredSections = sections.filter(s => s.gradeId === form.gradeId);
 
@@ -241,7 +252,7 @@ export default function StudentsManager() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map(s => (
+            {paginatedStudents.map(s => (
               <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
                 <td className="px-4 py-2.5">
                   <div className="flex items-center gap-3">
@@ -274,6 +285,34 @@ export default function StudentsManager() {
           </div>
         )}
       </div>
+
+      {/* Paginación */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between bg-white px-5 py-3.5 border border-slate-200 rounded-2xl shadow-sm">
+          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            Mostrando {Math.min(filtered.length, (currentPage - 1) * itemsPerPage + 1)}-{Math.min(filtered.length, currentPage * itemsPerPage)} de {filtered.length} alumnos
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="btn-secondary py-1.5 px-3.5 rounded-xl text-xs font-bold disabled:opacity-40"
+            >
+              Anterior
+            </button>
+            <span className="text-xs font-bold text-slate-600 px-3">
+              Página {currentPage} de {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="btn-secondary py-1.5 px-3.5 rounded-xl text-xs font-bold disabled:opacity-40"
+            >
+              Siguiente
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Modal historial */}
       {selectedStudent && (

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { User as FirebaseUser, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { auth, functions } from '../firebase';
-import { getUser, createUser, getRole } from '../lib/firestore';
+import { getUser, createUser, getRole, isEmailPreAuthorized } from '../lib/firestore';
 import { User, UserRole, SystemModuleId, RoleConfig } from '../types';
 
 interface AuthContextType {
@@ -56,6 +56,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Restrict registration to institutional email domain
     if (!email.endsWith('@salesianosanjose.edu.sv')) {
       throw new Error('Solo se permiten correos institucionales (@salesianosanjose.edu.sv)');
+    }
+
+    // Check pre-authorization against teacher or admin emails
+    const preAuthorized = await isEmailPreAuthorized(email);
+    if (!preAuthorized) {
+      throw new Error('Este correo institucional no está pre-autorizado por la administración. Por favor, solicita a tu coordinador que registre tu correo en el panel de Docentes antes de crear tu cuenta.');
     }
 
     // First create the user with Firebase Auth
