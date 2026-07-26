@@ -14,7 +14,7 @@ import { resolve } from 'path';
 // Load .env manually (sin dotenv como dependencia)
 function loadEnv() {
   try {
-    const envPath = resolve(__dirname, '..', '.env');
+    const envPath = resolve(process.cwd(), '.env');
     const lines = readFileSync(envPath, 'utf-8').split('\n');
     for (const line of lines) {
       const trimmed = line.trim();
@@ -156,10 +156,10 @@ async function main() {
         uid: jose.uid,
         email: 'jose.marquez@salesianosanjose.edu.sv',
         displayName: 'José Marquez',
-        role: 'admin',
+        role: 'docente',
         createdAt: new Date().toISOString(),
       });
-      console.log(`  ✅ Creado en Firestore: uid=${jose.uid}, role=admin`);
+      console.log(`  ✅ Creado en Firestore: uid=${jose.uid}, role=docente`);
     }
   } catch {
     console.log('  ⚠️  Usuario jose.marquez no encontrado en Auth (créalo en Firebase Console)');

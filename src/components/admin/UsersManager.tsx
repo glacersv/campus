@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, Plus, Edit2, Trash2, Save, X, Search, Shield, Mail, UserCheck } from 'lucide-react';
+import { Users, Plus, Edit2, Trash2, Save, X, Search, Shield, Mail, UserCheck, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getAllUsers, updateUserRole, getAllTeachers } from '../../lib/firestore';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { auth } from '../../firebase';
+import { getAllUsers, updateUserRole, getAllTeachers, createUser as createUserDoc } from '../../lib/firestore';
 import { User, Teacher, UserRole, ROLE_LABELS } from '../../types';
 
 export default function UsersManager() {
@@ -13,8 +15,46 @@ export default function UsersManager() {
   const [filterRole, setFilterRole] = useState<string>('');
   const [editingUid, setEditingUid] = useState<string | null>(null);
   const [editRole, setEditRole] = useState<UserRole>('docente');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createForm, setCreateForm] = useState({ email: '', password: '', displayName: '', role: 'docente' as UserRole, adminPassword: '' });
 
   useEffect(() => { loadData(); }, []);
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreating(true);
+    try {
+      const admin = auth.currentUser;
+      if (!admin?.email) throw new Error('No hay sesión de administrador activa');
+      if (!createForm.adminPassword) throw new Error('Debes ingresar tu contraseña de administrador');
+
+      const adminEmail = admin.email;
+
+      await createUserWithEmailAndPassword(auth, createForm.email, createForm.password);
+
+      await createUserDoc({
+        uid: auth.currentUser!.uid,
+        email: createForm.email,
+        displayName: createForm.displayName,
+        role: createForm.role,
+      });
+
+      await signOut(auth);
+
+      await signInWithEmailAndPassword(auth, adminEmail, createForm.adminPassword);
+
+      toast.success('Usuario creado correctamente');
+      setShowCreateModal(false);
+      setCreateForm({ email: '', password: '', displayName: '', role: 'docente', adminPassword: '' });
+      loadData();
+    } catch (err: any) {
+      const msg = err?.message || 'Error al crear usuario';
+      toast.error(msg);
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -83,9 +123,11 @@ export default function UsersManager() {
             <p className="module-subtitle">{filtered.length} usuario(s) registrado(s)</p>
           </div>
         </div>
+        <button onClick={() => setShowCreateModal(true)} className="btn-primary">
+          <Plus className="w-4 h-4" /> Nuevo Usuario
+        </button>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {Object.entries(roleCounts).slice(0, 4).map(([role, count]) => (
           <div key={role} className="card p-3 text-center">
@@ -95,7 +137,6 @@ export default function UsersManager() {
         ))}
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -109,7 +150,6 @@ export default function UsersManager() {
         </select>
       </div>
 
-      {/* Users Table */}
       <div className="card overflow-hidden">
         <table className="w-full">
           <thead className="table-header">
@@ -194,6 +234,69 @@ export default function UsersManager() {
           <p className="text-sm font-medium">No se encontraron usuarios</p>
         </div>
       )}
+
+      <AnimatePresence>
+        {showCreateModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => !creating && setShowCreateModal(false)}>
+            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6"
+              onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-bold text-slate-900">Nuevo Usuario</h2>
+                <button onClick={() => setShowCreateModal(false)} className="p-1 hover:bg-slate-100 rounded-lg">
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
+              </div>
+              <form onSubmit={handleCreateUser} className="space-y-4">
+                <div>
+                  <label className="label">Nombre Completo</label>
+                  <input type="text" required value={createForm.displayName}
+                    onChange={e => setCreateForm(f => ({ ...f, displayName: e.target.value }))}
+                    className="input" placeholder="Ej. Juan Pérez" />
+                </div>
+                <div>
+                  <label className="label">Correo Electrónico</label>
+                  <input type="email" required value={createForm.email}
+                    onChange={e => setCreateForm(f => ({ ...f, email: e.target.value }))}
+                    className="input" placeholder="usuario@salesianosanjose.edu.sv" />
+                </div>
+                <div>
+                  <label className="label">Contraseña del nuevo usuario</label>
+                  <input type="text" required value={createForm.password}
+                    onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))}
+                    className="input" placeholder="Mínimo 6 caracteres" minLength={6} />
+                </div>
+                <div>
+                  <label className="label">Rol</label>
+                  <select value={createForm.role}
+                    onChange={e => setCreateForm(f => ({ ...f, role: e.target.value as UserRole }))}
+                    className="input">
+                    {Object.entries(ROLE_LABELS).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="border-t border-slate-200 pt-4">
+                  <label className="label text-amber-700">
+                    Tu contraseña de administrador (para re-autenticarte)
+                  </label>
+                  <input type="password" required value={createForm.adminPassword}
+                    onChange={e => setCreateForm(f => ({ ...f, adminPassword: e.target.value }))}
+                    className="input" placeholder="Ingresa tu contraseña actual" />
+                  <p className="text-xs text-slate-400 mt-1">Necesaria para volver a iniciar sesión como admin después de crear el usuario.</p>
+                </div>
+                <button type="submit" disabled={creating}
+                  className="btn-primary w-full justify-center py-3 rounded-xl disabled:opacity-50">
+                  {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  {creating ? 'Creando...' : 'Crear Usuario'}
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
