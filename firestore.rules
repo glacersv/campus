@@ -69,7 +69,7 @@ service cloud.firestore {
 
     // Teachers Collection
     match /teachers/{teacherId} {
-      allow read: if isStaff();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
