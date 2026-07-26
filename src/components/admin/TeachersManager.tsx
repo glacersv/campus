@@ -148,86 +148,94 @@ export default function TeachersManager() {
         </select>
       </div>
 
+      {/* Formulario Modal */}
       <AnimatePresence>
         {showForm && (
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="card p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-slate-900">{editingId ? 'Editar Docente' : 'Nuevo Docente'}</h3>
-              <button onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1 hover:bg-slate-100 rounded-lg"><X className="w-4 h-4 text-slate-500" /></button>
-            </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="form-label">Nombre *</label>
-                  <input type="text" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Prof. Nombre" className="input" />
-                </div>
-                <div>
-                  <label className="form-label">Email *</label>
-                  <input type="email" required value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="correo@..." className="input" />
-                </div>
-                <div>
-                  <label className="form-label">Teléfono</label>
-                  <input type="text" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="7012-3456" className="input" />
-                </div>
-                <div>
-                  <label className="form-label">Especialidad</label>
-                  <input type="text" value={form.specialty} onChange={e => setForm({ ...form, specialty: e.target.value })} placeholder="Ej: Ciencias Naturales" className="input" />
-                </div>
-                <div>
-                  <label className="form-label">Horario</label>
-                  <input type="text" value={form.schedule} onChange={e => setForm({ ...form, schedule: e.target.value })} placeholder="Ej: 06:40 - 12:00" className="input" />
-                </div>
-                <div>
-                  <label className="form-label">Estado</label>
-                  <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as 'ACTIVO' | 'INACTIVO' })} className="input">
-                    <option value="ACTIVO">Activo</option>
-                    <option value="INACTIVO">Inactivo</option>
-                  </select>
-                </div>
-                <div className="col-span-2">
-                  <label className="form-label">Foto URL</label>
-                  <input type="url" value={form.avatarUrl} onChange={e => setForm({ ...form, avatarUrl: e.target.value })} placeholder="https://..." className="input" />
-                </div>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden flex flex-col"
+            >
+              <div className="bg-slate-50 border-b border-slate-100 p-5 flex justify-between items-center shrink-0">
+                <h3 className="font-bold text-slate-900 text-base">{editingId ? 'Editar Docente' : 'Nuevo Docente'}</h3>
+                <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1.5 hover:bg-slate-200 rounded-lg transition-colors"><X className="w-4 h-4 text-slate-500" /></button>
               </div>
-
-              <div>
-                <label className="form-label mb-2">Materias que Imparte</label>
-                <div className="flex flex-wrap gap-2">
-                  {subjects.map(s => (
-                    <button key={s.id} type="button" onClick={() => toggleSubject(s.id)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${form.subjects.includes(s.id) ? 'bg-primary text-white border-primary shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:border-primary hover:text-primary'}`}>
-                      {s.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="border-t border-slate-100 pt-4">
-                <p className="form-label mb-3">Asignación como Guía (Opcional)</p>
+              <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto max-h-[80vh]">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="form-label-normal">Grado Guía</label>
-                    <select value={form.guideGradeId} onChange={e => setForm({ ...form, guideGradeId: e.target.value, guideSectionId: '' })} className="input">
-                      <option value="">Sin grado</option>
-                      {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                    </select>
+                    <label className="form-label">Nombre *</label>
+                    <input type="text" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Prof. Nombre" className="input" />
                   </div>
                   <div>
-                    <label className="form-label-normal">Sección Guía</label>
-                    <select value={form.guideSectionId} onChange={e => setForm({ ...form, guideSectionId: e.target.value })} className="input" disabled={!form.guideGradeId}>
-                      <option value="">Sin sección</option>
-                      {filteredSections.map(s => <option key={s.id} value={s.id}>Sección {s.name}</option>)}
+                    <label className="form-label">Email *</label>
+                    <input type="email" required value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="correo@..." className="input" />
+                  </div>
+                  <div>
+                    <label className="form-label">Teléfono</label>
+                    <input type="text" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="7012-3456" className="input" />
+                  </div>
+                  <div>
+                    <label className="form-label">Especialidad</label>
+                    <input type="text" value={form.specialty} onChange={e => setForm({ ...form, specialty: e.target.value })} placeholder="Ej: Ciencias Naturales" className="input" />
+                  </div>
+                  <div>
+                    <label className="form-label">Horario</label>
+                    <input type="text" value={form.schedule} onChange={e => setForm({ ...form, schedule: e.target.value })} placeholder="Ej: 06:40 - 12:00" className="input" />
+                  </div>
+                  <div>
+                    <label className="form-label">Estado</label>
+                    <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as 'ACTIVO' | 'INACTIVO' })} className="input">
+                      <option value="ACTIVO">Activo</option>
+                      <option value="INACTIVO">Inactivo</option>
                     </select>
                   </div>
+                  <div className="col-span-2">
+                    <label className="form-label">Foto URL</label>
+                    <input type="url" value={form.avatarUrl} onChange={e => setForm({ ...form, avatarUrl: e.target.value })} placeholder="https://..." className="input" />
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="btn-secondary">Cancelar</button>
-                <button type="submit" className="btn-primary"><Save className="w-4 h-4" /> {editingId ? 'Actualizar' : 'Crear'}</button>
-              </div>
-            </form>
-          </motion.div>
+                <div>
+                  <label className="form-label mb-2">Materias que Imparte</label>
+                  <div className="flex flex-wrap gap-2">
+                    {subjects.map(s => (
+                      <button key={s.id} type="button" onClick={() => toggleSubject(s.id)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${form.subjects.includes(s.id) ? 'bg-primary text-white border-primary shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:border-primary hover:text-primary'}`}>
+                        {s.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-100 pt-4">
+                  <p className="form-label mb-3">Asignación como Guía (Opcional)</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="form-label-normal">Grado Guía</label>
+                      <select value={form.guideGradeId} onChange={e => setForm({ ...form, guideGradeId: e.target.value, guideSectionId: '' })} className="input">
+                        <option value="">Sin grado</option>
+                        {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="form-label-normal">Sección Guía</label>
+                      <select value={form.guideSectionId} onChange={e => setForm({ ...form, guideSectionId: e.target.value })} className="input" disabled={!form.guideGradeId}>
+                        <option value="">Sin sección</option>
+                        {filteredSections.map(s => <option key={s.id} value={s.id}>Sección {s.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 shrink-0">
+                  <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="btn-secondary">Cancelar</button>
+                  <button type="submit" className="btn-primary"><Save className="w-4 h-4" /> {editingId ? 'Actualizar' : 'Crear'}</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 

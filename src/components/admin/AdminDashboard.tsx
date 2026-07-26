@@ -183,8 +183,8 @@ export default function AdminDashboard() {
                   cursor={{ fill: '#f8fafc' }}
                 />
                 <Legend iconSize={10} iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '5px' }} />
-                <Bar name="Asistencia %" dataKey="asistencia" fill="#12562E" radius={[4, 4, 0, 0]} barSize={25} />
-                <Bar name="Retardos %" dataKey="retardos" fill="#FAB700" radius={[4, 4, 0, 0]} barSize={25} />
+                <Bar name="Asistencia %" dataKey="asistencia" fill="#12562E" radius={[12, 12, 0, 0]} barSize={25} />
+                <Bar name="Retardos %" dataKey="retardos" fill="#FAB700" radius={[12, 12, 0, 0]} barSize={25} />
               </BarChart>
             </ResponsiveContainer>
           </div>
