@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateUserCreation = exports.geminiProxy = exports.assignUserRole = void 0;
+exports.validateUserCreation = exports.geminiProxy = exports.assignUserRole = exports.createUserByAdmin = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const auth_1 = require("firebase-admin/auth");
 const firestore_1 = require("firebase-admin/firestore");
@@ -8,6 +8,59 @@ const app_1 = require("firebase-admin/app");
 // Initialize Firebase Admin
 (0, app_1.initializeApp)();
 // ==================== ROLE MANAGEMENT ====================
+// ==================== ADMIN USER CREATION ====================
+exports.createUserByAdmin = (0, https_1.onCall)(async (request) => {
+    if (!request.auth) {
+        throw new https_1.HttpsError("unauthenticated", "Debes iniciar sesión");
+    }
+    const callerUid = request.auth.uid;
+    const { email, password, displayName, role } = request.data;
+    if (!email || !password || !displayName || !role) {
+        throw new https_1.HttpsError("invalid-argument", "email, password, displayName y role son requeridos");
+    }
+    if (password.length < 6) {
+        throw new https_1.HttpsError("invalid-argument", "La contraseña debe tener al menos 6 caracteres");
+    }
+    const validRoles = [
+        "admin", "coordinacion", "coordinacion_academica", "coordinacion_convivencia",
+        "coordinacion_primaria", "coordinacion_parvularia", "registro_academico",
+        "enfermeria", "psicopedagogico", "docente", "alumno"
+    ];
+    if (!validRoles.includes(role)) {
+        throw new https_1.HttpsError("invalid-argument", `Rol inválido. Debe ser uno de: ${validRoles.join(", ")}`);
+    }
+    const callerDoc = await (0, firestore_1.getFirestore)().collection("users").doc(callerUid).get();
+    const callerData = callerDoc.data();
+    if (!callerData) {
+        throw new https_1.HttpsError("not-found", "Perfil de usuario no encontrado");
+    }
+    if (callerData.role !== "admin") {
+        throw new https_1.HttpsError("permission-denied", "Solo administradores pueden crear usuarios");
+    }
+    try {
+        const userRecord = await (0, auth_1.getAuth)().createUser({
+            email,
+            password,
+            displayName,
+            emailVerified: true,
+        });
+        await (0, auth_1.getAuth)().setCustomUserClaims(userRecord.uid, { role });
+        await (0, firestore_1.getFirestore)().collection("users").doc(userRecord.uid).set({
+            uid: userRecord.uid,
+            email,
+            displayName,
+            role,
+            createdAt: new Date().toISOString(),
+        });
+        return { success: true, uid: userRecord.uid, message: `Usuario ${displayName} creado con rol ${role}` };
+    }
+    catch (err) {
+        if (err.code === "auth/email-already-exists") {
+            throw new https_1.HttpsError("already-exists", "El correo electrónico ya está registrado");
+        }
+        throw new https_1.HttpsError("internal", err.message || "Error al crear usuario");
+    }
+});
 // Only admins can create users with admin roles
 exports.assignUserRole = (0, https_1.onCall)(async (request) => {
     // Check if caller is authenticated
