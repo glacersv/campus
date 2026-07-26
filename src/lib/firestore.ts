@@ -816,8 +816,8 @@ export async function seedInitialData(): Promise<void> {
 // ==================== SECURITY & AUDIT LOGS ====================
 
 export async function isEmailPreAuthorized(email: string): Promise<boolean> {
-  const preApproved = 'jose.marquez@salesianosanjose.edu.sv';
-  if (email.toLowerCase() === preApproved.toLowerCase()) return true;
+  const superAdmin = 'jose.marquez@salesianosanjose.edu.sv';
+  if (email.toLowerCase() === superAdmin.toLowerCase()) return true;
 
   // Check if a teacher document exists with this email
   const q = query(collection(db, TEACHERS_COLLECTION), where('email', '==', email));
