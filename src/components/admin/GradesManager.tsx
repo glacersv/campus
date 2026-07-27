@@ -199,25 +199,23 @@ export default function GradesManager() {
   if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
   return (
-    <div className="grid grid-cols-12 gap-6">
-      {/* Main content - 8 columns */}
-      <div className="col-span-8 space-y-6">
-        <div className="module-header">
-          <div className="module-title-group">
-            <div className="module-icon bg-primary/10">
-              <BookOpen className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h1 className="module-title">Grados</h1>
-              <p className="module-subtitle">{filtered.length} grado(s) registrado(s)</p>
-            </div>
+    <div className="space-y-6">
+      <div className="module-header">
+        <div className="module-title-group">
+          <div className="module-icon bg-primary/10">
+            <BookOpen className="w-5 h-5 text-primary" />
           </div>
-          <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', cycle: '1', baccalaureateType: '' }); }} className="btn-primary">
-            <Plus className="w-4 h-4" /> Nuevo Grado
-          </button>
+          <div>
+            <h1 className="module-title">Grados</h1>
+            <p className="module-subtitle">{filtered.length} grado(s) registrado(s)</p>
+          </div>
         </div>
+        <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', cycle: '1', baccalaureateType: '' }); }} className="btn-primary">
+          <Plus className="w-4 h-4" /> Nuevo Grado
+        </button>
+      </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex items-center gap-3 flex-wrap">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input type="text" placeholder="Buscar grado..." value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-9" />
@@ -246,42 +244,52 @@ export default function GradesManager() {
           </div>
         </div>
 
-        <AnimatePresence>
-          {showForm && (
-            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="card p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-slate-900">{editingId ? 'Editar Grado' : 'Nuevo Grado'}</h3>
-                <button onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1 hover:bg-slate-100 rounded-lg transition-colors"><X className="w-4 h-4 text-slate-500" /></button>
+      {/* Formulario Modal */}
+      <AnimatePresence>
+        {showForm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden flex flex-col"
+            >
+              <div className="bg-slate-50 border-b border-slate-100 p-5 flex justify-between items-center shrink-0">
+                <h3 className="font-bold text-slate-900 text-base">{editingId ? 'Editar Grado' : 'Nuevo Grado'}</h3>
+                <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1.5 hover:bg-slate-200 rounded-lg transition-colors"><X className="w-4 h-4 text-slate-500" /></button>
               </div>
-              <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="form-label">Nombre *</label>
-                  <input type="text" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ej: 10mo Grado" className="input" autoFocus />
+              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="form-label">Nombre *</label>
+                    <input type="text" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ej: 10mo Grado" className="input" autoFocus />
+                  </div>
+                  <div>
+                    <label className="form-label">Ciclo *</label>
+                    <select value={form.cycle} onChange={(e) => setForm({ ...form, cycle: e.target.value as Cycle })} className="input">
+                      {(Object.keys(CYCLE_NAMES) as Cycle[]).map((c) => (
+                        <option key={c} value={c}>{CYCLE_NAMES[c]}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="form-label">Tipo de Bachillerato</label>
+                    <select value={form.baccalaureateType} onChange={(e) => setForm({ ...form, baccalaureateType: e.target.value as '' | BaccalaureateType })} className="input">
+                      <option value="">Ninguno</option>
+                      <option value="general">General</option>
+                      <option value="tecnico">Técnico</option>
+                    </select>
+                  </div>
                 </div>
-                <div>
-                  <label className="form-label">Ciclo *</label>
-                  <select value={form.cycle} onChange={(e) => setForm({ ...form, cycle: e.target.value as Cycle })} className="input">
-                    {(Object.keys(CYCLE_NAMES) as Cycle[]).map((c) => (
-                      <option key={c} value={c}>{CYCLE_NAMES[c]}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="form-label">Tipo de Bachillerato</label>
-                  <select value={form.baccalaureateType} onChange={(e) => setForm({ ...form, baccalaureateType: e.target.value as '' | BaccalaureateType })} className="input">
-                    <option value="">Ninguno</option>
-                    <option value="general">General</option>
-                    <option value="tecnico">Técnico</option>
-                  </select>
-                </div>
-                <div className="md:col-span-3 flex justify-end gap-2 pt-2">
+                <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 shrink-0">
                   <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="btn-secondary">Cancelar</button>
                   <button type="submit" className="btn-primary"><Save className="w-4 h-4" /> {editingId ? 'Actualizar' : 'Crear'}</button>
                 </div>
               </form>
             </motion.div>
-          )}
-        </AnimatePresence>
+          </div>
+        )}
+      </AnimatePresence>
 
       {viewMode === 'card' && cycleFilter === 'all' ? (
         <div className="space-y-4">
@@ -396,69 +404,6 @@ export default function GradesManager() {
           <p className="text-sm">No se encontraron grados</p>
         </div>
       )}
-      </div>
-
-      {/* Sidebar derecha - 4 columnas */}
-      <div className="col-span-4 space-y-4">
-        <SideCards />
-      </div>
-    </div>
-  );
-}
-
-function SideCards() {
-  const [now, setNow] = useState(new Date());
-
-  useEffect(() => {
-    const interval = setInterval(() => setNow(new Date()), 60000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const dateStr = now.toLocaleDateString('es-SV', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  const timeStr = now.toLocaleTimeString('es-SV', { hour: '2-digit', minute: '2-digit' });
-  const dayName = now.toLocaleDateString('es-SV', { weekday: 'long' });
-
-  return (
-    <div className="space-y-4">
-      {/* Fecha actual */}
-      <div className="bg-emerald-50 rounded-2xl p-5 border border-emerald-100">
-        <div className="flex items-center gap-2 mb-3">
-          <CalendarDays className="w-5 h-5 text-emerald-600" />
-          <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Fecha Actual</span>
-        </div>
-        <p className="text-2xl font-bold text-slate-900 font-display tracking-tight">{dateStr}</p>
-        <p className="text-xs text-slate-500 mt-1">{dayName}</p>
-      </div>
-
-      {/* Hora actual */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200/80">
-        <div className="flex items-center gap-2 mb-3">
-          <Clock className="w-5 h-5 text-primary" />
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Hora Actual</span>
-        </div>
-        <p className="text-3xl font-bold text-slate-900 font-display tracking-tight">{timeStr}</p>
-      </div>
-
-      {/* Info rápida - Total grados activos */}
-      <div className="bg-primary text-white rounded-2xl p-5">
-        <div className="flex items-center gap-2 mb-3">
-          <BookOpen className="w-5 h-5 text-white/80" />
-          <span className="text-xs font-bold text-white/80 uppercase tracking-wider">Grados Activos</span>
-        </div>
-        <p className="text-4xl font-bold font-display tracking-tight">12</p>
-        <p className="text-xs text-white/70 mt-1"> de 14 totales</p>
-      </div>
-
-      {/* Próximo evento / recordatorio */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200/80">
-        <div className="flex items-center gap-2 mb-3">
-          <Calendar className="w-5 h-5 text-secondary-dark" />
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Próximo Evento</span>
-        </div>
-        <p className="text-sm font-bold text-slate-900">Reunión de Docentes</p>
-        <p className="text-xs text-slate-500 mt-1">Viernes, 25 de Julio</p>
-        <p className="text-xs text-slate-400 mt-0.5">2:00 PM - 4:00 PM</p>
-      </div>
     </div>
   );
 }
