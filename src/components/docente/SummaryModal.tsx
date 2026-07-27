@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, FileSpreadsheet, FileJson, CheckCircle2, RefreshCw, Check, CloudLightning, Loader2, Database } from 'lucide-react';
+import { X, FileSpreadsheet, FileJson, CheckCircle2, RefreshCw, Check, CloudLightning, Loader2, Database, Printer } from 'lucide-react';
 import { Student, Teacher, Grade, StudentSessionState } from '../../types';
 import { saveAttendanceReport, type AttendanceReportData } from '../../firebase';
 import { toast } from 'sonner';
@@ -231,6 +231,288 @@ export default function SummaryModal({
     document.body.removeChild(link);
   };
 
+  const handleExportPDF = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast.error('Por favor, permite ventanas emergentes para exportar el reporte');
+      return;
+    }
+
+    const sectionName = teacher.guideSectionId ? teacher.guideSectionId.toUpperCase() : 'A';
+    const activeDateStr = new Date().toLocaleDateString('es-SV', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    const observedRows = observedStudents.map(({ student, status, arrivalTime, infractions }) => `
+      <tr style="border-bottom: 1px solid #e2e8f0;">
+        <td style="padding: 10px 8px; font-weight: 500; font-size: 13px;">${student.name}</td>
+        <td style="padding: 10px 8px; font-family: monospace; font-size: 13px; color: #475569;">${student.carnet || '—'}</td>
+        <td style="padding: 10px 8px; font-size: 13px;">
+          <span style="font-weight: bold; color: ${status === 'Tarde' ? '#b45309' : '#0f172a'}">
+            ${status === 'Tarde' ? `Llegada Tarde (${arrivalTime || '06:45'})` : 'Presente'}
+          </span>
+        </td>
+        <td style="padding: 10px 8px;">
+          ${infractions.map(inf => `
+            <span style="display: inline-block; background: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-right: 4px; margin-bottom: 2px;">
+              ${inf}
+            </span>
+          `).join('') || '<span style="color:#94a3b8; font-size: 12px;">Sin observaciones</span>'}
+        </td>
+      </tr>
+    `).join('');
+
+    const htmlContent = `
+      <html>
+        <head>
+          <title>Reporte de Asistencia - ${activeGrade.name}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+            body {
+              font-family: 'Plus Jakarta Sans', sans-serif;
+              color: #1e293b;
+              margin: 40px;
+              line-height: 1.5;
+            }
+            .header-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 30px;
+            }
+            .title-section {
+              text-align: left;
+            }
+            .title-main {
+              font-size: 24px;
+              font-weight: 800;
+              color: #12562E;
+              text-transform: uppercase;
+              margin: 0;
+            }
+            .title-sub {
+              font-size: 12px;
+              color: #64748b;
+              font-weight: 600;
+              letter-spacing: 1px;
+              margin: 5px 0 0 0;
+            }
+            .meta-grid {
+              display: grid;
+              grid-template-cols: repeat(2, 1fr);
+              gap: 20px;
+              margin-bottom: 30px;
+              background: #f8fafc;
+              border: 1px solid #e2e8f0;
+              border-radius: 12px;
+              padding: 20px;
+            }
+            .meta-item {
+              font-size: 13px;
+            }
+            .meta-label {
+              font-weight: 700;
+              color: #64748b;
+              text-transform: uppercase;
+              font-size: 10px;
+              letter-spacing: 0.5px;
+              display: block;
+              margin-bottom: 3px;
+            }
+            .meta-val {
+              color: #0f172a;
+              font-weight: 600;
+              font-size: 14px;
+            }
+            .stats-grid {
+              display: grid;
+              grid-template-cols: repeat(4, 1fr);
+              gap: 15px;
+              margin-bottom: 40px;
+            }
+            .stat-card {
+              border: 1px solid #e2e8f0;
+              border-radius: 12px;
+              padding: 15px;
+              text-align: center;
+            }
+            .stat-label {
+              font-size: 10px;
+              font-weight: 700;
+              color: #64748b;
+              text-transform: uppercase;
+              display: block;
+              margin-bottom: 5px;
+            }
+            .stat-val {
+              font-size: 24px;
+              font-weight: 800;
+              color: #0f172a;
+            }
+            .section-title {
+              font-size: 14px;
+              font-weight: 700;
+              color: #0f172a;
+              margin-bottom: 15px;
+              border-bottom: 2px solid #12562E;
+              padding-bottom: 6px;
+              text-transform: uppercase;
+            }
+            .table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 40px;
+              font-size: 12px;
+            }
+            .table th {
+              background: #f1f5f9;
+              text-align: left;
+              padding: 10px 8px;
+              font-weight: 700;
+              color: #475569;
+              text-transform: uppercase;
+              font-size: 10px;
+            }
+            .signature-section {
+              margin-top: 60px;
+              display: grid;
+              grid-template-cols: repeat(2, 1fr);
+              gap: 80px;
+              text-align: center;
+            }
+            .signature-line {
+              border-top: 1px solid #94a3b8;
+              padding-top: 10px;
+              font-size: 12px;
+              font-weight: 600;
+              color: #475569;
+            }
+            @media print {
+              body { margin: 20px; }
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <table class="header-table">
+            <tr>
+              <td style="width: 80px; vertical-align: middle;">
+                <svg width="60" height="60" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="50" cy="50" r="48" stroke="#12562E" stroke-width="4" fill="none"/>
+                  <path d="M50 15 L20 40 L30 40 L30 80 L70 80 L70 40 L80 40 Z" fill="#12562E"/>
+                  <path d="M42 50 L58 50 M50 42 L50 58" stroke="#FAB700" stroke-width="6"/>
+                </svg>
+              </td>
+              <td class="title-section" style="vertical-align: middle; padding-left: 15px;">
+                <h1 class="title-main">Colegio Salesiano San José</h1>
+                <p class="title-sub">Reporte Oficial de Asistencia y Disciplina</p>
+              </td>
+            </tr>
+          </table>
+
+          <div class="meta-grid">
+            <div class="meta-item">
+              <span class="meta-label">Fecha del Reporte</span>
+              <span class="meta-val">${activeDateStr}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Grado y Sección</span>
+              <span class="meta-val">${activeGrade.name} "${sectionName}"</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Tutor / Docente Responsable</span>
+              <span class="meta-val">${teacher.name}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Modalidad de Toma</span>
+              <span class="meta-val">${civicAct ? 'Acto Cívico' : 'Buenos Días'}</span>
+            </div>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-card" style="border-left: 4px solid #64748b;">
+              <span class="stat-label">Inscritos</span>
+              <span class="stat-val">${totalStudents}</span>
+            </div>
+            <div class="stat-card" style="border-left: 4px solid #10b981;">
+              <span class="stat-label">Presentes</span>
+              <span class="stat-val">${presentCount}</span>
+            </div>
+            <div class="stat-card" style="border-left: 4px solid #f59e0b;">
+              <span class="stat-label">Llegadas Tarde</span>
+              <span class="stat-val">${tardyCount}</span>
+            </div>
+            <div class="stat-card" style="border-left: 4px solid #ef4444;">
+              <span class="stat-label">Ausentes</span>
+              <span class="stat-val">${absentCount}</span>
+            </div>
+          </div>
+
+          <h2 class="section-title">Resumen de Incidencias de Disciplina</h2>
+          <table class="table">
+            <thead>
+              <tr>
+                <th style="width: 33%;">Cabello Fuera de Norma</th>
+                <th style="width: 33%;">Uñas Pintadas / Acrílicas</th>
+                <th style="width: 34%;">Uniforme Incorrecto</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 15px 8px; font-size: 16px; font-weight: bold; color: ${cabelloLargoCount > 0 ? '#b45309' : '#1e293b'}">${cabelloLargoCount} casos</td>
+                <td style="padding: 15px 8px; font-size: 16px; font-weight: bold; color: ${unasPintadasCount > 0 ? '#b45309' : '#1e293b'}">${unasPintadasCount} casos</td>
+                <td style="padding: 15px 8px; font-size: 16px; font-weight: bold; color: ${uniformeIncorrectoCount > 0 ? '#b45309' : '#1e293b'}">${uniformeIncorrectoCount} casos</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h2 class="section-title">Nómina de Alumnos Observados (Retardos y Uniforme)</h2>
+          ${observedStudents.length === 0 ? `
+            <p style="font-size: 13px; color: #10b981; font-weight: 600; background: #ecfdf5; border: 1px dashed #a7f3d0; padding: 15px; border-radius: 8px; text-align: center;">
+              ¡Excelente! No se registraron alumnos con incidencias en este reporte.
+            </p>
+          ` : `
+            <table class="table">
+              <thead>
+                <tr>
+                  <th style="text-align: left; padding: 10px 8px; font-size: 11px;">Alumno</th>
+                  <th style="text-align: left; padding: 10px 8px; font-size: 11px;">Carnet</th>
+                  <th style="text-align: left; padding: 10px 8px; font-size: 11px;">Asistencia</th>
+                  <th style="text-align: left; padding: 10px 8px; font-size: 11px;">Infracciones de Uniforme</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${observedRows}
+              </tbody>
+            </table>
+          `}
+
+          <div class="signature-section">
+            <div>
+              <div style="height: 60px;"></div>
+              <div class="signature-line">${teacher.name}<br/><span style="font-size:10px; color:#64748b; font-weight:normal;">Tutor de Grado</span></div>
+            </div>
+            <div>
+              <div style="height: 60px;"></div>
+              <div class="signature-line">Coordinación de Convivencia<br/><span style="font-size:10px; color:#64748b; font-weight:normal;">Sello y Firma Oficial</span></div>
+            </div>
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
@@ -413,6 +695,14 @@ export default function SummaryModal({
             </button>
 
             <div className="flex gap-3">
+              <button
+                onClick={handleExportPDF}
+                className="py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-full text-xs flex items-center gap-1.5 transition-colors"
+              >
+                <Printer className="w-4 h-4 text-white" />
+                Descargar PDF
+              </button>
+
               <button
                 onClick={handleExportCSV}
                 className="py-2.5 px-4 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-full text-xs flex items-center gap-1.5 transition-colors"

@@ -14,11 +14,29 @@ import {
   Lock,
   Play,
   RotateCcw,
-  DoorOpen
+  DoorOpen,
+  TrendingUp,
+  ShieldAlert
 } from 'lucide-react';
 import { getAllTeachers, getAllGrades, getAllStudents, getAllSections, getAllSubjects, startSchoolYear, resetTestData, getCurrentSchoolYear, fixAllStudentHistories } from '../../lib/firestore';
 import { toast } from 'sonner';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
 import ProjectsModule from '../proyectos/ProjectsModule';
+
+const attendanceData = [
+  { name: 'Parvularia', asistencia: 98.4, retardos: 1.2 },
+  { name: '1°-3° Grado', asistencia: 97.8, retardos: 1.8 },
+  { name: '4°-6° Grado', asistencia: 96.5, retardos: 2.5 },
+  { name: '7°-9° Grado', asistencia: 95.2, retardos: 3.4 },
+  { name: 'Bach. General', asistencia: 94.6, retardos: 4.2 },
+  { name: 'Bach. Técnico', asistencia: 93.9, retardos: 4.8 },
+];
+
+const disciplineData = [
+  { name: 'Uniforme Incorrecto', value: 48, color: '#12562E' },
+  { name: 'Cabello fuera de norma', value: 35, color: '#FAB700' },
+  { name: 'Uñas Pintadas/Acrílicas', value: 17, color: '#D32F2F' }
+];
 
 interface Stats {
   teachers: number;
@@ -140,8 +158,89 @@ export default function AdminDashboard() {
         ))}
       </div>
 
+      {/* Analytics Charts (Premium Dashboard) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Attendance Chart */}
+        <div className="lg:col-span-2 bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col h-[380px]">
+          <div className="flex items-center justify-between mb-4 shrink-0">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                <TrendingUp className="w-5 h-5 text-primary" />
+                Rendimiento de Asistencia Promedio por Nivel
+              </h3>
+              <p className="text-[11px] text-slate-500">Porcentaje promedio de asistencia y llegadas tarde en la jornada</p>
+            </div>
+            <span className="text-[10px] font-bold text-primary bg-primary-light px-2 py-0.5 rounded-full font-mono">En Vivo</span>
+          </div>
+          <div className="flex-1 min-h-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={attendanceData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
+                <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} domain={[80, 100]} />
+                <Tooltip
+                  contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '11px' }}
+                  cursor={{ fill: '#f8fafc' }}
+                />
+                <Legend iconSize={10} iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '5px' }} />
+                <Bar name="Asistencia %" dataKey="asistencia" fill="#12562E" radius={[12, 12, 0, 0]} barSize={25} />
+                <Bar name="Retardos %" dataKey="retardos" fill="#FAB700" radius={[12, 12, 0, 0]} barSize={25} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Discipline Chart */}
+        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col h-[380px]">
+          <div className="mb-4 shrink-0">
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+              <ShieldAlert className="w-5 h-5 text-red-600" />
+              Distribución de Incidencias de Uniforme
+            </h3>
+            <p className="text-[11px] text-slate-500">Frecuencia relativa de incidencias registradas en la semana</p>
+          </div>
+          <div className="flex-1 min-h-0 flex items-center justify-center relative">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={disciplineData}
+                  cx="50%"
+                  cy="45%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {disciplineData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={{ borderRadius: '12px', fontSize: '11px' }} />
+              </PieChart>
+            </ResponsiveContainer>
+            {/* Center Summary */}
+            <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
+              <span className="block text-2xl font-black text-slate-800">100%</span>
+              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Incidencias</span>
+            </div>
+          </div>
+          {/* Legend Footer */}
+          <div className="grid grid-cols-1 gap-1.5 text-xs text-slate-600 shrink-0 border-t border-slate-100 pt-3">
+            {disciplineData.map((item, idx) => (
+              <div key={idx} className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                  <span className="font-medium text-slate-700 truncate max-w-[160px]">{item.name}</span>
+                </div>
+                <span className="font-mono font-bold text-slate-900">{item.value}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* School Year */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200/80">
+      <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">

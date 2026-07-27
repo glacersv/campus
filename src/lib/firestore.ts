@@ -10,9 +10,10 @@ import {
   where,
   orderBy,
   serverTimestamp,
-  Timestamp
+  Timestamp,
+  addDoc
 } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { User, Grade, Section, Subject, Teacher, Student, BaccalaureateTypeDoc, Building, ComputerLab, RoleConfig, UserRole } from '../types';
 import {
   validateUser,
@@ -429,6 +430,7 @@ export async function toggleSectionStatus(id: string, currentStatus?: string): P
 }
 
 export async function resetTestData(): Promise<void> {
+  await logActivity('reset_test_data', { timestamp: new Date().toISOString() });
   const gradesSnap = await getDocs(collection(db, GRADES_COLLECTION));
   const sectionsSnap = await getDocs(collection(db, SECTIONS_COLLECTION));
   const studentsSnap = await getDocs(collection(db, STUDENTS_COLLECTION));
@@ -493,6 +495,7 @@ export async function getCurrentSchoolYear(): Promise<number | null> {
 }
 
 export async function fixAllStudentHistories(): Promise<void> {
+  await logActivity('fix_all_student_histories', { timestamp: new Date().toISOString() });
   const currentStatus = await getCurrentSchoolYear();
   const currentYear = currentStatus ?? new Date().getFullYear();
   const baseYear = 2025;
@@ -560,6 +563,7 @@ export async function fixAllStudentHistories(): Promise<void> {
 }
 
 export async function startSchoolYear(year: number): Promise<void> {
+  await logActivity('start_school_year', { year });
   const yearStatusRef = doc(db, SCHOOL_YEAR_COLLECTION, 'current');
   const yearStatusSnap = await getDoc(yearStatusRef);
   const currentStatus = yearStatusSnap.exists() ? (yearStatusSnap.data() as Record<string, unknown>).year : null;
@@ -807,4 +811,33 @@ export async function seedInitialData(): Promise<void> {
   for (const s of studentsData) await createStudent(s);
 
   console.log('Seed completed: 7 roles, 14 grades, 25 sections, 16 subjects, 10 teachers, 36 students');
+}
+
+// ==================== SECURITY & AUDIT LOGS ====================
+
+export async function isEmailPreAuthorized(email: string): Promise<boolean> {
+  const superAdmin = 'jose.marquez@salesianosanjose.edu.sv';
+  if (email.toLowerCase() === superAdmin.toLowerCase()) return true;
+
+  // Check if a teacher document exists with this email
+  const q = query(collection(db, TEACHERS_COLLECTION), where('email', '==', email));
+  const snap = await getDocs(q);
+  return !snap.empty;
+}
+
+export async function logActivity(action: string, details: Record<string, any>): Promise<void> {
+  try {
+    const currentUser = auth.currentUser;
+    const ref = collection(db, 'activity_logs');
+    await addDoc(ref, {
+      userId: currentUser?.uid || 'anonymous',
+      userEmail: currentUser?.email || 'anonymous',
+      userName: currentUser?.displayName || 'anonymous',
+      action,
+      details,
+      timestamp: serverTimestamp()
+    });
+  } catch (err) {
+    console.error('Error in logActivity:', err);
+  }
 }
