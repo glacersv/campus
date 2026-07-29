@@ -120,38 +120,37 @@ export default function SectionsManager() {
     Object.entries(gradeCounts).forEach(([gradeId, count]) => {
       const grade = grades.find(g => g.id === gradeId);
       const cycle = grade?.cycle || '1';
-      if (cycle === '4' && grade?.baccalaureateType) {
-        const key = `4-${grade.baccalaureateType}`;
-        cycleCounts[key] = (cycleCounts[key] || 0) + count;
-      } else {
-        cycleCounts[cycle] = (cycleCounts[cycle] || 0) + count;
-      }
+      cycleCounts[cycle] = (cycleCounts[cycle] || 0) + count;
     });
 
     const levels = [
+      { key: 'parvularia', label: 'Parvularia (K4 - Prep.)', count: cycleCounts['parvularia'] || 0 },
       { key: '1', label: 'Primer Ciclo (1° - 3°)', count: cycleCounts['1'] || 0 },
       { key: '2', label: 'Segundo Ciclo (4° - 6°)', count: cycleCounts['2'] || 0 },
       { key: '3', label: 'Tercer Ciclo (7° - 9°)', count: cycleCounts['3'] || 0 },
-    ];
-
-    const gradeNumbers = grades
-      .filter(g => g.cycle === '4')
-      .sort((a, b) => parseInt(a.name) - parseInt(b.name));
-
-    gradeNumbers.forEach(grade => {
-      const count = gradeCounts[grade.id] || 0;
-      if (count > 0) {
-        const bt = baccalaureateTypes.find(b => b.id === grade.baccalaureateType);
-        const btName = bt?.name || 'Bachillerato';
-        levels.push({ key: grade.id, label: `${btName} (${grade.name}°)`, count });
-      }
-    });
+      { key: '4', label: 'Bachillerato', count: cycleCounts['4'] || 0 },
+    ].filter(level => level.count > 0);
 
     const totalStudents = students.filter(st => group.some(section => section.id === st.sectionId)).length;
     const totalCapacity = group.reduce((sum, section) => sum + (section.capacity || 0), 0);
     const occupancyPercentage = totalCapacity > 0 ? Math.round((totalStudents / totalCapacity) * 100) : 0;
     
-    // Detalle por grado: capacidad vs matriculados
+    // Sort weights to order grades chronologically (Kinder to Bachillerato)
+    const getGradeSortWeight = (gradeId: string): number => {
+      if (gradeId === 'k4') return 10;
+      if (gradeId === 'k5') return 11;
+      if (gradeId === 'k6') return 12;
+
+      const numStr = gradeId.replace(/[^0-9]/g, '');
+      const num = parseInt(numStr, 10);
+      if (Number.isFinite(num)) {
+        if (num >= 1 && num <= 9) return 20 + num;
+        if (num >= 10 && num <= 12) return 40 + (num - 10);
+      }
+      return 100;
+    };
+
+    // Detalle por grado: capacidad vs matriculados ordenado cronológicamente
     const gradeDetails = group.map(section => {
       const grade = grades.find(g => g.id === section.gradeId);
       const gradeName = grade ? (grade.cycle === '4' && grade.baccalaureateType ? `${baccalaureateTypes.find(b => b.id === grade.baccalaureateType)?.name || 'Bachillerato'} ${grade.name}°` : `${grade.name}°`) : section.gradeId;
@@ -163,9 +162,10 @@ export default function SectionsManager() {
         gradeName,
         capacity,
         enrolled: enrolledInGrade,
-        percentage: capacity > 0 ? Math.round((enrolledInGrade / capacity) * 100) : 0
+        percentage: capacity > 0 ? Math.round((enrolledInGrade / capacity) * 100) : 0,
+        sortWeight: getGradeSortWeight(section.gradeId)
       };
-    });
+    }).sort((a, b) => a.sortWeight - b.sortWeight);
     
     // Debug temporal
     console.log(`Sección ${letter}:`, { 
@@ -367,8 +367,8 @@ export default function SectionsManager() {
               <h4 className="text-sm font-bold text-slate-900 mb-4">Ocupación de la Sección</h4>
               <div className="relative w-48 h-24">
                 <svg viewBox="0 0 200 110" className="w-full h-full">
-                  <path d="M 25 100 A 75 75 0 0 1 175 100" fill="none" stroke="#e2e8f0" strokeWidth="20" />
-                  <path d="M 25 100 A 75 75 0 0 1 175 100" fill="none" stroke="#2e8b57" strokeWidth="20" strokeDasharray={`${selectedGroup.occupancyPercentage * 2.35}, 235`} strokeLinecap="round" />
+                  <path d="M 25 100 A 75 75 0 0 1 175 100" fill="none" stroke="#e2e8f0" strokeWidth="20" strokeLinecap="round" />
+                  <path d="M 25 100 A 75 75 0 0 1 175 100" fill="none" stroke="#12562E" strokeWidth="20" strokeDasharray={`${selectedGroup.occupancyPercentage * 2.35}, 235`} strokeLinecap="round" />
                 </svg>
                 <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center">
                   <div className="text-2xl font-extrabold text-slate-900">{selectedGroup.occupancyPercentage}%</div>
@@ -413,7 +413,7 @@ export default function SectionsManager() {
                     </div>
                     <div className="relative w-24 h-24 mx-auto mb-3">
                       <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                        <circle cx="50" cy="50" r="40" fill="none" stroke="#e2e8f0" strokeWidth="8" />
+                        <circle cx="50" cy="50" r="40" fill="none" stroke="#e2e8f0" strokeWidth="8" strokeLinecap="round" />
                         <circle cx="50" cy="50" r="40" fill="none" stroke={strokeColor} strokeWidth="8" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} />
                       </svg>
                       <div className="absolute inset-0 flex items-center justify-center">
