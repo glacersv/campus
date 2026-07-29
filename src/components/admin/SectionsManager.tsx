@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Layers, Plus, Edit2, Trash2, Save, X, Search, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAllSections, createSection, updateSection, deleteSection, getAllGrades, getAllBuildings, getAllComputerLabs, toggleSectionStatus, getAllBaccalaureateTypes, getAllStudents } from '../../lib/firestore';
@@ -211,78 +211,116 @@ export default function SectionsManager() {
         <input type="text" placeholder="Buscar sección..." value={search} onChange={e => setSearch(e.target.value)} className="input pl-9" />
       </div>
 
-      {showForm && (
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-slate-900">{editingId ? 'Editar Sección' : 'Nueva Sección'}</h3>
-            <button onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1 hover:bg-slate-100 rounded-lg"><X className="w-4 h-4 text-slate-500" /></button>
+      {/* Formulario Modal */}
+      <AnimatePresence>
+        {showForm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden flex flex-col"
+            >
+              <div className="bg-slate-50 border-b border-slate-100 p-5 flex justify-between items-center shrink-0">
+                <h3 className="font-bold text-slate-900 text-base">{editingId ? 'Editar Sección' : 'Nueva Sección'}</h3>
+                <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1.5 hover:bg-slate-200 rounded-lg transition-colors"><X className="w-4 h-4 text-slate-500" /></button>
+              </div>
+              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="form-label">Grado *</label>
+                    <select required value={form.gradeId} onChange={e => setForm({ ...form, gradeId: e.target.value })} className="input">
+                      <option value="">Seleccionar grado</option>
+                      {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="form-label">Nombre *</label>
+                    <input type="text" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ej: A" className="input" maxLength={3} />
+                  </div>
+                  <div>
+                    <label className="form-label">Capacidad</label>
+                    <input type="number" min="1" value={form.capacity} onChange={e => setForm({ ...form, capacity: e.target.value })} placeholder="Ej: 40" className="input" />
+                  </div>
+                  <div>
+                    <label className="form-label">Edificio</label>
+                    <select value={form.buildingId} onChange={e => setForm({ ...form, buildingId: e.target.value })} className="input">
+                      <option value="">Sin edificio</option>
+                      {buildings.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="form-label">Laboratorio de Cómputo</label>
+                    <select value={form.computerLabId} onChange={e => setForm({ ...form, computerLabId: e.target.value })} className="input">
+                      <option value="">Sin laboratorio</option>
+                      {computerLabs.map(cl => <option key={cl.id} value={cl.id}>{cl.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 shrink-0">
+                  <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="btn-secondary">Cancelar</button>
+                  <button type="submit" className="btn-primary"><Save className="w-4 h-4" /> {editingId ? 'Actualizar' : 'Crear'}</button>
+                </div>
+              </form>
+            </motion.div>
           </div>
-          <form onSubmit={handleSubmit} className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <label className="form-label">Grado *</label>
-              <select required value={form.gradeId} onChange={e => setForm({ ...form, gradeId: e.target.value })} className="input">
-                <option value="">Seleccionar grado</option>
-                {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="form-label">Nombre *</label>
-              <input type="text" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ej: A" className="input" maxLength={3} />
-            </div>
-            <div>
-              <label className="form-label">Capacidad</label>
-              <input type="number" min="1" value={form.capacity} onChange={e => setForm({ ...form, capacity: e.target.value })} placeholder="Ej: 40" className="input" />
-            </div>
-            <div>
-              <label className="form-label">Edificio</label>
-              <select value={form.buildingId} onChange={e => setForm({ ...form, buildingId: e.target.value })} className="input">
-                <option value="">Sin edificio</option>
-                {buildings.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="form-label">Laboratorio</label>
-              <select value={form.computerLabId} onChange={e => setForm({ ...form, computerLabId: e.target.value })} className="input">
-                <option value="">Sin laboratorio</option>
-                {computerLabs.map(cl => <option key={cl.id} value={cl.id}>{cl.name}</option>)}
-              </select>
-            </div>
-            <div className="flex items-end justify-end lg:col-span-3 gap-2">
-              <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="btn-secondary">Cancelar</button>
-              <button type="submit" className="btn-primary"><Save className="w-4 h-4" /> {editingId ? 'Actualizar' : 'Crear'}</button>
-            </div>
-          </form>
-        </motion.div>
-      )}
+        )}
+      </AnimatePresence>
 
       {groupStats.length === 0 ? (
         <div className="text-center py-12 text-slate-400">
           <p className="text-sm">No hay secciones creadas</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {groupStats.map((group, i) => (
-            <motion.div key={group.letter} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all cursor-pointer" onClick={() => openAnalytics(group)}>
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Sección {group.letter}</span>
-                <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center">
-                  <Users className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="mb-3">
-                <div className="text-[40px] font-extrabold text-slate-900 leading-none tracking-tight">{group.totalGrades}</div>
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full bg-slate-100 text-slate-600 mt-2">Grados totales</span>
-              </div>
-              <div className="border-t border-slate-100 pt-3 flex flex-col gap-2">
-                {group.levels.map(level => (
-                  <div key={level.label} className="flex justify-between items-center text-[12px] font-medium text-slate-500">
-                    <span>{level.label}</span>
-                    <span className="font-bold text-slate-900 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-md text-[11px]">{level.count} Grados</span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {groupStats.map((group, i) => {
+            const progressColor = group.occupancyPercentage >= 90 ? 'bg-red-600' : group.occupancyPercentage >= 70 ? 'bg-amber-500' : 'bg-primary';
+            return (
+              <motion.div
+                key={group.letter}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs hover:shadow-md hover:-translate-y-1 transition-all cursor-pointer group flex flex-col justify-between h-[230px]"
+                onClick={() => openAnalytics(group)}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Sección</span>
+                    <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-100 text-slate-500 flex items-center justify-center group-hover:bg-primary-light group-hover:text-primary transition-colors">
+                      <Users className="w-4 h-4" />
+                    </div>
                   </div>
-                ))}
-              </div>
-            </motion.div>
-          ))}
+
+                  <div>
+                    <h2 className="text-3xl font-extrabold text-slate-900 leading-none font-display">Sección "{group.letter}"</h2>
+                    <p className="text-xs text-slate-400 font-medium mt-1">Nómina y asignaciones integrales</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-4 border-t border-slate-100">
+                  <div className="flex justify-between items-center text-xs font-semibold text-slate-500">
+                    <div className="flex gap-4">
+                      <div>
+                        <span className="text-slate-900 font-bold font-mono">{group.totalGrades}</span> <span className="text-[10px] text-slate-400 uppercase tracking-wider">Grados</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-900 font-bold font-mono">{group.totalStudents}</span> <span className="text-[10px] text-slate-400 uppercase tracking-wider">Alumnos</span>
+                      </div>
+                    </div>
+                    <span className="font-mono font-bold text-slate-900">{group.occupancyPercentage}%</span>
+                  </div>
+
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${progressColor} transition-all duration-500`}
+                      style={{ width: `${group.occupancyPercentage}%` }}
+                    />
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
       )}
 
