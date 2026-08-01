@@ -23,12 +23,12 @@ export default function SectionsManager() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabId: '' });
   const [search, setSearch] = useState('');
-  const [selectedGroup, setSelectedGroup] = useState<{ letter: string; levels: { label: string; count: number }[]; totalGrades: number; totalStudents: number; totalCapacity: number; occupancyPercentage: number; gradeDetails: { gradeId: string; gradeName: string; capacity: number; enrolled: number; percentage: number; sortWeight: number }[] } | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<{ letter: string; levels: { label: string; count: number }[]; totalGrades: number; totalStudents: number; totalCapacity: number; occupancyPercentage: number; gradeDetails: { sectionId: string; gradeId: string; gradeName: string; capacity: number; enrolled: number; percentage: number; rawSection: Section; sortWeight: number }[] } | null>(null);
 
   // Dynamic filter state for grades in detail analytics
   const [gradeFilter, setGradeFilter] = useState<'all' | 'parvularia' | 'basica' | 'bachillerato'>('all');
 
-  const openAnalytics = (group: { letter: string; levels: { label: string; count: number }[]; totalGrades: number; totalStudents: number; totalCapacity: number; occupancyPercentage: number; gradeDetails: { gradeId: string; gradeName: string; capacity: number; enrolled: number; percentage: number; sortWeight: number }[] }) => {
+  const openAnalytics = (group: { letter: string; levels: { label: string; count: number }[]; totalGrades: number; totalStudents: number; totalCapacity: number; occupancyPercentage: number; gradeDetails: { sectionId: string; gradeId: string; gradeName: string; capacity: number; enrolled: number; percentage: number; rawSection: Section; sortWeight: number }[] }) => {
     setSelectedGroup(group);
   };
 
@@ -164,11 +164,13 @@ export default function SectionsManager() {
       const capacity = section.capacity || 0;
       
       return {
+        sectionId: section.id,
         gradeId: section.gradeId,
         gradeName,
         capacity,
         enrolled: enrolledInGrade,
         percentage: capacity > 0 ? Math.round((enrolledInGrade / capacity) * 100) : 0,
+        rawSection: section,
         sortWeight: getGradeSortWeight(section.gradeId)
       };
     }).sort((a, b) => a.sortWeight - b.sortWeight);
