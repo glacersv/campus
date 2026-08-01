@@ -292,17 +292,17 @@ export default function GradesManager() {
       </AnimatePresence>
 
       {viewMode === 'card' && cycleFilter === 'all' ? (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {(Object.keys(CYCLE_NAMES) as Cycle[]).map((c) => {
             const items = cycleGroups[c];
             if (items.length === 0) return null;
             return (
-              <div key={c} className="space-y-3">
-                <div className="flex items-center gap-2">
+              <div key={c}>
+                <div className="flex items-center gap-2 mb-3">
                   <span className={`px-2.5 py-1 rounded-md text-xs font-bold ${CYCLE_COLORS[c]}`}>{CYCLE_NAMES[c]}</span>
                   <span className="text-xs text-slate-400">({items.length})</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className="grid grid-cols-3 gap-3">
                   {items.map((g, i) => {
                     const sectionsCount = sections.filter((s) => s.gradeId === g.id).length;
                     const buildingName = getGradeBuildingName(g.id);
@@ -327,7 +327,7 @@ export default function GradesManager() {
           })}
         </div>
       ) : viewMode === 'card' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-3 gap-3">
           {filtered.map((g, i) => {
             const sectionsCount = sections.filter((s) => s.gradeId === g.id).length;
             const buildingName = getGradeBuildingName(g.id);
@@ -420,99 +420,56 @@ function GradeCard({ grade, index, sectionsCount, buildingName, selected, onTogg
   onToggleStatus: () => void;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.03 }}
-      className={`bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col justify-between h-full hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group relative min-h-[220px] ${selected ? 'ring-2 ring-primary border-primary' : ''}`}
-    >
-      <div className="absolute top-4 left-4">
-        <button
-          onClick={onToggleSelect}
-          className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected ? 'bg-primary border-primary text-white' : 'border-slate-300 hover:border-primary'}`}
-        >
-          {selected && <Check className="w-2.5 h-2.5" />}
-        </button>
-      </div>
-
-      <div className="pl-6 flex flex-col flex-1">
-        {/* Encabezado */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 text-primary flex items-center justify-center">
-              <DoorOpen className="w-4 h-4" />
-            </div>
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }} className={`bg-white rounded-2xl p-5 border border-slate-200/80 transition-all ${selected ? 'ring-2 ring-primary border-primary' : 'hover:shadow-md'}`}>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-700 border border-slate-200 bg-white">
+            <DoorOpen className="w-5 h-5" />
+          </div>
+          <div>
             <h3 className="text-sm font-bold text-slate-900 leading-tight">{grade.name}</h3>
           </div>
-          <button
-            onClick={onToggleStatus}
-            className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-colors ${
-              (grade.status || 'ACTIVO') === 'ACTIVO'
-                ? 'bg-emerald-50 text-primary border-emerald-200 hover:bg-emerald-100'
-                : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
-            }`}
-          >
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={onToggleStatus} className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-colors ${(grade.status || 'ACTIVO') === 'ACTIVO' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
             {(grade.status || 'ACTIVO') === 'ACTIVO' ? 'Activo' : 'Inactivo'}
           </button>
+          <button className="p-1 hover:bg-slate-100 rounded-lg transition-colors"><span className="text-slate-400 text-xs font-bold tracking-widest">•••</span></button>
         </div>
+      </div>
 
-        {/* Cuerpo */}
-        <div className="space-y-3 flex-1">
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-3xl font-black text-slate-900 font-display tracking-tight">{sectionsCount ?? '0'}</span>
-            <span className="text-xs text-slate-400 font-medium uppercase tracking-wider">secciones asignadas</span>
-          </div>
-
-          <div className="space-y-1.5 text-xs font-semibold text-slate-500">
-            <div className="flex items-center gap-2">
-              <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              {buildingName ? (
-                <span className="truncate text-slate-700">{buildingName}</span>
-              ) : (
-                <span className="text-slate-400 italic font-normal">Sin edificio asignado</span>
-              )}
-            </div>
-            <p className="text-[11px] text-slate-400 font-medium pl-5">
-              {grade.baccalaureateType
-                ? grade.baccalaureateType === 'general'
-                  ? 'Bachillerato General'
-                  : 'Bachillerato Técnico'
-                : 'Educación Básica'}
-            </p>
-          </div>
+      <div className="mb-5">
+        <div className="flex items-baseline gap-1">
+          <span className="text-3xl font-bold text-slate-900 font-display tracking-tight">{sectionsCount ?? '—'}</span>
+          <span className="text-sm text-slate-400 font-medium">secciones</span>
         </div>
+        <p className="text-[11px] text-slate-400 mt-1">{grade.baccalaureateType ? (grade.baccalaureateType === 'general' ? 'Bachillerato General' : 'Bachillerato Técnico') : 'Educación Básica'}</p>
+      </div>
 
-        {/* Pie de página */}
-        <div className="flex items-center justify-between pt-3 mt-4 border-t border-slate-100">
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
-            {(() => {
-              const cycle = grade.cycle as Cycle;
-              const cfg = CYCLE_LABEL[cycle] || CYCLE_LABEL['1'];
-              const Icon = cfg.Icon;
-              return (
-                <>
-                  <Icon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <span className="text-[11px] font-bold text-slate-600">{cfg.label}</span>
-                </>
-              );
-            })()}
-          </div>
-          <div className="flex gap-1.5 shrink-0">
-            <button
-              onClick={onEdit}
-              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-700 transition-colors"
-              title="Editar"
-            >
-              <Edit2 className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={onDelete}
-              className="p-1.5 hover:bg-red-50 rounded-lg text-red-500 hover:text-red-600 transition-colors"
-              title="Eliminar"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
+      <div className="mb-4">
+        <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
+          <Building2 className="w-4 h-4 text-slate-400" />
+          {buildingName ? (<span className="truncate">{buildingName}</span>) : (<span className="text-slate-400">Sin edificio asignado</span>)}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+        <div className="flex items-center gap-2">
+          {(() => {
+            const cycle = grade.cycle as Cycle;
+            const cfg = CYCLE_LABEL[cycle] || CYCLE_LABEL['1'];
+            const Icon = cfg.Icon;
+            return (
+              <>
+                <Icon className={`${cfg.size} text-slate-500`} />
+                <span className="text-[11px] font-semibold text-slate-600">{cfg.label}</span>
+              </>
+            );
+          })()}
+        </div>
+        <div className="flex gap-1">
+          <button onClick={onEdit} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors" title="Editar"><Edit2 className="w-3.5 h-3.5 text-slate-500" /></button>
+          <button onClick={onDelete} className="p-1.5 hover:bg-red-50 rounded-lg transition-colors" title="Eliminar"><Trash2 className="w-3.5 h-3.5 text-red-500" /></button>
         </div>
       </div>
     </motion.div>

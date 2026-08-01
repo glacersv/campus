@@ -241,94 +241,84 @@ export default function BuildingsManager() {
         )}
       </AnimatePresence>
 
-      {/* Standardized Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+      {/* Glassmorphism Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
         {buildings.map((b, i) => {
           const stats = computeStats(b);
           const isSelected = selectedBuildingId === b.id;
           return (
             <motion.div
               key={b.id}
-              initial={{ opacity: 0, y: 15 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-              className={`bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col justify-between h-full hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group relative min-h-[220px] cursor-pointer ${
-                isSelected ? 'ring-2 ring-offset-2' : ''
-              }`}
-              style={{ '--tw-ring-color': isSelected ? b.color : 'transparent' } as React.CSSProperties}
+              transition={{ delay: i * 0.1 }}
+              className={`glass-card group relative overflow-hidden cursor-pointer transition-all ${isSelected ? 'ring-2 ring-offset-2' : 'hover:ring-1 hover:ring-offset-1'}`}
+              style={{ '--card-accent': b.color, '--tw-ring-color': isSelected ? b.color : 'transparent' } as React.CSSProperties}
               onClick={() => setSelectedBuildingId(isSelected ? null : b.id)}
             >
-              {/* Color accent line */}
-              <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl" style={{ backgroundColor: b.color }} />
+              {/* Color accent bar */}
+              <div className="absolute top-0 left-0 right-0 h-1.5" style={{ backgroundColor: b.color }} />
               
-              <div>
-                {/* Encabezado */}
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2.5">
+              {/* Content */}
+              <div className="p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
                     <div 
-                      className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-sm"
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-base shadow-lg"
                       style={{ backgroundColor: b.color }}
                     >
                       {b.code}
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-slate-900 leading-tight">{b.name}</h3>
+                      <h3 className="font-bold text-slate-900">{b.name}</h3>
                       {b.description && (
-                        <p className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
-                          <MapPin className="w-3 h-3 text-slate-400" /> {b.description}
+                        <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3 h-3" /> {b.description}
+                        </p>
+                      )}
+                      {stats.totalSections > 0 && (
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          {stats.gradeStats.length} grado(s) · {stats.totalSections} sección(es) · {stats.totalEnrolled} alumno(s)
                         </p>
                       )}
                     </div>
                   </div>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-md shrink-0">
-                    {stats.totalCapacity} cupos
-                  </span>
-                </div>
-
-                {/* Cuerpo */}
-                <div className="space-y-3 my-3">
-                  {stats.totalSections > 0 ? (
-                    <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">
-                      {stats.gradeStats.length} grado(s) · {stats.totalSections} sección(es) · {stats.totalEnrolled} alumno(s)
-                    </p>
-                  ) : (
-                    <p className="text-[11px] text-slate-400 italic">Sin asignaciones</p>
-                  )}
-
-                  {stats.totalSections > 0 && (
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                        <span>Ocupación</span>
-                        <span className="font-mono">{Math.round((stats.totalEnrolled / Math.max(stats.totalCapacity, 1)) * 100)}%</span>
-                      </div>
-                      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${Math.min((stats.totalEnrolled / Math.max(stats.totalCapacity, 1)) * 100, 100)}%` }}
-                          className="h-full rounded-full transition-all duration-500"
-                          style={{ backgroundColor: b.color }}
-                        />
-                      </div>
-                    </div>
-                  )}
+                  <span className="text-[10px] text-slate-400 font-mono shrink-0">{stats.totalCapacity} cupos</span>
                 </div>
               </div>
 
-              {/* Pie de página con acciones integrales */}
-              <div className="flex border-t border-slate-100 pt-3 mt-4 justify-end gap-1.5 shrink-0">
+              {/* Quick mini bar */}
+              {stats.totalSections > 0 && (
+                <div className="px-4 pb-3">
+                  <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                    <span className="w-16 shrink-0">Ocupación:</span>
+                    <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min((stats.totalEnrolled / Math.max(stats.totalCapacity, 1)) * 100, 100)}%` }}
+                        className="h-full rounded-full transition-all"
+                        style={{ backgroundColor: b.color }}
+                      />
+                    </div>
+                    <span className="w-10 text-right font-mono">{Math.round((stats.totalEnrolled / Math.max(stats.totalCapacity, 1)) * 100)}%</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex border-t border-white/20">
                 <button
                   onClick={(e) => { e.stopPropagation(); handleEdit(b); }}
-                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-700 transition-colors"
-                  title="Editar Edificio"
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium text-slate-600 hover:bg-white/30 transition-colors"
                 >
-                  <Edit2 className="w-3.5 h-3.5" />
+                  <Edit2 className="w-3.5 h-3.5" /> Editar
                 </button>
+                <div className="w-px bg-white/20" />
                 <button
                   onClick={(e) => { e.stopPropagation(); handleDelete(b.id); }}
-                  className="p-1.5 hover:bg-red-50 rounded-lg text-red-500 hover:text-red-600 transition-colors"
-                  title="Eliminar Edificio"
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium text-red-600 hover:bg-red-50/50 transition-colors"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-3.5 h-3.5" /> Eliminar
                 </button>
               </div>
             </motion.div>
