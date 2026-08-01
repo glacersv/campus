@@ -258,62 +258,72 @@ export default function ComputerLabsManager() {
 
       {/* Card View */}
       {viewMode === 'card' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {labs.map((l, i) => {
             const stats = computeStats(l);
             const isSelected = selectedLabId === l.id;
             return (
               <motion.div
                 key={l.id}
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03 }}
-                className={`card card-hover p-3 group relative cursor-pointer transition-all ${selected.has(l.id) ? 'ring-2 ring-primary border-primary' : ''} ${isSelected ? 'ring-2 ring-offset-2' : 'hover:ring-1 hover:ring-offset-1'}`}
+                className={`bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col justify-between h-full hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group relative min-h-[220px] cursor-pointer ${selected.has(l.id) ? 'ring-2 ring-primary border-primary' : ''} ${isSelected ? 'ring-2 ring-offset-2' : ''}`}
                 style={{ '--tw-ring-color': isSelected ? '#6366F1' : 'transparent' } as React.CSSProperties}
                 onClick={() => setSelectedLabId(isSelected ? null : l.id)}
               >
-                <div className="absolute top-2.5 left-2.5">
+                <div className="absolute top-4 left-4">
                   <button onClick={(e) => { e.stopPropagation(); toggleSelect(l.id); }}
-                    className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.has(l.id) ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'}`}>
+                    className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.has(l.id) ? 'bg-primary border-primary text-white' : 'border-slate-300 hover:border-primary'}`}>
                     {selected.has(l.id) && <Check className="w-2.5 h-2.5" />}
                   </button>
                 </div>
-                <div className="pt-1 pl-5">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                      <Monitor className="w-4 h-4 text-accent" />
+
+                <div className="pl-6 flex flex-col flex-1">
+                  {/* Encabezado */}
+                  <div className="flex items-center gap-2.5 mb-3">
+                    <div className="w-8 h-8 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
+                      <Monitor className="w-4 h-4" />
                     </div>
-                    <h3 className="font-semibold text-slate-900">{l.name}</h3>
+                    <h3 className="text-sm font-bold text-slate-900 leading-tight">{l.name}</h3>
                   </div>
-                  <div className="mt-2 space-y-1">
+
+                  {/* Cuerpo */}
+                  <div className="space-y-2 flex-1 text-xs text-slate-600">
                     {l.buildingId && (
-                      <p className="text-xs flex items-center gap-1">
+                      <p className="flex items-center gap-1.5 font-semibold text-slate-700">
                         <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getBuildingColor(l.buildingId) }} />
                         {getBuildingName(l.buildingId)}
                       </p>
                     )}
-                    {l.capacity && <p className="text-xs text-slate-500">Capacidad: {l.capacity}</p>}
-                    {l.devices && <p className="text-xs text-slate-500">Dispositivos: {l.devices}</p>}
+                    <div className="flex gap-4 font-semibold text-slate-500">
+                      {l.capacity && <p>Capacidad: <span className="text-slate-900">{l.capacity}</span></p>}
+                      {l.devices && <p>Dispositivos: <span className="text-slate-900">{l.devices}</span></p>}
+                    </div>
                     {stats.assignedSections.length > 0 && (
-                      <p className="text-[10px] text-slate-400 pt-1">
+                      <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
                         {stats.assignedSections.length} sección(es) · {stats.totalEnrolled} alumno(s)
                       </p>
                     )}
-                  </div>
-                  {stats.assignedSections.length > 0 && (
-                    <div className="mt-2 flex items-center gap-2 text-[10px] text-slate-400">
-                      <span className="w-14 shrink-0">Uso:</span>
-                      <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                        <motion.div initial={{ width: 0 }} animate={{ width: `${stats.usagePct}%` }}
-                          className="h-full rounded-full" style={{ backgroundColor: '#6366F1' }} />
+                    {stats.assignedSections.length > 0 && (
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          <span>Uso</span>
+                          <span className="font-mono">{stats.usagePct}%</span>
+                        </div>
+                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <motion.div initial={{ width: 0 }} animate={{ width: `${stats.usagePct}%` }}
+                            className="h-full rounded-full bg-indigo-500 transition-all duration-500" />
+                        </div>
                       </div>
-                      <span className="w-8 text-right font-mono">{stats.usagePct}%</span>
-                    </div>
-                  )}
-                </div>
-                <div className="flex justify-end gap-1 mt-2 pt-2 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={(e) => { e.stopPropagation(); handleEdit(l); }} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-slate-100 rounded-lg text-xs font-medium text-slate-600"><Edit2 className="w-3.5 h-3.5" /> Editar</button>
-                  <button onClick={(e) => { e.stopPropagation(); handleDelete(l.id); }} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-red-50 rounded-lg text-xs font-medium text-red-600"><Trash2 className="w-3.5 h-3.5" /> Eliminar</button>
+                    )}
+                  </div>
+
+                  {/* Pie de página */}
+                  <div className="flex justify-end gap-1.5 pt-3 mt-4 border-t border-slate-100 shrink-0">
+                    <button onClick={(e) => { e.stopPropagation(); handleEdit(l); }} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-700 transition-colors" title="Editar"><Edit2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={(e) => { e.stopPropagation(); handleDelete(l.id); }} className="p-1.5 hover:bg-red-50 rounded-lg text-red-500 hover:text-red-600 transition-colors" title="Eliminar"><Trash2 className="w-3.5 h-3.5" /></button>
+                  </div>
                 </div>
               </motion.div>
             );

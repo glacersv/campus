@@ -239,43 +239,98 @@ export default function TeachersManager() {
         )}
       </AnimatePresence>
 
-      <div className="grid-cards">
-        {filtered.map(t => (
-          <div key={t.id} className="card-hover bg-white rounded-2xl border border-slate-200/80 overflow-hidden group">
-            <div className="bg-gradient-to-r from-slate-800 to-slate-900 p-4">
-              <div className="flex items-center gap-3">
-                <img src={t.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(t.name)}&background=25855A&color=fff`} alt={t.name} className="w-11 h-11 rounded-full border-2 border-secondary object-cover" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-semibold text-white truncate">{t.name}</h3>
-                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${(t.status || 'ACTIVO') === 'INACTIVO' ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'}`}>
-                      {t.status || 'ACTIVO'}
-                    </span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {filtered.map((t, i) => (
+          <motion.div
+            key={t.id}
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.03 }}
+            className="bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col justify-between h-full hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group relative min-h-[220px]"
+          >
+            <div>
+              {/* Encabezado */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <img
+                    src={t.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(t.name)}&background=25855A&color=fff`}
+                    alt={t.name}
+                    className="w-10 h-10 rounded-full border border-slate-100 object-cover shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-bold text-slate-900 truncate leading-tight">{t.name}</h3>
+                    <p className="text-[11px] text-slate-400 font-semibold truncate mt-0.5">{t.email}</p>
                   </div>
-                  <p className="text-xs text-slate-400 truncate">{t.email}</p>
                 </div>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
+                  (t.status || 'ACTIVO') === 'INACTIVO'
+                    ? 'bg-red-50 text-red-700 border-red-200'
+                    : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                }`}>
+                  {t.status || 'ACTIVO'}
+                </span>
+              </div>
+
+              {/* Cuerpo */}
+              <div className="space-y-1.5 text-xs text-slate-600 my-3">
+                {t.phone && (
+                  <p className="flex items-center gap-2">
+                    <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span className="font-medium">{t.phone}</span>
+                  </p>
+                )}
+                {t.specialty && (
+                  <p className="flex items-center gap-2">
+                    <Award className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span className="truncate font-medium">{t.specialty}</span>
+                  </p>
+                )}
+                {t.schedule && (
+                  <p className="flex items-center gap-2">
+                    <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span className="font-medium">{t.schedule}</span>
+                  </p>
+                )}
+                {t.guideGradeId && (
+                  <p className="text-[11px] text-primary font-bold flex items-center gap-2 bg-emerald-50/50 border border-emerald-100/50 px-2.5 py-1 rounded-lg w-fit">
+                    <MapPin className="w-3.5 h-3.5 shrink-0" /> Guía: {getGradeName(t.guideGradeId)} "{getSectionName(t.guideSectionId)}"
+                  </p>
+                )}
               </div>
             </div>
-            <div className="p-4 space-y-2">
-              {t.phone && <p className="text-xs text-slate-500 flex items-center gap-2"><Phone className="w-3.5 h-3.5 text-slate-400" /> {t.phone}</p>}
-              {t.specialty && <p className="text-xs text-slate-500 flex items-center gap-2"><Award className="w-3.5 h-3.5 text-slate-400" /> {t.specialty}</p>}
-              {t.schedule && <p className="text-xs text-slate-500 flex items-center gap-2"><Clock className="w-3.5 h-3.5 text-slate-400" /> {t.schedule}</p>}
-              {t.guideGradeId && (
-                <p className="text-xs text-primary font-semibold flex items-center gap-2">
-                  <MapPin className="w-3.5 h-3.5" /> Guía: {getGradeName(t.guideGradeId)} "{getSectionName(t.guideSectionId)}"
-                </p>
-              )}
-              <div className="flex flex-wrap gap-1.5 pt-2 border-t border-slate-100">
-                {(t.subjects || []).map(s => (
-                  <span key={s} className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-semibold rounded-md">{getSubjectName(s)}</span>
+
+            {/* Pie de página con materias y acciones */}
+            <div className="flex items-center justify-between pt-3 mt-4 border-t border-slate-100">
+              <div className="flex flex-wrap gap-1 min-w-0 mr-2">
+                {(t.subjects || []).slice(0, 2).map(s => (
+                  <span key={s} className="px-2 py-0.5 bg-slate-50 text-slate-600 border border-slate-100 text-[10px] font-bold rounded-md truncate max-w-[80px]">
+                    {getSubjectName(s)}
+                  </span>
                 ))}
+                {(t.subjects || []).length > 2 && (
+                  <span className="px-1.5 py-0.5 bg-slate-50 text-slate-400 border border-slate-100 text-[10px] font-bold rounded-md shrink-0">
+                    +{(t.subjects || []).length - 2}
+                  </span>
+                )}
               </div>
-              <div className="flex justify-end gap-1 pt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                <button onClick={() => handleEdit(t)} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"><Edit2 className="w-4 h-4 text-slate-500" /></button>
-                <button onClick={() => handleDelete(t.id)} className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4 text-red-500" /></button>
+              <div className="flex gap-1.5 shrink-0">
+                <button
+                  onClick={() => handleEdit(t)}
+                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-700 transition-colors"
+                  title="Editar"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => handleDelete(t.id)}
+                  className="p-1.5 hover:bg-red-50 rounded-lg text-red-500 hover:text-red-600 transition-colors"
+                  title="Eliminar"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
 
