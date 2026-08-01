@@ -221,32 +221,45 @@ export default function SubjectsManager() {
       </AnimatePresence>
 
       {viewMode === 'card' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {filtered.map((s, i) => (
-            <motion.div key={s.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
-              className={`card card-hover p-4 group relative ${selected.has(s.id) ? 'ring-2 ring-primary border-primary' : ''}`}>
-              <div className="absolute top-2.5 left-2.5">
+            <motion.div key={s.id} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
+              className={`bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col justify-between h-full hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group relative min-h-[220px] ${selected.has(s.id) ? 'ring-2 ring-primary border-primary' : ''}`}>
+              <div className="absolute top-4 left-4">
                 <button onClick={() => toggleSelect(s.id)}
                   className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.has(s.id) ? 'bg-primary border-primary text-white' : 'border-slate-300 hover:border-primary'}`}>
                   {selected.has(s.id) && <Check className="w-2.5 h-2.5" />}
                 </button>
               </div>
-              <div className="pt-1 pl-5">
-                <div className="flex items-start justify-between">
-                  <h3 className="font-semibold text-slate-900">{s.name}</h3>
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${s.status === 'INACTIVO' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+
+              <div className="pl-6 flex flex-col flex-1">
+                {/* Encabezado */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 text-primary flex items-center justify-center">
+                      <BookMarked className="w-4 h-4 text-primary" />
+                    </div>
+                    <h3 className="text-sm font-bold text-slate-900 leading-tight">{s.name}</h3>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${s.status === 'INACTIVO' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
                     {s.status || 'ACTIVO'}
                   </span>
                 </div>
-                {s.description && <p className="text-xs text-slate-500 mt-1 line-clamp-2">{s.description}</p>}
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {s.cycle && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{CYCLE_NAMES[s.cycle]}</span>}
-                  {s.weeklyHours && <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{s.weeklyHours}h/semana</span>}
+
+                {/* Cuerpo */}
+                <div className="space-y-2 flex-1 text-xs text-slate-600">
+                  {s.description && <p className="text-xs text-slate-500 mt-1 line-clamp-2 font-medium">{s.description}</p>}
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {s.cycle && <span className="text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-md">{CYCLE_NAMES[s.cycle]}</span>}
+                    {s.weeklyHours && <span className="text-[10px] font-bold bg-slate-50 text-slate-600 border border-slate-100 px-2 py-0.5 rounded-md">{s.weeklyHours}h / semana</span>}
+                  </div>
                 </div>
-              </div>
-              <div className="flex justify-end gap-1 mt-3 pt-2 border-t border-slate-100 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => handleEdit(s)} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-slate-100 rounded-lg text-xs font-medium text-slate-600 transition-colors"><Edit2 className="w-3.5 h-3.5" /> Editar</button>
-                <button onClick={() => handleDelete(s.id)} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-red-50 rounded-lg text-xs font-medium text-red-600 transition-colors"><Trash2 className="w-3.5 h-3.5" /> Eliminar</button>
+
+                {/* Pie de página */}
+                <div className="flex justify-end gap-1.5 pt-3 mt-4 border-t border-slate-100 shrink-0">
+                  <button onClick={() => handleEdit(s)} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-700 transition-colors" title="Editar"><Edit2 className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => handleDelete(s.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-red-500 hover:text-red-600 transition-colors" title="Eliminar"><Trash2 className="w-3.5 h-3.5" /></button>
+                </div>
               </div>
             </motion.div>
           ))}

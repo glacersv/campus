@@ -23,9 +23,9 @@ export default function SectionsManager() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabId: '' });
   const [search, setSearch] = useState('');
-  const [selectedGroup, setSelectedGroup] = useState<{ letter: string; levels: { label: string; count: number }[]; totalGrades: number; totalStudents: number; totalCapacity: number; occupancyPercentage: number; gradeDetails: { gradeId: string; gradeName: string; capacity: number; enrolled: number; percentage: number }[] } | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<{ letter: string; levels: { label: string; count: number }[]; totalGrades: number; totalStudents: number; totalCapacity: number; occupancyPercentage: number; gradeDetails: { sectionId: string; gradeId: string; gradeName: string; capacity: number; enrolled: number; percentage: number; rawSection: Section }[] } | null>(null);
 
-  const openAnalytics = (group: { letter: string; levels: { label: string; count: number }[]; totalGrades: number; totalStudents: number; totalCapacity: number; occupancyPercentage: number; gradeDetails: { gradeId: string; gradeName: string; capacity: number; enrolled: number; percentage: number }[] }) => {
+  const openAnalytics = (group: { letter: string; levels: { label: string; count: number }[]; totalGrades: number; totalStudents: number; totalCapacity: number; occupancyPercentage: number; gradeDetails: { sectionId: string; gradeId: string; gradeName: string; capacity: number; enrolled: number; percentage: number; rawSection: Section }[] }) => {
     setSelectedGroup(group);
   };
 
@@ -159,11 +159,13 @@ export default function SectionsManager() {
       const capacity = section.capacity || 0;
       
       return {
+        sectionId: section.id,
         gradeId: section.gradeId,
         gradeName,
         capacity,
         enrolled: enrolledInGrade,
-        percentage: capacity > 0 ? Math.round((enrolledInGrade / capacity) * 100) : 0
+        percentage: capacity > 0 ? Math.round((enrolledInGrade / capacity) * 100) : 0,
+        rawSection: section
       };
     });
     
@@ -407,20 +409,40 @@ export default function SectionsManager() {
                 const strokeDashoffset = circumference - (detail.percentage / 100) * circumference;
                 
                 return (
-                  <div key={detail.gradeId} className={`${bgColor} rounded-2xl p-4 border border-slate-200/80`}>
-                    <div className="text-center mb-3">
-                      <span className="text-xs font-bold text-slate-700">{detail.gradeName}</span>
-                    </div>
-                    <div className="relative w-24 h-24 mx-auto mb-3">
-                      <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                        <circle cx="50" cy="50" r="40" fill="none" stroke="#e2e8f0" strokeWidth="8" />
-                        <circle cx="50" cy="50" r="40" fill="none" stroke={strokeColor} strokeWidth="8" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} />
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className={`text-lg font-extrabold ${textColor}`}>{detail.percentage}%</span>
+                  <div key={detail.sectionId} className={`${bgColor} rounded-2xl p-4 border border-slate-200/80 flex flex-col justify-between`}>
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-bold text-slate-700">{detail.gradeName}</span>
+                        <div className="flex gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleEdit(detail.rawSection); }}
+                            className="p-1 hover:bg-white/60 rounded text-slate-500 hover:text-slate-700 transition-colors"
+                            title="Editar Sección"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleDelete(detail.sectionId); closeAnalytics(); }}
+                            className="p-1 hover:bg-red-100/60 rounded text-red-500 hover:text-red-700 transition-colors"
+                            title="Eliminar Sección"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="relative w-24 h-24 mx-auto mb-3">
+                        <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                          <circle cx="50" cy="50" r="40" fill="none" stroke="#e2e8f0" strokeWidth="8" />
+                          <circle cx="50" cy="50" r="40" fill="none" stroke={strokeColor} strokeWidth="8" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className={`text-lg font-extrabold ${textColor}`}>{detail.percentage}%</span>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex justify-between text-[11px] font-semibold text-slate-600">
+                    <div className="flex justify-between text-[11px] font-semibold text-slate-600 mt-2 pt-2 border-t border-slate-100">
                       <div className="text-center">
                         <div className="text-slate-900 font-bold">{detail.capacity}</div>
                         <div className="text-[10px] text-slate-500">Capacidad</div>
