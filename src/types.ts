@@ -115,7 +115,7 @@ export interface Building {
   id: string;
   name: string;
   code: string;
-  color: string;
+  color?: string;
   description?: string;
   createdAt?: Timestamp;
 }

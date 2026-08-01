@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { UserCheck, Plus, Edit2, Trash2, Save, X, Search, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAllStudents, createStudent, updateStudent, deleteStudent, getAllGrades, getAllSections } from '../../lib/firestore';
+import { sortGradesChronological } from '../../lib/ordering';
 import { Student, Grade, Section } from '../../types';
 import StudentHistory from './StudentHistory';
 
@@ -158,7 +159,7 @@ export default function StudentsManager() {
               className={`filter-pill ${filterGrade === 'all' ? 'active' : ''}`}>
               Todos
             </button>
-            {grades.map(g => (
+            {sortGradesChronological(grades).map(g => (
               <button key={g.id} onClick={() => { setFilterGrade(g.id); setFilterSection('all'); }}
                 className={`filter-pill ${filterGrade === g.id ? 'active' : ''}`}>
                 {g.name}
@@ -221,7 +222,7 @@ export default function StudentsManager() {
                     <label className="form-label">Grado *</label>
                     <select required value={form.gradeId} onChange={e => setForm({ ...form, gradeId: e.target.value, sectionId: '' })} className="input">
                       <option value="">Seleccionar grado</option>
-                      {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                      {sortGradesChronological(grades).map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                     </select>
                   </div>
                   <div>

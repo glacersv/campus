@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Layers, Plus, Edit2, Trash2, Save, X, Search, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAllSections, createSection, updateSection, deleteSection, getAllGrades, getAllBuildings, getAllComputerLabs, toggleSectionStatus, getAllBaccalaureateTypes, getAllStudents } from '../../lib/firestore';
+import { getGradeSortWeight, sortGradesChronological, sortSectionsChronological } from '../../lib/ordering';
 import { Section, Grade, Building, ComputerLab, BaccalaureateTypeDoc, Student } from '../../types';
 
 const CYCLE_LABEL: Record<string, string> = {
@@ -140,21 +141,6 @@ export default function SectionsManager() {
     const totalStudents = students.filter(st => group.some(section => section.id === st.sectionId)).length;
     const totalCapacity = group.reduce((sum, section) => sum + (section.capacity || 0), 0);
     const occupancyPercentage = totalCapacity > 0 ? Math.round((totalStudents / totalCapacity) * 100) : 0;
-    
-    // Sort weights to order grades chronologically (Kinder to Bachillerato)
-    const getGradeSortWeight = (gradeId: string): number => {
-      if (gradeId === 'k4') return 10;
-      if (gradeId === 'k5') return 11;
-      if (gradeId === 'k6') return 12;
-
-      const numStr = gradeId.replace(/[^0-9]/g, '');
-      const num = parseInt(numStr, 10);
-      if (Number.isFinite(num)) {
-        if (num >= 1 && num <= 9) return 20 + num;
-        if (num >= 10 && num <= 12) return 40 + (num - 10);
-      }
-      return 100;
-    };
 
     // Detalle por grado: capacidad vs matriculados ordenado cronológicamente
     const gradeDetails = group.map(section => {
@@ -239,7 +225,7 @@ export default function SectionsManager() {
                     <label className="form-label">Grado *</label>
                     <select required value={form.gradeId} onChange={e => setForm({ ...form, gradeId: e.target.value })} className="input">
                       <option value="">Seleccionar grado</option>
-                      {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                      {sortGradesChronological(grades).map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                     </select>
                   </div>
                   <div>
