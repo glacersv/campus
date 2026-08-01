@@ -23,13 +23,25 @@ export default function SectionsManager() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabId: '' });
   const [search, setSearch] = useState('');
+ feat/audit-revision-premium-15407164308936990681
+  const [selectedGroup, setSelectedGroup] = useState<{ letter: string; levels: { label: string; count: number }[]; totalGrades: number; totalStudents: number; totalCapacity: number; occupancyPercentage: number; gradeDetails: { sectionId: string; gradeId: string; gradeName: string; capacity: number; enrolled: number; percentage: number; rawSection: Section; sortWeight: number }[] } | null>(null);
+
+  // Dynamic filter state for grades in detail analytics
+  const [gradeFilter, setGradeFilter] = useState<'all' | 'parvularia' | 'basica' | 'bachillerato'>('all');
+
+  const openAnalytics = (group: { letter: string; levels: { label: string; count: number }[]; totalGrades: number; totalStudents: number; totalCapacity: number; occupancyPercentage: number; gradeDetails: { sectionId: string; gradeId: string; gradeName: string; capacity: number; enrolled: number; percentage: number; rawSection: Section; sortWeight: number }[] }) => {
+
   const [selectedGroup, setSelectedGroup] = useState<{ letter: string; levels: { label: string; count: number }[]; totalGrades: number; totalStudents: number; totalCapacity: number; occupancyPercentage: number; gradeDetails: { sectionId: string; gradeId: string; gradeName: string; capacity: number; enrolled: number; percentage: number; rawSection: Section }[] } | null>(null);
 
   const openAnalytics = (group: { letter: string; levels: { label: string; count: number }[]; totalGrades: number; totalStudents: number; totalCapacity: number; occupancyPercentage: number; gradeDetails: { sectionId: string; gradeId: string; gradeName: string; capacity: number; enrolled: number; percentage: number; rawSection: Section }[] }) => {
+ main
     setSelectedGroup(group);
   };
 
-  const closeAnalytics = () => setSelectedGroup(null);
+  const closeAnalytics = () => {
+    setSelectedGroup(null);
+    setGradeFilter('all');
+  };
 
   useEffect(() => { loadData(); }, []);
 
@@ -120,38 +132,37 @@ export default function SectionsManager() {
     Object.entries(gradeCounts).forEach(([gradeId, count]) => {
       const grade = grades.find(g => g.id === gradeId);
       const cycle = grade?.cycle || '1';
-      if (cycle === '4' && grade?.baccalaureateType) {
-        const key = `4-${grade.baccalaureateType}`;
-        cycleCounts[key] = (cycleCounts[key] || 0) + count;
-      } else {
-        cycleCounts[cycle] = (cycleCounts[cycle] || 0) + count;
-      }
+      cycleCounts[cycle] = (cycleCounts[cycle] || 0) + count;
     });
 
     const levels = [
+      { key: 'parvularia', label: 'Parvularia (K4 - Prep.)', count: cycleCounts['parvularia'] || 0 },
       { key: '1', label: 'Primer Ciclo (1° - 3°)', count: cycleCounts['1'] || 0 },
       { key: '2', label: 'Segundo Ciclo (4° - 6°)', count: cycleCounts['2'] || 0 },
       { key: '3', label: 'Tercer Ciclo (7° - 9°)', count: cycleCounts['3'] || 0 },
-    ];
-
-    const gradeNumbers = grades
-      .filter(g => g.cycle === '4')
-      .sort((a, b) => parseInt(a.name) - parseInt(b.name));
-
-    gradeNumbers.forEach(grade => {
-      const count = gradeCounts[grade.id] || 0;
-      if (count > 0) {
-        const bt = baccalaureateTypes.find(b => b.id === grade.baccalaureateType);
-        const btName = bt?.name || 'Bachillerato';
-        levels.push({ key: grade.id, label: `${btName} (${grade.name}°)`, count });
-      }
-    });
+      { key: '4', label: 'Bachillerato', count: cycleCounts['4'] || 0 },
+    ].filter(level => level.count > 0);
 
     const totalStudents = students.filter(st => group.some(section => section.id === st.sectionId)).length;
     const totalCapacity = group.reduce((sum, section) => sum + (section.capacity || 0), 0);
     const occupancyPercentage = totalCapacity > 0 ? Math.round((totalStudents / totalCapacity) * 100) : 0;
     
-    // Detalle por grado: capacidad vs matriculados
+    // Sort weights to order grades chronologically (Kinder to Bachillerato)
+    const getGradeSortWeight = (gradeId: string): number => {
+      if (gradeId === 'k4') return 10;
+      if (gradeId === 'k5') return 11;
+      if (gradeId === 'k6') return 12;
+
+      const numStr = gradeId.replace(/[^0-9]/g, '');
+      const num = parseInt(numStr, 10);
+      if (Number.isFinite(num)) {
+        if (num >= 1 && num <= 9) return 20 + num;
+        if (num >= 10 && num <= 12) return 40 + (num - 10);
+      }
+      return 100;
+    };
+
+    // Detalle por grado: capacidad vs matriculados ordenado cronológicamente
     const gradeDetails = group.map(section => {
       const grade = grades.find(g => g.id === section.gradeId);
       const gradeName = grade ? (grade.cycle === '4' && grade.baccalaureateType ? `${baccalaureateTypes.find(b => b.id === grade.baccalaureateType)?.name || 'Bachillerato'} ${grade.name}°` : `${grade.name}°`) : section.gradeId;
@@ -165,9 +176,14 @@ export default function SectionsManager() {
         capacity,
         enrolled: enrolledInGrade,
         percentage: capacity > 0 ? Math.round((enrolledInGrade / capacity) * 100) : 0,
+ feat/audit-revision-premium-15407164308936990681
+        rawSection: section,
+        sortWeight: getGradeSortWeight(section.gradeId)
+
         rawSection: section
+ main
       };
-    });
+    }).sort((a, b) => a.sortWeight - b.sortWeight);
     
     // Debug temporal
     console.log(`Sección ${letter}:`, { 
@@ -369,8 +385,8 @@ export default function SectionsManager() {
               <h4 className="text-sm font-bold text-slate-900 mb-4">Ocupación de la Sección</h4>
               <div className="relative w-48 h-24">
                 <svg viewBox="0 0 200 110" className="w-full h-full">
-                  <path d="M 25 100 A 75 75 0 0 1 175 100" fill="none" stroke="#e2e8f0" strokeWidth="20" />
-                  <path d="M 25 100 A 75 75 0 0 1 175 100" fill="none" stroke="#2e8b57" strokeWidth="20" strokeDasharray={`${selectedGroup.occupancyPercentage * 2.35}, 235`} strokeLinecap="round" />
+                  <path d="M 25 100 A 75 75 0 0 1 175 100" fill="none" stroke="#e2e8f0" strokeWidth="20" strokeLinecap="round" />
+                  <path d="M 25 100 A 75 75 0 0 1 175 100" fill="none" stroke="#12562E" strokeWidth="20" strokeDasharray={`${selectedGroup.occupancyPercentage * 2.35}, 235`} strokeLinecap="round" />
                 </svg>
                 <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center">
                   <div className="text-2xl font-extrabold text-slate-900">{selectedGroup.occupancyPercentage}%</div>
@@ -399,16 +415,57 @@ export default function SectionsManager() {
           </div>
 
           <div className="mt-4 bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm">
-            <h4 className="text-sm font-bold text-slate-900 mb-4">Capacidad vs Matriculados por Grado</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {selectedGroup.gradeDetails.map((detail, idx) => {
-                const strokeColor = detail.percentage >= 90 ? '#dc2626' : detail.percentage >= 70 ? '#d97706' : '#059669';
-                const bgColor = detail.percentage >= 90 ? 'bg-red-50' : detail.percentage >= 70 ? 'bg-amber-50' : 'bg-emerald-50';
-                const textColor = detail.percentage >= 90 ? 'text-red-700' : detail.percentage >= 70 ? 'text-amber-700' : 'text-emerald-700';
-                const circumference = 2 * Math.PI * 40;
-                const strokeDashoffset = circumference - (detail.percentage / 100) * circumference;
-                
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-5 border-b border-slate-100 pb-4">
+              <div>
+                <h4 className="text-sm font-bold text-slate-900">Capacidad vs Matriculados por Grado</h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">Ordenado cronológicamente desde Kínder hasta Bachillerato</p>
+              </div>
+
+              {/* Filtro de Grados Cronológico */}
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => setGradeFilter('all')}
+                  className={`filter-pill ${gradeFilter === 'all' ? 'active' : ''}`}
+                >
+                  Todos
+                </button>
+                <button
+                  onClick={() => setGradeFilter('parvularia')}
+                  className={`filter-pill ${gradeFilter === 'parvularia' ? 'active' : ''}`}
+                >
+                  Parvularia (K4-Prep)
+                </button>
+                <button
+                  onClick={() => setGradeFilter('basica')}
+                  className={`filter-pill ${gradeFilter === 'basica' ? 'active' : ''}`}
+                >
+                  Básica (1°-9°)
+                </button>
+                <button
+                  onClick={() => setGradeFilter('bachillerato')}
+                  className={`filter-pill ${gradeFilter === 'bachillerato' ? 'active' : ''}`}
+                >
+                  Bachillerato
+                </button>
+              </div>
+            </div>
+
+            {/* Lista Filtrada */}
+            {(() => {
+              const filteredGrades = selectedGroup.gradeDetails.filter(detail => {
+                if (gradeFilter === 'all') return true;
+                if (gradeFilter === 'parvularia') return detail.sortWeight >= 10 && detail.sortWeight <= 12;
+                if (gradeFilter === 'basica') return detail.sortWeight >= 20 && detail.sortWeight <= 29;
+                if (gradeFilter === 'bachillerato') return detail.sortWeight >= 40 && detail.sortWeight <= 45;
+                return true;
+              });
+
+              if (filteredGrades.length === 0) {
                 return (
+feat/audit-revision-premium-15407164308936990681
+                  <div className="text-center py-6 text-slate-400 text-xs font-medium">
+                    No hay grados de este nivel asignados a la Sección "{selectedGroup.letter}"
+
                   <div key={detail.sectionId} className={`${bgColor} rounded-2xl p-4 border border-slate-200/80 flex flex-col justify-between`}>
                     <div>
                       <div className="flex items-center justify-between mb-2">
@@ -452,10 +509,50 @@ export default function SectionsManager() {
                         <div className="text-[10px] text-slate-500">Matriculados</div>
                       </div>
                     </div>
+ main
                   </div>
                 );
-              })}
-            </div>
+              }
+
+              return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredGrades.map((detail) => {
+                    const strokeColor = detail.percentage >= 90 ? '#dc2626' : detail.percentage >= 70 ? '#d97706' : '#059669';
+                    const bgColor = detail.percentage >= 90 ? 'bg-red-50' : detail.percentage >= 70 ? 'bg-amber-50' : 'bg-emerald-50';
+                    const textColor = detail.percentage >= 90 ? 'text-red-700' : detail.percentage >= 70 ? 'text-amber-700' : 'text-emerald-700';
+                    const circumference = 2 * Math.PI * 40;
+                    const strokeDashoffset = circumference - (detail.percentage / 100) * circumference;
+
+                    return (
+                      <div key={detail.gradeId} className={`${bgColor} rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:scale-[1.01] transition-all`}>
+                        <div className="text-center mb-3">
+                          <span className="text-xs font-bold text-slate-700">{detail.gradeName}</span>
+                        </div>
+                        <div className="relative w-24 h-24 mx-auto mb-3">
+                          <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                            <circle cx="50" cy="50" r="40" fill="none" stroke="#e2e8f0" strokeWidth="8" strokeLinecap="round" />
+                            <circle cx="50" cy="50" r="40" fill="none" stroke={strokeColor} strokeWidth="8" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} />
+                          </svg>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <span className={`text-lg font-extrabold ${textColor}`}>{detail.percentage}%</span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between text-[11px] font-semibold text-slate-600">
+                          <div className="text-center">
+                            <div className="text-slate-900 font-bold">{detail.capacity}</div>
+                            <div className="text-[10px] text-slate-500">Capacidad</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-slate-900 font-bold">{detail.enrolled}</div>
+                            <div className="text-[10px] text-slate-500">Matriculados</div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         </motion.div>
       )}
