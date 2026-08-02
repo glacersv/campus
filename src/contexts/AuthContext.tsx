@@ -20,6 +20,11 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Correos con rol Admin garantizado (por ahora solo para pruebas)
+const ADMIN_EMAILS = [
+  'admin@salesianosanjose.edu.sv'
+];
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
@@ -86,7 +91,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRoleConfig(null);
   };
 
-  const userRole = userProfile?.role || null;
+  const userRole = (userProfile?.email && ADMIN_EMAILS.includes(userProfile.email.toLowerCase()))
+    ? 'admin'
+    : (userProfile?.role || null);
 
   const hasPermission = (module: SystemModuleId): boolean => {
     if (userRole === 'admin') return true;

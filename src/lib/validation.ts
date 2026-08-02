@@ -202,7 +202,7 @@ export function validateBaccalaureateType(data: { name: string; maxGrade: number
 }
 
 // Validate Computer Lab data
-export function validateComputerLab(data: { name: string; buildingId?: string; capacity?: number; devices?: number }): ValidationResult {
+export function validateComputerLab(data: { name: string; buildingId?: string; capacity?: number; devices?: number; type?: string }): ValidationResult {
   const errors: string[] = [];
 
   if (!isValidString(data.name, 2, 100)) {
@@ -219,6 +219,10 @@ export function validateComputerLab(data: { name: string; buildingId?: string; c
 
   if (data.devices !== undefined && (typeof data.devices !== 'number' || data.devices < 0 || data.devices > 100)) {
     errors.push('Devices must be a number between 0 and 100');
+  }
+
+  if (data.type && !['computo', 'dibujo', 'ingles', 'ciencias', 'otros'].includes(data.type)) {
+    errors.push('Invalid room type. Must be computo, dibujo, ingles, ciencias or otros');
   }
 
   return { valid: errors.length === 0, errors };

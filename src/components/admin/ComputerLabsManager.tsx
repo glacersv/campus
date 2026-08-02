@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Monitor,
@@ -16,7 +16,11 @@ import {
   GraduationCap,
   Cpu,
   BarChart3,
-  MapPin
+  MapPin,
+  Palette,
+  Languages,
+  FlaskConical,
+  DoorOpen
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -29,7 +33,7 @@ import {
   getAllGrades,
   getAllStudents
 } from '../../lib/firestore';
-import { ComputerLab, Building, Section, Grade, Student } from '../../types';
+import { ComputerLab, Building, Section, Grade, Student, RoomType, ROOM_TYPE_LABELS } from '../../types';
 
 export default function ComputerLabsManager() {
   const [labs, setLabs] = useState<ComputerLab[]>([]);
@@ -41,8 +45,9 @@ export default function ComputerLabsManager() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedLabId, setSelectedLabId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', buildingId: '', capacity: '', devices: '' });
+  const [form, setForm] = useState({ name: '', buildingId: '', capacity: '', devices: '', type: 'computo' as RoomType });
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
+  const [typeFilter, setTypeFilter] = useState<RoomType | 'all'>('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   useEffect(() => { loadData(); }, []);
@@ -54,9 +59,29 @@ export default function ComputerLabsManager() {
     } finally { setLoading(false); }
   };
 
-  const getBuildingName = (id: string) => buildings.find(b => b.id === id)?.name || '—';
+  const getBuildingName = (id: string) => buildings.find(b => b.id === id)?.name || 'ÔÇö';
   const getBuildingColor = (id: string) => buildings.find(b => b.id === id)?.color || '#6B7280';
   const getGradeName = (id: string) => grades.find(g => g.id === id)?.name || id;
+
+  const labType = (l: ComputerLab): RoomType => l.type || 'computo';
+
+  const TYPE_ICONS: Record<RoomType, React.ComponentType<{ className?: string }>> = {
+    computo: Monitor,
+    dibujo: Palette,
+    ingles: Languages,
+    ciencias: FlaskConical,
+    otros: DoorOpen
+  };
+
+  const TYPE_BADGE_CLASSES: Record<RoomType, string> = {
+    computo: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
+    dibujo: 'bg-amber-50 text-amber-700 border border-amber-200',
+    ingles: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+    ciencias: 'bg-sky-50 text-sky-700 border border-sky-200',
+    otros: 'bg-slate-100 text-slate-600 border border-slate-200'
+  };
+
+  const filteredLabs = typeFilter === 'all' ? labs : labs.filter(l => labType(l) === typeFilter);
 
   interface LabStats {
     lab: ComputerLab;
@@ -68,7 +93,10 @@ export default function ComputerLabsManager() {
   }
 
   const computeStats = (lab: ComputerLab): LabStats => {
-    const assignedSections = sections.filter(s => s.computerLabId === lab.id);
+    const type = labType(lab);
+    const assignedSections = type === 'dibujo'
+      ? sections.filter(s => s.drawingRoomId === lab.id)
+      : sections.filter(s => s.computerLabId === lab.id);
     const gradeMap = new Map<string, Section[]>();
     assignedSections.forEach(s => {
       if (!gradeMap.has(s.gradeId)) gradeMap.set(s.gradeId, []);
@@ -98,52 +126,52 @@ export default function ComputerLabsManager() {
     e.preventDefault();
     if (!form.name.trim()) return;
     try {
-      const data: Partial<ComputerLab> = { name: form.name.trim() };
+      const data: Partial<ComputerLab> = { name: form.name.trim(), type: form.type };
       if (form.buildingId) data.buildingId = form.buildingId;
       if (form.capacity) data.capacity = parseInt(form.capacity);
       if (form.devices) data.devices = parseInt(form.devices);
-      
+
       if (editingId) {
         await updateComputerLab(editingId, data);
-        toast.success('Laboratorio actualizado correctamente');
+        toast.success('Espacio actualizado correctamente');
       } else {
-        await createComputerLab({ id: form.name.trim().toLowerCase().replace(/\s+/g, '-'), name: data.name!, ...data });
-        toast.success('Laboratorio creado correctamente');
+        await createComputerLab({ id: form.name.trim().toLowerCase().replace(/\s+/g, '-'), name: data.name!, type: data.type!, ...data });
+        toast.success('Espacio creado correctamente');
       }
       setShowForm(false); setEditingId(null);
-      setForm({ name: '', buildingId: '', capacity: '', devices: '' });
+      setForm({ name: '', buildingId: '', capacity: '', devices: '', type: 'computo' });
       loadData();
-    } catch (err) { toast.error('Error al guardar laboratorio'); console.error(err); }
+    } catch (err) { toast.error('Error al guardar espacio'); console.error(err); }
   };
 
   const handleEdit = (l: ComputerLab) => {
     setEditingId(l.id);
-    setForm({ name: l.name, buildingId: l.buildingId || '', capacity: l.capacity?.toString() || '', devices: l.devices?.toString() || '' });
+    setForm({ name: l.name, buildingId: l.buildingId || '', capacity: l.capacity?.toString() || '', devices: l.devices?.toString() || '', type: labType(l) });
     setShowForm(true);
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('¿Eliminar este laboratorio?')) {
+    if (confirm('┬┐Eliminar este espacio?')) {
       try {
         await deleteComputerLab(id);
-        toast.success('Laboratorio eliminado');
+        toast.success('Espacio eliminado');
         setSelected(prev => { const n = new Set(prev); n.delete(id); return n; });
         if (selectedLabId === id) setSelectedLabId(null);
         loadData();
-      } catch (err) { toast.error('Error al eliminar laboratorio'); }
+      } catch (err) { toast.error('Error al eliminar espacio'); }
     }
   };
 
   const handleBulkDelete = async () => {
     if (selected.size === 0) return;
-    if (confirm(`¿Eliminar ${selected.size} laboratorio(s)?`)) {
+    if (confirm(`┬┐Eliminar ${selected.size} espacio(s)?`)) {
       try {
         for (const id of selected) await deleteComputerLab(id);
-        toast.success(`${selected.size} laboratorio(s) eliminados`);
+        toast.success(`${selected.size} espacio(s) eliminados`);
         setSelected(new Set());
         if (selectedLabId && selected.has(selectedLabId)) setSelectedLabId(null);
         loadData();
-      } catch (err) { toast.error('Error al eliminar laboratorios'); }
+      } catch (err) { toast.error('Error al eliminar espacios'); }
     }
   };
 
@@ -156,8 +184,8 @@ export default function ComputerLabsManager() {
   };
 
   const toggleSelectAll = () => {
-    if (selected.size === labs.length) setSelected(new Set());
-    else setSelected(new Set(labs.map(l => l.id)));
+    if (selected.size === filteredLabs.length) setSelected(new Set());
+    else setSelected(new Set(filteredLabs.map(l => l.id)));
   };
 
   if (loading) return (
@@ -175,17 +203,23 @@ export default function ComputerLabsManager() {
             <Monitor className="w-5 h-5 text-accent" />
           </div>
           <div>
-            <h1 className="module-title">Laboratorios de Cómputo</h1>
-            <p className="module-subtitle">{labs.length} laboratorio(s) registrado(s)</p>
+            <h1 className="module-title">Centros de C├│mputo y Salones</h1>
+            <p className="module-subtitle">{labs.length} espacio(s) registrado(s)</p>
           </div>
         </div>
-        <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', buildingId: '', capacity: '', devices: '' }); }} className="btn-primary">
-          <Plus className="w-4 h-4" /> Nuevo Laboratorio
+        <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', buildingId: '', capacity: '', devices: '', type: 'computo' }); }} className="btn-primary">
+          <Plus className="w-4 h-4" /> Nuevo Espacio
         </button>
       </div>
 
       {/* Toolbar */}
       <div className="flex items-center gap-3">
+        <div className="flex gap-1.5 flex-wrap">
+          <button onClick={() => setTypeFilter('all')} className={`filter-pill ${typeFilter === 'all' ? 'active' : ''}`}>Todos</button>
+          {(Object.keys(ROOM_TYPE_LABELS) as RoomType[]).map(t => (
+            <button key={t} onClick={() => setTypeFilter(t)} className={`filter-pill ${typeFilter === t ? 'active' : ''}`}>{ROOM_TYPE_LABELS[t]}</button>
+          ))}
+        </div>
         {selected.size > 0 && (
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
             className="flex items-center gap-2 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
@@ -224,13 +258,21 @@ export default function ComputerLabsManager() {
             className="card p-5"
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-slate-900">{editingId ? 'Editar Laboratorio' : 'Nuevo Laboratorio'}</h3>
+              <h3 className="font-semibold text-slate-900">{editingId ? 'Editar Espacio' : 'Nuevo Espacio'}</h3>
               <button onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1 hover:bg-slate-100 rounded-lg transition-colors"><X className="w-4 h-4" /></button>
             </div>
             <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
               <div>
                 <label className="form-label">Nombre *</label>
                 <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ej: Lab 1" className="input" autoFocus required />
+              </div>
+              <div>
+                <label className="form-label">Tipo *</label>
+                <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value as RoomType })} className="input">
+                  {(Object.keys(ROOM_TYPE_LABELS) as RoomType[]).map(t => (
+                    <option key={t} value={t}>{ROOM_TYPE_LABELS[t]}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="form-label">Edificio</label>
@@ -243,10 +285,12 @@ export default function ComputerLabsManager() {
                 <label className="form-label">Capacidad</label>
                 <input type="number" min="1" value={form.capacity} onChange={e => setForm({ ...form, capacity: e.target.value })} placeholder="Ej: 30" className="input" />
               </div>
-              <div>
-                <label className="form-label">Dispositivos</label>
-                <input type="number" min="1" value={form.devices} onChange={e => setForm({ ...form, devices: e.target.value })} placeholder="Ej: 30" className="input" />
-              </div>
+              {form.type === 'computo' && (
+                <div>
+                  <label className="form-label">Dispositivos</label>
+                  <input type="number" min="1" value={form.devices} onChange={e => setForm({ ...form, devices: e.target.value })} placeholder="Ej: 30" className="input" />
+                </div>
+              )}
               <div className="col-span-2 flex justify-end gap-2">
                 <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="btn-secondary">Cancelar</button>
                 <button type="submit" className="btn-primary"><Save className="w-4 h-4" /> {editingId ? 'Actualizar' : 'Crear'}</button>
@@ -259,9 +303,11 @@ export default function ComputerLabsManager() {
       {/* Card View */}
       {viewMode === 'card' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {labs.map((l, i) => {
+          {filteredLabs.map((l, i) => {
             const stats = computeStats(l);
             const isSelected = selectedLabId === l.id;
+            const type = labType(l);
+            const TypeIcon = TYPE_ICONS[type];
             return (
               <motion.div
                 key={l.id}
@@ -281,11 +327,14 @@ export default function ComputerLabsManager() {
                 <div className="pt-1 pl-5">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                      <Monitor className="w-4 h-4 text-accent" />
+                      <TypeIcon className="w-4 h-4 text-accent" />
                     </div>
                     <h3 className="font-semibold text-slate-900">{l.name}</h3>
                   </div>
                   <div className="mt-2 space-y-1">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${TYPE_BADGE_CLASSES[type]}`}>
+                      {ROOM_TYPE_LABELS[type]}
+                    </span>
                     {l.buildingId && (
                       <p className="text-xs flex items-center gap-1">
                         <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getBuildingColor(l.buildingId) }} />
@@ -293,10 +342,10 @@ export default function ComputerLabsManager() {
                       </p>
                     )}
                     {l.capacity && <p className="text-xs text-slate-500">Capacidad: {l.capacity}</p>}
-                    {l.devices && <p className="text-xs text-slate-500">Dispositivos: {l.devices}</p>}
+                    {type === 'computo' && l.devices && <p className="text-xs text-slate-500">Dispositivos: {l.devices}</p>}
                     {stats.assignedSections.length > 0 && (
                       <p className="text-[10px] text-slate-400 pt-1">
-                        {stats.assignedSections.length} sección(es) · {stats.totalEnrolled} alumno(s)
+                        {stats.assignedSections.length} secci├│n(es) ┬À {stats.totalEnrolled} alumno(s)
                       </p>
                     )}
                   </div>
@@ -329,11 +378,12 @@ export default function ComputerLabsManager() {
               <tr>
                 <th className="w-8 px-3 py-2">
                   <button onClick={toggleSelectAll}
-                    className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.size === labs.length && labs.length > 0 ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'}`}>
-                    {selected.size === labs.length && labs.length > 0 && <Check className="w-2.5 h-2.5" />}
+                    className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.size === filteredLabs.length && filteredLabs.length > 0 ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'}`}>
+                    {selected.size === filteredLabs.length && filteredLabs.length > 0 && <Check className="w-2.5 h-2.5" />}
                   </button>
                 </th>
                 <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Nombre</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Tipo</th>
                 <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Edificio</th>
                 <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Capacidad</th>
                 <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Dispositivos</th>
@@ -341,7 +391,7 @@ export default function ComputerLabsManager() {
               </tr>
             </thead>
             <tbody>
-              {labs.map((l, i) => (
+              {filteredLabs.map((l, i) => (
                 <motion.tr key={l.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}
                   className={`table-row cursor-pointer ${selected.has(l.id) ? 'bg-primary/5' : ''} ${selectedLabId === l.id ? 'bg-indigo-50' : ''}`}
                   onClick={() => setSelectedLabId(selectedLabId === l.id ? null : l.id)}>
@@ -352,14 +402,19 @@ export default function ComputerLabsManager() {
                     </button>
                   </td>
                   <td className="px-3 py-2 text-sm font-medium text-slate-900">{l.name}</td>
+                  <td className="px-3 py-2">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${TYPE_BADGE_CLASSES[labType(l)]}`}>
+                      {ROOM_TYPE_LABELS[labType(l)]}
+                    </span>
+                  </td>
                   <td className="px-3 py-2">{l.buildingId ? (
                     <span className="flex items-center gap-1.5 text-sm">
                       <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getBuildingColor(l.buildingId) }} />
                       {getBuildingName(l.buildingId)}
                     </span>
-                  ) : '—'}</td>
-                  <td className="px-3 py-2 text-sm text-slate-500">{l.capacity || '—'}</td>
-                  <td className="px-3 py-2 text-sm text-slate-500">{l.devices || '—'}</td>
+                  ) : 'ÔÇö'}</td>
+                  <td className="px-3 py-2 text-sm text-slate-500">{l.capacity || 'ÔÇö'}</td>
+                  <td className="px-3 py-2 text-sm text-slate-500">{l.devices || 'ÔÇö'}</td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex justify-end gap-1">
                       <button onClick={(e) => { e.stopPropagation(); handleEdit(l); }} className="p-1.5 hover:bg-slate-100 rounded-lg"><Edit2 className="w-4 h-4 text-slate-500" /></button>
@@ -374,10 +429,10 @@ export default function ComputerLabsManager() {
       )}
 
       {/* Empty state */}
-      {labs.length === 0 && (
+      {filteredLabs.length === 0 && (
         <div className="text-center py-12 text-slate-400">
           <Monitor className="w-10 h-10 mx-auto mb-2 opacity-50" />
-          <p className="text-sm">No se encontraron laboratorios</p>
+          <p className="text-sm">{labs.length === 0 ? 'No se encontraron espacios' : 'No hay espacios de este tipo'}</p>
         </div>
       )}
 
@@ -386,20 +441,24 @@ export default function ComputerLabsManager() {
         const l = labs.find(x => x.id === selectedLabId);
         if (!l) return null;
         const stats = computeStats(l);
+        const TypeIcon = TYPE_ICONS[labType(l)];
         return (
           <div className="mt-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
-                  <Monitor className="w-5 h-5 text-indigo-600" />
+                  <TypeIcon className="w-5 h-5 text-indigo-600" />
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-slate-900">{l.name}</h3>
                   <p className="text-sm text-slate-500 flex items-center gap-1">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${TYPE_BADGE_CLASSES[labType(l)]}`}>
+                      {ROOM_TYPE_LABELS[labType(l)]}
+                    </span>
                     {l.buildingId && (
-                      <><MapPin className="w-3.5 h-3.5" /> {getBuildingName(l.buildingId)} · </>  
+                      <><span className="ml-1">┬À</span> <MapPin className="w-3.5 h-3.5" /> {getBuildingName(l.buildingId)}</>  
                     )}
-                    {l.devices || 0} dispositivo(s)
+                    {labType(l) === 'computo' && (<><span className="ml-1">┬À</span> {l.devices || 0} dispositivo(s)</>)}
                   </p>
                 </div>
               </div>
@@ -414,7 +473,7 @@ export default function ComputerLabsManager() {
                 { icon: Layers, label: 'Secciones Asignadas', value: stats.assignedSections.length, sub: stats.assignedSections.length === 1 ? 'asignada' : 'asignadas' },
                 { icon: Users, label: 'Capacidad Total Aulas', value: stats.totalCapacity, sub: 'cupos en secciones asignadas' },
                 { icon: GraduationCap, label: 'Alumnos Matriculados', value: stats.totalEnrolled, sub: `de ${stats.totalCapacity} cupos` },
-                { icon: Cpu, label: 'Dispositivos', value: l.devices || 0, sub: 'equipos disponibles' }
+                ...(labType(l) === 'computo' ? [{ icon: Cpu, label: 'Dispositivos', value: l.devices || 0, sub: 'equipos disponibles' }] : [])
               ].map(({ icon: Icon, label, value, sub }) => (
                 <div key={label} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
                   <div className="flex items-center gap-3 mb-3">
@@ -444,7 +503,7 @@ export default function ComputerLabsManager() {
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-bold text-slate-900">{sg.gradeName}</span>
-                            <span className="text-xs bg-indigo-50 text-indigo-600 font-medium px-2 py-0.5 rounded-full">{sg.sections.length} secc{(sg.sections.length > 1 ? 'iones' : 'ión')}</span>
+                            <span className="text-xs bg-indigo-50 text-indigo-600 font-medium px-2 py-0.5 rounded-full">{sg.sections.length} secc{(sg.sections.length > 1 ? 'iones' : 'i├│n')}</span>
                           </div>
                           <div className="flex items-baseline gap-1.5 font-mono">
                             <span className="text-2xl font-black text-slate-900">{sg.enrolled}</span>
@@ -466,7 +525,7 @@ export default function ComputerLabsManager() {
                               <span key={sec.id} className={`inline-flex items-center gap-1.5 text-xs font-mono px-2.5 py-1 rounded-lg border ${
                                 enrolled > 0 ? 'bg-white border-slate-200 text-slate-700' : 'bg-slate-50 border-dashed border-slate-200 text-slate-400'
                               }`}>
-                                <span className="font-semibold">Sección {sec.name}</span>
+                                <span className="font-semibold">Secci├│n {sec.name}</span>
                                 <span className="font-bold text-indigo-600">{enrolled}</span>
                                 <span className="text-slate-300">/</span>
                                 <span className="text-slate-400">{sec.capacity || '?'}</span>
@@ -484,8 +543,8 @@ export default function ComputerLabsManager() {
             {stats.assignedSections.length === 0 && (
               <div className="text-center py-16 text-slate-400 bg-white border border-slate-200 rounded-xl">
                 <Monitor className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p className="text-base font-medium">No hay secciones asignadas a este laboratorio</p>
-                <p className="text-sm mt-1">Asigna este laboratorio desde el módulo de Secciones</p>
+                <p className="text-base font-medium">No hay secciones asignadas a este espacio</p>
+                <p className="text-sm mt-1">Asigna este espacio desde el m├│dulo de Secciones</p>
               </div>
             )}
           </div>
@@ -495,8 +554,8 @@ export default function ComputerLabsManager() {
       {!selectedLabId && labs.length > 0 && (
         <div className="mt-6 text-center py-12 text-slate-400 bg-white border border-dashed border-slate-200 rounded-xl">
           <BarChart3 className="w-10 h-10 mx-auto mb-2 opacity-40" />
-          <p className="text-sm font-medium">Selecciona un laboratorio para ver sus estadísticas</p>
-          <p className="text-xs mt-1">Haz clic en cualquier laboratorio de arriba</p>
+          <p className="text-sm font-medium">Selecciona un espacio para ver sus estad├¡sticas</p>
+          <p className="text-xs mt-1">Haz clic en cualquier espacio de arriba</p>
         </div>
       )}
     </div>
