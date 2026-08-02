@@ -51,7 +51,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     { title: 'ACADÉMICA', items: [
       { id: 'grades', label: 'Grados', icon: BookOpen },
       { id: 'sections', label: 'Secciones', icon: Layers },
-      { id: 'grade-section-assignment', label: 'Asignar Edificios', icon: GitBranch },
+      { id: 'grade-section-assignment', label: 'Asignar Espacios', icon: GitBranch },
       { id: 'subjects', label: 'Materias', icon: BookMarked },
     ]},
     { title: 'CONVIVENCIA', items: [

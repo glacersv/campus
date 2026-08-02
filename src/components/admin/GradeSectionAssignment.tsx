@@ -4,6 +4,8 @@ import {
   GitBranch,
   Save,
   Building2,
+  Monitor,
+  Palette,
   CheckCircle2,
   XCircle,
   Filter,
@@ -16,10 +18,11 @@ import {
   getAllGrades,
   getAllSections,
   getAllBuildings,
+  getAllComputerLabs,
   updateSection
 } from '../../lib/firestore';
-import { getGradeSortWeight, sortGradesChronological } from '../../lib/ordering';
-import { Grade, Section, Building as BuildingType, Cycle, CYCLE_NAMES } from '../../types';
+import { getGradeSortWeight } from '../../lib/ordering';
+import { Grade, Section, Building as BuildingType, ComputerLab, Cycle, CYCLE_NAMES } from '../../types';
 
 const CYCLE_STYLES: Record<Cycle, { color: string; bg: string; dot: string }> = {
   'parvularia': { color: 'text-pink-700', bg: 'bg-pink-50', dot: 'bg-pink-500' },
@@ -29,12 +32,19 @@ const CYCLE_STYLES: Record<Cycle, { color: string; bg: string; dot: string }> = 
   '4': { color: 'text-amber-700', bg: 'bg-amber-50', dot: 'bg-amber-500' }
 };
 
+type SectionAssignments = {
+  buildingId?: string;
+  computerLabId?: string;
+  drawingRoomId?: string;
+};
+
 export default function GradeSectionAssignment() {
   const [grades, setGrades] = useState<Grade[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
   const [buildings, setBuildings] = useState<BuildingType[]>([]);
+  const [computerLabs, setComputerLabs] = useState<ComputerLab[]>([]);
   const [loading, setLoading] = useState(true);
-  const [assignments, setAssignments] = useState<Record<string, string>>({});
+  const [assignments, setAssignments] = useState<Record<string, SectionAssignments>>({});
   const [saving, setSaving] = useState(false);
   const [filterBuilding, setFilterBuilding] = useState<string | null>(null);
 
@@ -45,42 +55,92 @@ export default function GradeSectionAssignment() {
 
   const loadData = async () => {
     try {
-      const [g, s, b] = await Promise.all([
+      const [g, s, b, cl] = await Promise.all([
         getAllGrades(),
         getAllSections(),
-        getAllBuildings()
+        getAllBuildings(),
+        getAllComputerLabs()
       ]);
-      setGrades(g); setSections(s); setBuildings(b);
-      const init: Record<string, string> = {};
-      s.forEach(sec => { if (sec.buildingId) init[sec.id] = sec.buildingId; });
+      setGrades(g); setSections(s); setBuildings(b); setComputerLabs(cl);
+      const init: Record<string, SectionAssignments> = {};
+      s.forEach(sec => {
+        init[sec.id] = {
+          buildingId: sec.buildingId,
+          computerLabId: sec.computerLabId,
+          drawingRoomId: sec.drawingRoomId
+        };
+      });
       setAssignments(init);
     } finally { setLoading(false); }
   };
 
   const getSectionsByGrade = (gradeId: string) => sections.filter(s => s.gradeId === gradeId);
   const getGradeName = (id: string) => grades.find(g => g.id === id)?.name || id;
+  const getBuildingName = (id: string) => buildings.find(b => b.id === id)?.name || '—';
+
+  const computerLabsList = computerLabs.filter(cl => (cl.type || 'computo') === 'computo');
+  const drawingRoomsList = computerLabs.filter(cl => (cl.type || 'computo') === 'dibujo');
 
   const selectBuildingForSection = (sectionId: string, buildingId: string) => {
     setAssignments(prev => ({
       ...prev,
-      [sectionId]: buildingId
+      [sectionId]: { ...prev[sectionId], buildingId }
     }));
     toast.success('Edificio asignado temporalmente. No olvides guardar los cambios.');
   };
 
   const clearBuildingForSection = (sectionId: string) => {
+    setAssignments(prev => {
+      const next = { ...prev[sectionId] };
+      delete next.buildingId;
+      return { ...prev, [sectionId]: next };
+    });
+    toast.success('Asignación removida temporalmente. No olvides guardar los cambios.');
+  };
+
+  const selectComputerLabForSection = (sectionId: string, labId: string) => {
     setAssignments(prev => ({
       ...prev,
-      [sectionId]: ''
+      [sectionId]: { ...prev[sectionId], computerLabId: labId }
     }));
+    toast.success('Centro de Cómputo asignado temporalmente. No olvides guardar los cambios.');
+  };
+
+  const clearComputerLabForSection = (sectionId: string) => {
+    setAssignments(prev => {
+      const next = { ...prev[sectionId] };
+      delete next.computerLabId;
+      return { ...prev, [sectionId]: next };
+    });
+    toast.success('Asignación removida temporalmente. No olvides guardar los cambios.');
+  };
+
+  const selectDrawingRoomForSection = (sectionId: string, labId: string) => {
+    setAssignments(prev => ({
+      ...prev,
+      [sectionId]: { ...prev[sectionId], drawingRoomId: labId }
+    }));
+    toast.success('Salón de Dibujo asignado temporalmente. No olvides guardar los cambios.');
+  };
+
+  const clearDrawingRoomForSection = (sectionId: string) => {
+    setAssignments(prev => {
+      const next = { ...prev[sectionId] };
+      delete next.drawingRoomId;
+      return { ...prev, [sectionId]: next };
+    });
     toast.success('Asignación removida temporalmente. No olvides guardar los cambios.');
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      for (const [sectionId, buildingId] of Object.entries(assignments) as [string, string][]) {
-        await updateSection(sectionId, { buildingId: buildingId || null });
+      for (const [sectionId, a] of Object.entries(assignments) as [string, SectionAssignments][]) {
+        const data: Partial<Section> = {};
+        if (a.buildingId !== undefined) data.buildingId = a.buildingId || null;
+        if (a.computerLabId !== undefined) data.computerLabId = a.computerLabId || null;
+        if (a.drawingRoomId !== undefined) data.drawingRoomId = a.drawingRoomId || null;
+        await updateSection(sectionId, data);
       }
       toast.success('Asignaciones guardadas correctamente en la base de datos');
       loadData();
@@ -91,7 +151,10 @@ export default function GradeSectionAssignment() {
     }
   };
 
-  const changedCount = Object.values(assignments).filter(Boolean).length;
+  const assignedCount = sections.filter(s => {
+    const a = assignments[s.id];
+    return a && (a.buildingId || a.computerLabId || a.drawingRoomId);
+  }).length;
   const totalSections = sections.length;
 
   const groupedGrades = {
@@ -117,9 +180,9 @@ export default function GradeSectionAssignment() {
             <GitBranch className="w-6 h-6 text-secondary-dark" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight font-display">Edificios por Sección</h1>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight font-display">Espacios por Grado y Sección</h1>
             <p className="text-sm text-slate-500 mt-0.5">
-              {changedCount} de {totalSections} secciones con edificio asignado (Haz clic en cualquier sección para editar)
+              {assignedCount} de {totalSections} secciones con espacios asignados (Haz clic en cualquier sección para editar)
             </p>
           </div>
         </div>
@@ -132,7 +195,7 @@ export default function GradeSectionAssignment() {
       <div className="flex items-center gap-2 flex-wrap">
         <Filter className="w-3.5 h-3.5 text-slate-400" />
         {buildings.map(b => {
-          const count = Object.values(assignments).filter(v => v === b.id).length;
+          const count = Object.values(assignments).filter(a => a && a.buildingId === b.id).length;
           const isActive = filterBuilding === b.id;
           return (
             <button
@@ -160,7 +223,7 @@ export default function GradeSectionAssignment() {
         >
           <XCircle className="w-3.5 h-3.5" />
           Sin asignar
-          <span className="font-mono opacity-70">{totalSections - changedCount}</span>
+          <span className="font-mono opacity-70">{totalSections - assignedCount}</span>
         </button>
         {filterBuilding && (
           <button onClick={() => setFilterBuilding(null)}
@@ -183,8 +246,8 @@ export default function GradeSectionAssignment() {
                 const gradeSections = getSectionsByGrade(g.id);
                 return gradeSections.some(s =>
                   filterBuilding === '__unassigned__'
-                    ? !assignments[s.id]
-                    : assignments[s.id] === filterBuilding
+                    ? !(assignments[s.id] && (assignments[s.id].buildingId || assignments[s.id].computerLabId || assignments[s.id].drawingRoomId))
+                    : assignments[s.id] && assignments[s.id].buildingId === filterBuilding
                 );
               })
             : gradesInCycle;
@@ -212,11 +275,14 @@ export default function GradeSectionAssignment() {
                   const gradeSections = getSectionsByGrade(grade.id).filter(s =>
                     filterBuilding
                       ? filterBuilding === '__unassigned__'
-                        ? !assignments[s.id]
-                        : assignments[s.id] === filterBuilding
+                        ? !(assignments[s.id] && (assignments[s.id].buildingId || assignments[s.id].computerLabId || assignments[s.id].drawingRoomId))
+                        : assignments[s.id] && assignments[s.id].buildingId === filterBuilding
                       : true
                   );
-                  const assignedCount = gradeSections.filter(s => assignments[s.id]).length;
+                  const gradeAssigned = gradeSections.filter(s => {
+                    const a = assignments[s.id];
+                    return a && (a.buildingId || a.computerLabId || a.drawingRoomId);
+                  }).length;
                   return (
                     <motion.div
                       key={grade.id}
@@ -235,11 +301,11 @@ export default function GradeSectionAssignment() {
                           </div>
                         </div>
                         <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border ${
-                          assignedCount === gradeSections.length && gradeSections.length > 0
+                          gradeAssigned === gradeSections.length && gradeSections.length > 0
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                             : 'bg-amber-50 text-amber-700 border-amber-200'
                         }`}>
-                          {assignedCount}/{gradeSections.length}
+                          {gradeAssigned}/{gradeSections.length}
                         </span>
                       </div>
 
@@ -251,31 +317,47 @@ export default function GradeSectionAssignment() {
                         </div>
                       </div>
 
-                      {/* Edificios asignados (Botones Interactivos de Edición Sobrios sin colores) */}
+                      {/* Espacios asignados (Botones Interactivos de Edición Sobrios sin colores) */}
                       <div className="mb-4">
                         <div className="flex flex-col gap-2">
                           {gradeSections.map(sec => {
-                            const buildingId = assignments[sec.id];
-                            const building = buildings.find(b => b.id === buildingId);
+                            const a = assignments[sec.id] || {};
+                            const building = buildings.find(b => b.id === a.buildingId);
+                            const cc = computerLabs.find(cl => cl.id === a.computerLabId);
+                            const drawing = computerLabs.find(cl => cl.id === a.drawingRoomId);
+                            const hasAny = !!(a.buildingId || a.computerLabId || a.drawingRoomId);
                             return (
                               <button
                                 type="button"
                                 key={sec.id}
                                 onClick={() => setEditingSection(sec)}
                                 className={`group flex items-center justify-between text-left text-xs font-mono px-3 py-2 rounded-xl border transition-all cursor-pointer ${
-                                  building
+                                  hasAny
                                     ? 'bg-slate-50 border-slate-200 hover:border-slate-300 text-slate-800 hover:shadow-2xs'
                                     : 'bg-white border-dashed border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-400 hover:text-slate-600'
                                 }`}
                               >
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <span className="font-bold">Sección {sec.name}</span>
                                   {building ? (
                                     <span className="flex items-center gap-1">
                                       <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                                       <span className="font-bold text-slate-700">{building.name}</span>
                                     </span>
-                                  ) : (
+                                  ) : null}
+                                  {cc ? (
+                                    <span className="flex items-center gap-1">
+                                      <Monitor className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                      <span className="font-bold text-slate-700">{cc.name}</span>
+                                    </span>
+                                  ) : null}
+                                  {drawing ? (
+                                    <span className="flex items-center gap-1">
+                                      <Palette className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                      <span className="font-bold text-slate-700">{drawing.name}</span>
+                                    </span>
+                                  ) : null}
+                                  {!hasAny && (
                                     <span className="text-[10px] italic bg-slate-50 px-1.5 py-0.5 rounded text-slate-400">Sin asignar</span>
                                   )}
                                 </div>
@@ -305,7 +387,7 @@ export default function GradeSectionAssignment() {
         })}
       </div>
 
-      {/* Modal interactivo Premium para editar la asignación de edificios (Diseño sobrio sin colores) */}
+      {/* Modal interactivo Premium para editar la asignación de espacios (Diseño sobrio sin colores) */}
       <AnimatePresence>
         {editingSection && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
@@ -313,12 +395,12 @@ export default function GradeSectionAssignment() {
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden flex flex-col"
+              className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden flex flex-col"
             >
               {/* Header */}
               <div className="bg-slate-50 border-b border-slate-100 p-5 flex justify-between items-center shrink-0">
                 <div>
-                  <h3 className="font-bold text-slate-900 text-base">Asignar Edificio</h3>
+                  <h3 className="font-bold text-slate-900 text-base">Asignar Espacios</h3>
                   <p className="text-xs text-slate-500 mt-0.5">
                     {getGradeName(editingSection.gradeId)} - Sección "{editingSection.name}"
                   </p>
@@ -333,62 +415,156 @@ export default function GradeSectionAssignment() {
               </div>
 
               {/* Contenido */}
-              <div className="p-6 space-y-4 overflow-y-auto max-h-[400px]">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Selecciona un edificio disponible:</p>
-                <div className="grid grid-cols-1 gap-2.5">
-                  {buildings.map(building => {
-                    const isSelected = assignments[editingSection.id] === building.id;
-                    return (
+              <div className="p-6 space-y-6 overflow-y-auto max-h-[420px]">
+                {/* Edificio */}
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Building2 className="w-4 h-4 text-slate-500" />
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Edificio</p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2">
+                    {buildings.map(building => {
+                      const isSelected = assignments[editingSection.id]?.buildingId === building.id;
+                      return (
+                        <button
+                          type="button"
+                          key={building.id}
+                          onClick={() => {
+                            selectBuildingForSection(editingSection.id, building.id);
+                          }}
+                          className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-slate-50 border-primary shadow-xs'
+                              : 'bg-white hover:bg-slate-50 hover:border-slate-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-50 border border-slate-100 text-slate-600">
+                              <Building2 className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <span className="font-bold text-slate-800 text-sm block">{building.name}</span>
+                              <span className="text-[10px] text-slate-400 font-mono font-medium">Código: {building.code}</span>
+                            </div>
+                          </div>
+                          {isSelected && <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />}
+                        </button>
+                      );
+                    })}
+                    {assignments[editingSection.id]?.buildingId && (
                       <button
                         type="button"
-                        key={building.id}
-                        onClick={() => {
-                          selectBuildingForSection(editingSection.id, building.id);
-                          setEditingSection(null);
-                        }}
-                        className={`w-full flex items-center justify-between p-4 rounded-xl border text-left transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-slate-50 border-primary shadow-xs'
-                            : 'bg-white hover:bg-slate-50 hover:border-slate-300'
-                        }`}
+                        onClick={() => clearBuildingForSection(editingSection.id)}
+                        className="w-full flex items-center justify-center gap-2 py-2 border border-red-200 hover:border-red-300 text-red-600 hover:bg-red-50 rounded-xl text-xs font-bold transition-all cursor-pointer"
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-50 border border-slate-100 text-slate-600">
-                            <Building2 className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <span className="font-bold text-slate-850 text-sm block">{building.name}</span>
-                            <span className="text-[10px] text-slate-400 font-mono font-medium">Código: {building.code}</span>
-                          </div>
-                        </div>
-                        {isSelected && (
-                          <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
-                        )}
+                        <XCircle className="w-4 h-4" /> Quitar Edificio
                       </button>
-                    );
-                  })}
-
-                  {buildings.length === 0 && (
-                    <div className="text-center py-4 border border-dashed border-slate-200 rounded-xl">
-                      <p className="text-xs text-slate-400">No hay edificios registrados en el sistema.</p>
-                    </div>
-                  )}
+                    )}
+                    {buildings.length === 0 && (
+                      <div className="text-center py-3 border border-dashed border-slate-200 rounded-xl">
+                        <p className="text-xs text-slate-400">No hay edificios registrados.</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {assignments[editingSection.id] && (
-                  <div className="pt-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        clearBuildingForSection(editingSection.id);
-                        setEditingSection(null);
-                      }}
-                      className="w-full flex items-center justify-center gap-2 py-3 border border-red-200 hover:border-red-300 text-red-600 hover:bg-red-50 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                    >
-                      <XCircle className="w-4 h-4" /> Quitar Edificio (Dejar sin asignar)
-                    </button>
+                {/* Centro de Cómputo */}
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Monitor className="w-4 h-4 text-slate-500" />
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Centro de Cómputo</p>
                   </div>
-                )}
+                  <div className="grid grid-cols-1 gap-2">
+                    {computerLabsList.map(lab => {
+                      const isSelected = assignments[editingSection.id]?.computerLabId === lab.id;
+                      return (
+                        <button
+                          type="button"
+                          key={lab.id}
+                          onClick={() => {
+                            selectComputerLabForSection(editingSection.id, lab.id);
+                          }}
+                          className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-slate-50 border-primary shadow-xs'
+                              : 'bg-white hover:bg-slate-50 hover:border-slate-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-50 border border-slate-100 text-slate-600">
+                              <Monitor className="w-4 h-4" />
+                            </div>
+                            <span className="font-bold text-slate-800 text-sm">{lab.name}</span>
+                          </div>
+                          {isSelected && <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />}
+                        </button>
+                      );
+                    })}
+                    {assignments[editingSection.id]?.computerLabId && (
+                      <button
+                        type="button"
+                        onClick={() => clearComputerLabForSection(editingSection.id)}
+                        className="w-full flex items-center justify-center gap-2 py-2 border border-red-200 hover:border-red-300 text-red-600 hover:bg-red-50 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                      >
+                        <XCircle className="w-4 h-4" /> Quitar Centro de Cómputo
+                      </button>
+                    )}
+                    {computerLabsList.length === 0 && (
+                      <div className="text-center py-3 border border-dashed border-slate-200 rounded-xl">
+                        <p className="text-xs text-slate-400">No hay centros de cómputo registrados.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Salón de Dibujo */}
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Palette className="w-4 h-4 text-slate-500" />
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Salón de Dibujo</p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2">
+                    {drawingRoomsList.map(lab => {
+                      const isSelected = assignments[editingSection.id]?.drawingRoomId === lab.id;
+                      return (
+                        <button
+                          type="button"
+                          key={lab.id}
+                          onClick={() => {
+                            selectDrawingRoomForSection(editingSection.id, lab.id);
+                          }}
+                          className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-slate-50 border-primary shadow-xs'
+                              : 'bg-white hover:bg-slate-50 hover:border-slate-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-50 border border-slate-100 text-slate-600">
+                              <Palette className="w-4 h-4" />
+                            </div>
+                            <span className="font-bold text-slate-800 text-sm">{lab.name}</span>
+                          </div>
+                          {isSelected && <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />}
+                        </button>
+                      );
+                    })}
+                    {assignments[editingSection.id]?.drawingRoomId && (
+                      <button
+                        type="button"
+                        onClick={() => clearDrawingRoomForSection(editingSection.id)}
+                        className="w-full flex items-center justify-center gap-2 py-2 border border-red-200 hover:border-red-300 text-red-600 hover:bg-red-50 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                      >
+                        <XCircle className="w-4 h-4" /> Quitar Salón de Dibujo
+                      </button>
+                    )}
+                    {drawingRoomsList.length === 0 && (
+                      <div className="text-center py-3 border border-dashed border-slate-200 rounded-xl">
+                        <p className="text-xs text-slate-400">No hay salones de dibujo registrados.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Footer */}
