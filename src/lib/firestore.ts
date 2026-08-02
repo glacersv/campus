@@ -498,7 +498,6 @@ export async function fixAllStudentHistories(): Promise<void> {
   await logActivity('fix_all_student_histories', { timestamp: new Date().toISOString() });
   const currentStatus = await getCurrentSchoolYear();
   const currentYear = currentStatus ?? new Date().getFullYear();
-  const baseYear = 2025;
 
   const gradesSnap = await getDocs(collection(db, GRADES_COLLECTION));
   const studentsSnap = await getDocs(collection(db, STUDENTS_COLLECTION));
@@ -512,37 +511,69 @@ export async function fixAllStudentHistories(): Promise<void> {
     const data = d.data() as Student;
     const ref = d.ref;
     const carnet = String(data.carnet || '');
-    const entryYear = parseInt(carnet.slice(0, 4), 10);
-    if (!Number.isFinite(entryYear) || entryYear < 1900 || entryYear > baseYear) return;
+
+    // Obtener año de ingreso de s.enrollmentYear o del carnet (primeros 4 caracteres)
+    let entryYear = data.enrollmentYear || parseInt(carnet.slice(0, 4), 10);
+    if (!Number.isFinite(entryYear) || entryYear < 1900 || entryYear > currentYear) {
+      entryYear = currentYear;
+    }
 
     const currentGradeId = String(data.gradeId || '');
     const numStr = currentGradeId.replace(/[^0-9]/g, '');
-    const suffix = currentGradeId.replace(/[0-9]/g, '');
-    const baseGradeNum = parseInt(numStr, 10);
-    if (!Number.isFinite(baseGradeNum) || baseGradeNum < 1) return;
+    const suffix = currentGradeId.toLowerCase().includes('t') ? 't' : currentGradeId.toLowerCase().includes('g') ? 'g' : '';
 
-    const sectionId = data.sectionId || `${suffix.toLowerCase()}a`;
+    let currentGradeNum: number;
+    if (currentGradeId === 'k4') {
+      currentGradeNum = -1;
+    } else if (currentGradeId === 'k5') {
+      currentGradeNum = 0;
+    } else if (currentGradeId === 'k6') {
+      currentGradeNum = 0; // En la progresión simplificada, tratamos K5/K6 equivalentemente
+    } else {
+      currentGradeNum = parseInt(numStr, 10);
+    }
+
+    if (Number.isNaN(currentGradeNum)) return;
+
+    const sectionId = data.sectionId || 'A';
 
     const newHistory: Record<string, unknown>[] = [];
 
     for (let year = entryYear; year <= currentYear; year++) {
-      let gradeNum: number;
-      if (year < baseYear) {
-        gradeNum = baseGradeNum - (baseYear - year);
-      } else if (year === baseYear) {
-        gradeNum = baseGradeNum;
-      } else {
-        gradeNum = baseGradeNum + (year - baseYear);
-      }
-      if (gradeNum < 1) continue;
+      const diffYears = currentYear - year;
+      const targetGradeNum = currentGradeNum - diffYears;
 
-      const gradeForYear = gradeNum <= 9 ? String(gradeNum) : `${gradeNum}${suffix}`;
+      let gradeForYear = '';
+      if (targetGradeNum === -1) {
+        gradeForYear = 'k4';
+      } else if (targetGradeNum === 0) {
+        gradeForYear = 'k5';
+      } else if (targetGradeNum < -1) {
+        gradeForYear = 'k4'; // límite inferior
+      } else {
+        gradeForYear = targetGradeNum <= 9 ? String(targetGradeNum) : `${targetGradeNum}${suffix}`;
+      }
+
       const gradeData = gradeMap.get(gradeForYear);
+
+      // La sección para el año en curso conserva la actual; para los años anteriores usa la letra actual o la 'A' por defecto
+      let histSectionId = 'A';
+      if (year === currentYear) {
+        histSectionId = sectionId;
+      } else {
+        // Extraer la letra de la sección actual si tiene un guion (ej. "2026-10g-a" -> "a")
+        const sectionLetter = sectionId.includes('-')
+          ? sectionId.split('-').pop()?.toUpperCase() || 'A'
+          : sectionId.toUpperCase();
+
+        histSectionId = `${year}-${gradeForYear}-${sectionLetter.toLowerCase()}`;
+      }
+
       newHistory.push({
         year,
         gradeId: gradeForYear,
-        gradeName: gradeData?.name || gradeForYear,
-        sectionId: year === currentYear ? sectionId : `${gradeNum}${suffix.toLowerCase()}a`,
+        gradeName: gradeData?.name || `${gradeForYear}° Grado`,
+        sectionId: histSectionId,
         status: year === currentYear ? 'EN_CURSO' : 'FINALIZADO'
       });
     }
@@ -651,7 +682,6 @@ export async function startSchoolYear(year: number): Promise<void> {
           enrollmentHistory: fullHistory,
           gradeId: nextGradeId,
           sectionId: assignedSectionId,
-          enrollmentYear: year,
           status: 'ACTIVO',
           updatedAt: serverTimestamp()
         })
@@ -702,18 +732,16 @@ export async function seedInitialData(): Promise<void> {
 
   // Computer Labs
   const computerLabsData = [
-    { id: 'cl1', name: 'Lab 1', buildingId: 'b3', capacity: 30, devices: 30, type: 'computo' as const },
-    { id: 'cl2', name: 'Lab 2', buildingId: 'b3', capacity: 30, devices: 28, type: 'computo' as const },
-    { id: 'cl3', name: 'Lab 3', buildingId: 'b3', capacity: 30, devices: 30, type: 'computo' as const },
-    { id: 'cl4', name: 'Lab 4', buildingId: 'b2', capacity: 25, devices: 25, type: 'computo' as const },
-    { id: 'cl5', name: 'Lab 5', buildingId: 'b2', capacity: 25, devices: 24, type: 'computo' as const },
-    { id: 'cl6', name: 'Lab 6', buildingId: 'b2', capacity: 25, devices: 25, type: 'computo' as const },
-    { id: 'cl7', name: 'Lab 7', buildingId: 'b3', capacity: 35, devices: 35, type: 'computo' as const },
-    { id: 'cl8', name: 'Lab 8', buildingId: 'b3', capacity: 35, devices: 32, type: 'computo' as const },
-    { id: 'cl9', name: 'Lab 9', buildingId: 'b3', capacity: 35, devices: 35, type: 'computo' as const },
-    { id: 'cl10', name: 'Lab 10', buildingId: 'b3', capacity: 30, devices: 30, type: 'computo' as const },
-    { id: 'sd1', name: 'Salón de Dibujo 1', buildingId: 'b3', capacity: 30, type: 'dibujo' as const },
-    { id: 'sd2', name: 'Salón de Dibujo 2', buildingId: 'b3', capacity: 30, type: 'dibujo' as const }
+    { id: 'cl1', name: 'Lab 1', buildingId: 'b3', capacity: 30, devices: 30 },
+    { id: 'cl2', name: 'Lab 2', buildingId: 'b3', capacity: 30, devices: 28 },
+    { id: 'cl3', name: 'Lab 3', buildingId: 'b3', capacity: 30, devices: 30 },
+    { id: 'cl4', name: 'Lab 4', buildingId: 'b2', capacity: 25, devices: 25 },
+    { id: 'cl5', name: 'Lab 5', buildingId: 'b2', capacity: 25, devices: 24 },
+    { id: 'cl6', name: 'Lab 6', buildingId: 'b2', capacity: 25, devices: 25 },
+    { id: 'cl7', name: 'Lab 7', buildingId: 'b3', capacity: 35, devices: 35 },
+    { id: 'cl8', name: 'Lab 8', buildingId: 'b3', capacity: 35, devices: 32 },
+    { id: 'cl9', name: 'Lab 9', buildingId: 'b3', capacity: 35, devices: 35 },
+    { id: 'cl10', name: 'Lab 10', buildingId: 'b3', capacity: 30, devices: 30 }
   ];
   for (const cl of computerLabsData) await createComputerLab(cl);
 

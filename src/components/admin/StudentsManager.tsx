@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { UserCheck, Plus, Edit2, Trash2, Save, X, Search, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
-import { getAllStudents, createStudent, updateStudent, deleteStudent, getAllGrades, getAllSections } from '../../lib/firestore';
-import { sortGradesChronological } from '../../lib/ordering';
+import { getAllStudents, createStudent, updateStudent, deleteStudent, getAllGrades, getAllSections, getCurrentSchoolYear } from '../../lib/firestore';
 import { Student, Grade, Section } from '../../types';
 import StudentHistory from './StudentHistory';
 
@@ -11,6 +10,7 @@ export default function StudentsManager() {
   const [students, setStudents] = useState<Student[]>([]);
   const [grades, setGrades] = useState<Grade[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
+  const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -31,8 +31,16 @@ export default function StudentsManager() {
 
   const loadData = async () => {
     try {
-      const [s, g, sec] = await Promise.all([getAllStudents(), getAllGrades(), getAllSections()]);
-      setStudents(s); setGrades(g); setSections(sec);
+      const [s, g, sec, cy] = await Promise.all([
+        getAllStudents(),
+        getAllGrades(),
+        getAllSections(),
+        getCurrentSchoolYear()
+      ]);
+      setStudents(s);
+      setGrades(g);
+      setSections(sec);
+      if (cy) setCurrentYear(cy);
     } finally { setLoading(false); }
   };
 
@@ -159,7 +167,7 @@ export default function StudentsManager() {
               className={`filter-pill ${filterGrade === 'all' ? 'active' : ''}`}>
               Todos
             </button>
-            {sortGradesChronological(grades).map(g => (
+            {grades.map(g => (
               <button key={g.id} onClick={() => { setFilterGrade(g.id); setFilterSection('all'); }}
                 className={`filter-pill ${filterGrade === g.id ? 'active' : ''}`}>
                 {g.name}
@@ -222,7 +230,7 @@ export default function StudentsManager() {
                     <label className="form-label">Grado *</label>
                     <select required value={form.gradeId} onChange={e => setForm({ ...form, gradeId: e.target.value, sectionId: '' })} className="input">
                       <option value="">Seleccionar grado</option>
-                      {sortGradesChronological(grades).map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                      {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                     </select>
                   </div>
                   <div>
@@ -257,7 +265,8 @@ export default function StudentsManager() {
               <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Género</th>
               <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Grado</th>
               <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Sección</th>
-              <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Ingreso</th>
+              <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Año en Curso</th>
+              <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Año de Ingreso</th>
               <th className="text-right px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Acciones</th>
             </tr>
           </thead>
@@ -276,7 +285,8 @@ export default function StudentsManager() {
                 <td className="px-4 py-2.5 text-sm text-slate-500">{s.gender === 'M' ? 'Masculino' : 'Femenino'}</td>
                 <td className="px-4 py-2.5"><span className="badge badge-green">{getGradeName(s.gradeId)}</span></td>
                 <td className="px-4 py-2.5"><span className="badge badge-blue">{getSectionName(s.sectionId)}</span></td>
-                <td className="px-4 py-2.5 text-sm text-slate-500">{s.enrollmentYear || '—'}</td>
+                <td className="px-4 py-2.5 text-sm text-slate-500 font-mono font-semibold">{currentYear}</td>
+                <td className="px-4 py-2.5 text-sm text-slate-500 font-mono">{s.enrollmentYear || '—'}</td>
                 <td className="px-4 py-2.5 text-right">
                   <div className="flex justify-end gap-1">
                     <button onClick={() => setSelectedStudent(s)} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors" title="Ver historial"><BookOpen className="w-4 h-4 text-slate-500" /></button>

@@ -33,7 +33,6 @@ import {
   getAllBuildings
 } from '../../lib/firestore';
 import { Grade, Section, Building, Cycle, BaccalaureateType, CYCLE_NAMES } from '../../types';
-import { getGradeSortWeight, sortGradesChronological } from '../../lib/ordering';
 
 const CYCLE_COLORS: Record<Cycle, string> = {
   'parvularia': 'bg-pink-100 text-pink-700',
@@ -178,12 +177,24 @@ export default function GradesManager() {
   });
 
   const cycleGroups = {
-    'parvularia': sortGradesChronological(filtered.filter((g) => g.cycle === 'parvularia')),
-    '1': sortGradesChronological(filtered.filter((g) => g.cycle === '1')),
-    '2': sortGradesChronological(filtered.filter((g) => g.cycle === '2')),
-    '3': sortGradesChronological(filtered.filter((g) => g.cycle === '3')),
-    '4': sortGradesChronological(filtered.filter((g) => g.cycle === '4'))
+    'parvularia': filtered.filter((g) => g.cycle === 'parvularia').sort((a, b) => extractGradeNumber(a) - extractGradeNumber(b)),
+    '1': filtered.filter((g) => g.cycle === '1').sort((a, b) => extractGradeNumber(a) - extractGradeNumber(b)),
+    '2': filtered.filter((g) => g.cycle === '2').sort((a, b) => extractGradeNumber(a) - extractGradeNumber(b)),
+    '3': filtered.filter((g) => g.cycle === '3').sort((a, b) => extractGradeNumber(a) - extractGradeNumber(b)),
+    '4': filtered.filter((g) => g.cycle === '4').sort((a, b) => sortBaccalaureate(a, b))
   } as const;
+
+  function extractGradeNumber(grade: Grade): number {
+    const match = grade.name.match(/(\d+)/);
+    return match ? parseInt(match[1]) : 0;
+  }
+
+  function sortBaccalaureate(a: Grade, b: Grade): number {
+    const aType = a.baccalaureateType === 'tecnico' ? 1 : 0;
+    const bType = b.baccalaureateType === 'tecnico' ? 1 : 0;
+    if (aType !== bType) return aType - bType;
+    return extractGradeNumber(a) - extractGradeNumber(b);
+  }
 
   if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
