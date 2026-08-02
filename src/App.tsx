@@ -64,13 +64,13 @@ function AppContent() {
   const [teacherData, setTeacherData] = useState<Teacher | null>(null);
 
   useEffect(() => {
-    if (userProfile?.role === 'admin') {
+    if (userRole === 'admin') {
       seedInitialData();
     }
     if (userProfile?.teacherId) {
       getTeacher(userProfile.teacherId).then(setTeacherData);
     }
-  }, [userProfile?.teacherId, userProfile?.role]);
+  }, [userProfile?.teacherId, userRole]);
 
   if (loading) {
     return (
