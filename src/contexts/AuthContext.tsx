@@ -22,7 +22,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Correos con rol Admin garantizado (por ahora solo para pruebas)
 const ADMIN_EMAILS = [
-  'jose.marquez@salesianosanjose.edu.sv',
   'admin@salesianosanjose.edu.sv'
 ];
 
