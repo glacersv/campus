@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Layers, Plus, Edit2, Trash2, Save, X, Search, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import { getAllSections, createSection, updateSection, deleteSection, getAllGrades, getAllBuildings, getAllComputerLabs, toggleSectionStatus, getAllBaccalaureateTypes, getAllStudents } from '../../lib/firestore';
+import { getAllSections, createSection, updateSection, deleteSection, getAllGrades, getAllBuildings, getAllComputerLabs, toggleSectionStatus, getAllBaccalaureateTypes, getAllStudents, getCurrentSchoolYear } from '../../lib/firestore';
 import { Section, Grade, Building, ComputerLab, BaccalaureateTypeDoc, Student } from '../../types';
 
 const CYCLE_LABEL: Record<string, string> = {
@@ -18,6 +18,7 @@ export default function SectionsManager() {
   const [computerLabs, setComputerLabs] = useState<ComputerLab[]>([]);
   const [baccalaureateTypes, setBaccalaureateTypes] = useState<BaccalaureateTypeDoc[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -41,8 +42,22 @@ export default function SectionsManager() {
 
   const loadData = async () => {
     try {
-      const [s, g, b, cl, bt, st] = await Promise.all([getAllSections(), getAllGrades(), getAllBuildings(), getAllComputerLabs(), getAllBaccalaureateTypes(), getAllStudents()]);
-      setSections(s); setGrades(g); setBuildings(b); setComputerLabs(cl); setBaccalaureateTypes(bt); setStudents(st);
+      const [s, g, b, cl, bt, st, cy] = await Promise.all([
+        getAllSections(),
+        getAllGrades(),
+        getAllBuildings(),
+        getAllComputerLabs(),
+        getAllBaccalaureateTypes(),
+        getAllStudents(),
+        getCurrentSchoolYear()
+      ]);
+      setSections(s);
+      setGrades(g);
+      setBuildings(b);
+      setComputerLabs(cl);
+      setBaccalaureateTypes(bt);
+      setStudents(st);
+      if (cy) setCurrentYear(cy);
     } catch (err) {
       console.error('Error loading data:', err);
     } finally { setLoading(false); }
@@ -70,8 +85,15 @@ export default function SectionsManager() {
         await updateSection(editingId, data);
         toast.success('Sección actualizada');
       } else {
-        const newId = `${form.gradeId}-${form.name.trim().toLowerCase()}`;
-        await createSection({ id: newId, name: data.name!, gradeId: data.gradeId!, ...data });
+        const newId = `${currentYear}-${form.gradeId}-${form.name.trim().toLowerCase()}`;
+        await createSection({
+          id: newId,
+          name: data.name!,
+          gradeId: data.gradeId!,
+          schoolYear: currentYear,
+          status: 'ACTIVO',
+          ...data
+        });
         toast.success('Sección creada');
       }
       setShowForm(false); setEditingId(null); setForm({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabId: '' });
@@ -107,7 +129,9 @@ export default function SectionsManager() {
     return upper;
   };
 
-  const letterGroups = sections.reduce<Record<string, Section[]>>((acc, s) => {
+  const activeSections = sections.filter(s => s.schoolYear === currentYear || !s.schoolYear);
+
+  const letterGroups = activeSections.reduce<Record<string, Section[]>>((acc, s) => {
     const letter = getSectionLetter(s.name);
     if (!acc[letter]) acc[letter] = [];
     acc[letter].push(s);

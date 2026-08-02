@@ -577,6 +577,34 @@ export async function startSchoolYear(year: number): Promise<void> {
   const studentsSnap = await getDocs(collection(db, STUDENTS_COLLECTION));
   const studentUpdates: Promise<void>[] = [];
 
+  // 1. Clona/Crea secciones específicas para el nuevo año escolar
+  // Las secciones anteriores quedan INTACTAS con su schoolYear original, garantizando la inmutabilidad histórica.
+  const clonedSections: Record<string, string> = {}; // Mapea { idAnterior: nuevoId }
+  const sectionPromises: Promise<void>[] = [];
+
+  sectionsSnap.docs.forEach((d) => {
+    const secData = d.data() as Section;
+    const isSectionActiveAndMatchesYear = secData.status !== 'INACTIVO' && (secData.schoolYear === previousYear || !secData.schoolYear);
+
+    if (isSectionActiveAndMatchesYear) {
+      const newSecId = `${year}-${secData.gradeId}-${secData.name.trim().toLowerCase()}`;
+      clonedSections[d.id] = newSecId;
+
+      const newSecRef = doc(db, SECTIONS_COLLECTION, newSecId);
+      sectionPromises.push(
+        setDoc(newSecRef, {
+          ...secData,
+          id: newSecId,
+          schoolYear: year,
+          status: 'ACTIVO',
+          createdAt: serverTimestamp()
+        })
+      );
+    }
+  });
+  await Promise.all(sectionPromises);
+
+  // 2. Promueve a los alumnos y actualiza su historial de matrícula (enrollmentHistory)
   studentsSnap.docs.forEach((d) => {
     const data = d.data() as Student;
     const ref = d.ref;
@@ -594,10 +622,24 @@ export async function startSchoolYear(year: number): Promise<void> {
       const nextNum = Number.isNaN(num) ? num : num + 1;
       const nextGradeId = !Number.isNaN(num) ? `${nextNum}${suffix}` : data.gradeId;
 
+      // Obtiene el ID de la nueva sección correspondiente al nuevo año escolar
+      let assignedSectionId = '';
+      if (data.sectionId) {
+        // Si fue clonada, usamos el nuevo ID clonado.
+        if (clonedSections[data.sectionId]) {
+          assignedSectionId = clonedSections[data.sectionId];
+        } else {
+          // Si no está en la caché de clonación, inferimos el ID por letra/patrón
+          const prevSecDoc = sectionsSnap.docs.find(sd => sd.id === data.sectionId);
+          const secName = prevSecDoc ? (prevSecDoc.data() as Section).name : 'A';
+          assignedSectionId = `${year}-${nextGradeId}-${secName.toLowerCase()}`;
+        }
+      }
+
       const newRecord = {
         year,
         gradeId: nextGradeId,
-        sectionId: data.sectionId,
+        sectionId: assignedSectionId,
         status: 'EN_CURSO' as const
       };
 
@@ -608,7 +650,7 @@ export async function startSchoolYear(year: number): Promise<void> {
         updateDoc(ref, {
           enrollmentHistory: fullHistory,
           gradeId: nextGradeId,
-          sectionId: data.sectionId,
+          sectionId: assignedSectionId,
           enrollmentYear: year,
           status: 'ACTIVO',
           updatedAt: serverTimestamp()
@@ -619,12 +661,11 @@ export async function startSchoolYear(year: number): Promise<void> {
 
   await Promise.all(studentUpdates);
 
+  // 3. Actualiza el año lectivo de los grados
   const gradeUpdates = gradesSnap.docs.map(d => updateDoc(d.ref, { schoolYear: year, status: 'ACTIVO', updatedAt: serverTimestamp() }));
   await Promise.all(gradeUpdates);
 
-  const sectionUpdates = sectionsSnap.docs.map(d => updateDoc(d.ref, { schoolYear: year, status: 'ACTIVO', updatedAt: serverTimestamp() }));
-  await Promise.all(sectionUpdates);
-
+  // Guardar el estado de inicio de año
   await setDoc(yearStatusRef, { year, startedAt: serverTimestamp() });
 }
 
