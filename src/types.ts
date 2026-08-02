@@ -123,6 +123,7 @@ export interface Building {
 export interface ComputerLab {
   id: string;
   name: string;
+  type?: 'computo' | 'dibujo' | 'ingles' | 'ciencias' | 'otros';
   buildingId?: string;
   capacity?: number;
   devices?: number;

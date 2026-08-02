@@ -244,9 +244,9 @@ export default function SectionsManager() {
                     </select>
                   </div>
                   <div className="col-span-2">
-                    <label className="form-label">Laboratorio de Cómputo</label>
+                    <label className="form-label">Aula Especializada / Laboratorio (Dibujo, Inglés, Cómputo)</label>
                     <select value={form.computerLabId} onChange={e => setForm({ ...form, computerLabId: e.target.value })} className="input">
-                      <option value="">Sin laboratorio</option>
+                      <option value="">Sin asignar</option>
                       {computerLabs.map(cl => <option key={cl.id} value={cl.id}>{cl.name}</option>)}
                     </select>
                   </div>
