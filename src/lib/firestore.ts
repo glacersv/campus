@@ -578,11 +578,16 @@ export async function fixAllStudentHistories(): Promise<void> {
       });
     }
 
+    // Obtener los datos del grado y la sección correspondientes al año en curso para sincronizar la tabla
+    const latestRecord = newHistory.find(r => r.year === currentYear);
+    const updatedGradeId = latestRecord ? latestRecord.gradeId as string : currentGradeId;
+    const updatedSectionId = latestRecord ? latestRecord.sectionId as string : sectionId;
+
     updates.push(
       updateDoc(ref, {
         enrollmentHistory: newHistory,
-        gradeId: currentGradeId,
-        sectionId,
+        gradeId: updatedGradeId,
+        sectionId: updatedSectionId,
         enrollmentYear: entryYear,
         status: 'ACTIVO',
         updatedAt: serverTimestamp()
