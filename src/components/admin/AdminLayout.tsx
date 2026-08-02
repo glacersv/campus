@@ -51,7 +51,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     { title: 'ACADÉMICA', items: [
       { id: 'grades', label: 'Grados', icon: BookOpen },
       { id: 'sections', label: 'Secciones', icon: Layers },
-      { id: 'grade-section-assignment', label: 'Asignar Espacios', icon: GitBranch },
+      { id: 'grade-section-assignment', label: 'Asignar Edificios', icon: GitBranch },
       { id: 'subjects', label: 'Materias', icon: BookMarked },
     ]},
     { title: 'CONVIVENCIA', items: [
@@ -59,7 +59,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     ]},
     { title: 'INFRAESTRUCTURA', items: [
       { id: 'buildings', label: 'Edificios', icon: Building2 },
-      { id: 'computer-labs', label: 'Cómputo y Salones', icon: Monitor },
+      { id: 'computer-labs', label: 'Laboratorios', icon: Monitor },
     ]},
     { title: 'PERSONAL', items: [
       { id: 'teachers', label: 'Docentes', icon: GraduationCap },
