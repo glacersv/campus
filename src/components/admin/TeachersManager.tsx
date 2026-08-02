@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { GraduationCap, Plus, Edit2, Trash2, Save, X, Search, Phone, Clock, Award, BookOpen, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAllTeachers, createTeacher, updateTeacher, deleteTeacher, getAllGrades, getAllSections, getAllSubjects } from '../../lib/firestore';
+import { sortGradesChronological } from '../../lib/ordering';
 import { Teacher, Grade, Section, Subject } from '../../types';
 
 export default function TeachersManager() {
@@ -216,7 +217,7 @@ export default function TeachersManager() {
                       <label className="form-label-normal">Grado Guía</label>
                       <select value={form.guideGradeId} onChange={e => setForm({ ...form, guideGradeId: e.target.value, guideSectionId: '' })} className="input">
                         <option value="">Sin grado</option>
-                        {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                        {sortGradesChronological(grades).map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                       </select>
                     </div>
                     <div>

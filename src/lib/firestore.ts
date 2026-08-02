@@ -661,16 +661,18 @@ export async function seedInitialData(): Promise<void> {
 
   // Computer Labs
   const computerLabsData = [
-    { id: 'cl1', name: 'Lab 1', buildingId: 'b3', capacity: 30, devices: 30 },
-    { id: 'cl2', name: 'Lab 2', buildingId: 'b3', capacity: 30, devices: 28 },
-    { id: 'cl3', name: 'Lab 3', buildingId: 'b3', capacity: 30, devices: 30 },
-    { id: 'cl4', name: 'Lab 4', buildingId: 'b2', capacity: 25, devices: 25 },
-    { id: 'cl5', name: 'Lab 5', buildingId: 'b2', capacity: 25, devices: 24 },
-    { id: 'cl6', name: 'Lab 6', buildingId: 'b2', capacity: 25, devices: 25 },
-    { id: 'cl7', name: 'Lab 7', buildingId: 'b3', capacity: 35, devices: 35 },
-    { id: 'cl8', name: 'Lab 8', buildingId: 'b3', capacity: 35, devices: 32 },
-    { id: 'cl9', name: 'Lab 9', buildingId: 'b3', capacity: 35, devices: 35 },
-    { id: 'cl10', name: 'Lab 10', buildingId: 'b3', capacity: 30, devices: 30 }
+    { id: 'cl1', name: 'Lab 1', buildingId: 'b3', capacity: 30, devices: 30, type: 'computo' as const },
+    { id: 'cl2', name: 'Lab 2', buildingId: 'b3', capacity: 30, devices: 28, type: 'computo' as const },
+    { id: 'cl3', name: 'Lab 3', buildingId: 'b3', capacity: 30, devices: 30, type: 'computo' as const },
+    { id: 'cl4', name: 'Lab 4', buildingId: 'b2', capacity: 25, devices: 25, type: 'computo' as const },
+    { id: 'cl5', name: 'Lab 5', buildingId: 'b2', capacity: 25, devices: 24, type: 'computo' as const },
+    { id: 'cl6', name: 'Lab 6', buildingId: 'b2', capacity: 25, devices: 25, type: 'computo' as const },
+    { id: 'cl7', name: 'Lab 7', buildingId: 'b3', capacity: 35, devices: 35, type: 'computo' as const },
+    { id: 'cl8', name: 'Lab 8', buildingId: 'b3', capacity: 35, devices: 32, type: 'computo' as const },
+    { id: 'cl9', name: 'Lab 9', buildingId: 'b3', capacity: 35, devices: 35, type: 'computo' as const },
+    { id: 'cl10', name: 'Lab 10', buildingId: 'b3', capacity: 30, devices: 30, type: 'computo' as const },
+    { id: 'sd1', name: 'Salón de Dibujo 1', buildingId: 'b3', capacity: 30, type: 'dibujo' as const },
+    { id: 'sd2', name: 'Salón de Dibujo 2', buildingId: 'b3', capacity: 30, type: 'dibujo' as const }
   ];
   for (const cl of computerLabsData) await createComputerLab(cl);
 

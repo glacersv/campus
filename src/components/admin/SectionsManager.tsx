@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Layers, Plus, Edit2, Trash2, Save, X, Search, Users } from 'lucide-react';
+import { Layers, Plus, Edit2, Trash2, Save, X, Search, Users, Building2, Monitor, PencilRuler } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAllSections, createSection, updateSection, deleteSection, getAllGrades, getAllBuildings, getAllComputerLabs, toggleSectionStatus, getAllBaccalaureateTypes, getAllStudents } from '../../lib/firestore';
+import { getGradeSortWeight, sortGradesChronological, sortSectionsChronological } from '../../lib/ordering';
 import { Section, Grade, Building, ComputerLab, BaccalaureateTypeDoc, Student } from '../../types';
 
 const CYCLE_LABEL: Record<string, string> = {
@@ -21,7 +22,7 @@ export default function SectionsManager() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabId: '' });
+  const [form, setForm] = useState({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabId: '', drawingRoomId: '' });
   const [search, setSearch] = useState('');
   const [selectedGroup, setSelectedGroup] = useState<{ letter: string; levels: { label: string; count: number }[]; totalGrades: number; totalStudents: number; totalCapacity: number; occupancyPercentage: number; gradeDetails: { sectionId: string; gradeId: string; gradeName: string; capacity: number; enrolled: number; percentage: number; rawSection: Section; sortWeight: number }[] } | null>(null);
 
@@ -53,6 +54,9 @@ export default function SectionsManager() {
   const getBuildingColor = (id: string) => buildings.find(b => b.id === id)?.color || '#6B7280';
   const getGradeCycle = (id: string) => grades.find(g => g.id === id)?.cycle || '1';
   const getComputerLabName = (id: string) => computerLabs.find(cl => cl.id === id)?.name || id;
+  const getDrawingRoomName = (id: string) => computerLabs.find(cl => cl.id === id && (cl.type || 'computo') === 'dibujo')?.name || id;
+  const computerLabsList = computerLabs.filter(cl => (cl.type || 'computo') === 'computo');
+  const drawingRoomsList = computerLabs.filter(cl => (cl.type || 'computo') === 'dibujo');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,6 +69,7 @@ export default function SectionsManager() {
       if (form.capacity) data.capacity = parseInt(form.capacity);
       if (form.buildingId) data.buildingId = form.buildingId;
       if (form.computerLabId) data.computerLabId = form.computerLabId;
+      if (form.drawingRoomId) data.drawingRoomId = form.drawingRoomId;
 
       if (editingId) {
         await updateSection(editingId, data);
@@ -74,7 +79,7 @@ export default function SectionsManager() {
         await createSection({ id: newId, name: data.name!, gradeId: data.gradeId!, ...data });
         toast.success('Sección creada');
       }
-      setShowForm(false); setEditingId(null); setForm({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabId: '' });
+      setShowForm(false); setEditingId(null); setForm({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabId: '', drawingRoomId: '' });
       loadData();
     } catch (err) {
       toast.error('Error al guardar sección');
@@ -84,7 +89,7 @@ export default function SectionsManager() {
 
   const handleEdit = (s: Section) => {
     setEditingId(s.id);
-    setForm({ name: s.name, gradeId: s.gradeId, capacity: s.capacity?.toString() || '', buildingId: s.buildingId || '', computerLabId: s.computerLabId || '' });
+    setForm({ name: s.name, gradeId: s.gradeId, capacity: s.capacity?.toString() || '', buildingId: s.buildingId || '', computerLabId: s.computerLabId || '', drawingRoomId: s.drawingRoomId || '' });
     setShowForm(true);
   };
 
@@ -140,21 +145,6 @@ export default function SectionsManager() {
     const totalStudents = students.filter(st => group.some(section => section.id === st.sectionId)).length;
     const totalCapacity = group.reduce((sum, section) => sum + (section.capacity || 0), 0);
     const occupancyPercentage = totalCapacity > 0 ? Math.round((totalStudents / totalCapacity) * 100) : 0;
-    
-    // Sort weights to order grades chronologically (Kinder to Bachillerato)
-    const getGradeSortWeight = (gradeId: string): number => {
-      if (gradeId === 'k4') return 10;
-      if (gradeId === 'k5') return 11;
-      if (gradeId === 'k6') return 12;
-
-      const numStr = gradeId.replace(/[^0-9]/g, '');
-      const num = parseInt(numStr, 10);
-      if (Number.isFinite(num)) {
-        if (num >= 1 && num <= 9) return 20 + num;
-        if (num >= 10 && num <= 12) return 40 + (num - 10);
-      }
-      return 100;
-    };
 
     // Detalle por grado: capacidad vs matriculados ordenado cronológicamente
     const gradeDetails = group.map(section => {
@@ -209,7 +199,7 @@ export default function SectionsManager() {
             <p className="module-subtitle">{groupStats.length} sección(es) registrada(s)</p>
           </div>
         </div>
-        <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabId: '' }); }} className="btn-primary">
+        <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabId: '', drawingRoomId: '' }); }} className="btn-primary">
           <Plus className="w-4 h-4" /> Nueva Sección
         </button>
       </div>
@@ -239,7 +229,7 @@ export default function SectionsManager() {
                     <label className="form-label">Grado *</label>
                     <select required value={form.gradeId} onChange={e => setForm({ ...form, gradeId: e.target.value })} className="input">
                       <option value="">Seleccionar grado</option>
-                      {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                      {sortGradesChronological(grades).map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                     </select>
                   </div>
                   <div>
@@ -257,11 +247,18 @@ export default function SectionsManager() {
                       {buildings.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                     </select>
                   </div>
-                  <div className="col-span-2">
-                    <label className="form-label">Laboratorio de Cómputo</label>
+                  <div>
+                    <label className="form-label">Centro de Cómputo</label>
                     <select value={form.computerLabId} onChange={e => setForm({ ...form, computerLabId: e.target.value })} className="input">
                       <option value="">Sin laboratorio</option>
-                      {computerLabs.map(cl => <option key={cl.id} value={cl.id}>{cl.name}</option>)}
+                      {computerLabsList.map(cl => <option key={cl.id} value={cl.id}>{cl.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="form-label">Salón de Dibujo</label>
+                    <select value={form.drawingRoomId} onChange={e => setForm({ ...form, drawingRoomId: e.target.value })} className="input">
+                      <option value="">Sin salón de dibujo</option>
+                      {drawingRoomsList.map(cl => <option key={cl.id} value={cl.id}>{cl.name}</option>)}
                     </select>
                   </div>
                 </div>
@@ -468,7 +465,7 @@ export default function SectionsManager() {
                     const strokeDashoffset = circumference - (detail.percentage / 100) * circumference;
 
                     return (
-                      <div key={detail.gradeId} className={`${bgColor} rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:scale-[1.01] transition-all flex flex-col justify-between h-[210px]`}>
+                      <div key={detail.gradeId} className={`${bgColor} rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:scale-[1.01] transition-all flex flex-col justify-between h-[230px]`}>
                         <div>
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-xs font-bold text-slate-700">{detail.gradeName}</span>
@@ -490,6 +487,24 @@ export default function SectionsManager() {
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
+                          </div>
+                          <div className="mb-2 space-y-1">
+                            <p className="text-[10px] font-semibold text-slate-500 flex items-center gap-1">
+                              <Building2 className="w-3 h-3 text-slate-400 shrink-0" />
+                              {getBuildingName(detail.rawSection.buildingId)}
+                            </p>
+                            {detail.rawSection.computerLabId && (
+                              <p className="text-[10px] font-semibold text-slate-500 flex items-center gap-1">
+                                <Monitor className="w-3 h-3 text-slate-400 shrink-0" />
+                                CC: {getComputerLabName(detail.rawSection.computerLabId)}
+                              </p>
+                            )}
+                            {detail.rawSection.drawingRoomId && (
+                              <p className="text-[10px] font-semibold text-slate-500 flex items-center gap-1">
+                                <PencilRuler className="w-3 h-3 text-slate-400 shrink-0" />
+                                Dibujo: {getDrawingRoomName(detail.rawSection.drawingRoomId)}
+                              </p>
+                            )}
                           </div>
                           <div className="relative w-18 h-18 mx-auto mb-2">
                             <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">

@@ -8,3 +8,6 @@ coverage/
 !.env.example
 opencode.json
 alumno-import-v2.json
+
+# Firebase service account key (local only)
+serviceAccountKey.json
