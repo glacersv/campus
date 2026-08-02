@@ -99,6 +99,16 @@ export interface BaccalaureateTypeDoc {
   createdAt?: Timestamp;
 }
 
+export type RoomType = 'computo' | 'dibujo' | 'ingles' | 'ciencias' | 'otros';
+
+export const ROOM_TYPE_LABELS: Record<RoomType, string> = {
+  computo: 'Centro de Cómputo',
+  dibujo: 'Salón de Dibujo',
+  ingles: 'Salón de Inglés',
+  ciencias: 'Laboratorio de Ciencias',
+  otros: 'Aula Especializada'
+};
+
 export interface Section {
   id: string;
   name: string;
@@ -106,6 +116,7 @@ export interface Section {
   capacity?: number;
   buildingId?: string;
   computerLabId?: string;
+  drawingRoomId?: string;
   status?: 'ACTIVO' | 'INACTIVO';
   schoolYear?: number;
   createdAt?: Timestamp;
@@ -123,7 +134,7 @@ export interface Building {
 export interface ComputerLab {
   id: string;
   name: string;
-  type?: 'computo' | 'dibujo' | 'ingles' | 'ciencias' | 'otros';
+  type?: RoomType;
   buildingId?: string;
   capacity?: number;
   devices?: number;

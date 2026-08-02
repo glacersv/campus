@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Monitor,
@@ -33,24 +33,7 @@ import {
   getAllGrades,
   getAllStudents
 } from '../../lib/firestore';
-import { getGradeSortWeight, sortGradesChronological } from '../../lib/ordering';
-import { ComputerLab, Building, Section, Grade, Student } from '../../types';
-
-const LAB_TYPE_LABELS = {
-  computo: 'Centro de Cómputo',
-  dibujo: 'Salón de Dibujo',
-  ingles: 'Salón de Inglés',
-  ciencias: 'Laboratorio de Ciencias',
-  otros: 'Aula Especializada'
-};
-
-const LAB_TYPE_ICONS = {
-  computo: Monitor,
-  dibujo: Palette,
-  ingles: Languages,
-  ciencias: FlaskConical,
-  otros: DoorOpen
-};
+import { ComputerLab, Building, Section, Grade, Student, RoomType, ROOM_TYPE_LABELS } from '../../types';
 
 export default function ComputerLabsManager() {
   const [labs, setLabs] = useState<ComputerLab[]>([]);
@@ -62,8 +45,9 @@ export default function ComputerLabsManager() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedLabId, setSelectedLabId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', type: 'computo' as 'computo' | 'dibujo' | 'ingles' | 'ciencias' | 'otros', buildingId: '', capacity: '', devices: '' });
+  const [form, setForm] = useState({ name: '', buildingId: '', capacity: '', devices: '', type: 'computo' as RoomType });
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
+  const [typeFilter, setTypeFilter] = useState<RoomType | 'all'>('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   useEffect(() => { loadData(); }, []);
@@ -75,8 +59,29 @@ export default function ComputerLabsManager() {
     } finally { setLoading(false); }
   };
 
-  const getBuildingName = (id: string) => buildings.find(b => b.id === id)?.name || '—';
+  const getBuildingName = (id: string) => buildings.find(b => b.id === id)?.name || 'ÔÇö';
+  const getBuildingColor = (id: string) => buildings.find(b => b.id === id)?.color || '#6B7280';
   const getGradeName = (id: string) => grades.find(g => g.id === id)?.name || id;
+
+  const labType = (l: ComputerLab): RoomType => l.type || 'computo';
+
+  const TYPE_ICONS: Record<RoomType, React.ComponentType<{ className?: string }>> = {
+    computo: Monitor,
+    dibujo: Palette,
+    ingles: Languages,
+    ciencias: FlaskConical,
+    otros: DoorOpen
+  };
+
+  const TYPE_BADGE_CLASSES: Record<RoomType, string> = {
+    computo: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
+    dibujo: 'bg-amber-50 text-amber-700 border border-amber-200',
+    ingles: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+    ciencias: 'bg-sky-50 text-sky-700 border border-sky-200',
+    otros: 'bg-slate-100 text-slate-600 border border-slate-200'
+  };
+
+  const filteredLabs = typeFilter === 'all' ? labs : labs.filter(l => labType(l) === typeFilter);
 
   interface LabStats {
     lab: ComputerLab;
@@ -84,11 +89,14 @@ export default function ComputerLabsManager() {
     totalCapacity: number;
     totalEnrolled: number;
     usagePct: number;
-    sectionsByGrade: { gradeName: string; sections: Section[]; enrolled: number; capacity: number; sortWeight: number }[];
+    sectionsByGrade: { gradeName: string; sections: Section[]; enrolled: number; capacity: number }[];
   }
 
   const computeStats = (lab: ComputerLab): LabStats => {
-    const assignedSections = sections.filter(s => s.computerLabId === lab.id);
+    const type = labType(lab);
+    const assignedSections = type === 'dibujo'
+      ? sections.filter(s => s.drawingRoomId === lab.id)
+      : sections.filter(s => s.computerLabId === lab.id);
     const gradeMap = new Map<string, Section[]>();
     assignedSections.forEach(s => {
       if (!gradeMap.has(s.gradeId)) gradeMap.set(s.gradeId, []);
@@ -101,14 +109,8 @@ export default function ComputerLabsManager() {
       const secIds2 = new Set(secs.map(s => s.id));
       const enrolled = students.filter(st => secIds2.has(st.sectionId) && st.gradeId === gradeId).length;
       const cap = secs.reduce((sum, s) => sum + (s.capacity || 0), 0);
-      return {
-        gradeName: getGradeName(gradeId),
-        sections: secs,
-        enrolled,
-        capacity: cap,
-        sortWeight: getGradeSortWeight(gradeId)
-      };
-    }).sort((a, b) => a.sortWeight - b.sortWeight);
+      return { gradeName: getGradeName(gradeId), sections: secs, enrolled, capacity: cap };
+    }).sort((a, b) => a.gradeName.localeCompare(b.gradeName));
 
     return {
       lab,
@@ -124,55 +126,52 @@ export default function ComputerLabsManager() {
     e.preventDefault();
     if (!form.name.trim()) return;
     try {
-      const data: Partial<ComputerLab> = {
-        name: form.name.trim(),
-        type: form.type
-      };
+      const data: Partial<ComputerLab> = { name: form.name.trim(), type: form.type };
       if (form.buildingId) data.buildingId = form.buildingId;
       if (form.capacity) data.capacity = parseInt(form.capacity);
       if (form.devices) data.devices = parseInt(form.devices);
-      
+
       if (editingId) {
         await updateComputerLab(editingId, data);
-        toast.success('Aula Especializada actualizada correctamente');
+        toast.success('Espacio actualizado correctamente');
       } else {
         await createComputerLab({ id: form.name.trim().toLowerCase().replace(/\s+/g, '-'), name: data.name!, type: data.type!, ...data });
-        toast.success('Aula Especializada creada correctamente');
+        toast.success('Espacio creado correctamente');
       }
       setShowForm(false); setEditingId(null);
-      setForm({ name: '', type: 'computo', buildingId: '', capacity: '', devices: '' });
+      setForm({ name: '', buildingId: '', capacity: '', devices: '', type: 'computo' });
       loadData();
-    } catch (err) { toast.error('Error al guardar aula'); console.error(err); }
+    } catch (err) { toast.error('Error al guardar espacio'); console.error(err); }
   };
 
   const handleEdit = (l: ComputerLab) => {
     setEditingId(l.id);
-    setForm({ name: l.name, type: l.type || 'computo', buildingId: l.buildingId || '', capacity: l.capacity?.toString() || '', devices: l.devices?.toString() || '' });
+    setForm({ name: l.name, buildingId: l.buildingId || '', capacity: l.capacity?.toString() || '', devices: l.devices?.toString() || '', type: labType(l) });
     setShowForm(true);
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('¿Eliminar esta Aula Especializada?')) {
+    if (confirm('┬┐Eliminar este espacio?')) {
       try {
         await deleteComputerLab(id);
-        toast.success('Aula Especializada eliminada');
+        toast.success('Espacio eliminado');
         setSelected(prev => { const n = new Set(prev); n.delete(id); return n; });
         if (selectedLabId === id) setSelectedLabId(null);
         loadData();
-      } catch (err) { toast.error('Error al eliminar'); }
+      } catch (err) { toast.error('Error al eliminar espacio'); }
     }
   };
 
   const handleBulkDelete = async () => {
     if (selected.size === 0) return;
-    if (confirm(`¿Eliminar ${selected.size} aula(s) especializada(s)?`)) {
+    if (confirm(`┬┐Eliminar ${selected.size} espacio(s)?`)) {
       try {
         for (const id of selected) await deleteComputerLab(id);
-        toast.success(`${selected.size} aula(s) eliminada(s)`);
+        toast.success(`${selected.size} espacio(s) eliminados`);
         setSelected(new Set());
         if (selectedLabId && selected.has(selectedLabId)) setSelectedLabId(null);
         loadData();
-      } catch (err) { toast.error('Error al eliminar aulas'); }
+      } catch (err) { toast.error('Error al eliminar espacios'); }
     }
   };
 
@@ -185,8 +184,8 @@ export default function ComputerLabsManager() {
   };
 
   const toggleSelectAll = () => {
-    if (selected.size === labs.length) setSelected(new Set());
-    else setSelected(new Set(labs.map(l => l.id)));
+    if (selected.size === filteredLabs.length) setSelected(new Set());
+    else setSelected(new Set(filteredLabs.map(l => l.id)));
   };
 
   if (loading) return (
@@ -204,25 +203,31 @@ export default function ComputerLabsManager() {
             <Monitor className="w-5 h-5 text-accent" />
           </div>
           <div>
-            <h1 className="module-title">Aulas Especializadas</h1>
-            <p className="module-subtitle">{labs.length} aula(s) registrada(s)</p>
+            <h1 className="module-title">Centros de C├│mputo y Salones</h1>
+            <p className="module-subtitle">{labs.length} espacio(s) registrado(s)</p>
           </div>
         </div>
-        <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', type: 'computo', buildingId: '', capacity: '', devices: '' }); }} className="btn-primary">
-          <Plus className="w-4 h-4" /> Nueva Aula
+        <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', buildingId: '', capacity: '', devices: '', type: 'computo' }); }} className="btn-primary">
+          <Plus className="w-4 h-4" /> Nuevo Espacio
         </button>
       </div>
 
       {/* Toolbar */}
       <div className="flex items-center gap-3">
+        <div className="flex gap-1.5 flex-wrap">
+          <button onClick={() => setTypeFilter('all')} className={`filter-pill ${typeFilter === 'all' ? 'active' : ''}`}>Todos</button>
+          {(Object.keys(ROOM_TYPE_LABELS) as RoomType[]).map(t => (
+            <button key={t} onClick={() => setTypeFilter(t)} className={`filter-pill ${typeFilter === t ? 'active' : ''}`}>{ROOM_TYPE_LABELS[t]}</button>
+          ))}
+        </div>
         {selected.size > 0 && (
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
             className="flex items-center gap-2 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
             <span className="text-sm text-red-700 font-medium">{selected.size} seleccionado(s)</span>
-            <button onClick={handleBulkDelete} className="p-1.5 hover:bg-red-100 rounded-lg transition-colors cursor-pointer">
+            <button onClick={handleBulkDelete} className="p-1.5 hover:bg-red-100 rounded-lg transition-colors">
               <Trash className="w-4 h-4 text-red-600" />
             </button>
-            <button onClick={() => setSelected(new Set())} className="p-1.5 hover:bg-red-100 rounded-lg transition-colors cursor-pointer">
+            <button onClick={() => setSelected(new Set())} className="p-1.5 hover:bg-red-100 rounded-lg transition-colors">
               <X className="w-4 h-4 text-red-600" />
             </button>
           </motion.div>
@@ -230,161 +235,134 @@ export default function ComputerLabsManager() {
         <div className="flex border border-slate-200 rounded-lg overflow-hidden ml-auto">
           <button
             onClick={() => setViewMode('card')}
-            className={`p-2 transition-colors cursor-pointer ${viewMode === 'card' ? 'bg-primary text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+            className={`p-2 transition-colors ${viewMode === 'card' ? 'bg-primary text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
           >
             <LayoutGrid className="w-4 h-4" />
           </button>
           <button
             onClick={() => setViewMode('list')}
-            className={`p-2 transition-colors cursor-pointer ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+            className={`p-2 transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
           >
             <List className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Formulario Modal Premium */}
+      {/* Form */}
       <AnimatePresence>
         {showForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden flex flex-col"
-            >
-              <div className="bg-slate-50 border-b border-slate-100 p-5 flex justify-between items-center shrink-0">
-                <h3 className="font-bold text-slate-900 text-base">{editingId ? 'Editar Aula Especializada' : 'Nueva Aula Especializada'}</h3>
-                <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1.5 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer">
-                  <X className="w-4 h-4 text-slate-500" />
-                </button>
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="card p-5"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-slate-900">{editingId ? 'Editar Espacio' : 'Nuevo Espacio'}</h3>
+              <button onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1 hover:bg-slate-100 rounded-lg transition-colors"><X className="w-4 h-4" /></button>
+            </div>
+            <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="form-label">Nombre *</label>
+                <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ej: Lab 1" className="input" autoFocus required />
               </div>
-              <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2">
-                    <label className="form-label">Nombre *</label>
-                    <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ej: Salón de Dibujo 1, Salón de Inglés..." className="input" autoFocus required />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="form-label">Tipo de Aula *</label>
-                    <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value as any })} className="input">
-                      {Object.entries(LAB_TYPE_LABELS).map(([k, v]) => (
-                        <option key={k} value={k}>{v}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="form-label">Edificio</label>
-                    <select value={form.buildingId} onChange={e => setForm({ ...form, buildingId: e.target.value })} className="input">
-                      <option value="">Sin edificio</option>
-                      {buildings.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="form-label">Capacidad de Alumnos</label>
-                    <input type="number" min="1" value={form.capacity} onChange={e => setForm({ ...form, capacity: e.target.value })} placeholder="Ej: 30" className="input" />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="form-label">Dispositivos / Recursos Especiales</label>
-                    <input type="number" min="0" value={form.devices} onChange={e => setForm({ ...form, devices: e.target.value })} placeholder="Ej: 30 (solo para Cómputo/Inglés si aplica)" className="input" />
-                  </div>
+              <div>
+                <label className="form-label">Tipo *</label>
+                <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value as RoomType })} className="input">
+                  {(Object.keys(ROOM_TYPE_LABELS) as RoomType[]).map(t => (
+                    <option key={t} value={t}>{ROOM_TYPE_LABELS[t]}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="form-label">Edificio</label>
+                <select value={form.buildingId} onChange={e => setForm({ ...form, buildingId: e.target.value })} className="input">
+                  <option value="">Sin edificio</option>
+                  {buildings.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="form-label">Capacidad</label>
+                <input type="number" min="1" value={form.capacity} onChange={e => setForm({ ...form, capacity: e.target.value })} placeholder="Ej: 30" className="input" />
+              </div>
+              {form.type === 'computo' && (
+                <div>
+                  <label className="form-label">Dispositivos</label>
+                  <input type="number" min="1" value={form.devices} onChange={e => setForm({ ...form, devices: e.target.value })} placeholder="Ej: 30" className="input" />
                 </div>
-                <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 shrink-0">
-                  <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="btn-secondary">Cancelar</button>
-                  <button type="submit" className="btn-primary"><Save className="w-4 h-4" /> {editingId ? 'Actualizar' : 'Crear'}</button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
+              )}
+              <div className="col-span-2 flex justify-end gap-2">
+                <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="btn-secondary">Cancelar</button>
+                <button type="submit" className="btn-primary"><Save className="w-4 h-4" /> {editingId ? 'Actualizar' : 'Crear'}</button>
+              </div>
+            </form>
+          </motion.div>
         )}
       </AnimatePresence>
 
       {/* Card View */}
       {viewMode === 'card' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {labs.map((l, i) => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredLabs.map((l, i) => {
             const stats = computeStats(l);
             const isSelected = selectedLabId === l.id;
-            const IconComponent = LAB_TYPE_ICONS[l.type || 'computo'] || DoorOpen;
-            const typeLabel = LAB_TYPE_LABELS[l.type || 'computo'] || LAB_TYPE_LABELS.otros;
-
+            const type = labType(l);
+            const TypeIcon = TYPE_ICONS[type];
             return (
               <motion.div
                 key={l.id}
-                initial={{ opacity: 0, y: 15 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className={`bg-white rounded-2xl border p-5 flex flex-col justify-between transition-all cursor-pointer ${
-                  isSelected
-                    ? 'border-primary ring-1 ring-primary/20 shadow-md scale-[1.01]'
-                    : 'border-slate-200/80 shadow-xs hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5'
-                }`}
+                transition={{ delay: i * 0.03 }}
+                className={`card card-hover p-3 group relative cursor-pointer transition-all ${selected.has(l.id) ? 'ring-2 ring-primary border-primary' : ''} ${isSelected ? 'ring-2 ring-offset-2' : 'hover:ring-1 hover:ring-offset-1'}`}
+                style={{ '--tw-ring-color': isSelected ? '#6366F1' : 'transparent' } as React.CSSProperties}
                 onClick={() => setSelectedLabId(isSelected ? null : l.id)}
               >
-                <div>
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 text-slate-700 flex items-center justify-center shadow-xs">
-                        <IconComponent className="w-5 h-5 text-slate-500" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-900 text-base">{l.name}</h3>
-                        <p className="text-[10px] uppercase font-bold tracking-wider text-slate-400 mt-0.5">{typeLabel}</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); toggleSelect(l.id); }}
-                      className={`w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer ${selected.has(l.id) ? 'bg-primary border-primary text-white' : 'border-slate-300 hover:border-primary'}`}
-                    >
-                      {selected.has(l.id) && <Check className="w-2.5 h-2.5" />}
-                    </button>
-                  </div>
-
-                  <div className="space-y-1.5 mb-4 text-xs font-semibold text-slate-600">
-                    {l.buildingId && (
-                      <p className="flex items-center gap-2">
-                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{getBuildingName(l.buildingId)}</span>
-                      </p>
-                    )}
-                    {l.capacity && <p className="text-slate-500 font-mono">Capacidad: {l.capacity} alumnos</p>}
-                    {l.devices !== undefined && l.devices > 0 && <p className="text-slate-500 font-mono">Recursos/Equipos: {l.devices}</p>}
-                    {stats.assignedSections.length > 0 && (
-                      <p className="text-[11px] text-slate-400 pt-1 font-medium">
-                        {stats.assignedSections.length} sección(es) · {stats.totalEnrolled} alumno(s)
-                      </p>
-                    )}
-                  </div>
+                <div className="absolute top-2.5 left-2.5">
+                  <button onClick={(e) => { e.stopPropagation(); toggleSelect(l.id); }}
+                    className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.has(l.id) ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'}`}>
+                    {selected.has(l.id) && <Check className="w-2.5 h-2.5" />}
+                  </button>
                 </div>
-
-                <div className="space-y-4">
+                <div className="pt-1 pl-5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                      <TypeIcon className="w-4 h-4 text-accent" />
+                    </div>
+                    <h3 className="font-semibold text-slate-900">{l.name}</h3>
+                  </div>
+                  <div className="mt-2 space-y-1">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${TYPE_BADGE_CLASSES[type]}`}>
+                      {ROOM_TYPE_LABELS[type]}
+                    </span>
+                    {l.buildingId && (
+                      <p className="text-xs flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getBuildingColor(l.buildingId) }} />
+                        {getBuildingName(l.buildingId)}
+                      </p>
+                    )}
+                    {l.capacity && <p className="text-xs text-slate-500">Capacidad: {l.capacity}</p>}
+                    {type === 'computo' && l.devices && <p className="text-xs text-slate-500">Dispositivos: {l.devices}</p>}
+                    {stats.assignedSections.length > 0 && (
+                      <p className="text-[10px] text-slate-400 pt-1">
+                        {stats.assignedSections.length} secci├│n(es) ┬À {stats.totalEnrolled} alumno(s)
+                      </p>
+                    )}
+                  </div>
                   {stats.assignedSections.length > 0 && (
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[10px] font-bold text-slate-400">
-                        <span>Ocupación de Aula</span>
-                        <span className="font-mono">{stats.usagePct}%</span>
-                      </div>
-                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="mt-2 flex items-center gap-2 text-[10px] text-slate-400">
+                      <span className="w-14 shrink-0">Uso:</span>
+                      <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                         <motion.div initial={{ width: 0 }} animate={{ width: `${stats.usagePct}%` }}
-                          className="h-full rounded-full bg-primary" />
+                          className="h-full rounded-full" style={{ backgroundColor: '#6366F1' }} />
                       </div>
+                      <span className="w-8 text-right font-mono">{stats.usagePct}%</span>
                     </div>
                   )}
-
-                  <div className="flex gap-2 pt-4 border-t border-slate-100 shrink-0">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleEdit(l); }}
-                      className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 transition-colors cursor-pointer"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" /> Editar
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDelete(l.id); }}
-                      className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/50 transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" /> Eliminar
-                    </button>
-                  </div>
+                </div>
+                <div className="flex justify-end gap-1 mt-2 pt-2 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={(e) => { e.stopPropagation(); handleEdit(l); }} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-slate-100 rounded-lg text-xs font-medium text-slate-600"><Edit2 className="w-3.5 h-3.5" /> Editar</button>
+                  <button onClick={(e) => { e.stopPropagation(); handleDelete(l.id); }} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-red-50 rounded-lg text-xs font-medium text-red-600"><Trash2 className="w-3.5 h-3.5" /> Eliminar</button>
                 </div>
               </motion.div>
             );
@@ -400,22 +378,22 @@ export default function ComputerLabsManager() {
               <tr>
                 <th className="w-8 px-3 py-2">
                   <button onClick={toggleSelectAll}
-                    className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.size === labs.length && labs.length > 0 ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'}`}>
-                    {selected.size === labs.length && labs.length > 0 && <Check className="w-2.5 h-2.5" />}
+                    className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.size === filteredLabs.length && filteredLabs.length > 0 ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'}`}>
+                    {selected.size === filteredLabs.length && filteredLabs.length > 0 && <Check className="w-2.5 h-2.5" />}
                   </button>
                 </th>
                 <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Nombre</th>
                 <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Tipo</th>
                 <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Edificio</th>
                 <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Capacidad</th>
-                <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Equipos</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Dispositivos</th>
                 <th className="text-right px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {labs.map((l, i) => (
+              {filteredLabs.map((l, i) => (
                 <motion.tr key={l.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}
-                  className={`table-row cursor-pointer ${selected.has(l.id) ? 'bg-primary/5' : ''} ${selectedLabId === l.id ? 'bg-slate-50' : ''}`}
+                  className={`table-row cursor-pointer ${selected.has(l.id) ? 'bg-primary/5' : ''} ${selectedLabId === l.id ? 'bg-indigo-50' : ''}`}
                   onClick={() => setSelectedLabId(selectedLabId === l.id ? null : l.id)}>
                   <td className="px-3 py-2">
                     <button onClick={(e) => { e.stopPropagation(); toggleSelect(l.id); }}
@@ -424,10 +402,19 @@ export default function ComputerLabsManager() {
                     </button>
                   </td>
                   <td className="px-3 py-2 text-sm font-medium text-slate-900">{l.name}</td>
-                  <td className="px-3 py-2 text-xs font-semibold text-slate-500">{LAB_TYPE_LABELS[l.type || 'computo'] || LAB_TYPE_LABELS.otros}</td>
-                  <td className="px-3 py-2 text-sm text-slate-500">{l.buildingId ? getBuildingName(l.buildingId) : '—'}</td>
-                  <td className="px-3 py-2 text-sm text-slate-500">{l.capacity || '—'}</td>
-                  <td className="px-3 py-2 text-sm text-slate-500">{l.devices || '—'}</td>
+                  <td className="px-3 py-2">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${TYPE_BADGE_CLASSES[labType(l)]}`}>
+                      {ROOM_TYPE_LABELS[labType(l)]}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2">{l.buildingId ? (
+                    <span className="flex items-center gap-1.5 text-sm">
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getBuildingColor(l.buildingId) }} />
+                      {getBuildingName(l.buildingId)}
+                    </span>
+                  ) : 'ÔÇö'}</td>
+                  <td className="px-3 py-2 text-sm text-slate-500">{l.capacity || 'ÔÇö'}</td>
+                  <td className="px-3 py-2 text-sm text-slate-500">{l.devices || 'ÔÇö'}</td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex justify-end gap-1">
                       <button onClick={(e) => { e.stopPropagation(); handleEdit(l); }} className="p-1.5 hover:bg-slate-100 rounded-lg"><Edit2 className="w-4 h-4 text-slate-500" /></button>
@@ -442,10 +429,10 @@ export default function ComputerLabsManager() {
       )}
 
       {/* Empty state */}
-      {labs.length === 0 && (
+      {filteredLabs.length === 0 && (
         <div className="text-center py-12 text-slate-400">
           <Monitor className="w-10 h-10 mx-auto mb-2 opacity-50" />
-          <p className="text-sm">No se encontraron aulas especializadas registradas</p>
+          <p className="text-sm">{labs.length === 0 ? 'No se encontraron espacios' : 'No hay espacios de este tipo'}</p>
         </div>
       )}
 
@@ -454,42 +441,49 @@ export default function ComputerLabsManager() {
         const l = labs.find(x => x.id === selectedLabId);
         if (!l) return null;
         const stats = computeStats(l);
-        const typeLabel = LAB_TYPE_LABELS[l.type || 'computo'] || LAB_TYPE_LABELS.otros;
-
+        const TypeIcon = TYPE_ICONS[labType(l)];
         return (
-          <div className="mt-6 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm animate-fadeIn">
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+          <div className="mt-6">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 text-slate-700 flex items-center justify-center shadow-xs">
-                  {React.createElement(LAB_TYPE_ICONS[l.type || 'computo'] || DoorOpen, { className: 'w-5 h-5 text-slate-600' })}
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
+                  <TypeIcon className="w-5 h-5 text-indigo-600" />
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-slate-900">{l.name}</h3>
-                  <p className="text-xs text-slate-400 uppercase tracking-wider font-bold">{typeLabel} {l.buildingId && `· ${getBuildingName(l.buildingId)}`}</p>
+                  <p className="text-sm text-slate-500 flex items-center gap-1">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${TYPE_BADGE_CLASSES[labType(l)]}`}>
+                      {ROOM_TYPE_LABELS[labType(l)]}
+                    </span>
+                    {l.buildingId && (
+                      <><span className="ml-1">┬À</span> <MapPin className="w-3.5 h-3.5" /> {getBuildingName(l.buildingId)}</>  
+                    )}
+                    {labType(l) === 'computo' && (<><span className="ml-1">┬À</span> {l.devices || 0} dispositivo(s)</>)}
+                  </p>
                 </div>
               </div>
-              <button onClick={() => setSelectedLabId(null)} className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1 cursor-pointer">
-                <X className="w-3.5 h-3.5" /> Cerrar desglose
+              <button onClick={() => setSelectedLabId(null)} className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1">
+                <X className="w-3.5 h-3.5" /> Cerrar
               </button>
             </div>
 
             {/* Summary cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-5 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
               {[
-                { icon: Layers, label: 'Secciones Asignadas', value: stats.assignedSections.length, sub: stats.assignedSections.length === 1 ? 'sección asignada' : 'secciones asignadas' },
-                { icon: Users, label: 'Capacidad Aulas', value: stats.totalCapacity, sub: 'cupos en secciones' },
+                { icon: Layers, label: 'Secciones Asignadas', value: stats.assignedSections.length, sub: stats.assignedSections.length === 1 ? 'asignada' : 'asignadas' },
+                { icon: Users, label: 'Capacidad Total Aulas', value: stats.totalCapacity, sub: 'cupos en secciones asignadas' },
                 { icon: GraduationCap, label: 'Alumnos Matriculados', value: stats.totalEnrolled, sub: `de ${stats.totalCapacity} cupos` },
-                { icon: Cpu, label: 'Recursos Especiales', value: l.devices || 0, sub: 'equipos disponibles' }
+                ...(labType(l) === 'computo' ? [{ icon: Cpu, label: 'Dispositivos', value: l.devices || 0, sub: 'equipos disponibles' }] : [])
               ].map(({ icon: Icon, label, value, sub }) => (
-                <div key={label} className="bg-slate-50 border border-slate-100 rounded-2xl p-5 shadow-2xs">
+                <div key={label} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-primary/10">
-                      <Icon className="w-5 h-5 text-primary" />
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-indigo-50">
+                      <Icon className="w-5 h-5 text-indigo-500" />
                     </div>
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{label}</span>
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{label}</span>
                   </div>
-                  <p className="text-3xl font-black text-slate-900 font-mono">{value}</p>
-                  <p className="text-xs text-slate-400 mt-1 font-medium">{sub}</p>
+                  <p className="text-4xl font-black text-slate-900 font-mono">{value}</p>
+                  <p className="text-sm text-slate-400 mt-1">{sub}</p>
                 </div>
               ))}
             </div>
@@ -498,30 +492,30 @@ export default function ComputerLabsManager() {
             {stats.assignedSections.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-4">
-                  <BarChart3 className="w-5 h-5 text-primary" />
-                  <h4 className="text-xs font-bold text-slate-700 uppercase tracking-widest">Distribución de Secciones por Grado</h4>
+                  <BarChart3 className="w-5 h-5 text-indigo-500" />
+                  <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Secciones Asignadas por Grado</h4>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {stats.sectionsByGrade.map(sg => {
                     const pct = sg.capacity > 0 ? Math.round((sg.enrolled / sg.capacity) * 100) : 0;
                     return (
-                      <div key={sg.gradeName} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs hover:scale-[1.01] transition-all">
+                      <div key={sg.gradeName} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-bold text-slate-900">{sg.gradeName}</span>
-                            <span className="text-xs bg-slate-50 text-slate-500 font-semibold px-2 py-0.5 rounded-md border border-slate-150">{sg.sections.length} secc{(sg.sections.length > 1 ? 'iones' : 'ión')}</span>
+                            <span className="text-xs bg-indigo-50 text-indigo-600 font-medium px-2 py-0.5 rounded-full">{sg.sections.length} secc{(sg.sections.length > 1 ? 'iones' : 'i├│n')}</span>
                           </div>
                           <div className="flex items-baseline gap-1.5 font-mono">
-                            <span className="text-xl font-bold text-slate-900">{sg.enrolled}</span>
-                            <span className="text-xs text-slate-400">/ {sg.capacity}</span>
+                            <span className="text-2xl font-black text-slate-900">{sg.enrolled}</span>
+                            <span className="text-sm text-slate-400">/ {sg.capacity}</span>
                           </div>
                         </div>
-                        <div className="relative h-2.5 bg-slate-100 rounded-full overflow-hidden mb-3">
+                        <div className="relative h-4 bg-slate-100 rounded-full overflow-hidden mb-3">
                           <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${pct}%` }}
                             transition={{ duration: 0.8, ease: 'easeOut' }}
-                            className="absolute inset-y-0 left-0 rounded-full bg-primary"
+                            className="absolute inset-y-0 left-0 rounded-full bg-indigo-500"
                           />
                         </div>
                         <div className="flex flex-wrap gap-1.5">
@@ -529,10 +523,10 @@ export default function ComputerLabsManager() {
                             const enrolled = students.filter(st => st.sectionId === sec.id && st.gradeId === sec.gradeId).length;
                             return (
                               <span key={sec.id} className={`inline-flex items-center gap-1.5 text-xs font-mono px-2.5 py-1 rounded-lg border ${
-                                enrolled > 0 ? 'bg-white border-slate-200 text-slate-700 shadow-2xs' : 'bg-slate-50 border-dashed border-slate-200 text-slate-400'
+                                enrolled > 0 ? 'bg-white border-slate-200 text-slate-700' : 'bg-slate-50 border-dashed border-slate-200 text-slate-400'
                               }`}>
-                                <span className="font-bold">Sección {sec.name}</span>
-                                <span className="font-extrabold text-primary">{enrolled}</span>
+                                <span className="font-semibold">Secci├│n {sec.name}</span>
+                                <span className="font-bold text-indigo-600">{enrolled}</span>
                                 <span className="text-slate-300">/</span>
                                 <span className="text-slate-400">{sec.capacity || '?'}</span>
                               </span>
@@ -547,10 +541,10 @@ export default function ComputerLabsManager() {
             )}
 
             {stats.assignedSections.length === 0 && (
-              <div className="text-center py-12 border border-dashed border-slate-200 rounded-2xl bg-slate-50">
-                <Monitor className="w-10 h-10 mx-auto mb-2 opacity-30 text-slate-400" />
-                <p className="text-xs font-bold text-slate-500 font-medium">No hay secciones asignadas a esta aula especializada</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">Asigna esta aula especializada desde el módulo de Secciones</p>
+              <div className="text-center py-16 text-slate-400 bg-white border border-slate-200 rounded-xl">
+                <Monitor className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p className="text-base font-medium">No hay secciones asignadas a este espacio</p>
+                <p className="text-sm mt-1">Asigna este espacio desde el m├│dulo de Secciones</p>
               </div>
             )}
           </div>
@@ -558,10 +552,10 @@ export default function ComputerLabsManager() {
       })()}
 
       {!selectedLabId && labs.length > 0 && (
-        <div className="mt-6 text-center py-10 border border-dashed border-slate-200 rounded-2xl bg-white shadow-2xs">
-          <BarChart3 className="w-10 h-10 mx-auto mb-2 opacity-40 text-slate-400" />
-          <p className="text-xs font-bold text-slate-500">Selecciona un aula especializada para ver sus estadísticas</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Haz clic en cualquier tarjeta de aula arriba</p>
+        <div className="mt-6 text-center py-12 text-slate-400 bg-white border border-dashed border-slate-200 rounded-xl">
+          <BarChart3 className="w-10 h-10 mx-auto mb-2 opacity-40" />
+          <p className="text-sm font-medium">Selecciona un espacio para ver sus estad├¡sticas</p>
+          <p className="text-xs mt-1">Haz clic en cualquier espacio de arriba</p>
         </div>
       )}
     </div>
