@@ -789,7 +789,6 @@ export default function SchoolYearManager() {
                   </div>
                 </div>
               </div>
-            </div>
 
             {/* Sincronizador Interactivo de Firebase */}
             <div className="bg-white border border-slate-200 p-5 rounded-xl space-y-4 shadow-2xs">
@@ -848,8 +847,9 @@ export default function SchoolYearManager() {
                 </button>
               </form>
             </div>
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
       </div>
     </div>
   );
