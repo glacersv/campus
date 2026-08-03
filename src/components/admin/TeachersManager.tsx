@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GraduationCap, Plus, Edit2, Trash2, Save, X, Search, Phone, Clock, Award, BookOpen, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
-import { getAllTeachers, createTeacher, updateTeacher, deleteTeacher, getAllGrades, getAllSections, getAllSubjects } from '../../lib/firestore';
+import { getAllTeachers, createTeacher, updateTeacher, deleteTeacher, getAllGrades, getAllSections, getAllSubjects, getCurrentSchoolYear } from '../../lib/firestore';
 import { Teacher, Grade, Section, Subject } from '../../types';
 
 export default function TeachersManager() {
@@ -10,6 +10,7 @@ export default function TeachersManager() {
   const [grades, setGrades] = useState<Grade[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -25,8 +26,18 @@ export default function TeachersManager() {
 
   const loadData = async () => {
     try {
-      const [t, g, s, sub] = await Promise.all([getAllTeachers(), getAllGrades(), getAllSections(), getAllSubjects()]);
-      setTeachers(t); setGrades(g); setSections(s); setSubjects(sub);
+      const [t, g, s, sub, cy] = await Promise.all([
+        getAllTeachers(),
+        getAllGrades(),
+        getAllSections(),
+        getAllSubjects(),
+        getCurrentSchoolYear()
+      ]);
+      setTeachers(t);
+      setGrades(g);
+      setSections(s);
+      setSubjects(sub);
+      if (cy) setCurrentYear(cy);
     } finally { setLoading(false); }
   };
 
@@ -115,7 +126,12 @@ export default function TeachersManager() {
     return matchSearch && matchStatus;
   });
 
-  const filteredSections = sections.filter(s => s.gradeId === form.guideGradeId);
+  const hasYearSections = sections.some(s => s.schoolYear === currentYear);
+  const activeSections = sections.filter(s =>
+    hasYearSections ? s.schoolYear === currentYear : !s.schoolYear
+  );
+
+  const filteredSections = activeSections.filter(s => s.gradeId === form.guideGradeId);
 
   if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 

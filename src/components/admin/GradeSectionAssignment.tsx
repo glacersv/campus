@@ -18,7 +18,8 @@ import {
   getAllGrades,
   getAllSections,
   getAllBuildings,
-  updateSection
+  updateSection,
+  getCurrentSchoolYear
 } from '../../lib/firestore';
 import { Grade, Section, Building as BuildingType, Cycle, CYCLE_NAMES } from '../../types';
 
@@ -53,14 +54,22 @@ export default function GradeSectionAssignment() {
 
   const loadData = async () => {
     try {
-      const [g, s, b] = await Promise.all([
+      const [g, s, b, cy] = await Promise.all([
         getAllGrades(),
         getAllSections(),
-        getAllBuildings()
+        getAllBuildings(),
+        getCurrentSchoolYear()
       ]);
-      setGrades(g); setSections(s); setBuildings(b);
+      const activeYear = cy || new Date().getFullYear();
+      const hasYearSections = s.some(sec => sec.schoolYear === activeYear);
+      const filteredSecs = s.filter(sec =>
+        hasYearSections ? sec.schoolYear === activeYear : !sec.schoolYear
+      );
+      setGrades(g);
+      setSections(filteredSecs);
+      setBuildings(b);
       const init: Record<string, string> = {};
-      s.forEach(sec => { if (sec.buildingId) init[sec.id] = sec.buildingId; });
+      filteredSecs.forEach(sec => { if (sec.buildingId) init[sec.id] = sec.buildingId; });
       setAssignments(init);
     } finally { setLoading(false); }
   };

@@ -131,7 +131,12 @@ export default function StudentsManager() {
   const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
   const paginatedStudents = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  const filteredSections = sections.filter(s => s.gradeId === form.gradeId);
+  const hasYearSections = sections.some(s => s.schoolYear === currentYear);
+  const activeSections = sections.filter(s =>
+    hasYearSections ? s.schoolYear === currentYear : !s.schoolYear
+  );
+
+  const filteredSections = activeSections.filter(s => s.gradeId === form.gradeId);
 
   if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
@@ -181,7 +186,7 @@ export default function StudentsManager() {
               className={`filter-pill ${filterSection === 'all' ? 'active' : ''}`}>
               Todas
             </button>
-            {sections.filter(s => s.gradeId === filterGrade).map(section => (
+            {activeSections.filter(s => s.gradeId === filterGrade).map(section => (
               <button key={section.id} onClick={() => setFilterSection(section.id)} disabled={filterGrade === 'all'}
                 className={`filter-pill ${filterSection === section.id ? 'active' : ''}`}>
                 {section.name}

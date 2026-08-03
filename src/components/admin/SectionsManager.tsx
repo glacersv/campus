@@ -129,7 +129,10 @@ export default function SectionsManager() {
     return upper;
   };
 
-  const activeSections = sections.filter(s => s.schoolYear === currentYear || !s.schoolYear);
+  const hasYearSections = sections.some(s => s.schoolYear === currentYear);
+  const activeSections = sections.filter(s =>
+    hasYearSections ? s.schoolYear === currentYear : !s.schoolYear
+  );
 
   const letterGroups = activeSections.reduce<Record<string, Section[]>>((acc, s) => {
     const letter = getSectionLetter(s.name);
