@@ -16,7 +16,8 @@ import {
   Menu,
   Users,
   Settings,
-  Handshake
+  Handshake,
+  Calendar
 } from 'lucide-react';
 import { useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -72,6 +73,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       { id: 'roles', label: 'Roles y Permisos', icon: Shield },
     ]},
     { title: 'SISTEMA', items: [
+      { id: 'school-year', label: 'Iniciar Año', icon: Calendar },
       { id: 'baccalaureate-types', label: 'Tipos de Bachillerato', icon: Award },
       { id: 'coordinaciones-config', label: 'Config. Coordinaciones', icon: Settings },
     ]},

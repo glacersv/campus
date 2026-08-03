@@ -28,6 +28,7 @@ import {
   validateRoleConfig,
   validate
 } from './validation';
+import { getNextGradeId, distributeStudents, isActiveStudent, uniqueNames } from './migration';
 
 // ==================== COLLECTIONS ====================
 
@@ -598,7 +599,12 @@ export async function fixAllStudentHistories(): Promise<void> {
   await Promise.all(updates);
 }
 
-export async function startSchoolYear(year: number): Promise<void> {
+export interface YearSectionConfig {
+  gradeId: string;
+  sectionNames: string[];
+}
+
+export async function startSchoolYear(year: number, sectionConfig?: YearSectionConfig[]): Promise<void> {
   await logActivity('start_school_year', { year });
   const yearStatusRef = doc(db, SCHOOL_YEAR_COLLECTION, 'current');
   const yearStatusSnap = await getDoc(yearStatusRef);
@@ -611,96 +617,121 @@ export async function startSchoolYear(year: number): Promise<void> {
   const gradesSnap = await getDocs(collection(db, GRADES_COLLECTION));
   const sectionsSnap = await getDocs(collection(db, SECTIONS_COLLECTION));
   const studentsSnap = await getDocs(collection(db, STUDENTS_COLLECTION));
-  const studentUpdates: Promise<void>[] = [];
+  const grades = gradesSnap.docs.map(d => ({ id: d.id, ...d.data() } as Grade));
+  const sections = sectionsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Section));
+  const baccalaureateTypes = await getAllBaccalaureateTypes();
 
-  // 1. Clona/Crea secciones específicas para el nuevo año escolar
-  // Las secciones anteriores quedan INTACTAS con su schoolYear original, garantizando la inmutabilidad histórica.
-  const clonedSections: Record<string, string> = {}; // Mapea { idAnterior: nuevoId }
+  // Config de secciones por grado: si no se provee, conserva las letras del año anterior
+  const configByGrade = new Map<string, string[]>();
+  if (sectionConfig && sectionConfig.length > 0) {
+    sectionConfig.forEach(c => configByGrade.set(c.gradeId, c.sectionNames));
+  } else {
+    grades.forEach(g => {
+      const prevSections = sections.filter(s => s.gradeId === g.id && (s.schoolYear === previousYear || !s.schoolYear));
+      const names = uniqueNames(prevSections);
+      if (names.length > 0) configByGrade.set(g.id, names);
+    });
+  }
+
+  // 1. Crea las secciones del nuevo año según la configuración
   const sectionPromises: Promise<void>[] = [];
-
-  sectionsSnap.docs.forEach((d) => {
-    const secData = d.data() as Section;
-    const isSectionActiveAndMatchesYear = secData.status !== 'INACTIVO' && (secData.schoolYear === previousYear || !secData.schoolYear);
-
-    if (isSectionActiveAndMatchesYear) {
-      const newSecId = `${year}-${secData.gradeId}-${secData.name.trim().toLowerCase()}`;
-      clonedSections[d.id] = newSecId;
-
+  configByGrade.forEach((names, gradeId) => {
+    names.forEach(name => {
+      const cleanName = name.trim().toUpperCase();
+      const newSecId = `${year}-${gradeId}-${cleanName.toLowerCase()}`;
+      const prevSection = sections.find(s =>
+        s.gradeId === gradeId &&
+        s.name.trim().toUpperCase() === cleanName &&
+        (s.schoolYear === previousYear || !s.schoolYear)
+      );
       const newSecRef = doc(db, SECTIONS_COLLECTION, newSecId);
       sectionPromises.push(
         setDoc(newSecRef, {
-          ...secData,
           id: newSecId,
+          name: cleanName,
+          gradeId,
           schoolYear: year,
           status: 'ACTIVO',
+          ...(prevSection?.capacity ? { capacity: prevSection.capacity } : {}),
+          ...(prevSection?.buildingId ? { buildingId: prevSection.buildingId } : {}),
+          ...(prevSection?.computerLabId ? { computerLabId: prevSection.computerLabId } : {}),
           createdAt: serverTimestamp()
         })
       );
-    }
+    });
   });
   await Promise.all(sectionPromises);
 
-  // 2. Promueve a los alumnos y actualiza su historial de matrícula (enrollmentHistory)
-  studentsSnap.docs.forEach((d) => {
-    const data = d.data() as Student;
-    const ref = d.ref;
-    const history = data.enrollmentHistory || [];
+  // 2. Promueve a los alumnos y actualiza su historial
+  const students = studentsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Student));
+  const activeStudents = students.filter(s => isActiveStudent(s));
 
-    if (data.status === 'ACTIVO') {
-      const lastYear = history.length > 0 ? history[history.length - 1].year : previousYear;
-      const updatedHistory = history.map(record =>
-        record.year === lastYear ? { ...record, status: 'FINALIZADO' as const } : record
-      );
+  // Agrupa por grado de destino para distribuir de forma consistente con la vista previa
+  const destinationGroups: Record<string, Student[]> = {};
+  activeStudents.forEach(s => {
+    const dest = getNextGradeId(s.gradeId, grades, baccalaureateTypes);
+    if (!dest) return;
+    (destinationGroups[dest] = destinationGroups[dest] || []).push(s);
+  });
 
-      const numStr = String(data.gradeId).replace(/[^0-9]/g, '');
-      const suffix = String(data.gradeId).replace(/[0-9]/g, '');
-      const num = parseInt(numStr, 10);
-      const nextNum = Number.isNaN(num) ? num : num + 1;
-      const nextGradeId = !Number.isNaN(num) ? `${nextNum}${suffix}` : data.gradeId;
+  const assignedSection: Record<string, string> = {};
+  Object.entries(destinationGroups).forEach(([dest, group]) => {
+    const names = configByGrade.get(dest) || [];
+    const dist = distributeStudents(group, names);
+    group.forEach(s => {
+      const letter = dist.assigned[s.id];
+      assignedSection[s.id] = letter ? `${year}-${dest}-${letter.toLowerCase()}` : '';
+    });
+  });
 
-      // Obtiene el ID de la nueva sección correspondiente al nuevo año escolar
-      let assignedSectionId = '';
-      if (data.sectionId) {
-        // Si fue clonada, usamos el nuevo ID clonado.
-        if (clonedSections[data.sectionId]) {
-          assignedSectionId = clonedSections[data.sectionId];
-        } else {
-          // Si no está en la caché de clonación, inferimos el ID por letra/patrón
-          const prevSecDoc = sectionsSnap.docs.find(sd => sd.id === data.sectionId);
-          const secName = prevSecDoc ? (prevSecDoc.data() as Section).name : 'A';
-          assignedSectionId = `${year}-${nextGradeId}-${secName.toLowerCase()}`;
-        }
-      }
+  const studentUpdates: Promise<void>[] = [];
+  activeStudents.forEach(s => {
+    const ref = doc(db, STUDENTS_COLLECTION, s.id);
+    const history = s.enrollmentHistory || [];
+    const dest = getNextGradeId(s.gradeId, grades, baccalaureateTypes);
+    const updatedHistory = history.map(record =>
+      record.year === previousYear ? { ...record, status: 'FINALIZADO' as const } : record
+    );
 
-      const newRecord = {
-        year,
-        gradeId: nextGradeId,
-        sectionId: assignedSectionId,
-        status: 'EN_CURSO' as const
-      };
-
-      const fullHistory = [...updatedHistory, newRecord];
-      if (fullHistory.filter(r => r.year === year).length > 1) return;
-
+    // Graduación: el alumno egresa y no continúa al siguiente grado
+    if (!dest) {
       studentUpdates.push(
         updateDoc(ref, {
-          enrollmentHistory: fullHistory,
-          gradeId: nextGradeId,
-          sectionId: assignedSectionId,
-          status: 'ACTIVO',
+          enrollmentHistory: updatedHistory,
+          status: 'GRADUADO',
           updatedAt: serverTimestamp()
         })
       );
+      return;
     }
-  });
 
+    const newRecord = {
+      year,
+      gradeId: dest,
+      sectionId: assignedSection[s.id] || `${year}-${dest}-a`,
+      status: 'EN_CURSO' as const
+    };
+
+    const fullHistory = [...updatedHistory, newRecord];
+    if (fullHistory.filter(r => r.year === year).length > 1) return;
+
+    studentUpdates.push(
+      updateDoc(ref, {
+        enrollmentHistory: fullHistory,
+        gradeId: dest,
+        sectionId: newRecord.sectionId,
+        status: 'ACTIVO',
+        updatedAt: serverTimestamp()
+      })
+    );
+  });
   await Promise.all(studentUpdates);
 
   // 3. Actualiza el año lectivo de los grados
   const gradeUpdates = gradesSnap.docs.map(d => updateDoc(d.ref, { schoolYear: year, status: 'ACTIVO', updatedAt: serverTimestamp() }));
   await Promise.all(gradeUpdates);
 
-  // Guardar el estado de inicio de año
+  // 4. Guarda el estado de inicio de año
   await setDoc(yearStatusRef, { year, startedAt: serverTimestamp() });
 }
 
