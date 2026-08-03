@@ -45,7 +45,16 @@ export default function StudentsManager() {
   };
 
   const getGradeName = (id: string) => grades.find(g => g.id === id)?.name || id;
-  const getSectionName = (id: string) => sections.find(s => s.id === id)?.name || id;
+  const getSectionName = (id: string) => {
+    const activeSection = sections.find(s => s.id === id);
+    if (activeSection) return activeSection.name;
+    if (id && id.includes('-')) {
+      const parts = id.split('-');
+      const lastPart = parts[parts.length - 1] || 'A';
+      return lastPart.replace(/[0-9]/g, '').replace('g', '').replace('t', '').toUpperCase();
+    }
+    return id || '—';
+  };
 
   const resetForm = () => {
     setForm({ firstName: '', lastName: '', carnet: '', gender: 'M', gradeId: '', sectionId: '', enrollmentYear: new Date().getFullYear() });
