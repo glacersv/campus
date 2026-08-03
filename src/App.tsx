@@ -15,6 +15,7 @@ import BuildingsManager from './components/admin/BuildingsManager';
 import GradeSectionAssignment from './components/admin/GradeSectionAssignment';
 import RolesManager from './components/admin/RolesManager';
 import UsersManager from './components/admin/UsersManager';
+import SchoolYearManager from './components/admin/SchoolYearManager';
 import CoordinacionesConfig from './components/admin/CoordinacionesConfig';
 import ConvivenciaPanel from './components/admin/ConvivenciaPanel';
 import RoleLayout from './components/shared/RoleLayout';
@@ -120,6 +121,7 @@ function AppContent() {
           <Route path="users" element={<UsersManager />} />
           <Route path="coordinaciones-config" element={<CoordinacionesConfig />} />
           <Route path="convivencia" element={<ConvivenciaPanel />} />
+          <Route path="school-year" element={<SchoolYearManager />} />
         </Route>
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>

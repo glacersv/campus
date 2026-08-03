@@ -12,14 +12,11 @@ import {
   UserCheck,
   BookMarked,
   Lock,
-  Play,
-  RotateCcw,
   DoorOpen,
   TrendingUp,
   ShieldAlert
 } from 'lucide-react';
-import { getAllTeachers, getAllGrades, getAllStudents, getAllSections, getAllSubjects, startSchoolYear, resetTestData, getCurrentSchoolYear, fixAllStudentHistories } from '../../lib/firestore';
-import { toast } from 'sonner';
+import { getAllTeachers, getAllGrades, getAllStudents, getAllSections, getAllSubjects } from '../../lib/firestore';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
 import ProjectsModule from '../proyectos/ProjectsModule';
 
@@ -58,18 +55,14 @@ const modules = [
 export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats>({ teachers: 0, grades: 0, sections: 0, students: 0, subjects: 0 });
   const [loading, setLoading] = useState(true);
-  const [showYearModal, setShowYearModal] = useState(false);
-  const [newYear, setNewYear] = useState(new Date().getFullYear());
-  const [currentYear, setCurrentYear] = useState<number | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const [teachers, grades, sections, students, subjects, year] = await Promise.all([
-          getAllTeachers(), getAllGrades(), getAllSections(), getAllStudents(), getAllSubjects(), getCurrentSchoolYear()
+        const [teachers, grades, sections, students, subjects] = await Promise.all([
+          getAllTeachers(), getAllGrades(), getAllSections(), getAllStudents(), getAllSubjects()
         ]);
         setStats({ teachers: teachers.length, grades: grades.length, sections: sections.length, students: students.length, subjects: subjects.length });
-        setCurrentYear(year);
       } finally { setLoading(false); }
     })();
   }, []);
@@ -81,42 +74,6 @@ export default function AdminDashboard() {
     { label: 'Alumnos', value: stats.students, icon: UserCheck, color: 'text-slate-700', bgDark: false },
     { label: 'Materias', value: stats.subjects, icon: BookMarked, color: 'text-slate-700', bgDark: false },
   ];
-
-  const handleStartSchoolYear = async () => {
-    if (!confirm(`¿Iniciar año escolar ${newYear}? Todos los grados y secciones se marcarán como ACTIVOS para este año.`)) return;
-    try {
-      await startSchoolYear(newYear);
-      toast.success(`Año escolar ${newYear} iniciado correctamente`);
-      setCurrentYear(newYear);
-      setShowYearModal(false);
-    } catch (err) {
-      toast.error('Error al iniciar año escolar');
-      console.error(err);
-    }
-  };
-
-  const handleResetTests = async () => {
-    if (!confirm('¿Reset de pruebas? Se reiniciará el año escolar actual y se limpiarán datos de prueba.')) return;
-    try {
-      await resetTestData();
-      toast.success('Reset de pruebas realizado');
-      setCurrentYear(null);
-    } catch (err) {
-      toast.error('Error en reset de pruebas');
-      console.error(err);
-    }
-  };
-
-  const handleFixHistories = async () => {
-    if (!confirm('¿Corregir historial de TODOS los alumnos? Se recalculará desde el año de ingreso según el carnet.')) return;
-    try {
-      await fixAllStudentHistories();
-      toast.success('Historial corregido correctamente');
-    } catch (err) {
-      toast.error('Error al corregir historial');
-      console.error(err);
-    }
-  };
 
   if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
@@ -238,52 +195,6 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
-
-      {/* School Year */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-primary" />
-              Año Escolar
-            </h2>
-            <p className="text-xs text-slate-500 mt-1">Gestiona el año escolar y activa/desactiva grados y secciones</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={handleResetTests} className="btn-secondary rounded-full">
-              <RotateCcw className="w-4 h-4" /> Reset pruebas
-            </button>
-            <button onClick={handleFixHistories} className="btn-secondary rounded-full">
-              <BookOpen className="w-4 h-4" /> Corregir historial
-            </button>
-            <button onClick={() => { setNewYear(new Date().getFullYear()); setShowYearModal(true); }} className="btn-primary rounded-full">
-              <Play className="w-4 h-4" /> {currentYear ? `Continuar ${currentYear}` : 'Iniciar Año Escolar'}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {showYearModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-xl">
-            <h3 className="font-bold text-slate-900 mb-4">Iniciar Año Escolar</h3>
-            <p className="text-sm text-slate-500 mb-4">Todos los grados y secciones se marcarán como ACTIVOS para el año seleccionado.</p>
-            <input
-              type="number"
-              value={newYear}
-              onChange={e => setNewYear(parseInt(e.target.value) || new Date().getFullYear())}
-              min={2000}
-              max={2099}
-              className="input w-full mb-4"
-              autoFocus
-            />
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setShowYearModal(false)} className="btn-secondary">Cancelar</button>
-              <button onClick={handleStartSchoolYear} className="btn-primary"><Play className="w-4 h-4" /> Iniciar</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Modules */}
       <div>

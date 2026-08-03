@@ -136,7 +136,11 @@ export default function StudentsManager() {
     hasYearSections ? s.schoolYear === currentYear : !s.schoolYear
   );
 
-  const filteredSections = activeSections.filter(s => s.gradeId === form.gradeId);
+  const uniqueByName = (list: Section[]) => list.filter(
+    (s, i, arr) => arr.findIndex(x => x.name.trim().toUpperCase() === s.name.trim().toUpperCase()) === i
+  );
+
+  const filteredSections = uniqueByName(activeSections.filter(s => s.gradeId === form.gradeId));
 
   if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
@@ -186,7 +190,7 @@ export default function StudentsManager() {
               className={`filter-pill ${filterSection === 'all' ? 'active' : ''}`}>
               Todas
             </button>
-            {activeSections.filter(s => s.gradeId === filterGrade).map(section => (
+            {uniqueByName(activeSections.filter(s => s.gradeId === filterGrade)).map(section => (
               <button key={section.id} onClick={() => setFilterSection(section.id)} disabled={filterGrade === 'all'}
                 className={`filter-pill ${filterSection === section.id ? 'active' : ''}`}>
                 {section.name}
