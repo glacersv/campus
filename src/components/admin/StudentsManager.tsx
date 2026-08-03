@@ -123,7 +123,10 @@ export default function StudentsManager() {
   const filtered = students.filter(s => {
     const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.carnet?.toLowerCase().includes(search.toLowerCase());
     const matchGrade = filterGrade === 'all' || s.gradeId === filterGrade;
-    const matchSection = filterSection === 'all' || s.sectionId === filterSection;
+    const matchSection = filterSection === 'all' || (() => {
+      const studentSec = sections.find(sec => sec.id === s.sectionId);
+      return studentSec?.name.trim().toUpperCase() === filterSection.trim().toUpperCase();
+    })();
     return matchSearch && matchGrade && matchSection;
   });
 
@@ -190,12 +193,19 @@ export default function StudentsManager() {
               className={`filter-pill ${filterSection === 'all' ? 'active' : ''}`}>
               Todas
             </button>
-            {uniqueByName(activeSections.filter(s => s.gradeId === filterGrade)).map(section => (
-              <button key={section.id} onClick={() => setFilterSection(section.id)} disabled={filterGrade === 'all'}
-                className={`filter-pill ${filterSection === section.id ? 'active' : ''}`}>
-                {section.name}
-              </button>
-            ))}
+            {uniqueByName(activeSections.filter(s => s.gradeId === filterGrade)).map(section => {
+              const secLetter = section.name.trim().toUpperCase();
+              return (
+                <button
+                  key={section.id}
+                  onClick={() => setFilterSection(secLetter)}
+                  disabled={filterGrade === 'all'}
+                  className={`filter-pill ${filterSection === secLetter ? 'active' : ''}`}
+                >
+                  {section.name}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
