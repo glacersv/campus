@@ -30,7 +30,8 @@ import {
   deleteGrade,
   toggleGradeStatus,
   getAllSections,
-  getAllBuildings
+  getAllBuildings,
+  getCurrentSchoolYear
 } from '../../lib/firestore';
 import { Grade, Section, Building, Cycle, BaccalaureateType, CYCLE_NAMES } from '../../types';
 
@@ -89,8 +90,20 @@ export default function GradesManager() {
 
   const loadData = async () => {
     try {
-      const [g, s, b] = await Promise.all([getAllGrades(), getAllSections(), getAllBuildings()]);
-      setGrades(g); setSections(s); setBuildings(b);
+      const [g, s, b, cy] = await Promise.all([
+        getAllGrades(),
+        getAllSections(),
+        getAllBuildings(),
+        getCurrentSchoolYear()
+      ]);
+      const activeYear = cy || new Date().getFullYear();
+      const hasYearSections = s.some(sec => sec.schoolYear === activeYear);
+      const filteredSecs = s.filter(sec =>
+        hasYearSections ? sec.schoolYear === activeYear : !sec.schoolYear
+      );
+      setGrades(g);
+      setSections(filteredSecs);
+      setBuildings(b);
     } finally { setLoading(false); }
   };
 
