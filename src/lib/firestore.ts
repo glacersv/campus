@@ -563,18 +563,14 @@ export async function fixAllStudentHistories(): Promise<void> {
 
       const gradeData = gradeMap.get(gradeForYear);
 
-      // La sección para el año en curso conserva la actual; para los años anteriores usa la letra actual o la 'A' por defecto
-      let histSectionId = 'A';
-      if (year === currentYear) {
-        histSectionId = sectionId;
-      } else {
-        // Extraer la letra de la sección actual si tiene un guion (ej. "2026-10g-a" -> "a")
-        const sectionLetter = sectionId.includes('-')
-          ? sectionId.split('-').pop()?.toUpperCase() || 'A'
-          : sectionId.toUpperCase();
+      // La sección para el año en curso o anteriores usa la sección lógica correspondiente
+      // Extraer la letra de la sección actual de manera segura
+      const sectionLetter = sectionId.includes('-')
+        ? sectionId.split('-').pop()?.toUpperCase() || 'A'
+        : sectionId.toUpperCase();
+      const cleanLetter = sectionLetter.replace(/[0-9]/g, '').replace('G', '').replace('T', '').toLowerCase();
 
-        histSectionId = `${year}-${gradeForYear}-${sectionLetter.toLowerCase()}`;
-      }
+      const histSectionId = `${year}-${gradeForYear}-${cleanLetter}`;
 
       newHistory.push({
         year,

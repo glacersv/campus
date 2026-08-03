@@ -135,6 +135,164 @@ export default function SchoolYearManager() {
     }
   };
 
+  // State for interactive migration and data cleanup tool
+  const [migrationSdk, setMigrationSdk] = useState('');
+  const [migrationStatus, setMigrationStatus] = useState<string | null>(null);
+  const [migrationProgress, setMigrationProgress] = useState(0);
+  const [runningMigration, setRunningMigration] = useState(false);
+
+  const handleInteractiveMigration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!migrationSdk.trim()) {
+      toast.error('Por favor, ingresa el archivo de credenciales o Config SDK JSON válido.');
+      return;
+    }
+
+    let parsedConfig;
+    try {
+      parsedConfig = JSON.parse(migrationSdk);
+    } catch (err) {
+      toast.error('La configuración SDK ingresada no es un JSON válido.');
+      return;
+    }
+
+    if (!confirm('Esta operación borrará temporalmente la colección de alumnos del Firebase destino activo e insertará los registros correspondientes del Firebase origen ingresado. ¿Deseas continuar?')) return;
+
+    setRunningMigration(true);
+    setMigrationProgress(10);
+    setMigrationStatus('Inicializando conexión con Firebase de origen...');
+
+    try {
+      const { initializeApp: initClientApp, deleteApp, getApp } = await import('firebase/app');
+      const { getFirestore: getClientFirestore, collection: getClientCollection, getDocs: getClientDocs } = await import('firebase/firestore');
+
+      let sourceApp;
+      try {
+        sourceApp = initClientApp(parsedConfig, 'source_migration_app');
+      } catch (appErr) {
+        try {
+          sourceApp = getApp('source_migration_app');
+        } catch {
+          throw new Error('No se pudo inicializar la app origen. Verifica tu JSON SDK.');
+        }
+      }
+
+      const sourceDb = getClientFirestore(sourceApp);
+      setMigrationProgress(30);
+      setMigrationStatus('Obteniendo alumnos del Firebase de origen...');
+
+      // Buscamos la colección "alumnos" (o "students" si ya tiene el nuevo formato)
+      let oldDocsSnap;
+      try {
+        oldDocsSnap = await getClientDocs(getClientCollection(sourceDb, 'alumnos'));
+      } catch {
+        oldDocsSnap = await getClientDocs(getClientCollection(sourceDb, 'students'));
+      }
+
+      const rawAlumnos = oldDocsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setMigrationProgress(50);
+      setMigrationStatus(`Se encontraron ${rawAlumnos.length} alumnos. Limpiando colección actual en destino...`);
+
+      // Limpiar alumnos locales
+      const currentLocalStudents = await getAllStudents();
+      const { deleteStudent, createStudent } = await import('../../lib/firestore');
+
+      for (let i = 0; i < currentLocalStudents.length; i++) {
+        await deleteStudent(currentLocalStudents[i].id);
+      }
+
+      setMigrationProgress(75);
+      setMigrationStatus(`Insertando ${rawAlumnos.length} nuevos alumnos reconstruidos en destino...`);
+
+      const defaultYear = new Date().getFullYear();
+      let insertedCount = 0;
+
+      for (let i = 0; i < rawAlumnos.length; i++) {
+        const a: any = rawAlumnos[i];
+
+        // Mapear campos desde el formato antiguo o conservar si ya tiene el nuevo formato
+        const firstName = a.nombres || a.firstName || '';
+        const lastName = a.apellidos || a.lastName || '';
+        const name = a.name || `${firstName} ${lastName}`.trim();
+        const carnet = a.carnet || a.id;
+        const gender = a.sexo === 'FEMENINO' || a.gender === 'F' ? 'F' : 'M';
+        const enrollmentYear = parseInt(a.anioIngreso || a.enrollmentYear) || defaultYear;
+
+        // Determinar gradoID mapeable
+        const rawGrado = a.gradoActual || a.gradeId || '1';
+        let gradeId = '1';
+        if (rawGrado.includes('1° Grado') || rawGrado === '1') gradeId = '1';
+        else if (rawGrado.includes('2° Grado') || rawGrado === '2') gradeId = '2';
+        else if (rawGrado.includes('3° Grado') || rawGrado === '3') gradeId = '3';
+        else if (rawGrado.includes('4° Grado') || rawGrado === '4') gradeId = '4';
+        else if (rawGrado.includes('5° Grado') || rawGrado === '5') gradeId = '5';
+        else if (rawGrado.includes('6° Grado') || rawGrado === '6') gradeId = '6';
+        else if (rawGrado.includes('7° Grado') || rawGrado === '7') gradeId = '7';
+        else if (rawGrado.includes('8° Grado') || rawGrado === '8') gradeId = '8';
+        else if (rawGrado.includes('9° Grado') || rawGrado === '9') gradeId = '9';
+        else if (rawGrado.includes('1° Bachillerato') || rawGrado === '10g') gradeId = '10g';
+        else if (rawGrado.includes('2° Bachillerato') || rawGrado === '11g') gradeId = '11g';
+        else if (rawGrado.includes('1° Diseño') || rawGrado === '10t') gradeId = '10t';
+        else if (rawGrado.includes('2° Diseño') || rawGrado === '11t') gradeId = '11t';
+        else if (rawGrado.includes('3° Diseño') || rawGrado === '12t') gradeId = '12t';
+        else if (rawGrado.includes('Preparatoria') || rawGrado === 'k6') gradeId = 'k6';
+        else if (rawGrado.includes('Kinder 5') || rawGrado === 'k5') gradeId = 'k5';
+        else if (rawGrado.includes('Kinder 4') || rawGrado === 'k4') gradeId = 'k4';
+
+        const rawSeccion = a.seccionId || a.sectionId || 'A';
+        const sectionLetter = rawSeccion.includes('-')
+          ? rawSeccion.split('-').pop()?.toUpperCase() || 'A'
+          : rawSeccion.toUpperCase();
+        const cleanLetter = sectionLetter.replace(/[0-9]/g, '').replace('G', '').replace('T', '').toLowerCase();
+
+        // Creamos sección de este año por defecto
+        const calculatedSectionId = `${defaultYear}-${gradeId}-${cleanLetter}`;
+
+        await createStudent({
+          id: `mig_${carnet}`,
+          carnet,
+          firstName,
+          lastName,
+          name,
+          gender,
+          gradeId,
+          sectionId: calculatedSectionId,
+          enrollmentYear,
+          status: 'ACTIVO',
+          enrollmentHistory: [
+            {
+              year: enrollmentYear,
+              gradeId,
+              sectionId: calculatedSectionId,
+              status: 'EN_CURSO'
+            }
+          ]
+        });
+        insertedCount++;
+      }
+
+      setMigrationProgress(90);
+      setMigrationStatus('Ejecutando calibración de historiales de inscripciones...');
+      await fixAllStudentHistories();
+
+      // Limpiar app origen para evitar colisión de memoria
+      try {
+        await deleteApp(sourceApp);
+      } catch {}
+
+      setMigrationProgress(100);
+      setMigrationStatus(`¡Sincronización exitosa! Se migraron ${insertedCount} alumnos.`);
+      toast.success('Migración interactiva completada');
+      await loadData();
+    } catch (err: any) {
+      console.error(err);
+      setMigrationStatus(`Error en sincronización: ${err.message || err}`);
+      toast.error('Fallo en la migración de datos');
+    } finally {
+      setRunningMigration(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 space-y-4">
@@ -489,6 +647,64 @@ export default function SchoolYearManager() {
                   <span>Corregir historial del alumnado</span>
                 </button>
               </div>
+            </div>
+
+            {/* Sincronizador Interactivo de Firebase */}
+            <div className="bg-white border border-slate-200 p-5 rounded-xl space-y-4 shadow-2xs">
+              <div>
+                <h6 className="text-xs font-bold text-slate-900 font-display uppercase tracking-wider flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-[#25855A]" />
+                  Migrador Interactivo y Limpieza de Alumnos (Multi-Firebase SDK)
+                </h6>
+                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                  Pega el JSON de configuración de Firebase de tu proyecto de origen (las credenciales Web o de Cliente de Firebase SDK).
+                  Esta herramienta **limpiará por completo la colección actual de alumnos** e insertará y reconstruirá de manera inteligente
+                  los historiales de la base de datos de origen directamente en este Firebase de destino.
+                </p>
+              </div>
+
+              <form onSubmit={handleInteractiveMigration} className="space-y-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">JSON de Configuración SDK de Firebase de Origen</label>
+                  <textarea
+                    rows={5}
+                    value={migrationSdk}
+                    onChange={e => setMigrationSdk(e.target.value)}
+                    placeholder={`{\n  "apiKey": "AIzaSy...",\n  "authDomain": "...",\n  "projectId": "...",\n  "storageBucket": "...",\n  "messagingSenderId": "...",\n  "appId": "..."\n}`}
+                    className="w-full text-xs font-mono p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#25855A]/25 focus:border-[#25855A] bg-slate-50"
+                  />
+                </div>
+
+                {migrationStatus && (
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[11px] font-semibold text-slate-600">{migrationStatus}</span>
+                      <span className="text-[11px] font-bold text-primary">{migrationProgress}%</span>
+                    </div>
+                    <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                      <div className="bg-primary h-1.5 rounded-full transition-all duration-300" style={{ width: `${migrationProgress}%` }} />
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={runningMigration}
+                  className="btn-primary text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 disabled:opacity-40"
+                >
+                  {runningMigration ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Sincronizando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Iniciar Sincronización y Limpieza Completa</span>
+                    </>
+                  )}
+                </button>
+              </form>
             </div>
           </div>
         )}
