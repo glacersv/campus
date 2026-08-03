@@ -68,11 +68,11 @@ export default function AdminDashboard() {
   }, []);
 
   const statCards = [
-    { label: 'Docentes', value: stats.teachers, icon: GraduationCap, color: 'text-white', bgDark: true },
-    { label: 'Grados', value: stats.grades, icon: DoorOpen, color: 'text-slate-700', bgDark: false },
-    { label: 'Secciones', value: stats.sections, icon: Users, color: 'text-slate-700', bgDark: false },
-    { label: 'Alumnos', value: stats.students, icon: UserCheck, color: 'text-slate-700', bgDark: false },
-    { label: 'Materias', value: stats.subjects, icon: BookMarked, color: 'text-slate-700', bgDark: false },
+    { label: 'Docentes', value: stats.teachers, icon: GraduationCap, color: 'text-white', bgDark: true, iconBg: 'bg-white/15 border border-white/20' },
+    { label: 'Grados', value: stats.grades, icon: DoorOpen, color: 'text-[#25855A]', bgDark: false, iconBg: 'bg-emerald-50 border border-emerald-100' },
+    { label: 'Secciones', value: stats.sections, icon: Users, color: 'text-blue-600', bgDark: false, iconBg: 'bg-blue-50 border border-blue-100' },
+    { label: 'Alumnos', value: stats.students, icon: UserCheck, color: 'text-purple-600', bgDark: false, iconBg: 'bg-purple-50 border border-purple-100' },
+    { label: 'Materias', value: stats.subjects, icon: BookMarked, color: 'text-amber-600', bgDark: false, iconBg: 'bg-amber-50 border border-amber-100' },
   ];
 
   if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
@@ -90,16 +90,14 @@ export default function AdminDashboard() {
             className={`rounded-2xl p-5 border transition-all ${
               card.bgDark
                 ? 'bg-primary-dark text-white border-primary-dark'
-                : 'bg-white text-slate-900 border-slate-200/80'
+                : 'bg-white text-slate-900 border-slate-200/80 hover:border-slate-300'
             }`}
           >
             <div className={`flex items-center justify-between mb-3`}>
               <span className={`text-xs font-semibold uppercase tracking-wider ${card.bgDark ? 'text-white/70' : 'text-slate-500'}`}>
                 {card.label}
               </span>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                card.bgDark ? 'bg-white/15 border border-white/20' : 'bg-slate-50 border border-slate-200'
-              }`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${card.iconBg}`}>
                 <card.icon className={`w-4 h-4 ${card.color}`} />
               </div>
             </div>

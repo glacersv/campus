@@ -237,6 +237,14 @@ export default function GradeSectionAssignment() {
                       : true
                   );
                   const assignedCount = gradeSections.filter(s => assignments[s.id]).length;
+                  const cycleColors = {
+                    'parvularia': 'bg-pink-50 border-pink-100/70 text-pink-600',
+                    '1': 'bg-emerald-50 border-emerald-100/70 text-[#25855A]',
+                    '2': 'bg-blue-50 border-blue-100/70 text-blue-600',
+                    '3': 'bg-purple-50 border-purple-100/70 text-purple-600',
+                    '4': 'bg-amber-50 border-amber-100/70 text-amber-600'
+                  }[grade.cycle as Cycle] || 'bg-slate-50 border-slate-100 text-slate-600';
+
                   return (
                     <motion.div
                       key={grade.id}
@@ -247,7 +255,7 @@ export default function GradeSectionAssignment() {
                       {/* Header */}
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-700 border border-slate-200 bg-slate-50">
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center border ${cycleColors}`}>
                             <DoorOpen className="w-5 h-5" />
                           </div>
                           <div>

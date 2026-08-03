@@ -536,6 +536,12 @@ export async function fixAllStudentHistories(): Promise<void> {
 
     if (Number.isNaN(currentGradeNum)) return;
 
+    // Ajustar año de ingreso para evitar repeticiones de K4 si el carnet indica el año de nacimiento
+    const logicalMinYear = currentYear - (currentGradeNum - (-1));
+    if (entryYear < logicalMinYear) {
+      entryYear = logicalMinYear;
+    }
+
     const sectionId = data.sectionId || 'A';
 
     const newHistory: Record<string, unknown>[] = [];

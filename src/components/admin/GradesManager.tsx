@@ -421,6 +421,14 @@ export default function GradesManager() {
   );
 }
 
+const CYCLE_ICON_COLORS: Record<Cycle, string> = {
+  'parvularia': 'text-pink-600',
+  '1': 'text-emerald-600',
+  '2': 'text-blue-600',
+  '3': 'text-purple-600',
+  '4': 'text-amber-600'
+};
+
 function GradeCard({ grade, index, sectionsCount, buildingName, selected, onToggleSelect, onEdit, onDelete, onToggleStatus }: {
   grade: Grade;
   index: number;
@@ -432,11 +440,20 @@ function GradeCard({ grade, index, sectionsCount, buildingName, selected, onTogg
   onDelete: () => void;
   onToggleStatus: () => void;
 }) {
+  const cycle = grade.cycle as Cycle;
+  const cycleColors = {
+    'parvularia': 'bg-pink-50 border-pink-100/70 text-pink-600',
+    '1': 'bg-emerald-50 border-emerald-100/70 text-[#25855A]',
+    '2': 'bg-blue-50 border-blue-100/70 text-blue-600',
+    '3': 'bg-purple-50 border-purple-100/70 text-purple-600',
+    '4': 'bg-amber-50 border-amber-100/70 text-amber-600'
+  }[cycle] || 'bg-slate-50 border-slate-100 text-slate-600';
+
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }} className={`bg-white rounded-2xl p-5 border border-slate-200/80 transition-all ${selected ? 'ring-2 ring-primary border-primary' : 'hover:shadow-md'}`}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-700 border border-slate-200 bg-white">
+          <div className={`w-9 h-9 rounded-xl flex items-center justify-center border ${cycleColors}`}>
             <DoorOpen className="w-5 h-5" />
           </div>
           <div>
@@ -469,12 +486,12 @@ function GradeCard({ grade, index, sectionsCount, buildingName, selected, onTogg
       <div className="flex items-center justify-between pt-3 border-t border-slate-100">
         <div className="flex items-center gap-2">
           {(() => {
-            const cycle = grade.cycle as Cycle;
             const cfg = CYCLE_LABEL[cycle] || CYCLE_LABEL['1'];
             const Icon = cfg.Icon;
+            const iconColor = CYCLE_ICON_COLORS[cycle] || 'text-slate-500';
             return (
               <>
-                <Icon className={`${cfg.size} text-slate-500`} />
+                <Icon className={`${cfg.size} ${iconColor}`} />
                 <span className="text-[11px] font-semibold text-slate-600">{cfg.label}</span>
               </>
             );
