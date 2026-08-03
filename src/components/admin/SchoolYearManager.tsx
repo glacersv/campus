@@ -74,7 +74,7 @@ export default function SchoolYearManager() {
     loadData();
   }, [loadData]);
 
-  const nextYear = currentYear ? currentYear + 1 : new Date().getFullYear();
+  const nextYear = currentYear ? currentYear + 1 : 2026;
 
   const updateCount = (gradeId: string, count: number) => {
     const c = Math.max(1, Math.min(6, count));
