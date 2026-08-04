@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Layers, Plus, Edit2, Trash2, Save, X, Search, Users, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAllSections, createSection, updateSection, deleteSection, getAllGrades, getAllBuildings, getAllComputerLabs, toggleSectionStatus, getAllBaccalaureateTypes, getAllStudents, getCurrentSchoolYear } from '../../lib/firestore';
@@ -187,8 +187,8 @@ export default function SectionsManager() {
     <div className="space-y-6">
       <div className="module-header">
         <div className="module-title-group">
-          <div className="module-icon bg-accent/10">
-            <Layers className="w-5 h-5 text-accent" />
+          <div className="module-icon">
+            <Layers className="w-5 h-5" />
           </div>
           <div>
             <h1 className="module-title">Secciones</h1>
@@ -246,8 +246,8 @@ export default function SectionsManager() {
       {filteredActiveSections.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50/50 border border-slate-200/80 rounded-2xl p-4 shadow-3xs">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-              <Users className="w-5 h-5 text-primary" />
+            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5 text-slate-500" />
             </div>
             <div>
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Matrícula Filtrada</span>
@@ -255,8 +255,8 @@ export default function SectionsManager() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50/80 border border-blue-100 flex items-center justify-center shrink-0">
-              <Layers className="w-5 h-5 text-blue-600" />
+            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
+              <Layers className="w-5 h-5 text-slate-500" />
             </div>
             <div>
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Capacidad Total</span>
@@ -264,11 +264,11 @@ export default function SectionsManager() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
               <div className="relative w-7 h-7">
-                <svg viewBox="0 0 36 36" className="w-full h-full text-amber-500">
+                <svg viewBox="0 0 36 36" className="w-full h-full text-slate-500">
                   <path className="text-slate-200" strokeWidth="4" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                  <path className="text-amber-500" strokeDasharray={`${occupancyPercentageFiltered}, 100`} strokeWidth="4" strokeLinecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                  <path className="text-slate-500" strokeDasharray={`${occupancyPercentageFiltered}, 100`} strokeWidth="4" strokeLinecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                 </svg>
               </div>
             </div>

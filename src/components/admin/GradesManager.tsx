@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   BookOpen,
   Plus,
+  Layers,
+  Users,
   Edit2,
   Trash2,
   Save,
@@ -197,6 +199,9 @@ export default function GradesManager() {
     return matchesSearch && matchesCycle && matchesStatus && matchesActive;
   });
 
+  const filteredSectionsCount = sections.filter(sec => filtered.some(g => g.id === sec.gradeId)).length;
+  const filteredStudentsCount = students.filter(st => filtered.some(g => g.id === st.gradeId)).length;
+
   const cycleGroups = {
     'parvularia': filtered.filter((g) => g.cycle === 'parvularia').sort((a, b) => extractGradeNumber(a) - extractGradeNumber(b)),
     '1': filtered.filter((g) => g.cycle === '1').sort((a, b) => extractGradeNumber(a) - extractGradeNumber(b)),
@@ -223,8 +228,8 @@ export default function GradesManager() {
     <div className="space-y-6">
       <div className="module-header">
         <div className="module-title-group">
-          <div className="module-icon bg-primary/10">
-            <BookOpen className="w-5 h-5 text-primary" />
+          <div className="module-icon">
+            <BookOpen className="w-5 h-5" />
           </div>
           <div>
             <h1 className="module-title">Grados</h1>
@@ -272,6 +277,39 @@ export default function GradesManager() {
             <button onClick={() => setViewMode('list')} className={`p-2 transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}><List className="w-4 h-4" /></button>
           </div>
         </div>
+
+      {/* Premium Statistics Banner */}
+      {filtered.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50/50 border border-slate-200/80 rounded-2xl p-4 shadow-3xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
+              <BookOpen className="w-5 h-5 text-slate-500" />
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Grados Activos</span>
+              <span className="text-base font-extrabold text-slate-800 font-mono">{filtered.length} registrados</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
+              <Layers className="w-5 h-5 text-slate-500" />
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Secciones Totales</span>
+              <span className="text-base font-extrabold text-slate-800 font-mono">{filteredSectionsCount} secciones</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5 text-slate-500" />
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Alumnos Matriculados</span>
+              <span className="text-base font-extrabold text-slate-800 font-mono">{filteredStudentsCount} alumnos</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Formulario Modal */}
       <AnimatePresence>
@@ -457,19 +495,11 @@ function GradeCard({ grade, index, sectionsCount, buildingName, selected, onTogg
   onToggleStatus: () => void;
 }) {
   const cycle = grade.cycle as Cycle;
-  const cycleColors = {
-    'parvularia': 'bg-pink-50 border-pink-100/70 text-pink-600',
-    '1': 'bg-emerald-50 border-emerald-100/70 text-[#25855A]',
-    '2': 'bg-blue-50 border-blue-100/70 text-blue-600',
-    '3': 'bg-purple-50 border-purple-100/70 text-purple-600',
-    '4': 'bg-amber-50 border-amber-100/70 text-amber-600'
-  }[cycle] || 'bg-slate-50 border-slate-100 text-slate-600';
-
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }} className={`bg-white rounded-2xl p-5 border border-slate-200/80 transition-all ${selected ? 'ring-2 ring-primary border-primary' : 'hover:shadow-md'}`}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className={`w-9 h-9 rounded-xl flex items-center justify-center border ${cycleColors}`}>
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center border bg-slate-50 border-slate-200/60 text-slate-500">
             <DoorOpen className="w-5 h-5" />
           </div>
           <div>

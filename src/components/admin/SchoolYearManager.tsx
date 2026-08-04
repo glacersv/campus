@@ -361,7 +361,7 @@ export default function SchoolYearManager() {
       <div className="relative bg-white/80 backdrop-blur-md rounded-2xl p-6 md:p-8 border border-slate-200/80 shadow-xs overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all hover:border-slate-300">
         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full pointer-events-none" />
         <div className="flex items-center gap-5 relative z-10">
-          <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner transition-transform hover:scale-105 duration-300">
+          <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-500 shadow-inner transition-transform hover:scale-105 duration-300">
             <CalendarDays className="w-7 h-7" />
           </div>
           <div>
@@ -401,10 +401,10 @@ export default function SchoolYearManager() {
       {/* Premium KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         {/* Card 1: Alumnos a promover */}
-        <div className="group bg-white rounded-2xl border border-slate-200/80 p-6 shadow-2xs hover:shadow-md hover:border-primary/30 hover:scale-[1.01] transition-all duration-300 flex items-center justify-between relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
+        <div className="group bg-white rounded-2xl border border-slate-200/80 p-6 shadow-2xs hover:shadow-md hover:border-slate-300 hover:scale-[1.01] transition-all duration-300 flex items-center justify-between relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1 h-full bg-slate-300" />
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary/15 transition-colors shadow-3xs">
+            <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-slate-200 transition-colors shadow-3xs">
               <Users className="w-6 h-6" />
             </div>
             <div>
@@ -422,10 +422,10 @@ export default function SchoolYearManager() {
         </div>
 
         {/* Card 2: Graduaciones */}
-        <div className="group bg-white rounded-2xl border border-slate-200/80 p-6 shadow-2xs hover:shadow-md hover:border-amber-500/30 hover:scale-[1.01] transition-all duration-300 flex items-center justify-between relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-1 h-full bg-amber-500" />
+        <div className="group bg-white rounded-2xl border border-slate-200/80 p-6 shadow-2xs hover:shadow-md hover:border-slate-300 hover:scale-[1.01] transition-all duration-300 flex items-center justify-between relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1 h-full bg-slate-300" />
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600 group-hover:bg-amber-500/15 transition-colors shadow-3xs">
+            <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-slate-200 transition-colors shadow-3xs">
               <GraduationCap className="w-6 h-6" />
             </div>
             <div>
@@ -437,16 +437,16 @@ export default function SchoolYearManager() {
               </span>
             </div>
           </div>
-          <div className="text-3xl font-black text-amber-600 font-mono bg-amber-50/40 border border-amber-100/50 px-4 py-2 rounded-xl">
+          <div className="text-3xl font-black text-slate-700 font-mono bg-slate-50 border border-slate-100 px-4 py-2 rounded-xl">
             {totalGraduates}
           </div>
         </div>
 
         {/* Card 3: Secciones Nuevas */}
-        <div className="group bg-white rounded-2xl border border-slate-200/80 p-6 shadow-2xs hover:shadow-md hover:border-blue-500/30 hover:scale-[1.01] transition-all duration-300 flex items-center justify-between relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
+        <div className="group bg-white rounded-2xl border border-slate-200/80 p-6 shadow-2xs hover:shadow-md hover:border-slate-300 hover:scale-[1.01] transition-all duration-300 flex items-center justify-between relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1 h-full bg-slate-300" />
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-600 group-hover:bg-blue-500/15 transition-colors shadow-3xs">
+            <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-slate-200 transition-colors shadow-3xs">
               <Layers className="w-6 h-6" />
             </div>
             <div>
@@ -458,7 +458,7 @@ export default function SchoolYearManager() {
               </span>
             </div>
           </div>
-          <div className="text-3xl font-black text-blue-600 font-mono bg-blue-50/40 border border-blue-100/50 px-4 py-2 rounded-xl">
+          <div className="text-3xl font-black text-slate-700 font-mono bg-slate-50 border border-slate-100 px-4 py-2 rounded-xl">
             {totalSections}
           </div>
         </div>
