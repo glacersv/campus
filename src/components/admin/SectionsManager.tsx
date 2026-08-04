@@ -319,32 +319,42 @@ export default function SectionsManager() {
                     </select>
                   </div>
                   <div className="col-span-2">
-                    <label className="form-label mb-2 block">Aulas Especializadas / Laboratorios Asignados</label>
-                    <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200/80 max-h-[140px] overflow-y-auto">
+                    <label className="form-label mb-2.5 block text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                      LABORATORIOS / CC / SALONES ESPECIALIZADOS
+                    </label>
+                    <div className="flex flex-wrap gap-2 max-h-[150px] overflow-y-auto pr-1">
                       {computerLabs.map(cl => {
                         const isChecked = form.computerLabIds.includes(cl.id);
                         return (
-                          <label key={cl.id} className="flex items-center gap-2 p-1.5 hover:bg-white rounded-lg cursor-pointer select-none transition-all">
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => {
-                                setForm(prev => {
-                                  const isIncluded = prev.computerLabIds.includes(cl.id);
-                                  const nextIds = isIncluded
-                                    ? prev.computerLabIds.filter(id => id !== cl.id)
-                                    : [...prev.computerLabIds, cl.id];
-                                  return { ...prev, computerLabIds: nextIds };
-                                });
-                              }}
-                              className="rounded text-primary border-slate-300 focus:ring-primary w-3.5 h-3.5"
-                            />
-                            <span className="text-xs font-semibold text-slate-700 truncate">{cl.name}</span>
-                          </label>
+                          <button
+                            type="button"
+                            key={cl.id}
+                            onClick={() => {
+                              setForm(prev => {
+                                const isIncluded = prev.computerLabIds.includes(cl.id);
+                                const nextIds = isIncluded
+                                  ? prev.computerLabIds.filter(id => id !== cl.id)
+                                  : [...prev.computerLabIds, cl.id];
+                                return { ...prev, computerLabIds: nextIds };
+                              });
+                            }}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer select-none ${
+                              isChecked
+                                ? 'bg-primary text-white border-primary shadow-sm hover:bg-primary/95'
+                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-100/50'
+                            }`}
+                          >
+                            <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors ${isChecked ? 'bg-white border-white text-primary' : 'border-slate-400 bg-white'}`}>
+                              {isChecked && <Check className="w-2.5 h-2.5 stroke-[3px]" />}
+                            </div>
+                            <span>{cl.name}</span>
+                          </button>
                         );
                       })}
                       {computerLabs.length === 0 && (
-                        <p className="text-[11px] text-slate-400 col-span-2 text-center py-2">No hay aulas especializadas creadas.</p>
+                        <p className="text-[11px] text-slate-400 w-full text-center py-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl">
+                          No hay aulas especializadas creadas.
+                        </p>
                       )}
                     </div>
                   </div>
