@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen,
   Plus,
+  Layers,
+  Users,
   Edit2,
   Trash2,
   Save,
@@ -197,6 +199,9 @@ export default function GradesManager() {
     return matchesSearch && matchesCycle && matchesStatus && matchesActive;
   });
 
+  const filteredSectionsCount = sections.filter(sec => filtered.some(g => g.id === sec.gradeId)).length;
+  const filteredStudentsCount = students.filter(st => filtered.some(g => g.id === st.gradeId)).length;
+
   const cycleGroups = {
     'parvularia': filtered.filter((g) => g.cycle === 'parvularia').sort((a, b) => extractGradeNumber(a) - extractGradeNumber(b)),
     '1': filtered.filter((g) => g.cycle === '1').sort((a, b) => extractGradeNumber(a) - extractGradeNumber(b)),
@@ -272,6 +277,39 @@ export default function GradesManager() {
             <button onClick={() => setViewMode('list')} className={`p-2 transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}><List className="w-4 h-4" /></button>
           </div>
         </div>
+
+      {/* Premium Statistics Banner */}
+      {filtered.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50/50 border border-slate-200/80 rounded-2xl p-4 shadow-3xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+              <BookOpen className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Grados Activos</span>
+              <span className="text-base font-extrabold text-slate-800 font-mono">{filtered.length} registrados</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50/80 border border-blue-100 flex items-center justify-center shrink-0">
+              <Layers className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Secciones Totales</span>
+              <span className="text-base font-extrabold text-slate-800 font-mono">{filteredSectionsCount} secciones</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Alumnos Matriculados</span>
+              <span className="text-base font-extrabold text-slate-800 font-mono">{filteredStudentsCount} alumnos</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Formulario Modal */}
       <AnimatePresence>
