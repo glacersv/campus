@@ -383,7 +383,7 @@ export default function SectionsManager() {
             const buildingName = getBuildingName(s.buildingId);
             const computerLabName = s.computerLabId ? getComputerLabName(s.computerLabId) : null;
 
-            const strokeColor = percentage >= 90 ? '#dc2626' : percentage >= 70 ? '#d97706' : '#12562E';
+            const strokeColor = '#64748b'; // slate-500 neutral monochrome
             const strokeBg = '#e2e8f0';
             const circumference = 2 * Math.PI * 35;
             const strokeDashoffset = circumference - (percentage / 100) * circumference;
