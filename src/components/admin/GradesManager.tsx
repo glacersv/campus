@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen,
   Plus,
@@ -31,9 +31,10 @@ import {
   toggleGradeStatus,
   getAllSections,
   getAllBuildings,
-  getCurrentSchoolYear
+  getCurrentSchoolYear,
+  getAllStudents
 } from '../../lib/firestore';
-import { Grade, Section, Building, Cycle, BaccalaureateType, CYCLE_NAMES } from '../../types';
+import { Grade, Section, Building, Cycle, BaccalaureateType, CYCLE_NAMES, Student } from '../../types';
 
 const CYCLE_COLORS: Record<Cycle, string> = {
   'parvularia': 'bg-pink-100 text-pink-700',
@@ -76,6 +77,7 @@ export default function GradesManager() {
   const [grades, setGrades] = useState<Grade[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -83,6 +85,7 @@ export default function GradesManager() {
   const [search, setSearch] = useState('');
   const [cycleFilter, setCycleFilter] = useState<Cycle | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<'ACTIVO' | 'INACTIVO' | 'all'>('all');
+  const [onlyActive, setOnlyActive] = useState(true);
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -90,11 +93,12 @@ export default function GradesManager() {
 
   const loadData = async () => {
     try {
-      const [g, s, b, cy] = await Promise.all([
+      const [g, s, b, cy, st] = await Promise.all([
         getAllGrades(),
         getAllSections(),
         getAllBuildings(),
-        getCurrentSchoolYear()
+        getCurrentSchoolYear(),
+        getAllStudents()
       ]);
       const activeYear = cy || new Date().getFullYear();
       const hasYearSections = s.some(sec => sec.schoolYear === activeYear);
@@ -104,6 +108,7 @@ export default function GradesManager() {
       setGrades(g);
       setSections(filteredSecs);
       setBuildings(b);
+      setStudents(st);
     } finally { setLoading(false); }
   };
 
@@ -182,11 +187,14 @@ export default function GradesManager() {
     else setSelected(new Set(filtered.map((g) => g.id)));
   };
 
+  const activeGradeIds = new Set(students.map(st => st.gradeId).filter(Boolean));
+
   const filtered = grades.filter((g) => {
     const matchesSearch = g.name.toLowerCase().includes(search.toLowerCase());
     const matchesCycle = cycleFilter === 'all' || g.cycle === cycleFilter;
     const matchesStatus = statusFilter === 'all' || (g.status || 'ACTIVO') === statusFilter;
-    return matchesSearch && matchesCycle && matchesStatus;
+    const matchesActive = !onlyActive || activeGradeIds.has(g.id);
+    return matchesSearch && matchesCycle && matchesStatus && matchesActive;
   });
 
   const cycleGroups = {
@@ -244,6 +252,14 @@ export default function GradesManager() {
             <button onClick={() => setStatusFilter('ACTIVO')} className={`filter-pill ${statusFilter === 'ACTIVO' ? 'active' : ''}`}>Activos</button>
             <button onClick={() => setStatusFilter('INACTIVO')} className={`filter-pill ${statusFilter === 'INACTIVO' ? 'active' : ''}`}>Inactivos</button>
           </div>
+
+          <div className="flex items-center gap-2 bg-white px-3.5 py-1.5 rounded-xl border border-slate-200 shadow-3xs cursor-pointer select-none hover:bg-slate-50 transition-colors" onClick={() => setOnlyActive(!onlyActive)}>
+            <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors ${onlyActive ? 'bg-primary border-primary text-white' : 'border-slate-300'}`}>
+              {onlyActive && <Check className="w-2.5 h-2.5 stroke-[3px]" />}
+            </div>
+            <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Sólo Grados con Alumnos</span>
+          </div>
+
           {selected.size > 0 && (
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-2 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
               <span className="text-sm text-red-700 font-medium">{selected.size} seleccionado(s)</span>
