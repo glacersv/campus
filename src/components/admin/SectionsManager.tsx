@@ -22,7 +22,7 @@ export default function SectionsManager() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabId: '' });
+  const [form, setForm] = useState({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabIds: [] as string[] });
   const [search, setSearch] = useState('');
   const [onlyActive, setOnlyActive] = useState(true);
   const [letterFilter, setLetterFilter] = useState<string>('all');
@@ -79,7 +79,7 @@ export default function SectionsManager() {
         name: form.name.trim().toUpperCase(),
         gradeId: form.gradeId,
         buildingId: form.buildingId || null,
-        computerLabId: form.computerLabId || null
+        computerLabIds: form.computerLabIds.length > 0 ? form.computerLabIds : null
       };
       if (form.capacity) data.capacity = parseInt(form.capacity);
 
@@ -98,7 +98,7 @@ export default function SectionsManager() {
         });
         toast.success('Sección creada');
       }
-      setShowForm(false); setEditingId(null); setForm({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabId: '' });
+      setShowForm(false); setEditingId(null); setForm({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabIds: [] });
       loadData();
     } catch (err) {
       toast.error('Error al guardar sección');
@@ -108,7 +108,13 @@ export default function SectionsManager() {
 
   const handleEdit = (s: Section) => {
     setEditingId(s.id);
-    setForm({ name: s.name, gradeId: s.gradeId, capacity: s.capacity?.toString() || '', buildingId: s.buildingId || '', computerLabId: s.computerLabId || '' });
+    setForm({
+      name: s.name,
+      gradeId: s.gradeId,
+      capacity: s.capacity?.toString() || '',
+      buildingId: s.buildingId || '',
+      computerLabIds: s.computerLabIds || (s.computerLabId ? [s.computerLabId] : [])
+    });
     setShowForm(true);
   };
 
@@ -189,7 +195,7 @@ export default function SectionsManager() {
             <p className="module-subtitle">{sortedSections.length} sección(es) registrada(s)</p>
           </div>
         </div>
-        <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabId: '' }); }} className="btn-primary">
+        <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabIds: [] }); }} className="btn-primary">
           <Plus className="w-4 h-4" /> Nueva Sección
         </button>
       </div>
@@ -313,11 +319,34 @@ export default function SectionsManager() {
                     </select>
                   </div>
                   <div className="col-span-2">
-                    <label className="form-label">Aula Especializada / Laboratorio</label>
-                    <select value={form.computerLabId} onChange={e => setForm({ ...form, computerLabId: e.target.value })} className="input">
-                      <option value="">Sin aula/lab especializado</option>
-                      {computerLabs.map(cl => <option key={cl.id} value={cl.id}>{cl.name}</option>)}
-                    </select>
+                    <label className="form-label mb-2 block">Aulas Especializadas / Laboratorios Asignados</label>
+                    <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200/80 max-h-[140px] overflow-y-auto">
+                      {computerLabs.map(cl => {
+                        const isChecked = form.computerLabIds.includes(cl.id);
+                        return (
+                          <label key={cl.id} className="flex items-center gap-2 p-1.5 hover:bg-white rounded-lg cursor-pointer select-none transition-all">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {
+                                setForm(prev => {
+                                  const isIncluded = prev.computerLabIds.includes(cl.id);
+                                  const nextIds = isIncluded
+                                    ? prev.computerLabIds.filter(id => id !== cl.id)
+                                    : [...prev.computerLabIds, cl.id];
+                                  return { ...prev, computerLabIds: nextIds };
+                                });
+                              }}
+                              className="rounded text-primary border-slate-300 focus:ring-primary w-3.5 h-3.5"
+                            />
+                            <span className="text-xs font-semibold text-slate-700 truncate">{cl.name}</span>
+                          </label>
+                        );
+                      })}
+                      {computerLabs.length === 0 && (
+                        <p className="text-[11px] text-slate-400 col-span-2 text-center py-2">No hay aulas especializadas creadas.</p>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 shrink-0">
@@ -355,9 +384,9 @@ export default function SectionsManager() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03 }}
-                className="bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col justify-between hover:shadow-md transition-all h-[260px]"
+                className="bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col justify-between hover:shadow-md transition-all h-[290px]"
               >
-                <div>
+                <div className="overflow-hidden">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-xl bg-accent/10 flex items-center justify-center border border-accent/20">
@@ -399,12 +428,26 @@ export default function SectionsManager() {
                       <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: getBuildingColor(s.buildingId || '') }} />
                       <span className="truncate">Edificio: <strong className="text-slate-700">{buildingName}</strong></span>
                     </div>
-                    {computerLabName && (
-                      <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium">
-                        <div className="w-1.5 h-1.5 rounded-full shrink-0 bg-blue-500" />
-                        <span className="truncate">Aula/Lab: <strong className="text-slate-700">{computerLabName}</strong></span>
-                      </div>
-                    )}
+                    {(() => {
+                      const assignedIds = s.computerLabIds || (s.computerLabId ? [s.computerLabId] : []);
+                      if (assignedIds.length === 0) return null;
+                      return (
+                        <div className="flex flex-col gap-1 mt-1.5">
+                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Aulas / laboratorios:</span>
+                          <div className="flex flex-wrap gap-1 max-h-[50px] overflow-y-auto pr-1">
+                            {assignedIds.map(id => {
+                              const name = getComputerLabName(id);
+                              return (
+                                <span key={id} className="inline-flex items-center gap-1 bg-blue-50 border border-blue-100 text-blue-700 text-[9px] font-black uppercase px-2 py-0.5 rounded-md" title={name}>
+                                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+                                  <span className="truncate max-w-[80px]">{name}</span>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 
