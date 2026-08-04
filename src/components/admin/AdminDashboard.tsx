@@ -30,9 +30,9 @@ const attendanceData = [
 ];
 
 const disciplineData = [
-  { name: 'Uniforme Incorrecto', value: 48, color: '#12562E' },
-  { name: 'Cabello fuera de norma', value: 35, color: '#FAB700' },
-  { name: 'Uñas Pintadas/Acrílicas', value: 17, color: '#D32F2F' }
+  { name: 'Uniforme Incorrecto', value: 48, color: 'var(--color-primary)' },
+  { name: 'Cabello fuera de norma', value: 35, color: 'var(--color-secondary)' },
+  { name: 'Uñas Pintadas/Acrílicas', value: 17, color: 'var(--color-danger)' }
 ];
 
 interface Stats {
@@ -69,10 +69,10 @@ export default function AdminDashboard() {
 
   const statCards = [
     { label: 'Docentes', value: stats.teachers, icon: GraduationCap, color: 'text-white', bgDark: true, iconBg: 'bg-white/15 border border-white/20' },
-    { label: 'Grados', value: stats.grades, icon: DoorOpen, color: 'text-[#25855A]', bgDark: false, iconBg: 'bg-emerald-50 border border-emerald-100' },
-    { label: 'Secciones', value: stats.sections, icon: Users, color: 'text-blue-600', bgDark: false, iconBg: 'bg-blue-50 border border-blue-100' },
-    { label: 'Alumnos', value: stats.students, icon: UserCheck, color: 'text-purple-600', bgDark: false, iconBg: 'bg-purple-50 border border-purple-100' },
-    { label: 'Materias', value: stats.subjects, icon: BookMarked, color: 'text-amber-600', bgDark: false, iconBg: 'bg-amber-50 border border-amber-100' },
+    { label: 'Grados', value: stats.grades, icon: DoorOpen, color: 'text-slate-500', bgDark: false, iconBg: 'bg-slate-100 border border-slate-200' },
+    { label: 'Secciones', value: stats.sections, icon: Users, color: 'text-slate-500', bgDark: false, iconBg: 'bg-slate-100 border border-slate-200' },
+    { label: 'Alumnos', value: stats.students, icon: UserCheck, color: 'text-slate-500', bgDark: false, iconBg: 'bg-slate-100 border border-slate-200' },
+    { label: 'Materias', value: stats.subjects, icon: BookMarked, color: 'text-slate-500', bgDark: false, iconBg: 'bg-slate-100 border border-slate-200' },
   ];
 
   if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
@@ -138,8 +138,8 @@ export default function AdminDashboard() {
                   cursor={{ fill: '#f8fafc' }}
                 />
                 <Legend iconSize={10} iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '5px' }} />
-                <Bar name="Asistencia %" dataKey="asistencia" fill="#12562E" radius={[12, 12, 0, 0]} barSize={25} />
-                <Bar name="Retardos %" dataKey="retardos" fill="#FAB700" radius={[12, 12, 0, 0]} barSize={25} />
+                <Bar name="Asistencia %" dataKey="asistencia" fill="var(--color-primary)" radius={[12, 12, 0, 0]} barSize={25} />
+                <Bar name="Retardos %" dataKey="retardos" fill="var(--color-secondary)" radius={[12, 12, 0, 0]} barSize={25} />
               </BarChart>
             </ResponsiveContainer>
           </div>
