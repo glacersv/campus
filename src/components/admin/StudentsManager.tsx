@@ -175,47 +175,59 @@ export default function StudentsManager() {
       </div>
 
       {/* Búsqueda y filtros */}
-      <div className="space-y-3">
-        <div className="relative max-w-sm">
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input type="text" placeholder="Buscar por nombre o carnet..." value={search} onChange={e => setSearch(e.target.value)} className="input pl-9" />
         </div>
 
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Grados:</span>
-            <button onClick={() => { setFilterGrade('all'); setFilterSection('all'); }}
-              className={`filter-pill ${filterGrade === 'all' ? 'active' : ''}`}>
-              Todos
+        <div className="flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-xl border border-slate-200">
+          <button onClick={() => { setFilterGrade('all'); setFilterSection('all'); }}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              filterGrade === 'all'
+                ? 'bg-primary text-white shadow-xs'
+                : 'text-slate-600 hover:bg-slate-200/50'
+            }`}>
+            Todos
+          </button>
+          {grades.map(g => (
+            <button key={g.id} onClick={() => { setFilterGrade(g.id); setFilterSection('all'); }}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                filterGrade === g.id
+                  ? 'bg-primary text-white shadow-xs'
+                  : 'text-slate-600 hover:bg-slate-200/50'
+              }`}>
+              {g.name}
             </button>
-            {grades.map(g => (
-              <button key={g.id} onClick={() => { setFilterGrade(g.id); setFilterSection('all'); }}
-                className={`filter-pill ${filterGrade === g.id ? 'active' : ''}`}>
-                {g.name}
-              </button>
-            ))}
-          </div>
+          ))}
+        </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Secciones:</span>
-            <button onClick={() => setFilterSection('all')} disabled={filterGrade === 'all'}
-              className={`filter-pill ${filterSection === 'all' ? 'active' : ''}`}>
-              Todas
-            </button>
-            {uniqueByName(activeSections.filter(s => s.gradeId === filterGrade)).map(section => {
-              const secLetter = section.name.trim().toUpperCase();
-              return (
-                <button
-                  key={section.id}
-                  onClick={() => setFilterSection(secLetter)}
-                  disabled={filterGrade === 'all'}
-                  className={`filter-pill ${filterSection === secLetter ? 'active' : ''}`}
-                >
-                  {section.name}
-                </button>
-              );
-            })}
-          </div>
+        <div className="flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-xl border border-slate-200">
+          <button onClick={() => setFilterSection('all')} disabled={filterGrade === 'all'}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer disabled:opacity-50 ${
+              filterSection === 'all'
+                ? 'bg-primary text-white shadow-xs'
+                : 'text-slate-600 hover:bg-slate-200/50'
+            }`}>
+            Todas Secciones
+          </button>
+          {uniqueByName(activeSections.filter(s => s.gradeId === filterGrade)).map(section => {
+            const secLetter = section.name.trim().toUpperCase();
+            return (
+              <button
+                key={section.id}
+                onClick={() => setFilterSection(secLetter)}
+                disabled={filterGrade === 'all'}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  filterSection === secLetter
+                    ? 'bg-primary text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-200/50'
+                }`}
+              >
+                {section.name}
+              </button>
+            );
+          })}
         </div>
       </div>
 
