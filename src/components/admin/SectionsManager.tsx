@@ -76,11 +76,11 @@ export default function SectionsManager() {
     try {
       const data: Partial<Section> = {
         name: form.name.trim().toUpperCase(),
-        gradeId: form.gradeId
+        gradeId: form.gradeId,
+        buildingId: form.buildingId || null,
+        computerLabId: form.computerLabId || null
       };
       if (form.capacity) data.capacity = parseInt(form.capacity);
-      if (form.buildingId) data.buildingId = form.buildingId;
-      if (form.computerLabId) data.computerLabId = form.computerLabId;
 
       if (editingId) {
         await updateSection(editingId, data);
@@ -144,92 +144,25 @@ export default function SectionsManager() {
     return matchesSearch && matchesActive;
   });
 
-  const letterGroups = filteredActiveSections.reduce<Record<string, Section[]>>((acc, s) => {
-    const letter = getSectionLetter(s.name);
-    if (!acc[letter]) acc[letter] = [];
-    acc[letter].push(s);
-    return acc;
-  }, {});
+  const getGradeSortWeight = (gradeId: string): number => {
+    if (gradeId === 'k4') return 10;
+    if (gradeId === 'k5') return 11;
+    if (gradeId === 'k6') return 12;
 
-  const groupStats = Object.entries(letterGroups).map(([letter, group]) => {
-    const totalGrades = group.length;
+    const numStr = gradeId.replace(/[^0-9]/g, '');
+    const num = parseInt(numStr, 10);
+    if (Number.isFinite(num)) {
+      if (num >= 1 && num <= 9) return 20 + num;
+      if (num >= 10 && num <= 12) return 40 + (num - 10);
+    }
+    return 100;
+  };
 
-    const gradeCounts: Record<string, number> = {};
-    group.forEach(s => {
-      gradeCounts[s.gradeId] = (gradeCounts[s.gradeId] || 0) + 1;
-    });
-
-    const cycleCounts: Record<string, number> = {};
-    Object.entries(gradeCounts).forEach(([gradeId, count]) => {
-      const grade = grades.find(g => g.id === gradeId);
-      const cycle = grade?.cycle || '1';
-      cycleCounts[cycle] = (cycleCounts[cycle] || 0) + count;
-    });
-
-    const levels = [
-      { key: 'parvularia', label: 'Parvularia (K4 - Prep.)', count: cycleCounts['parvularia'] || 0 },
-      { key: '1', label: 'Primer Ciclo (1° - 3°)', count: cycleCounts['1'] || 0 },
-      { key: '2', label: 'Segundo Ciclo (4° - 6°)', count: cycleCounts['2'] || 0 },
-      { key: '3', label: 'Tercer Ciclo (7° - 9°)', count: cycleCounts['3'] || 0 },
-      { key: '4', label: 'Bachillerato', count: cycleCounts['4'] || 0 },
-    ].filter(level => level.count > 0);
-
-    const totalStudents = students.filter(st => group.some(section => section.id === st.sectionId)).length;
-    const totalCapacity = group.reduce((sum, section) => sum + (section.capacity || 0), 0);
-    const occupancyPercentage = totalCapacity > 0 ? Math.round((totalStudents / totalCapacity) * 100) : 0;
-
-    // Sort weights to order grades chronologically (Kinder to Bachillerato)
-    const getGradeSortWeight = (gradeId: string): number => {
-      if (gradeId === 'k4') return 10;
-      if (gradeId === 'k5') return 11;
-      if (gradeId === 'k6') return 12;
-
-      const numStr = gradeId.replace(/[^0-9]/g, '');
-      const num = parseInt(numStr, 10);
-      if (Number.isFinite(num)) {
-        if (num >= 1 && num <= 9) return 20 + num;
-        if (num >= 10 && num <= 12) return 40 + (num - 10);
-      }
-      return 100;
-    };
-
-    // Detalle por grado: capacidad vs matriculados ordenado cronológicamente
-    const gradeDetails = group.map(section => {
-      const grade = grades.find(g => g.id === section.gradeId);
-      const gradeName = grade ? (grade.cycle === '4' && grade.baccalaureateType ? `${baccalaureateTypes.find(b => b.id === grade.baccalaureateType)?.name || 'Bachillerato'} ${grade.name}°` : `${grade.name}°`) : section.gradeId;
-      const enrolledInGrade = students.filter(st => st.sectionId === section.id).length;
-      const capacity = section.capacity || 0;
-      
-      return {
-        sectionId: section.id,
-        gradeId: section.gradeId,
-        gradeName,
-        capacity,
-        enrolled: enrolledInGrade,
-        percentage: capacity > 0 ? Math.round((enrolledInGrade / capacity) * 100) : 0,
-        rawSection: section,
-        sortWeight: getGradeSortWeight(section.gradeId)
-      };
-    }).sort((a, b) => a.sortWeight - b.sortWeight);
-    
-    // Debug temporal
-    console.log(`Sección ${letter}:`, { 
-      totalStudents, 
-      totalCapacity, 
-      occupancyPercentage,
-      sectionIds: group.map(s => s.id),
-      studentsInSection: students.filter(st => group.some(section => section.id === st.sectionId)).map(st => ({ id: st.id, name: st.name, sectionId: st.sectionId }))
-    });
-
-    return {
-      letter: letter.toUpperCase(),
-      totalGrades,
-      levels,
-      totalStudents,
-      totalCapacity,
-      occupancyPercentage,
-      gradeDetails
-    };
+  const sortedSections = [...filteredActiveSections].sort((a, b) => {
+    const weightA = getGradeSortWeight(a.gradeId);
+    const weightB = getGradeSortWeight(b.gradeId);
+    if (weightA !== weightB) return weightA - weightB;
+    return a.name.localeCompare(b.name);
   });
 
   if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
@@ -243,7 +176,7 @@ export default function SectionsManager() {
           </div>
           <div>
             <h1 className="module-title">Secciones</h1>
-            <p className="module-subtitle">{groupStats.length} sección(es) registrada(s)</p>
+            <p className="module-subtitle">{sortedSections.length} sección(es) registrada(s)</p>
           </div>
         </div>
         <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabId: '' }); }} className="btn-primary">
@@ -320,250 +253,93 @@ export default function SectionsManager() {
         )}
       </AnimatePresence>
 
-      {groupStats.length === 0 ? (
+      {sortedSections.length === 0 ? (
         <div className="text-center py-12 text-slate-400">
           <p className="text-sm">No hay secciones creadas</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {groupStats.map((group, i) => {
-            const progressColor = group.occupancyPercentage >= 90 ? 'bg-red-600' : group.occupancyPercentage >= 70 ? 'bg-amber-500' : 'bg-primary';
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          {sortedSections.map((s, i) => {
+            const enrolled = students.filter(st => st.sectionId === s.id).length;
+            const capacity = s.capacity || 0;
+            const percentage = capacity > 0 ? Math.round((enrolled / capacity) * 100) : 0;
+            const gradeName = getGradeName(s.gradeId);
+            const buildingName = getBuildingName(s.buildingId);
+            const computerLabName = s.computerLabId ? getComputerLabName(s.computerLabId) : null;
+
+            const strokeColor = percentage >= 90 ? '#dc2626' : percentage >= 70 ? '#d97706' : '#12562E';
+            const strokeBg = '#e2e8f0';
+            const circumference = 2 * Math.PI * 30;
+            const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
             return (
               <motion.div
-                key={group.letter}
+                key={s.id}
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs hover:shadow-md hover:-translate-y-1 transition-all cursor-pointer group flex flex-col justify-between h-[230px]"
-                onClick={() => openAnalytics(group)}
+                transition={{ delay: i * 0.03 }}
+                className="bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col justify-between hover:shadow-md transition-all h-[260px]"
               >
                 <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Sección</span>
-                    <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-100 text-slate-500 flex items-center justify-center group-hover:bg-primary-light group-hover:text-primary transition-colors">
-                      <Users className="w-4 h-4" />
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-accent/10 flex items-center justify-center border border-accent/20">
+                        <Layers className="w-4.5 h-4.5 text-accent" />
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-black text-slate-900 leading-tight uppercase tracking-wider">{gradeName}</h3>
+                        <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Sección "{s.name}"</p>
+                      </div>
+                    </div>
+
+                    {/* Radial Progress Gauge */}
+                    <div className="relative w-12 h-12 shrink-0">
+                      <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                        <circle cx="50" cy="50" r="30" fill="none" stroke={strokeBg} strokeWidth="10" strokeLinecap="round" />
+                        <circle cx="50" cy="50" r="30" fill="none" stroke={strokeColor} strokeWidth="10" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-[10px] font-extrabold text-slate-900">{percentage}%</span>
+                      </div>
                     </div>
                   </div>
 
-                  <div>
-                    <h2 className="text-3xl font-extrabold text-slate-900 leading-none font-display">Sección "{group.letter}"</h2>
-                    <p className="text-xs text-slate-400 font-medium mt-1">Nómina y asignaciones integrales</p>
+                  {/* Capacity and Enrolled metrics */}
+                  <div className="grid grid-cols-2 gap-3 my-3">
+                    <div className="bg-slate-50/50 p-2 rounded-xl border border-slate-100 flex flex-col">
+                      <span className="text-[9px] text-slate-400 uppercase font-black tracking-wider">Capacidad</span>
+                      <span className="text-sm font-bold text-slate-800 font-mono mt-0.5">{capacity || '—'}</span>
+                    </div>
+                    <div className="bg-slate-50/50 p-2 rounded-xl border border-slate-100 flex flex-col">
+                      <span className="text-[9px] text-slate-400 uppercase font-black tracking-wider">Alumnos</span>
+                      <span className="text-sm font-bold text-slate-800 font-mono mt-0.5">{enrolled}</span>
+                    </div>
+                  </div>
+
+                  {/* Location details */}
+                  <div className="space-y-1.5 mt-2">
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: getBuildingColor(s.buildingId || '') }} />
+                      <span className="truncate">Edificio: <strong className="text-slate-700">{buildingName}</strong></span>
+                    </div>
+                    {computerLabName && (
+                      <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium">
+                        <div className="w-1.5 h-1.5 rounded-full shrink-0 bg-blue-500" />
+                        <span className="truncate">Aula: <strong className="text-slate-700">{computerLabName}</strong></span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div className="space-y-3 pt-4 border-t border-slate-100">
-                  <div className="flex justify-between items-center text-xs font-semibold text-slate-500">
-                    <div className="flex gap-4">
-                      <div>
-                        <span className="text-slate-900 font-bold font-mono">{group.totalGrades}</span> <span className="text-[10px] text-slate-400 uppercase tracking-wider">Grados</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-900 font-bold font-mono">{group.totalStudents}</span> <span className="text-[10px] text-slate-400 uppercase tracking-wider">Alumnos</span>
-                      </div>
-                    </div>
-                    <span className="font-mono font-bold text-slate-900">{group.occupancyPercentage}%</span>
-                  </div>
-
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${progressColor} transition-all duration-500`}
-                      style={{ width: `${group.occupancyPercentage}%` }}
-                    />
-                  </div>
+                {/* Unified footer actions always visible */}
+                <div className="flex justify-end gap-1.5 pt-3 border-t border-slate-100 shrink-0 mt-3">
+                  <button onClick={() => handleEdit(s)} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer" title="Editar"><Edit2 className="w-4 h-4 text-slate-500" /></button>
+                  <button onClick={() => handleDelete(s.id)} className="p-1.5 hover:bg-red-50 rounded-lg transition-colors cursor-pointer" title="Eliminar"><Trash2 className="w-4 h-4 text-red-500" /></button>
                 </div>
               </motion.div>
             );
           })}
         </div>
-      )}
-
-      {selectedGroup && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-bold text-slate-900">Analytics - Sección {selectedGroup.letter}</h3>
-            <button onClick={closeAnalytics} className="text-xs text-slate-500 hover:text-slate-700">Cerrar</button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
-              <h4 className="text-sm font-bold text-slate-900 mb-4">Distribución por Niveles</h4>
-              <div className="space-y-3">
-                {selectedGroup.levels.map((level, idx) => {
-                  const maxCount = Math.max(...selectedGroup.levels.map(l => l.count), 1);
-                  const percentage = Math.round((level.count / maxCount) * 100);
-                  const barColors = [
-                    'bg-gradient-to-r from-emerald-600 to-emerald-400',
-                    'bg-gradient-to-r from-emerald-500 to-emerald-300',
-                    'bg-gradient-to-r from-emerald-700 to-emerald-500',
-                    'bg-gradient-to-r from-emerald-400 to-emerald-200',
-                    'bg-gradient-to-r from-emerald-800 to-emerald-600',
-                    'bg-gradient-to-r from-emerald-600 to-emerald-400'
-                  ];
-                  const barColor = barColors[idx % barColors.length];
-                  return (
-                    <div key={level.label} className="space-y-1">
-                      <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600">
-                        <span className="truncate pr-2">{level.label}</span>
-                        <span className="text-slate-900 font-bold">{level.count} Grados</span>
-                      </div>
-                      <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full rounded-full ${barColor} transition-all duration-500`}
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100 flex flex-col items-center">
-              <h4 className="text-sm font-bold text-slate-900 mb-4">Ocupación de la Sección</h4>
-              <div className="relative w-48 h-24">
-                <svg viewBox="0 0 200 110" className="w-full h-full">
-                  <path d="M 25 100 A 75 75 0 0 1 175 100" fill="none" stroke="#e2e8f0" strokeWidth="20" strokeLinecap="round" />
-                  <path d="M 25 100 A 75 75 0 0 1 175 100" fill="none" stroke="#12562E" strokeWidth="20" strokeDasharray={`${selectedGroup.occupancyPercentage * 2.35}, 235`} strokeLinecap="round" />
-                </svg>
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center">
-                  <div className="text-2xl font-extrabold text-slate-900">{selectedGroup.occupancyPercentage}%</div>
-                  <div className="text-[10px] font-semibold text-slate-500">Ocupación</div>
-                </div>
-              </div>
-              <div className="mt-4 text-center">
-                <div className="text-2xl font-extrabold text-slate-900">{selectedGroup.totalStudents}</div>
-                <div className="text-[10px] font-semibold text-slate-500">Alumnos matriculados</div>
-              </div>
-            </div>
-          </div>
-          <div className="mt-4 bg-slate-50 rounded-2xl p-4 border border-slate-100">
-            <div className="flex items-center justify-between text-sm font-semibold text-slate-700">
-              <span>Total Alumnos</span>
-              <span className="text-slate-900">{selectedGroup.totalStudents}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm font-semibold text-slate-700 mt-2">
-              <span>Capacidad</span>
-              <span className="text-slate-900">{selectedGroup.totalCapacity}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm font-semibold text-slate-700 mt-2">
-              <span>% Ocupación</span>
-              <span className="text-slate-900">{selectedGroup.occupancyPercentage}%</span>
-            </div>
-          </div>
-
-          <div className="mt-4 bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-5 border-b border-slate-100 pb-4">
-              <div>
-                <h4 className="text-sm font-bold text-slate-900">Capacidad vs Matriculados por Grado</h4>
-                <p className="text-[11px] text-slate-500 mt-0.5">Ordenado cronológicamente desde Kínder hasta Bachillerato</p>
-              </div>
-
-              {/* Filtro de Grados Cronológico */}
-              <div className="flex gap-1.5">
-                <button
-                  onClick={() => setGradeFilter('all')}
-                  className={`filter-pill ${gradeFilter === 'all' ? 'active' : ''}`}
-                >
-                  Todos
-                </button>
-                <button
-                  onClick={() => setGradeFilter('parvularia')}
-                  className={`filter-pill ${gradeFilter === 'parvularia' ? 'active' : ''}`}
-                >
-                  Parvularia (K4-Prep)
-                </button>
-                <button
-                  onClick={() => setGradeFilter('basica')}
-                  className={`filter-pill ${gradeFilter === 'basica' ? 'active' : ''}`}
-                >
-                  Básica (1°-9°)
-                </button>
-                <button
-                  onClick={() => setGradeFilter('bachillerato')}
-                  className={`filter-pill ${gradeFilter === 'bachillerato' ? 'active' : ''}`}
-                >
-                  Bachillerato
-                </button>
-              </div>
-            </div>
-
-            {/* Lista Filtrada */}
-            {(() => {
-              const filteredGrades = selectedGroup.gradeDetails.filter(detail => {
-                if (gradeFilter === 'all') return true;
-                if (gradeFilter === 'parvularia') return detail.sortWeight >= 10 && detail.sortWeight <= 12;
-                if (gradeFilter === 'basica') return detail.sortWeight >= 20 && detail.sortWeight <= 29;
-                if (gradeFilter === 'bachillerato') return detail.sortWeight >= 40 && detail.sortWeight <= 45;
-                return true;
-              });
-
-              if (filteredGrades.length === 0) {
-                return (
-                  <div className="text-center py-6 text-slate-400 text-xs font-medium">
-                    No hay grados de este nivel asignados a la Sección "{selectedGroup.letter}"
-                  </div>
-                );
-              }
-
-              return (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredGrades.map((detail) => {
-                    const strokeColor = detail.percentage >= 90 ? '#dc2626' : detail.percentage >= 70 ? '#d97706' : '#059669';
-                    const bgColor = detail.percentage >= 90 ? 'bg-red-50' : detail.percentage >= 70 ? 'bg-amber-50' : 'bg-emerald-50';
-                    const textColor = detail.percentage >= 90 ? 'text-red-700' : detail.percentage >= 70 ? 'text-amber-700' : 'text-emerald-700';
-                    const circumference = 2 * Math.PI * 40;
-                    const strokeDashoffset = circumference - (detail.percentage / 100) * circumference;
-
-                    return (
-                      <div key={detail.gradeId} className={`${bgColor} rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:scale-[1.01] transition-all flex flex-col justify-between h-[210px]`}>
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-bold text-slate-700">{detail.gradeName}</span>
-                            <div className="flex gap-1 shrink-0">
-                              <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); handleEdit(detail.rawSection); }}
-                                className="p-1 hover:bg-white/60 rounded text-slate-500 hover:text-slate-700 transition-colors"
-                                title="Editar Sección"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); handleDelete(detail.sectionId); closeAnalytics(); }}
-                                className="p-1 hover:bg-red-100/60 rounded text-red-500 hover:text-red-700 transition-colors"
-                                title="Eliminar Sección"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                          <div className="relative w-18 h-18 mx-auto mb-2">
-                            <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                              <circle cx="50" cy="50" r="40" fill="none" stroke="#e2e8f0" strokeWidth="8" strokeLinecap="round" />
-                              <circle cx="50" cy="50" r="40" fill="none" stroke={strokeColor} strokeWidth="8" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} />
-                            </svg>
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <span className={`text-[13px] font-extrabold ${textColor}`}>{detail.percentage}%</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex justify-between text-[10px] font-semibold text-slate-600 pt-2 border-t border-slate-100 shrink-0">
-                          <div className="text-center">
-                            <div className="text-slate-900 font-bold font-mono">{detail.capacity}</div>
-                            <div className="text-[9px] text-slate-400">Capacidad</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-slate-900 font-bold font-mono">{detail.enrolled}</div>
-                            <div className="text-[9px] text-slate-400">Alumnos</div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-          </div>
-        </motion.div>
       )}
     </div>
   );
