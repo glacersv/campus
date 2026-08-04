@@ -246,16 +246,16 @@ export default function GradesManager() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input type="text" placeholder="Buscar grado..." value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-9" />
           </div>
-          <div className="flex gap-1.5">
-            <button onClick={() => setCycleFilter('all')} className={`filter-pill ${cycleFilter === 'all' ? 'active' : ''}`}>Todos</button>
+          <div className="flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-xl border border-slate-200">
+            <button onClick={() => setCycleFilter('all')} className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${cycleFilter === 'all' ? 'bg-primary text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200/50'}`}>Todos</button>
             {(Object.keys(CYCLE_NAMES) as Cycle[]).map((c) => (
-              <button key={c} onClick={() => setCycleFilter(c)} className={`filter-pill ${cycleFilter === c ? 'active' : ''}`}>{CYCLE_NAMES[c]}</button>
+              <button key={c} onClick={() => setCycleFilter(c)} className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${cycleFilter === c ? 'bg-primary text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200/50'}`}>{CYCLE_NAMES[c]}</button>
             ))}
           </div>
-          <div className="flex gap-1.5">
-            <button onClick={() => setStatusFilter('all')} className={`filter-pill ${statusFilter === 'all' ? 'active' : ''}`}>Todos</button>
-            <button onClick={() => setStatusFilter('ACTIVO')} className={`filter-pill ${statusFilter === 'ACTIVO' ? 'active' : ''}`}>Activos</button>
-            <button onClick={() => setStatusFilter('INACTIVO')} className={`filter-pill ${statusFilter === 'INACTIVO' ? 'active' : ''}`}>Inactivos</button>
+          <div className="flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-xl border border-slate-200">
+            <button onClick={() => setStatusFilter('all')} className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${statusFilter === 'all' ? 'bg-primary text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200/50'}`}>Todos</button>
+            <button onClick={() => setStatusFilter('ACTIVO')} className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${statusFilter === 'ACTIVO' ? 'bg-primary text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200/50'}`}>Activos</button>
+            <button onClick={() => setStatusFilter('INACTIVO')} className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${statusFilter === 'INACTIVO' ? 'bg-primary text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200/50'}`}>Inactivos</button>
           </div>
 
           <div className="flex items-center gap-2 bg-white px-3.5 py-1.5 rounded-xl border border-slate-200 shadow-3xs cursor-pointer select-none hover:bg-slate-50 transition-colors" onClick={() => setOnlyActive(!onlyActive)}>
