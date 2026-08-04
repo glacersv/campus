@@ -366,7 +366,7 @@ export default function GradesManager() {
             return (
               <div key={c}>
                 <div className="flex items-center gap-2 mb-3">
-                  <span className={`px-2.5 py-1 rounded-md text-xs font-bold ${CYCLE_COLORS[c]}`}>{CYCLE_NAMES[c]}</span>
+                  <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">{CYCLE_NAMES[c]}</span>
                   <span className="text-xs text-slate-400">({items.length})</span>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
@@ -534,10 +534,9 @@ function GradeCard({ grade, index, sectionsCount, buildingName, selected, onTogg
           {(() => {
             const cfg = CYCLE_LABEL[cycle] || CYCLE_LABEL['1'];
             const Icon = cfg.Icon;
-            const iconColor = CYCLE_ICON_COLORS[cycle] || 'text-slate-500';
             return (
               <>
-                <Icon className={`${cfg.size} ${iconColor}`} />
+                <Icon className={`${cfg.size} text-slate-400`} />
                 <span className="text-[11px] font-semibold text-slate-600">{cfg.label}</span>
               </>
             );

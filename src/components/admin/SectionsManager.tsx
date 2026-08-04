@@ -399,8 +399,8 @@ export default function SectionsManager() {
                 <div className="overflow-hidden">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-accent/10 flex items-center justify-center border border-accent/20">
-                        <Layers className="w-4.5 h-4.5 text-accent" />
+                      <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-200/60 text-slate-500">
+                        <Layers className="w-4.5 h-4.5" />
                       </div>
                       <div>
                         <h3 className="text-xs font-black text-slate-900 leading-tight uppercase tracking-wider">{gradeName}</h3>
@@ -435,7 +435,7 @@ export default function SectionsManager() {
                   {/* Location details */}
                   <div className="space-y-1.5 mt-2">
                     <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium">
-                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: getBuildingColor(s.buildingId || '') }} />
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-slate-400" />
                       <span className="truncate">Edificio: <strong className="text-slate-700">{buildingName}</strong></span>
                     </div>
                     {(() => {
@@ -448,8 +448,8 @@ export default function SectionsManager() {
                             {assignedIds.map(id => {
                               const name = getComputerLabName(id);
                               return (
-                                <span key={id} className="inline-flex items-center gap-1 bg-blue-50 border border-blue-100 text-blue-700 text-[9px] font-black uppercase px-2 py-0.5 rounded-md" title={name}>
-                                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+                                <span key={id} className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 text-slate-600 text-[9px] font-black uppercase px-2 py-0.5 rounded-md" title={name}>
+                                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
                                   <span className="truncate max-w-[80px]">{name}</span>
                                 </span>
                               );
