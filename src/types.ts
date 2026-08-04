@@ -106,6 +106,7 @@ export interface Section {
   capacity?: number;
   buildingId?: string;
   computerLabId?: string;
+  computerLabIds?: string[];
   status?: 'ACTIVO' | 'INACTIVO';
   schoolYear?: number;
   createdAt?: Timestamp;
