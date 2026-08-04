@@ -25,6 +25,7 @@ export default function SectionsManager() {
   const [form, setForm] = useState({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabId: '' });
   const [search, setSearch] = useState('');
   const [onlyActive, setOnlyActive] = useState(true);
+  const [letterFilter, setLetterFilter] = useState<string>('all');
   const [selectedGroup, setSelectedGroup] = useState<{ letter: string; levels: { label: string; count: number }[]; totalGrades: number; totalStudents: number; totalCapacity: number; occupancyPercentage: number; gradeDetails: { sectionId: string; gradeId: string; gradeName: string; capacity: number; enrolled: number; percentage: number; rawSection: Section; sortWeight: number }[] } | null>(null);
 
   // Dynamic filter state for grades in detail analytics
@@ -137,12 +138,21 @@ export default function SectionsManager() {
 
   const activeGradeIds = new Set(students.map(st => st.gradeId).filter(Boolean));
 
+  const sectionLetters = Array.from(
+    new Set(activeSections.map(s => getSectionLetter(s.name)))
+  ).sort((a, b) => a.localeCompare(b));
+
   const filteredActiveSections = activeSections.filter(s => {
     const gradeName = getGradeName(s.gradeId);
     const matchesSearch = s.name.toLowerCase().includes(search.toLowerCase()) || gradeName.toLowerCase().includes(search.toLowerCase());
     const matchesActive = !onlyActive || activeGradeIds.has(s.gradeId);
-    return matchesSearch && matchesActive;
+    const matchesLetter = letterFilter === 'all' || getSectionLetter(s.name) === letterFilter;
+    return matchesSearch && matchesActive && matchesLetter;
   });
+
+  const totalCapacityFiltered = filteredActiveSections.reduce((acc, s) => acc + (s.capacity || 0), 0);
+  const totalStudentsFiltered = filteredActiveSections.reduce((acc, s) => acc + students.filter(st => st.sectionId === s.id).length, 0);
+  const occupancyPercentageFiltered = totalCapacityFiltered > 0 ? Math.round((totalStudentsFiltered / totalCapacityFiltered) * 100) : 0;
 
   const getGradeSortWeight = (gradeId: string): number => {
     if (gradeId === 'k4') return 10;
@@ -189,6 +199,35 @@ export default function SectionsManager() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input type="text" placeholder="Buscar sección..." value={search} onChange={e => setSearch(e.target.value)} className="input pl-9" />
         </div>
+
+        {sectionLetters.length > 0 && (
+          <div className="flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-xl border border-slate-200">
+            <button
+              onClick={() => setLetterFilter('all')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                letterFilter === 'all'
+                  ? 'bg-primary text-white shadow-xs'
+                  : 'text-slate-600 hover:bg-slate-200/50'
+              }`}
+            >
+              Todas
+            </button>
+            {sectionLetters.map(letter => (
+              <button
+                key={letter}
+                onClick={() => setLetterFilter(letter)}
+                className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  letterFilter === letter
+                    ? 'bg-primary text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-200/50'
+                }`}
+              >
+                {letter}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="flex items-center gap-2 bg-white px-3.5 py-1.5 rounded-xl border border-slate-200 shadow-3xs cursor-pointer select-none hover:bg-slate-50 transition-colors" onClick={() => setOnlyActive(!onlyActive)}>
           <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors ${onlyActive ? 'bg-primary border-primary text-white' : 'border-slate-300'}`}>
             {onlyActive && <Check className="w-2.5 h-2.5 stroke-[3px]" />}
@@ -196,6 +235,44 @@ export default function SectionsManager() {
           <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Sólo Secciones con Alumnos</span>
         </div>
       </div>
+
+      {/* Premium Statistics Banner */}
+      {filteredActiveSections.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50/50 border border-slate-200/80 rounded-2xl p-4 shadow-3xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Matrícula Filtrada</span>
+              <span className="text-base font-extrabold text-slate-800 font-mono">{totalStudentsFiltered} alumnos</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50/80 border border-blue-100 flex items-center justify-center shrink-0">
+              <Layers className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Capacidad Total</span>
+              <span className="text-base font-extrabold text-slate-800 font-mono">{totalCapacityFiltered} espacios</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0">
+              <div className="relative w-7 h-7">
+                <svg viewBox="0 0 36 36" className="w-full h-full text-amber-500">
+                  <path className="text-slate-200" strokeWidth="4" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                  <path className="text-amber-500" strokeDasharray={`${occupancyPercentageFiltered}, 100`} strokeWidth="4" strokeLinecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                </svg>
+              </div>
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Promedio de Ocupación</span>
+              <span className="text-base font-extrabold text-slate-800 font-mono">{occupancyPercentageFiltered}% ocupado</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Formulario Modal */}
       <AnimatePresence>
@@ -236,9 +313,9 @@ export default function SectionsManager() {
                     </select>
                   </div>
                   <div className="col-span-2">
-                    <label className="form-label">Laboratorio de Cómputo</label>
+                    <label className="form-label">Aula Especializada / Laboratorio</label>
                     <select value={form.computerLabId} onChange={e => setForm({ ...form, computerLabId: e.target.value })} className="input">
-                      <option value="">Sin laboratorio</option>
+                      <option value="">Sin aula/lab especializado</option>
                       {computerLabs.map(cl => <option key={cl.id} value={cl.id}>{cl.name}</option>)}
                     </select>
                   </div>
@@ -269,7 +346,7 @@ export default function SectionsManager() {
 
             const strokeColor = percentage >= 90 ? '#dc2626' : percentage >= 70 ? '#d97706' : '#12562E';
             const strokeBg = '#e2e8f0';
-            const circumference = 2 * Math.PI * 30;
+            const circumference = 2 * Math.PI * 35;
             const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
             return (
@@ -293,13 +370,13 @@ export default function SectionsManager() {
                     </div>
 
                     {/* Radial Progress Gauge */}
-                    <div className="relative w-12 h-12 shrink-0">
+                    <div className="relative w-16 h-16 shrink-0">
                       <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                        <circle cx="50" cy="50" r="30" fill="none" stroke={strokeBg} strokeWidth="10" strokeLinecap="round" />
-                        <circle cx="50" cy="50" r="30" fill="none" stroke={strokeColor} strokeWidth="10" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} />
+                        <circle cx="50" cy="50" r="35" fill="none" stroke={strokeBg} strokeWidth="10" strokeLinecap="round" />
+                        <circle cx="50" cy="50" r="35" fill="none" stroke={strokeColor} strokeWidth="10" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} />
                       </svg>
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-[10px] font-extrabold text-slate-900">{percentage}%</span>
+                        <span className="text-xs font-black text-slate-900">{percentage}%</span>
                       </div>
                     </div>
                   </div>
@@ -325,7 +402,7 @@ export default function SectionsManager() {
                     {computerLabName && (
                       <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium">
                         <div className="w-1.5 h-1.5 rounded-full shrink-0 bg-blue-500" />
-                        <span className="truncate">Aula: <strong className="text-slate-700">{computerLabName}</strong></span>
+                        <span className="truncate">Aula/Lab: <strong className="text-slate-700">{computerLabName}</strong></span>
                       </div>
                     )}
                   </div>
