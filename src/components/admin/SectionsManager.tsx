@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Layers, Plus, Edit2, Trash2, Save, X, Search, Users } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Layers, Plus, Edit2, Trash2, Save, X, Search, Users, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAllSections, createSection, updateSection, deleteSection, getAllGrades, getAllBuildings, getAllComputerLabs, toggleSectionStatus, getAllBaccalaureateTypes, getAllStudents, getCurrentSchoolYear } from '../../lib/firestore';
 import { Section, Grade, Building, ComputerLab, BaccalaureateTypeDoc, Student } from '../../types';
@@ -24,6 +24,7 @@ export default function SectionsManager() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabId: '' });
   const [search, setSearch] = useState('');
+  const [onlyActive, setOnlyActive] = useState(true);
   const [selectedGroup, setSelectedGroup] = useState<{ letter: string; levels: { label: string; count: number }[]; totalGrades: number; totalStudents: number; totalCapacity: number; occupancyPercentage: number; gradeDetails: { sectionId: string; gradeId: string; gradeName: string; capacity: number; enrolled: number; percentage: number; rawSection: Section; sortWeight: number }[] } | null>(null);
 
   // Dynamic filter state for grades in detail analytics
@@ -134,7 +135,16 @@ export default function SectionsManager() {
     hasYearSections ? s.schoolYear === currentYear : !s.schoolYear
   );
 
-  const letterGroups = activeSections.reduce<Record<string, Section[]>>((acc, s) => {
+  const activeGradeIds = new Set(students.map(st => st.gradeId).filter(Boolean));
+
+  const filteredActiveSections = activeSections.filter(s => {
+    const gradeName = getGradeName(s.gradeId);
+    const matchesSearch = s.name.toLowerCase().includes(search.toLowerCase()) || gradeName.toLowerCase().includes(search.toLowerCase());
+    const matchesActive = !onlyActive || activeGradeIds.has(s.gradeId);
+    return matchesSearch && matchesActive;
+  });
+
+  const letterGroups = filteredActiveSections.reduce<Record<string, Section[]>>((acc, s) => {
     const letter = getSectionLetter(s.name);
     if (!acc[letter]) acc[letter] = [];
     acc[letter].push(s);
@@ -241,9 +251,17 @@ export default function SectionsManager() {
         </button>
       </div>
 
-      <div className="relative flex-1 max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-        <input type="text" placeholder="Buscar sección..." value={search} onChange={e => setSearch(e.target.value)} className="input pl-9" />
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input type="text" placeholder="Buscar sección..." value={search} onChange={e => setSearch(e.target.value)} className="input pl-9" />
+        </div>
+        <div className="flex items-center gap-2 bg-white px-3.5 py-1.5 rounded-xl border border-slate-200 shadow-3xs cursor-pointer select-none hover:bg-slate-50 transition-colors" onClick={() => setOnlyActive(!onlyActive)}>
+          <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors ${onlyActive ? 'bg-primary border-primary text-white' : 'border-slate-300'}`}>
+            {onlyActive && <Check className="w-2.5 h-2.5 stroke-[3px]" />}
+          </div>
+          <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Sólo Secciones con Alumnos</span>
+        </div>
       </div>
 
       {/* Formulario Modal */}
