@@ -502,7 +502,7 @@ export default function SchoolYearManager() {
                 return (
                   <tr
                     key={r.gradeId}
-                    className="hover:bg-slate-50/30 transition-colors duration-150 align-top group/row"
+                    className="hover:bg-slate-50/50 border-b border-slate-100/60 transition-colors duration-150 align-middle group/row"
                   >
                     {/* Grado */}
                     <td className="px-6 py-4.5">
@@ -694,7 +694,7 @@ export default function SchoolYearManager() {
         <button
           onClick={handleStart}
           disabled={submitting}
-          className="btn-primary w-full lg:w-auto px-8 py-4 font-black uppercase text-xs tracking-widest shadow-md hover:shadow-lg flex items-center justify-center gap-3 shrink-0"
+          className="btn-primary w-full lg:w-auto px-8 py-4 font-black uppercase text-xs tracking-widest shadow-md hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 flex items-center justify-center gap-3 shrink-0 cursor-pointer"
         >
           {submitting ? (
             <>
@@ -751,7 +751,7 @@ export default function SchoolYearManager() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {/* Reset Pruebas */}
-                  <div className="bg-white border border-slate-200/80 p-5 rounded-xl flex flex-col justify-between gap-4 shadow-3xs hover:border-slate-300 transition-all">
+                  <div className="bg-white border border-slate-200/80 p-5 rounded-xl flex flex-col justify-between gap-4 shadow-3xs hover:border-slate-300 transition-all hover:scale-[1.005] duration-200">
                     <div>
                       <h6 className="text-xs font-black text-slate-900 font-display uppercase tracking-wider">
                         Reinicio de Matrícula y Pruebas
@@ -762,7 +762,7 @@ export default function SchoolYearManager() {
                     </div>
                     <button
                       onClick={handleReset}
-                      className="btn-secondary text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 text-[11px] font-bold py-2 px-4 self-start rounded-xl flex items-center gap-2 shadow-3xs"
+                      className="btn-secondary text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 text-[11px] font-bold py-2 px-4 self-start rounded-xl flex items-center gap-2 shadow-3xs hover:scale-[1.02] active:scale-[0.98] transition-all duration-150 cursor-pointer"
                     >
                       <RotateCcw className="w-4 h-4" />
                       <span>Resetear Escenario</span>
@@ -770,7 +770,7 @@ export default function SchoolYearManager() {
                   </div>
 
                   {/* Corregir Historial */}
-                  <div className="bg-white border border-slate-200/80 p-5 rounded-xl flex flex-col justify-between gap-4 shadow-3xs hover:border-slate-300 transition-all">
+                  <div className="bg-white border border-slate-200/80 p-5 rounded-xl flex flex-col justify-between gap-4 shadow-3xs hover:border-slate-300 transition-all hover:scale-[1.005] duration-200">
                     <div>
                       <h6 className="text-xs font-black text-slate-900 font-display uppercase tracking-wider">
                         Reconstrucción Académica de Historiales
@@ -781,73 +781,73 @@ export default function SchoolYearManager() {
                     </div>
                     <button
                       onClick={handleFixHistories}
-                      className="btn-secondary text-primary border-primary/20 hover:bg-primary/5 hover:border-primary/30 text-[11px] font-bold py-2 px-4 self-start rounded-xl flex items-center gap-2 shadow-3xs"
+                      className="btn-secondary text-primary border-primary/20 hover:bg-primary/5 hover:border-primary/30 text-[11px] font-bold py-2 px-4 self-start rounded-xl flex items-center gap-2 shadow-3xs hover:scale-[1.02] active:scale-[0.98] transition-all duration-150 cursor-pointer"
                     >
                       <BookOpen className="w-4 h-4" />
                       <span>Reconstruir Historial Alumnos</span>
                     </button>
                   </div>
                 </div>
-              </div>
 
-            {/* Sincronizador Interactivo de Firebase */}
-            <div className="bg-white border border-slate-200 p-5 rounded-xl space-y-4 shadow-2xs">
-              <div>
-                <h6 className="text-xs font-bold text-slate-900 font-display uppercase tracking-wider flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-[#25855A]" />
-                  Migrador Interactivo y Limpieza de Alumnos (Multi-Firebase SDK)
-                </h6>
-                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                  Pega el JSON de configuración de Firebase de tu proyecto de origen (las credenciales Web o de Cliente de Firebase SDK).
-                  Esta herramienta **limpiará por completo la colección actual de alumnos** e insertará y reconstruirá de manera inteligente
-                  los historiales de la base de datos de origen directamente en este Firebase de destino.
-                </p>
-              </div>
-
-              <form onSubmit={handleInteractiveMigration} className="space-y-3">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">JSON de Configuración SDK de Firebase de Origen</label>
-                  <textarea
-                    rows={5}
-                    value={migrationSdk}
-                    onChange={e => setMigrationSdk(e.target.value)}
-                    placeholder={`{\n  "apiKey": "AIzaSy...",\n  "authDomain": "...",\n  "projectId": "...",\n  "storageBucket": "...",\n  "messagingSenderId": "...",\n  "appId": "..."\n}`}
-                    className="w-full text-xs font-mono p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#25855A]/25 focus:border-[#25855A] bg-slate-50"
-                  />
-                </div>
-
-                {migrationStatus && (
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[11px] font-semibold text-slate-600">{migrationStatus}</span>
-                      <span className="text-[11px] font-bold text-primary">{migrationProgress}%</span>
-                    </div>
-                    <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
-                      <div className="bg-primary h-1.5 rounded-full transition-all duration-300" style={{ width: `${migrationProgress}%` }} />
-                    </div>
+                {/* Sincronizador Interactivo de Firebase */}
+                <div className="bg-white border border-slate-200/80 p-6 rounded-2xl space-y-4 shadow-3xs hover:border-slate-300 transition-all">
+                  <div>
+                    <h6 className="text-xs font-black text-slate-900 font-display uppercase tracking-wider flex items-center gap-2">
+                      <Sparkles className="w-4.5 h-4.5 text-primary" />
+                      Migrador Interactivo y Limpieza de Alumnos (Multi-Firebase SDK)
+                    </h6>
+                    <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
+                      Pega el JSON de configuración de Firebase de tu proyecto de origen (las credenciales Web o de Cliente de Firebase SDK).
+                      Esta herramienta <strong className="text-red-600 font-semibold">limpiará por completo la colección actual de alumnos</strong> e insertará y reconstruirá de manera inteligente
+                      los historiales de la base de datos de origen directamente en este Firebase de destino.
+                    </p>
                   </div>
-                )}
 
-                <button
-                  type="submit"
-                  disabled={runningMigration}
-                  className="btn-primary text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 disabled:opacity-40"
-                >
-                  {runningMigration ? (
-                    <>
-                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Sincronizando...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>Iniciar Sincronización y Limpieza Completa</span>
-                    </>
-                  )}
-                </button>
-              </form>
-            </div>
-          </motion.div>
+                  <form onSubmit={handleInteractiveMigration} className="space-y-4">
+                    <div>
+                      <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1.5">JSON de Configuración SDK de Firebase de Origen</label>
+                      <textarea
+                        rows={5}
+                        value={migrationSdk}
+                        onChange={e => setMigrationSdk(e.target.value)}
+                        placeholder={`{\n  "apiKey": "AIzaSy...",\n  "authDomain": "...",\n  "projectId": "...",\n  "storageBucket": "...",\n  "messagingSenderId": "...",\n  "appId": "..."\n}`}
+                        className="w-full text-xs font-mono p-3.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-slate-50 transition-all shadow-3xs"
+                      />
+                    </div>
+
+                    {migrationStatus && (
+                      <div className="p-3.5 bg-slate-50/50 border border-slate-200 rounded-xl space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[11px] font-bold text-slate-600">{migrationStatus}</span>
+                          <span className="text-[11px] font-extrabold text-primary font-mono">{migrationProgress}%</span>
+                        </div>
+                        <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                          <div className="bg-primary h-1.5 rounded-full transition-all duration-300" style={{ width: `${migrationProgress}%` }} />
+                        </div>
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={runningMigration}
+                      className="btn-primary text-xs py-2.5 px-5 rounded-xl flex items-center gap-1.5 disabled:opacity-40 transition-all shadow-3xs cursor-pointer"
+                    >
+                      {runningMigration ? (
+                        <>
+                          <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Sincronizando y reconstruyendo...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Iniciar Sincronización y Limpieza Completa</span>
+                        </>
+                      )}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </motion.div>
         )}
         </AnimatePresence>
       </div>
