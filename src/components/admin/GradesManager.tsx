@@ -287,7 +287,7 @@ export default function GradesManager() {
             </div>
             <div>
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Grados Activos</span>
-              <span className="text-base font-extrabold text-slate-800 font-mono">{filtered.length} registrados</span>
+              <span className="text-base font-extrabold text-slate-800 font-display">{filtered.length} registrados</span>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -296,7 +296,7 @@ export default function GradesManager() {
             </div>
             <div>
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Secciones Totales</span>
-              <span className="text-base font-extrabold text-slate-800 font-mono">{filteredSectionsCount} secciones</span>
+              <span className="text-base font-extrabold text-slate-800 font-display">{filteredSectionsCount} secciones</span>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -305,7 +305,7 @@ export default function GradesManager() {
             </div>
             <div>
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Alumnos Matriculados</span>
-              <span className="text-base font-extrabold text-slate-800 font-mono">{filteredStudentsCount} alumnos</span>
+              <span className="text-base font-extrabold text-slate-800 font-display">{filteredStudentsCount} alumnos</span>
             </div>
           </div>
         </div>
