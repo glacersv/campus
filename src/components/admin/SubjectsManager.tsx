@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { BookMarked, Plus, Edit2, Trash2, Save, X, Search, LayoutGrid, List, Check, Trash } from 'lucide-react';
+import { BookMarked, Plus, Edit2, Trash2, Save, X, Search, LayoutGrid, List, Check, Trash, GraduationCap } from 'lucide-react';
 import { toast } from 'sonner';
-import { getAllSubjects, createSubject, updateSubject, deleteSubject } from '../../lib/firestore';
-import { Subject, CYCLE_NAMES, Cycle } from '../../types';
+import { getAllSubjects, createSubject, updateSubject, deleteSubject, getAllGrades } from '../../lib/firestore';
+import { Subject, Grade, CYCLE_NAMES, Cycle } from '../../types';
 
 export default function SubjectsManager() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [grades, setGrades] = useState<Grade[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -14,12 +15,14 @@ export default function SubjectsManager() {
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filterCycle, setFilterCycle] = useState<string>('');
+  const [filterGrade, setFilterGrade] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('');
 
   const [form, setForm] = useState({
     name: '',
     description: '',
     cycle: '' as Cycle | '',
+    gradeId: '',
     status: 'ACTIVO' as 'ACTIVO' | 'INACTIVO',
     weeklyHours: 4,
   });
@@ -27,11 +30,17 @@ export default function SubjectsManager() {
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
-    try { setSubjects(await getAllSubjects()); } finally { setLoading(false); }
+    try {
+      const [subs, grds] = await Promise.all([getAllSubjects(), getAllGrades()]);
+      setSubjects(subs);
+      setGrades(grds);
+    } finally { setLoading(false); }
   };
 
+  const getGradeName = (id?: string) => grades.find(g => g.id === id)?.name || id || '—';
+
   const resetForm = () => {
-    setForm({ name: '', description: '', cycle: '', status: 'ACTIVO', weeklyHours: 4 });
+    setForm({ name: '', description: '', cycle: '', gradeId: '', status: 'ACTIVO', weeklyHours: 4 });
     setEditingId(null);
   };
 
@@ -44,6 +53,7 @@ export default function SubjectsManager() {
         name: form.name.trim(),
         description: form.description.trim() || undefined,
         cycle: form.cycle || undefined,
+        gradeId: form.gradeId || undefined,
         status: form.status,
         weeklyHours: form.weeklyHours,
       };
@@ -52,7 +62,7 @@ export default function SubjectsManager() {
         await updateSubject(editingId, data);
         toast.success('Materia actualizada correctamente');
       } else {
-        const id = form.name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        const id = `${form.name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}-${form.gradeId || 'general'}`;
         await createSubject({ id, ...data });
         toast.success('Materia creada correctamente');
       }
@@ -72,6 +82,7 @@ export default function SubjectsManager() {
       name: s.name,
       description: s.description || '',
       cycle: s.cycle || '',
+      gradeId: s.gradeId || '',
       status: s.status || 'ACTIVO',
       weeklyHours: s.weeklyHours || 4,
     });
@@ -120,8 +131,9 @@ export default function SubjectsManager() {
   const filtered = subjects.filter(s => {
     const matchSearch = s.name.toLowerCase().includes(search.toLowerCase());
     const matchCycle = !filterCycle || s.cycle === filterCycle;
+    const matchGrade = !filterGrade || s.gradeId === filterGrade;
     const matchStatus = !filterStatus || s.status === filterStatus;
-    return matchSearch && matchCycle && matchStatus;
+    return matchSearch && matchCycle && matchGrade && matchStatus;
   });
 
   if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
@@ -130,8 +142,8 @@ export default function SubjectsManager() {
     <div className="space-y-6">
       <div className="module-header">
         <div className="module-title-group">
-          <div className="module-icon bg-secondary/10">
-            <BookMarked className="w-5 h-5 text-secondary-dark" />
+          <div className="module-icon">
+            <BookMarked className="w-5 h-5" />
           </div>
           <div>
             <h1 className="module-title">Materias</h1>
@@ -148,15 +160,25 @@ export default function SubjectsManager() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input type="text" placeholder="Buscar materia..." value={search} onChange={e => setSearch(e.target.value)} className="input pl-9" />
         </div>
-        <select value={filterCycle} onChange={e => setFilterCycle(e.target.value)} className="input w-auto">
-          <option value="">Todos los ciclos</option>
-          {Object.entries(CYCLE_NAMES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-        </select>
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="input w-auto">
-          <option value="">Todos</option>
-          <option value="ACTIVO">Activos</option>
-          <option value="INACTIVO">Inactivos</option>
-        </select>
+        <div className="flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-xl border border-slate-200">
+          <select value={filterCycle} onChange={e => setFilterCycle(e.target.value)} className="bg-transparent text-xs font-bold text-slate-600 focus:outline-none cursor-pointer px-2">
+            <option value="">Todos los ciclos</option>
+            {Object.entries(CYCLE_NAMES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+        </div>
+        <div className="flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-xl border border-slate-200">
+          <select value={filterGrade} onChange={e => setFilterGrade(e.target.value)} className="bg-transparent text-xs font-bold text-slate-600 focus:outline-none cursor-pointer px-2">
+            <option value="">Todos los grados</option>
+            {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+          </select>
+        </div>
+        <div className="flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-xl border border-slate-200">
+          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="bg-transparent text-xs font-bold text-slate-600 focus:outline-none cursor-pointer px-2">
+            <option value="">Todos los estados</option>
+            <option value="ACTIVO">Activos</option>
+            <option value="INACTIVO">Inactivos</option>
+          </select>
+        </div>
         {selected.size > 0 && (
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
             className="flex items-center gap-2 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
@@ -173,80 +195,116 @@ export default function SubjectsManager() {
 
       <AnimatePresence>
         {showForm && (
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="card p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-slate-900">{editingId ? 'Editar Materia' : 'Nueva Materia'}</h3>
-              <button onClick={() => { setShowForm(false); resetForm(); }} className="p-1 hover:bg-slate-100 rounded-lg"><X className="w-4 h-4" /></button>
-            </div>
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-slate-700 mb-1">Nombre *</label>
-                <input type="text" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-                  placeholder="Ej: Matemáticas" className="input w-full" autoFocus />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden flex flex-col"
+            >
+              <div className="bg-slate-50 border-b border-slate-100 p-5 flex justify-between items-center shrink-0">
+                <h3 className="font-bold text-slate-900 text-base">{editingId ? 'Editar Materia' : 'Nueva Materia'}</h3>
+                <button onClick={() => { setShowForm(false); resetForm(); }} className="p-1.5 hover:bg-slate-200 rounded-lg transition-colors"><X className="w-4 h-4 text-slate-500" /></button>
               </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-slate-700 mb-1">Descripción</label>
-                <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
-                  placeholder="Descripción breve de la materia..." className="input w-full h-20 resize-none" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Ciclo</label>
-                <select value={form.cycle} onChange={e => setForm(p => ({ ...p, cycle: e.target.value as Cycle | '' }))}
-                  className="input w-full">
-                  <option value="">Sin asignar</option>
-                  {Object.entries(CYCLE_NAMES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Horas semanales</label>
-                <input type="number" min={1} max={40} value={form.weeklyHours}
-                  onChange={e => setForm(p => ({ ...p, weeklyHours: parseInt(e.target.value) || 4 }))}
-                  className="input w-full" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Estado</label>
-                <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as 'ACTIVO' | 'INACTIVO' }))}
-                  className="input w-full">
-                  <option value="ACTIVO">Activo</option>
-                  <option value="INACTIVO">Inactivo</option>
-                </select>
-              </div>
-              <div className="md:col-span-2 flex justify-end gap-2">
-                <button type="button" onClick={() => { setShowForm(false); resetForm(); }} className="btn-secondary">Cancelar</button>
-                <button type="submit" className="btn-primary"><Save className="w-4 h-4" /> {editingId ? 'Actualizar' : 'Crear'}</button>
-              </div>
-            </form>
-          </motion.div>
+              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <label className="form-label">Nombre *</label>
+                    <input type="text" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                      placeholder="Ej: Matemáticas" className="input" autoFocus />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="form-label">Descripción</label>
+                    <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                      placeholder="Descripción breve de la materia..." className="input h-20 resize-none" />
+                  </div>
+                  <div>
+                    <label className="form-label">Grado Específico (MINED)</label>
+                    <select value={form.gradeId} onChange={e => setForm(p => ({ ...p, gradeId: e.target.value }))}
+                      className="input">
+                      <option value="">Cualquier grado</option>
+                      {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="form-label">Ciclo</label>
+                    <select value={form.cycle} onChange={e => setForm(p => ({ ...p, cycle: e.target.value as Cycle | '' }))}
+                      className="input">
+                      <option value="">Sin asignar</option>
+                      {Object.entries(CYCLE_NAMES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="form-label">Horas semanales</label>
+                    <input type="number" min={1} max={40} value={form.weeklyHours}
+                      onChange={e => setForm(p => ({ ...p, weeklyHours: parseInt(e.target.value) || 4 }))}
+                      className="input" />
+                  </div>
+                  <div>
+                    <label className="form-label">Estado</label>
+                    <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as 'ACTIVO' | 'INACTIVO' }))}
+                      className="input">
+                      <option value="ACTIVO">Activo</option>
+                      <option value="INACTIVO">Inactivo</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 shrink-0">
+                  <button type="button" onClick={() => { setShowForm(false); resetForm(); }} className="btn-secondary">Cancelar</button>
+                  <button type="submit" className="btn-primary"><Save className="w-4 h-4" /> {editingId ? 'Actualizar' : 'Crear'}</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
       {viewMode === 'card' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {filtered.map((s, i) => (
-            <motion.div key={s.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
-              className={`card card-hover p-4 group relative ${selected.has(s.id) ? 'ring-2 ring-primary border-primary' : ''}`}>
-              <div className="absolute top-2.5 left-2.5">
-                <button onClick={() => toggleSelect(s.id)}
-                  className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.has(s.id) ? 'bg-primary border-primary text-white' : 'border-slate-300 hover:border-primary'}`}>
-                  {selected.has(s.id) && <Check className="w-2.5 h-2.5" />}
-                </button>
-              </div>
-              <div className="pt-1 pl-5">
-                <div className="flex items-start justify-between">
-                  <h3 className="font-semibold text-slate-900">{s.name}</h3>
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${s.status === 'INACTIVO' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+            <motion.div key={s.id} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
+              className={`bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col justify-between hover:shadow-md transition-all h-[240px] relative ${selected.has(s.id) ? 'ring-2 ring-primary border-primary' : ''}`}>
+              <div>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => toggleSelect(s.id)}
+                      className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.has(s.id) ? 'bg-primary border-primary text-white' : 'border-slate-300 hover:border-primary'}`}>
+                      {selected.has(s.id) && <Check className="w-2.5 h-2.5" />}
+                    </button>
+                    <h3 className="font-bold text-slate-900 text-sm leading-snug line-clamp-1">{s.name}</h3>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${s.status === 'INACTIVO' ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>
                     {s.status || 'ACTIVO'}
                   </span>
                 </div>
-                {s.description && <p className="text-xs text-slate-500 mt-1 line-clamp-2">{s.description}</p>}
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {s.cycle && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{CYCLE_NAMES[s.cycle]}</span>}
-                  {s.weeklyHours && <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{s.weeklyHours}h/semana</span>}
+                {s.description && <p className="text-xs text-slate-500 line-clamp-2 mt-1 leading-relaxed">{s.description}</p>}
+
+                <div className="flex flex-wrap gap-1.5 mt-3">
+                  {s.gradeId ? (
+                    <span className="inline-flex items-center gap-1 bg-primary/5 border border-primary/10 text-primary text-[10px] font-bold px-2 py-0.5 rounded-md">
+                      <GraduationCap className="w-3 h-3" />
+                      {getGradeName(s.gradeId)}
+                    </span>
+                  ) : s.cycle ? (
+                    <span className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                      {CYCLE_NAMES[s.cycle]}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 text-slate-400 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                      Grado General
+                    </span>
+                  )}
+                  {s.weeklyHours && (
+                    <span className="bg-slate-100 border border-slate-200 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                      {s.weeklyHours}h / semana
+                    </span>
+                  )}
                 </div>
               </div>
-              <div className="flex justify-end gap-1 mt-3 pt-2 border-t border-slate-100 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => handleEdit(s)} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-slate-100 rounded-lg text-xs font-medium text-slate-600 transition-colors"><Edit2 className="w-3.5 h-3.5" /> Editar</button>
-                <button onClick={() => handleDelete(s.id)} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-red-50 rounded-lg text-xs font-medium text-red-600 transition-colors"><Trash2 className="w-3.5 h-3.5" /> Eliminar</button>
+
+              <div className="flex justify-end gap-1 mt-4 pt-3 border-t border-slate-100 shrink-0">
+                <button onClick={() => handleEdit(s)} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer" title="Editar"><Edit2 className="w-4 h-4 text-slate-500" /></button>
+                <button onClick={() => handleDelete(s.id)} className="p-1.5 hover:bg-red-50 rounded-lg transition-colors cursor-pointer" title="Eliminar"><Trash2 className="w-4 h-4 text-red-500" /></button>
               </div>
             </motion.div>
           ))}
@@ -283,7 +341,7 @@ export default function SubjectsManager() {
                     <div className="text-sm font-medium text-slate-900">{s.name}</div>
                     {s.description && <div className="text-xs text-slate-400 truncate max-w-[200px]">{s.description}</div>}
                   </td>
-                  <td className="px-3 py-2 text-sm text-slate-600">{s.cycle ? CYCLE_NAMES[s.cycle] : '—'}</td>
+                  <td className="px-3 py-2 text-sm text-slate-600">{s.gradeId ? getGradeName(s.gradeId) : s.cycle ? CYCLE_NAMES[s.cycle] : '—'}</td>
                   <td className="px-3 py-2 text-sm text-slate-600">{s.weeklyHours || '—'}h</td>
                   <td className="px-3 py-2">
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${s.status === 'INACTIVO' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>

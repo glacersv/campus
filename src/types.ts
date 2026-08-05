@@ -144,6 +144,7 @@ export interface Subject {
   name: string;
   description?: string;
   cycle?: Cycle;
+  gradeId?: string;
   status?: 'ACTIVO' | 'INACTIVO';
   weeklyHours?: number;
   createdAt?: Timestamp;
