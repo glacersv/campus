@@ -303,7 +303,7 @@ export default function GradeSectionAssignment() {
                       key={grade.id}
                       initial={{ opacity: 0, y: 12 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="bg-white rounded-2xl p-5 border border-slate-200/80 transition-all hover:shadow-md flex flex-col justify-between h-[250px]"
+                      className="bg-white rounded-2xl p-5 border border-slate-200/80 transition-all hover:shadow-md flex flex-col justify-between"
                     >
                       <div>
                         {/* Header */}
@@ -335,7 +335,7 @@ export default function GradeSectionAssignment() {
 
                         {/* Edificios asignados (Botones Interactivos de Edición) */}
                         <div className="mb-4">
-                          <div className="flex flex-col gap-1.5 max-h-[85px] overflow-y-auto pr-1">
+                          <div className="flex flex-col gap-1.5 pr-1">
                             {gradeSections.map(sec => {
                               const buildingId = assignments[sec.id];
                               const building = buildings.find(b => b.id === buildingId);
