@@ -251,7 +251,7 @@ export default function SectionsManager() {
             </div>
             <div>
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Matrícula Filtrada</span>
-              <span className="text-base font-extrabold text-slate-800 font-mono">{totalStudentsFiltered} alumnos</span>
+              <span className="text-base font-extrabold text-slate-800 font-display">{totalStudentsFiltered} alumnos</span>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -260,7 +260,7 @@ export default function SectionsManager() {
             </div>
             <div>
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Capacidad Total</span>
-              <span className="text-base font-extrabold text-slate-800 font-mono">{totalCapacityFiltered} espacios</span>
+              <span className="text-base font-extrabold text-slate-800 font-display">{totalCapacityFiltered} espacios</span>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -274,7 +274,7 @@ export default function SectionsManager() {
             </div>
             <div>
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Promedio de Ocupación</span>
-              <span className="text-base font-extrabold text-slate-800 font-mono">{occupancyPercentageFiltered}% ocupado</span>
+              <span className="text-base font-extrabold text-slate-800 font-display">{occupancyPercentageFiltered}% ocupado</span>
             </div>
           </div>
         </div>
