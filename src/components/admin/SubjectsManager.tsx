@@ -15,7 +15,8 @@ import {
   GraduationCap,
   Clock,
   HelpCircle,
-  Eye
+  Eye,
+  Minus
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -34,7 +35,7 @@ export default function SubjectsManager() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // Minimalist UX Search & Filter States
+  // Minimalist UX Search & Filter States (Pills Only, No Dropdowns!)
   const [search, setSearch] = useState('');
   const [selectedGradeId, setSelectedGradeId] = useState<string>('');
   const [selectedType, setSelectedType] = useState<string>('');
@@ -236,72 +237,110 @@ export default function SubjectsManager() {
         </button>
       </div>
 
-      {/* Simplified, Ultra-clean Filter Bar */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-3xs">
+      {/* Button-Pills-Only Clean Filtering Dashboard (No dropdown selects anymore!) */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-3xs space-y-4">
+
+        {/* Row 1: Search & Type Pills */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
 
-          <div className="flex flex-wrap items-center gap-3 flex-1">
-            {/* Quick Search */}
-            <div className="relative w-full md:max-w-xs">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Buscar materia..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="input pl-10"
-              />
-            </div>
-
-            {/* Grade Selector */}
-            <div className="flex items-center gap-1.5 bg-slate-100/80 px-3 py-1.5 rounded-xl border border-slate-200/60">
-              <GraduationCap className="w-3.5 h-3.5 text-slate-500" />
-              <select
-                value={selectedGradeId}
-                onChange={e => setSelectedGradeId(e.target.value)}
-                className="bg-transparent text-xs font-bold text-slate-600 focus:outline-none cursor-pointer border-0"
-              >
-                <option value="">Todos los Grados</option>
-                {grades.map(g => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Type Selector */}
-            <div className="flex items-center gap-1.5 bg-slate-100/80 px-3 py-1.5 rounded-xl border border-slate-200/60">
-              <Eye className="w-3.5 h-3.5 text-slate-500" />
-              <select
-                value={selectedType}
-                onChange={e => setSelectedType(e.target.value)}
-                className="bg-transparent text-xs font-bold text-slate-600 focus:outline-none cursor-pointer border-0"
-              >
-                <option value="">Todos los Tipos</option>
-                <option value="MINED">Oficiales MINED</option>
-                <option value="INSTITUCIONAL">Institucionales</option>
-              </select>
-            </div>
+          {/* Custom Pills: Type Select */}
+          <div className="flex flex-wrap items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-xl border border-slate-200/60">
+            <button
+              onClick={() => setSelectedType('')}
+              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
+                selectedType === ''
+                  ? 'bg-primary text-white shadow-xs'
+                  : 'text-slate-600 hover:bg-slate-200/50'
+              }`}
+            >
+              Todos los Tipos
+            </button>
+            <button
+              onClick={() => setSelectedType('MINED')}
+              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
+                selectedType === 'MINED'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:bg-slate-200/50'
+              }`}
+            >
+              Oficiales MINED
+            </button>
+            <button
+              onClick={() => setSelectedType('INSTITUCIONAL')}
+              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
+                selectedType === 'INSTITUCIONAL'
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:bg-slate-200/50'
+              }`}
+            >
+              Institucionales
+            </button>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Bulk Actions */}
-            {selected.size > 0 && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="flex items-center gap-2 bg-red-50 border border-red-200 px-3 py-1.5 rounded-xl"
-              >
-                <span className="text-xs text-red-700 font-bold">{selected.size} seleccionada(s)</span>
-                <button onClick={handleBulkDelete} className="p-1 hover:bg-red-100 rounded-lg border-0 cursor-pointer bg-transparent">
-                  <Trash className="w-3.5 h-3.5 text-red-600" />
-                </button>
-                <button onClick={() => setSelected(new Set())} className="p-1 hover:bg-red-100 rounded-lg border-0 cursor-pointer bg-transparent">
-                  <X className="w-3.5 h-3.5 text-red-600" />
-                </button>
-              </motion.div>
-            )}
+          {/* Quick Search */}
+          <div className="relative w-full md:max-w-xs">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Buscar materia..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="input pl-10"
+            />
+          </div>
+        </div>
 
-            {/* View Mode Switcher */}
+        {/* Row 2: Grade Pills List (Direct Button Grid) */}
+        <div className="space-y-2 pt-3 border-t border-slate-100">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Filtrar por Grado:</span>
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              onClick={() => setSelectedGradeId('')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border border-slate-200/80 ${
+                selectedGradeId === ''
+                  ? 'bg-slate-800 text-white border-slate-800 shadow-xs'
+                  : 'bg-slate-50 hover:bg-slate-100 text-slate-600'
+              }`}
+            >
+              Todos los Grados
+            </button>
+            {grades.map(g => (
+              <button
+                key={g.id}
+                onClick={() => setSelectedGradeId(g.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                  selectedGradeId === g.id
+                    ? 'bg-primary text-white border-primary shadow-xs'
+                    : 'bg-white hover:bg-slate-50 border-slate-200/80 text-slate-600'
+                }`}
+              >
+                {g.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Bulk action buttons & view selector */}
+        { (selected.size > 0 || viewMode) && (
+          <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+            <div>
+              {selected.size > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex items-center gap-2 bg-red-50 border border-red-200 px-3 py-1.5 rounded-xl"
+                >
+                  <span className="text-xs text-red-700 font-bold">{selected.size} seleccionada(s)</span>
+                  <button onClick={handleBulkDelete} className="p-1 hover:bg-red-100 rounded-lg border-0 cursor-pointer bg-transparent">
+                    <Trash className="w-3.5 h-3.5 text-red-600" />
+                  </button>
+                  <button onClick={() => setSelected(new Set())} className="p-1 hover:bg-red-100 rounded-lg border-0 cursor-pointer bg-transparent">
+                    <X className="w-3.5 h-3.5 text-red-600" />
+                  </button>
+                </motion.div>
+              )}
+            </div>
+
             <div className="flex border border-slate-200 rounded-lg overflow-hidden shrink-0">
               <button
                 onClick={() => setViewMode('card')}
@@ -321,7 +360,7 @@ export default function SubjectsManager() {
               </button>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Hierarchy Info Box */}
@@ -334,7 +373,7 @@ export default function SubjectsManager() {
         </div>
       </div>
 
-      {/* Add/Edit Modal */}
+      {/* Add/Edit Modal (Selects Completely Replaced with Clickable Button Grids) */}
       <AnimatePresence>
         {showForm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
@@ -357,118 +396,178 @@ export default function SubjectsManager() {
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto max-h-[80vh]">
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Subject Name */}
-                  <div className="col-span-2">
-                    <label className="form-label">Nombre de la Asignatura *</label>
-                    <input
-                      type="text"
-                      value={form.name}
-                      onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-                      placeholder="Ej: Ciencias Naturales"
-                      className="input"
-                      autoFocus
-                    />
-                  </div>
+              <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto max-h-[80vh]">
 
-                  {/* Description */}
-                  <div className="col-span-2">
-                    <label className="form-label">Descripción o Notas Curriculares</label>
-                    <textarea
-                      value={form.description}
-                      onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
-                      placeholder="Ej: Materias Institucionales derivadas: Física, Química, Biología..."
-                      className="input h-20 resize-none"
-                    />
-                  </div>
+                {/* Subject Name */}
+                <div className="space-y-1">
+                  <label className="form-label">Nombre de la Asignatura *</label>
+                  <input
+                    type="text"
+                    value={form.name}
+                    onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                    placeholder="Ej: Ciencias Naturales"
+                    className="input"
+                    autoFocus
+                  />
+                </div>
 
-                  {/* Classification */}
-                  <div className="col-span-2">
-                    <label className="form-label">Clasificación Curricular</label>
-                    <div className="grid grid-cols-2 gap-2 mt-1">
-                      <button
-                        type="button"
-                        onClick={() => setForm(p => ({ ...p, type: 'MINED', parentSubjectId: '' }))}
-                        className={`py-2.5 px-4 rounded-xl border font-bold text-xs cursor-pointer transition-all ${
-                          form.type === 'MINED'
-                            ? 'bg-emerald-50 border-emerald-500 text-emerald-800 shadow-3xs'
-                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                        }`}
-                      >
-                        Oficial MINED (Asignatura Base)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setForm(p => ({ ...p, type: 'INSTITUCIONAL' }))}
-                        className={`py-2.5 px-4 rounded-xl border font-bold text-xs cursor-pointer transition-all ${
-                          form.type === 'INSTITUCIONAL'
-                            ? 'bg-amber-50 border-amber-500 text-amber-800 shadow-3xs'
-                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                        }`}
-                      >
-                        Institucional (Sub-materia Especial)
-                      </button>
-                    </div>
-                  </div>
+                {/* Description */}
+                <div className="space-y-1">
+                  <label className="form-label">Descripción o Notas Curriculares</label>
+                  <textarea
+                    value={form.description}
+                    onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                    placeholder="Ej: Materias Institucionales derivadas: Física, Química, Biología..."
+                    className="input h-20 resize-none"
+                  />
+                </div>
 
-                  {/* Parent Subject (Only if Institutional) */}
-                  {form.type === 'INSTITUCIONAL' && (
-                    <div className="col-span-2">
-                      <label className="form-label text-amber-700">Materia Base MINED a la que pertenece *</label>
-                      <select
-                        value={form.parentSubjectId}
-                        onChange={e => setForm(p => ({ ...p, parentSubjectId: e.target.value }))}
-                        className="input border-amber-200 focus:border-amber-500"
-                        required
-                      >
-                        <option value="">Selecciona la materia oficial...</option>
-                        {minedSubjects.map(m => (
-                          <option key={m.id} value={m.id}>
+                {/* Classification Toggle */}
+                <div className="space-y-1">
+                  <label className="form-label">Clasificación Curricular</label>
+                  <div className="grid grid-cols-2 gap-2 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => setForm(p => ({ ...p, type: 'MINED', parentSubjectId: '' }))}
+                      className={`py-2.5 px-4 rounded-xl border font-bold text-xs cursor-pointer transition-all ${
+                        form.type === 'MINED'
+                          ? 'bg-emerald-50 border-emerald-500 text-emerald-800 shadow-3xs'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      Oficial MINED (Asignatura Base)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm(p => ({ ...p, type: 'INSTITUCIONAL' }))}
+                      className={`py-2.5 px-4 rounded-xl border font-bold text-xs cursor-pointer transition-all ${
+                        form.type === 'INSTITUCIONAL'
+                          ? 'bg-amber-50 border-amber-500 text-amber-800 shadow-3xs'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      Institucional (Sub-materia Especial)
+                    </button>
+                  </div>
+                </div>
+
+                {/* Parent Subject Button Grid (Only if Institutional) */}
+                {form.type === 'INSTITUCIONAL' && (
+                  <div className="space-y-2 bg-slate-50/50 p-3 rounded-xl border border-slate-100">
+                    <label className="form-label text-amber-700">Materia Base MINED a la que pertenece *</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[140px] overflow-y-auto pr-1">
+                      {minedSubjects.map(m => {
+                        const isSelected = form.parentSubjectId === m.id;
+                        return (
+                          <button
+                            type="button"
+                            key={m.id}
+                            onClick={() => setForm(p => ({ ...p, parentSubjectId: m.id }))}
+                            className={`p-2.5 rounded-lg border text-left text-xs font-semibold cursor-pointer transition-all ${
+                              isSelected
+                                ? 'bg-amber-500 border-amber-500 text-white shadow-xs'
+                                : 'bg-white hover:bg-slate-50 border-slate-200/80 text-slate-700'
+                            }`}
+                          >
                             {m.name} {m.gradeId ? `(${getGradeName(m.gradeId)})` : ''}
-                          </option>
-                        ))}
-                      </select>
+                          </button>
+                        );
+                      })}
+                      {minedSubjects.length === 0 && (
+                        <span className="text-xs text-slate-400 italic col-span-2">No hay materias oficiales creadas todavía.</span>
+                      )}
                     </div>
-                  )}
-
-                  {/* Grade Selector - Cycle is auto-derived in submit */}
-                  <div className="col-span-2">
-                    <label className="form-label">Grado Específico (MINED)</label>
-                    <select
-                      value={form.gradeId}
-                      onChange={e => setForm(p => ({ ...p, gradeId: e.target.value }))}
-                      className="input"
-                    >
-                      <option value="">Cualquier grado</option>
-                      {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                    </select>
                   </div>
+                )}
 
-                  {/* Weekly hours */}
-                  <div>
+                {/* Grade Selector - Completely Replaced Select with clean pill grid */}
+                <div className="space-y-2">
+                  <label className="form-label">Grado Específico (MINED)</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[160px] overflow-y-auto pr-1">
+                    <button
+                      type="button"
+                      onClick={() => setForm(p => ({ ...p, gradeId: '' }))}
+                      className={`p-2.5 rounded-lg border text-center text-xs font-bold cursor-pointer transition-all ${
+                        form.gradeId === ''
+                          ? 'bg-slate-800 border-slate-800 text-white shadow-xs'
+                          : 'bg-slate-50 hover:bg-slate-100 border-slate-200/80 text-slate-600'
+                      }`}
+                    >
+                      Cualquier grado (General)
+                    </button>
+                    {grades.map(g => {
+                      const isSelected = form.gradeId === g.id;
+                      return (
+                        <button
+                          type="button"
+                          key={g.id}
+                          onClick={() => setForm(p => ({ ...p, gradeId: g.id }))}
+                          className={`p-2.5 rounded-lg border text-center text-xs font-bold cursor-pointer transition-all ${
+                            isSelected
+                              ? 'bg-primary border-primary text-white shadow-xs'
+                              : 'bg-white hover:bg-slate-50 border-slate-200/80 text-slate-600'
+                          }`}
+                        >
+                          {g.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Hours and Status Side by Side */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Weekly hours counter */}
+                  <div className="space-y-2">
                     <label className="form-label">Horas Semanales</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={40}
-                      value={form.weeklyHours}
-                      onChange={e => setForm(p => ({ ...p, weeklyHours: parseInt(e.target.value) || 4 }))}
-                      className="input"
-                    />
+                    <div className="flex items-center gap-1 bg-slate-50 p-1.5 rounded-xl border border-slate-200/80 max-w-[150px]">
+                      <button
+                        type="button"
+                        onClick={() => setForm(p => ({ ...p, weeklyHours: Math.max(1, p.weeklyHours - 1) }))}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-200 text-slate-600 border-0 cursor-pointer bg-white"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <span className="flex-1 text-center font-bold text-slate-800 text-sm">
+                        {form.weeklyHours}h
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setForm(p => ({ ...p, weeklyHours: Math.min(40, p.weeklyHours + 1) }))}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-200 text-slate-600 border-0 cursor-pointer bg-white"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Status */}
-                  <div>
+                  {/* Status Toggle Segment */}
+                  <div className="space-y-2">
                     <label className="form-label">Estado Operativo</label>
-                    <select
-                      value={form.status}
-                      onChange={e => setForm(p => ({ ...p, status: e.target.value as 'ACTIVO' | 'INACTIVO' }))}
-                      className="input"
-                    >
-                      <option value="ACTIVO">Activo</option>
-                      <option value="INACTIVO">Inactivo</option>
-                    </select>
+                    <div className="grid grid-cols-2 gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/60 text-xs font-bold">
+                      <button
+                        type="button"
+                        onClick={() => setForm(p => ({ ...p, status: 'ACTIVO' }))}
+                        className={`py-2 rounded-lg border-0 cursor-pointer transition-all ${
+                          form.status === 'ACTIVO'
+                            ? 'bg-white text-emerald-800 shadow-3xs font-extrabold'
+                            : 'text-slate-500 hover:bg-slate-200/30'
+                        }`}
+                      >
+                        Activo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setForm(p => ({ ...p, status: 'INACTIVO' }))}
+                        className={`py-2 rounded-lg border-0 cursor-pointer transition-all ${
+                          form.status === 'INACTIVO'
+                            ? 'bg-white text-red-800 shadow-3xs font-extrabold'
+                            : 'text-slate-500 hover:bg-slate-200/30'
+                        }`}
+                      >
+                        Inactivo
+                      </button>
+                    </div>
                   </div>
                 </div>
 
