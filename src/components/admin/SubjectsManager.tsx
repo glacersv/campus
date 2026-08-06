@@ -115,6 +115,15 @@ export default function SubjectsManager() {
         }
       }
 
+      // If MINED and has sub-subjects, weeklyHours should be the sum of sub-subjects
+      let finalWeeklyHours = form.weeklyHours;
+      if (form.type === 'MINED' && editingId) {
+        const subs = getSubSubjects(editingId);
+        if (subs.length > 0) {
+          finalWeeklyHours = subs.reduce((sum, s) => sum + (s.weeklyHours || 0), 0);
+        }
+      }
+
       const rawData = {
         name: form.name.trim(),
         description: form.description.trim() || null,
@@ -122,12 +131,21 @@ export default function SubjectsManager() {
         gradeId: primaryGradeId, // backward-compatibility
         gradeIds: form.gradeIds.length > 0 ? form.gradeIds : null, // multi-grade support
         status: form.status,
-        weeklyHours: form.weeklyHours,
+        weeklyHours: finalWeeklyHours,
         type: form.type,
         parentSubjectId: form.type === 'INSTITUCIONAL' ? form.parentSubjectId : null,
       };
 
       const sanitizedData = sanitizePayload(rawData);
+
+      let parentToSync = form.type === 'INSTITUCIONAL' ? form.parentSubjectId : null;
+      let oldParentToSync = null;
+      if (editingId && form.type === 'INSTITUCIONAL') {
+        const original = subjects.find(s => s.id === editingId);
+        if (original && original.parentSubjectId && original.parentSubjectId !== form.parentSubjectId) {
+          oldParentToSync = original.parentSubjectId;
+        }
+      }
 
       if (editingId) {
         await updateSubject(editingId, sanitizedData);
@@ -138,6 +156,14 @@ export default function SubjectsManager() {
         await createSubject({ id, ...sanitizedData } as Subject);
         toast.success('Materia creada correctamente');
       }
+
+      if (parentToSync) {
+        await syncParentWeeklyHours(parentToSync);
+      }
+      if (oldParentToSync) {
+        await syncParentWeeklyHours(oldParentToSync);
+      }
+
       setShowForm(false);
       resetForm();
       loadData();
@@ -145,6 +171,24 @@ export default function SubjectsManager() {
       const msg = err instanceof Error ? err.message : 'Error al guardar materia';
       toast.error(msg);
       console.error(err);
+    }
+  };
+
+  const syncParentWeeklyHours = async (parentId: string) => {
+    if (!parentId) return;
+    try {
+      // Fetch latest subjects from Firestore to get a completely accurate state
+      const allSubs = await getAllSubjects();
+
+      // Calculate total weekly hours of active sub-subjects
+      const activeSubHours = allSubs
+        .filter(s => s.parentSubjectId === parentId && s.status !== 'INACTIVO')
+        .reduce((sum, s) => sum + (s.weeklyHours || 0), 0);
+
+      // Update the parent subject's weeklyHours in Firestore
+      await updateSubject(parentId, { weeklyHours: activeSubHours });
+    } catch (err) {
+      console.error('Error syncing parent weekly hours:', err);
     }
   };
 
@@ -174,9 +218,17 @@ export default function SubjectsManager() {
   const handleDelete = async (id: string) => {
     if (confirm('¿Eliminar esta materia? Se verificará que no esté en uso.')) {
       try {
+        const subToDelete = subjects.find(s => s.id === id);
+        const parentId = subToDelete?.parentSubjectId;
+
         await deleteSubject(id);
         toast.success('Materia eliminada');
         setSelected(prev => { const n = new Set(prev); n.delete(id); return n; });
+
+        if (parentId) {
+          await syncParentWeeklyHours(parentId);
+        }
+
         loadData();
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Error al eliminar materia';
@@ -190,12 +242,27 @@ export default function SubjectsManager() {
     if (confirm(`¿Eliminar ${selected.size} materia(s)?`)) {
       let deleted = 0;
       let errors = 0;
+      const parentsToSync = new Set<string>();
+
       for (const id of selected) {
-        try { await deleteSubject(id); deleted++; }
-        catch { errors++; }
+        try {
+          const subToDelete = subjects.find(s => s.id === id);
+          if (subToDelete?.parentSubjectId) {
+            parentsToSync.add(subToDelete.parentSubjectId);
+          }
+          await deleteSubject(id);
+          deleted++;
+        } catch {
+          errors++;
+        }
       }
       if (deleted > 0) toast.success(`${deleted} materia(s) eliminada(s)`);
       if (errors > 0) toast.error(`${errors} materia(s) no se pudieron eliminar (en uso)`);
+
+      for (const parentId of parentsToSync) {
+        await syncParentWeeklyHours(parentId);
+      }
+
       setSelected(new Set());
       loadData();
     }
@@ -609,25 +676,33 @@ export default function SubjectsManager() {
                   {/* Weekly hours counter */}
                   <div className="space-y-1">
                     <label className="form-label text-slate-700">Horas Semanales</label>
-                    <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200/80 max-w-[140px]">
-                      <button
-                        type="button"
-                        onClick={() => setForm(p => ({ ...p, weeklyHours: Math.max(1, p.weeklyHours - 1) }))}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-200 text-slate-600 border-0 cursor-pointer bg-white"
-                      >
-                        <Minus className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="flex-1 text-center font-bold text-slate-800 text-xs">
-                        {form.weeklyHours}h
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setForm(p => ({ ...p, weeklyHours: Math.min(40, p.weeklyHours + 1) }))}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-200 text-slate-600 border-0 cursor-pointer bg-white"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                    {form.type === 'MINED' && editingId && getSubSubjects(editingId).length > 0 ? (
+                      <div className="flex items-center gap-2 bg-slate-100 p-2 rounded-xl border border-slate-200/80 max-w-[180px] h-[42px] px-3">
+                        <span className="text-xs font-bold text-slate-700">
+                          {getSubSubjects(editingId).reduce((sum, s) => sum + (s.weeklyHours || 0), 0)}h (Suma Sub-materias)
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200/80 max-w-[140px]">
+                        <button
+                          type="button"
+                          onClick={() => setForm(p => ({ ...p, weeklyHours: Math.max(1, p.weeklyHours - 1) }))}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-200 text-slate-600 border-0 cursor-pointer bg-white"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="flex-1 text-center font-bold text-slate-800 text-xs">
+                          {form.weeklyHours}h
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setForm(p => ({ ...p, weeklyHours: Math.min(40, p.weeklyHours + 1) }))}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-200 text-slate-600 border-0 cursor-pointer bg-white"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Status Toggle Segment (Grayscale) */}
@@ -699,7 +774,7 @@ export default function SubjectsManager() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.02 }}
-                className={`bg-white rounded-2xl border p-5 flex flex-col justify-between hover:shadow-md transition-all h-[280px] relative ${
+                className={`bg-white rounded-2xl border p-5 flex flex-col justify-between hover:shadow-md transition-all min-h-[280px] relative ${
                   selected.has(s.id)
                     ? 'ring-2 ring-primary border-primary'
                     : 'border-slate-200/80'
@@ -759,7 +834,7 @@ export default function SubjectsManager() {
                 </div>
 
                 <div>
-                  <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-slate-100 max-h-[60px] overflow-y-auto pr-1">
+                  <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-slate-100 pr-1">
                     {subjectGradeIds.length > 0 ? (
                       subjectGradeIds.map(gid => (
                         <span key={gid} className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 text-slate-700 text-[9px] font-bold px-1.5 py-0.5 rounded">
@@ -777,10 +852,10 @@ export default function SubjectsManager() {
                       </span>
                     )}
 
-                    {s.weeklyHours && (
+                    {(isMined && subSubjects.length > 0 ? subSubjects.reduce((sum, sub) => sum + (sub.weeklyHours || 0), 0) : s.weeklyHours) && (
                       <span className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 text-slate-600 text-[9px] font-bold px-1.5 py-0.5 rounded">
                         <Clock className="w-2.5 h-2.5 text-slate-400" />
-                        {s.weeklyHours}h/sem
+                        {isMined && subSubjects.length > 0 ? subSubjects.reduce((sum, sub) => sum + (sub.weeklyHours || 0), 0) : s.weeklyHours}h/sem
                       </span>
                     )}
                   </div>
@@ -888,7 +963,7 @@ export default function SubjectsManager() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600 font-medium">
-                        {s.weeklyHours || '—'} horas
+                        {isMined && subSubjects.length > 0 ? subSubjects.reduce((sum, sub) => sum + (sub.weeklyHours || 0), 0) : s.weeklyHours || '—'} horas
                       </td>
                       <td className="px-4 py-3">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
