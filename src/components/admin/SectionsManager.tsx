@@ -394,9 +394,9 @@ export default function SectionsManager() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03 }}
-                className="bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col justify-between hover:shadow-md transition-all h-[290px]"
+                className="bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col justify-between hover:shadow-md transition-all min-h-[290px]"
               >
-                <div className="overflow-hidden">
+                <div>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-200/60 text-slate-500">
@@ -444,7 +444,7 @@ export default function SectionsManager() {
                       return (
                         <div className="flex flex-col gap-1 mt-1.5">
                           <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Aulas / laboratorios:</span>
-                          <div className="flex flex-wrap gap-1 max-h-[50px] overflow-y-auto pr-1">
+                          <div className="flex flex-wrap gap-1 pr-1">
                             {assignedIds.map(id => {
                               const name = getComputerLabName(id);
                               return (
