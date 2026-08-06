@@ -147,6 +147,8 @@ export interface Subject {
   gradeId?: string;
   status?: 'ACTIVO' | 'INACTIVO';
   weeklyHours?: number;
+  type?: 'MINED' | 'INSTITUCIONAL';
+  parentSubjectId?: string;
   createdAt?: Timestamp;
 }
 
