@@ -25,13 +25,6 @@ export default function Login() {
           return;
         }
         await signUp(email, password, displayName);
-        
-        // Verificar si el usuario fue auto-aprobado (alumno existente)
-        const { getUser } = await import('../../lib/firestore');
-        // Pequeña espera para que se cree el documento
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const user = await getUser(email); // Esto no funcionará porque getUser espera uid, no email
-        // Mejor usar el email para buscar, pero por simplicidad mostramos mensaje genérico
         toast.success('Cuenta creada exitosamente. Ahora puedes iniciar sesión.');
         setIsSignUp(false);
       } else {
