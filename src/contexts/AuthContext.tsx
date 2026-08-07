@@ -58,26 +58,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error('Solo se permiten correos institucionales (@salesianosanjose.edu.sv)');
     }
 
-    // Check pre-authorization against teacher or admin emails
+    // Check pre-authorization against teacher, student or admin emails
     const preAuthorized = await isEmailPreAuthorized(email);
     if (!preAuthorized) {
       throw new Error('Este correo institucional no está pre-autorizado por la administración. Por favor, solicita a tu coordinador que registre tu correo en el panel de Docentes antes de crear tu cuenta.');
     }
 
+    // Import on-the-fly dynamically to avoid circular dependencies
+    const { getTeacherByEmail, getStudentByCarnet } = await import('../lib/firestore');
+
+    let detectedRole: UserRole = 'docente';
+    let teacherId: string | undefined = undefined;
+
+    // Detect if they are a super-admin override
+    const superAdmin = 'jose.marquez@salesianosanjose.edu.sv';
+    if (email.toLowerCase() === superAdmin.toLowerCase()) {
+      detectedRole = 'admin';
+    } else {
+      // 1. Check if they are a pre-registered Teacher
+      const teacher = await getTeacherByEmail(email);
+      if (teacher) {
+        detectedRole = 'docente';
+        teacherId = teacher.id;
+      } else {
+        // 2. Check if they are a pre-registered Student
+        const prefix = email.split('@')[0];
+        const student = await getStudentByCarnet(prefix);
+        if (student) {
+          detectedRole = 'alumno';
+        }
+      }
+    }
+
     // First create the user with Firebase Auth
     const result = await createUserWithEmailAndPassword(auth, email, password);
     
-    // Then create the user profile in Firestore with the default role
-    // The role will be validated by Cloud Function if needed
+    // Create the user profile with auto-resolved role and pre-linked fields
     await createUser({
       uid: result.user.uid,
       email,
       displayName,
-      role: 'docente' // Always default to docente for security
+      role: detectedRole,
+      teacherId
     });
-    
-    // If an admin is creating a user with a different role, they should use assignUserRole Cloud Function
-    // For self-registration, we always use 'docente' as default
   };
 
   const signOut = async () => {

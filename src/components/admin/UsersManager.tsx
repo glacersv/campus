@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, Plus, Edit2, Trash2, Save, X, Search, Shield, Mail, UserCheck } from 'lucide-react';
+import { Users, Plus, Edit2, Trash2, Save, X, Search, Shield, Mail, UserCheck, HelpCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { getAllUsers, updateUserRole, getAllTeachers } from '../../lib/firestore';
+import { getAllUsers, updateUser, getAllTeachers } from '../../lib/firestore';
 import { User, Teacher, UserRole, ROLE_LABELS } from '../../types';
 
 export default function UsersManager() {
@@ -11,8 +11,11 @@ export default function UsersManager() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState<string>('');
+
+  // Edit State
   const [editingUid, setEditingUid] = useState<string | null>(null);
   const [editRole, setEditRole] = useState<UserRole>('docente');
+  const [editTeacherId, setEditTeacherId] = useState<string>('');
 
   useEffect(() => { loadData(); }, []);
 
@@ -29,14 +32,19 @@ export default function UsersManager() {
     return teachers.find(t => t.id === teacherId)?.name || null;
   };
 
-  const handleUpdateRole = async (uid: string) => {
+  const handleUpdateUser = async (uid: string) => {
     try {
-      await updateUserRole(uid, editRole);
-      toast.success('Rol actualizado correctamente');
+      const payload: Partial<User> = {
+        role: editRole,
+        teacherId: editRole === 'docente' && editTeacherId ? editTeacherId : undefined
+      };
+
+      await updateUser(uid, payload);
+      toast.success('Usuario actualizado correctamente');
       setEditingUid(null);
       loadData();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Error al actualizar rol';
+      const msg = err instanceof Error ? err.message : 'Error al actualizar usuario';
       toast.error(msg);
     }
   };
@@ -82,6 +90,17 @@ export default function UsersManager() {
             <h1 className="module-title">Usuarios</h1>
             <p className="module-subtitle">{filtered.length} usuario(s) registrado(s)</p>
           </div>
+        </div>
+      </div>
+
+      {/* Info Box */}
+      <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 flex gap-3 text-slate-600 text-xs">
+        <HelpCircle className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
+        <div>
+          <p className="font-bold text-slate-800">¿Cómo funciona la relación con los Docentes?</p>
+          <p className="mt-1 leading-relaxed">
+            Para que las cuentas de los usuarios con rol <strong>Docente</strong> puedan ver su respectivo grado guía y sus alumnos en el Dashboard, deben estar vinculados a un perfil de docente de la sección de personal. Puedes asociarlos manualmente aquí utilizando el botón de <strong>Editar (Lápiz)</strong> y eligiendo su nombre.
+          </p>
         </div>
       </div>
 
@@ -145,19 +164,38 @@ export default function UsersManager() {
                 </td>
                 <td className="px-4 py-3">
                   {editingUid === u.uid ? (
-                    <div className="flex items-center gap-2">
-                      <select value={editRole} onChange={e => setEditRole(e.target.value as UserRole)}
-                        className="input text-xs py-1 px-2 w-40">
-                        {Object.entries(ROLE_LABELS).map(([k, v]) => (
-                          <option key={k} value={k}>{v}</option>
-                        ))}
-                      </select>
-                      <button onClick={() => handleUpdateRole(u.uid)} className="p-1 hover:bg-green-100 rounded-lg">
-                        <Save className="w-4 h-4 text-green-600" />
-                      </button>
-                      <button onClick={() => setEditingUid(null)} className="p-1 hover:bg-slate-100 rounded-lg">
-                        <X className="w-4 h-4 text-slate-500" />
-                      </button>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase w-10">Rol:</span>
+                        <select value={editRole} onChange={e => setEditRole(e.target.value as UserRole)}
+                          className="input text-xs py-1 px-2 w-48">
+                          {Object.entries(ROLE_LABELS).map(([k, v]) => (
+                            <option key={k} value={k}>{v}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {editRole === 'docente' && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase w-10">Docente:</span>
+                          <select value={editTeacherId} onChange={e => setEditTeacherId(e.target.value)}
+                            className="input text-xs py-1 px-2 w-48">
+                            <option value="">— Sin vincular —</option>
+                            {teachers.map(t => (
+                              <option key={t.id} value={t.id}>{t.name} ({t.email})</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2 mt-1 pl-12">
+                        <button onClick={() => handleUpdateUser(u.uid)} className="btn-primary text-xs py-1 px-2.5 rounded-lg flex items-center gap-1.5">
+                          <Save className="w-3.5 h-3.5" /> Guardar
+                        </button>
+                        <button onClick={() => setEditingUid(null)} className="btn-secondary text-xs py-1 px-2.5 rounded-lg flex items-center gap-1.5">
+                          <X className="w-3.5 h-3.5" /> Cancelar
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${getRoleBadgeColor(u.role)}`}>
@@ -167,7 +205,7 @@ export default function UsersManager() {
                 </td>
                 <td className="px-4 py-3">
                   {u.teacherId ? (
-                    <p className="text-sm text-primary flex items-center gap-1.5">
+                    <p className="text-sm text-primary font-bold flex items-center gap-1.5">
                       <UserCheck className="w-3.5 h-3.5" /> {getTeacherName(u.teacherId)}
                     </p>
                   ) : (
@@ -176,7 +214,11 @@ export default function UsersManager() {
                 </td>
                 <td className="px-4 py-3 text-right">
                   {editingUid !== u.uid && (
-                    <button onClick={() => { setEditingUid(u.uid); setEditRole(u.role); }}
+                    <button onClick={() => {
+                      setEditingUid(u.uid);
+                      setEditRole(u.role);
+                      setEditTeacherId(u.teacherId || '');
+                    }}
                       className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
                       <Edit2 className="w-4 h-4 text-slate-500" />
                     </button>

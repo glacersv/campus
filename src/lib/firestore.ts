@@ -924,14 +924,44 @@ export async function seedInitialData(): Promise<void> {
 
 // ==================== SECURITY & AUDIT LOGS ====================
 
+export async function getTeacherByEmail(email: string): Promise<Teacher | null> {
+  const q = query(collection(db, TEACHERS_COLLECTION), where('email', '==', email));
+  const snap = await getDocs(q);
+  if (snap.empty) {
+    const all = await getDocs(collection(db, TEACHERS_COLLECTION));
+    const found = all.docs.find(d => (d.data().email || '').toLowerCase() === email.toLowerCase());
+    return found ? { id: found.id, ...found.data() } as Teacher : null;
+  }
+  const d = snap.docs[0];
+  return { id: d.id, ...d.data() } as Teacher;
+}
+
+export async function getStudentByCarnet(carnet: string): Promise<Student | null> {
+  const q = query(collection(db, STUDENTS_COLLECTION), where('carnet', '==', carnet.toUpperCase()));
+  const snap = await getDocs(q);
+  if (snap.empty) {
+    const all = await getDocs(collection(db, STUDENTS_COLLECTION));
+    const found = all.docs.find(d => (d.data().carnet || '').toUpperCase() === carnet.toUpperCase());
+    return found ? { id: found.id, ...found.data() } as Student : null;
+  }
+  const d = snap.docs[0];
+  return { id: d.id, ...d.data() } as Student;
+}
+
 export async function isEmailPreAuthorized(email: string): Promise<boolean> {
   const superAdmin = 'jose.marquez@salesianosanjose.edu.sv';
   if (email.toLowerCase() === superAdmin.toLowerCase()) return true;
 
-  // Check if a teacher document exists with this email
-  const q = query(collection(db, TEACHERS_COLLECTION), where('email', '==', email));
-  const snap = await getDocs(q);
-  return !snap.empty;
+  // Check teachers
+  const teacher = await getTeacherByEmail(email);
+  if (teacher) return true;
+
+  // Check students
+  const prefix = email.split('@')[0];
+  const student = await getStudentByCarnet(prefix);
+  if (student) return true;
+
+  return false;
 }
 
 export async function logActivity(action: string, details: Record<string, any>): Promise<void> {
