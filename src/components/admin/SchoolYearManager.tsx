@@ -40,6 +40,26 @@ import {
   isActiveStudent
 } from '../../lib/migration';
 
+const cycleColors: Record<string, { bg: string; text: string; border: string; accent: string }> = {
+  'parvularia': { bg: 'bg-pink-50/80', text: 'text-pink-700', border: 'border-pink-200/50', accent: 'bg-pink-500' },
+  '1': { bg: 'bg-emerald-50/80', text: 'text-emerald-700', border: 'border-emerald-200/50', accent: 'bg-emerald-500' },
+  '2': { bg: 'bg-blue-50/80', text: 'text-blue-700', border: 'border-blue-200/50', accent: 'bg-blue-500' },
+  '3': { bg: 'bg-purple-50/80', text: 'text-purple-700', border: 'border-purple-200/50', accent: 'bg-purple-500' },
+  '4': { bg: 'bg-amber-50/80', text: 'text-amber-700', border: 'border-amber-200/50', accent: 'bg-amber-500' },
+};
+
+const getCycleColor = (cycle: string) => cycleColors[cycle] || cycleColors['1'];
+const getCycleName = (cycle: string) => {
+  const names: Record<string, string> = {
+    'parvularia': 'Parvularia',
+    '1': 'Primer Ciclo',
+    '2': 'Segundo Ciclo',
+    '3': 'Tercer Ciclo',
+    '4': 'Bachillerato'
+  };
+  return names[cycle] || 'Educación Básica';
+};
+
 export default function SchoolYearManager() {
   const [loading, setLoading] = useState(true);
   const [currentYear, setCurrentYear] = useState<number | null>(null);
@@ -462,7 +482,7 @@ export default function SchoolYearManager() {
         </div>
       </div>
 
-      {/* Main Configurations Panel */}
+      {/* Main Configurations Panel - Card Grid representation */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
         <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -479,144 +499,129 @@ export default function SchoolYearManager() {
           </span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-100 text-left text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                <th className="px-6 py-4.5">Grado a Estructurar</th>
-                <th className="px-6 py-4.5">Matrícula Entrante</th>
-                <th className="px-6 py-4.5">Ciclo de Destino</th>
-                <th className="px-6 py-4.5">Aulas en Curso</th>
-                <th className="px-6 py-4.5">Aulas Planificadas ({nextYear})</th>
-                <th className="px-6 py-4.5">Distribución Estimada</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100/70">
-              {rows.map(r => {
-                const dist = getDistribution(r);
-                const isReconfigured =
-                  r.currentSectionNames.length !==
-                  r.newSectionNames.filter(n => n.trim()).length;
-                return (
-                  <tr
-                    key={r.gradeId}
-                    className="hover:bg-slate-50/30 border-b border-slate-100/60 transition-colors duration-150 align-middle group/row"
-                  >
-                    {/* Grado */}
-                    <td className="px-6 py-4.5">
-                      <div className="font-black text-slate-900 font-display text-sm group-hover/row:text-primary transition-colors">
-                        {r.gradeName}
-                      </div>
-                      <div className="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-wider">
-                        {r.outgoingCount} Alumnos Activos
-                      </div>
-                    </td>
+        <div className="p-6 bg-slate-50/30">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {rows.map(r => {
+              const dist = getDistribution(r);
+              const cStyle = getCycleColor(r.cycle);
+              const isReconfigured =
+                r.currentSectionNames.length !==
+                r.newSectionNames.filter(n => n.trim()).length;
 
-                    {/* Flujo / Padrón Entrante */}
-                    <td className="px-6 py-4.5">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
-                          <span
-                            className="truncate max-w-[110px] bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded-md text-[10px]"
-                            title={r.sourceGradeName}
-                          >
-                            {r.sourceGradeName}
+              return (
+                <div
+                  key={r.gradeId}
+                  className="bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col justify-between shadow-2xs hover:shadow-md hover:border-slate-300 transition-all duration-300 relative overflow-hidden group/card"
+                >
+                  {/* Elegant top cycle-specific color bar */}
+                  <div className={`absolute top-0 left-0 right-0 h-1.5 ${cStyle.accent}`} />
+
+                  <div className="space-y-4.5">
+                    {/* Header: Grade & Cycle */}
+                    <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+                      <div>
+                        <h4 className="text-base font-black text-slate-900 font-display group-hover/card:text-primary transition-colors">
+                          {r.gradeName}
+                        </h4>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mt-0.5">
+                          {r.outgoingCount} Alumnos Activos
+                        </span>
+                      </div>
+                      <span className={`px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider ${cStyle.bg} ${cStyle.text} border ${cStyle.border} shrink-0`}>
+                        {getCycleName(r.cycle)}
+                      </span>
+                    </div>
+
+                    {/* Enrollment Flow Visual Representation */}
+                    <div className="space-y-2">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        Flujo de Matrícula
+                      </div>
+                      <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 flex items-center justify-between gap-2.5">
+                        <div className="min-w-0 flex-1">
+                          <span className="block text-[9px] text-slate-400 font-bold uppercase truncate" title={r.sourceGradeName}>
+                            {r.sourceGradeId ? r.sourceGradeName : 'Origen'}
                           </span>
-                          <ArrowRight className="w-3.5 h-3.5 text-primary shrink-0" />
-                          <span
-                            className="font-bold text-primary bg-primary/5 border border-primary/10 px-2 py-0.5 rounded-md text-[10px] truncate max-w-[110px]"
-                            title={r.gradeName}
-                          >
+                          <span className="block text-xs font-semibold text-slate-600 mt-0.5 truncate">
+                            {r.sourceGradeId ? 'Promovidos' : 'Nuevo Ingreso'}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-col items-center shrink-0 px-1">
+                          <span className="text-[10px] font-black text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-md font-mono">
+                            +{r.incomingCount}
+                          </span>
+                          <ArrowRight className="w-3.5 h-3.5 text-primary mt-1" />
+                        </div>
+
+                        <div className="min-w-0 flex-1 text-right">
+                          <span className="block text-[9px] text-slate-400 font-bold uppercase truncate" title={r.gradeName}>
                             {r.gradeName}
                           </span>
-                        </div>
-                        <div className="text-[11px] text-primary font-bold flex items-center gap-1 mt-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
-                          +{r.incomingCount} Alumnos a recibir
+                          <span className="block text-xs font-semibold text-primary mt-0.5 truncate">
+                            Matrícula Entrante
+                          </span>
                         </div>
                       </div>
-                    </td>
+                    </div>
 
-                    {/* Destino Final */}
-                    <td className="px-6 py-4.5">
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-                          <span className="font-semibold text-slate-700 truncate max-w-[110px]">
-                            {r.gradeName}
-                          </span>
-                          <ArrowRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
-                          <span className="text-slate-600 truncate max-w-[110px]">
-                            {r.nextGradeName}
-                          </span>
-                        </div>
-                        {r.nextGradeId === null ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-black text-amber-600 bg-amber-50 border border-amber-100 px-2.5 py-0.5 rounded-full w-fit uppercase tracking-wider">
-                            <GraduationCap className="w-3 h-3" />
-                            Egreso Académico
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                            Ciclo {r.cycle}
-                          </span>
-                        )}
+                    {/* Current Sections Badges */}
+                    <div className="space-y-2 pt-1">
+                      <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        <span>Aulas en Curso ({currentYear})</span>
+                        <span className="font-mono text-[11px] font-black text-slate-500">
+                          {r.currentSectionNames.length}
+                        </span>
                       </div>
-                    </td>
-
-                    {/* Secciones actuales */}
-                    <td className="px-6 py-4.5">
-                      {r.currentSectionNames.length > 0 ? (
-                        <div className="flex flex-wrap gap-1.5">
-                          {r.currentSectionNames.map(n => (
+                      <div className="flex flex-wrap gap-1.5 min-h-[28px] items-center">
+                        {r.currentSectionNames.length > 0 ? (
+                          r.currentSectionNames.map(n => (
                             <span
                               key={n}
-                              className="px-2.5 py-1 bg-slate-100 border border-slate-200/80 rounded-lg text-slate-600 font-black font-mono text-xs shadow-3xs"
+                              className="px-2 py-0.5 bg-slate-100 border border-slate-200/80 rounded-lg text-slate-600 font-black font-mono text-xs shadow-3xs"
                             >
                               {n}
                             </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-slate-400 font-medium italic">
-                          Sin aulas asignadas
-                        </span>
-                      )}
-                    </td>
+                          ))
+                        ) : (
+                          <span className="text-xs text-slate-400 font-medium italic">
+                            Sin aulas asignadas
+                          </span>
+                        )}
+                      </div>
+                    </div>
 
-                    {/* Nuevas Secciones (Editores Premium) */}
-                    <td className="px-6 py-4.5 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <div className="inline-flex items-center bg-slate-50 border border-slate-200 rounded-full p-1 shadow-3xs">
+                    {/* Interactive Sections Count Control & Section renaming */}
+                    <div className="space-y-3 pt-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          Configurar Aulas ({nextYear})
+                        </span>
+                        <div className="inline-flex items-center bg-slate-100 border border-slate-200 rounded-full p-0.5 shadow-3xs">
                           <button
                             type="button"
-                            onClick={() =>
-                              updateCount(r.gradeId, r.newSectionNames.length - 1)
-                            }
+                            onClick={() => updateCount(r.gradeId, r.newSectionNames.length - 1)}
                             disabled={r.newSectionNames.length <= 1}
-                            className="w-7 h-7 rounded-full flex items-center justify-center text-slate-500 hover:bg-primary hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all font-bold cursor-pointer"
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-slate-500 hover:bg-primary hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all font-bold cursor-pointer"
                           >
-                            <Minus className="w-3.5 h-3.5" />
+                            <Minus className="w-3 h-3" />
                           </button>
-                          <span className="w-8 text-center text-xs font-black text-slate-800 font-mono">
+                          <span className="w-6 text-center text-xs font-black text-slate-800 font-mono">
                             {r.newSectionNames.length}
                           </span>
                           <button
                             type="button"
-                            onClick={() =>
-                              updateCount(r.gradeId, r.newSectionNames.length + 1)
-                            }
+                            onClick={() => updateCount(r.gradeId, r.newSectionNames.length + 1)}
                             disabled={r.newSectionNames.length >= 6}
-                            className="w-7 h-7 rounded-full flex items-center justify-center text-slate-500 hover:bg-primary hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all font-bold cursor-pointer"
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-slate-500 hover:bg-primary hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all font-bold cursor-pointer"
                           >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-3 h-3" />
                           </button>
                         </div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                          Aulas
-                        </span>
                       </div>
 
                       {/* Inputs interactivos para las letras de sección */}
-                      <div className="flex flex-wrap gap-1.5 items-center">
+                      <div className="flex flex-wrap gap-2 items-center">
                         {r.newSectionNames.map((n, i) => (
                           <input
                             key={i}
@@ -624,49 +629,53 @@ export default function SchoolYearManager() {
                             onChange={e => updateName(r.gradeId, i, e.target.value)}
                             maxLength={2}
                             placeholder="A"
-                            title="Indique el identificador de la sección"
-                            className="w-10 h-10 text-center text-sm font-black uppercase bg-white border border-slate-200 rounded-xl text-primary focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none transition-all shadow-3xs"
+                            title="Identificador de la sección"
+                            className="w-9 h-9 text-center text-xs font-black uppercase bg-white border border-slate-200 rounded-lg text-primary focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none transition-all shadow-3xs"
                           />
                         ))}
                       </div>
 
                       {isReconfigured && (
-                        <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-amber-600 bg-amber-50 border border-amber-100/60 px-2.5 py-1 rounded-md tracking-wider">
+                        <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-amber-600 bg-amber-50 border border-amber-100/60 px-2 py-0.5 rounded-md tracking-wider">
                           Reconfigurado
                         </span>
                       )}
-                    </td>
+                    </div>
+                  </div>
 
-                    {/* Distribución de la matrícula actual */}
-                    <td className="px-6 py-4.5">
-                      <div className="flex flex-wrap gap-2">
-                        {Object.entries(dist).map(([name, count]) => (
-                          <span
-                            key={name}
-                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/5 border border-primary/10 rounded-2xl text-xs font-bold text-primary shadow-3xs hover:scale-105 hover:bg-primary/10 transition-all cursor-default"
-                          >
-                            <span className="text-[9px] text-primary/70 uppercase font-black tracking-wider">
-                              Secc. {name}
-                            </span>
-                            <span className="bg-white text-primary px-1.5 py-0.5 rounded-lg font-black font-mono text-[10px] border border-primary/10 shadow-3xs">
-                              {count}
-                            </span>
+                  {/* Distribution Live Breakdown */}
+                  <div className="mt-4 pt-3.5 border-t border-slate-100 space-y-2">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Distribución Estimada
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 min-h-[30px] items-center">
+                      {Object.entries(dist).map(([name, count]) => (
+                        <span
+                          key={name}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary/5 border border-primary/10 rounded-xl text-[11px] font-bold text-primary shadow-3xs hover:scale-105 hover:bg-primary/10 transition-all cursor-default"
+                        >
+                          <span className="text-[9px] text-primary/70 uppercase font-black tracking-wider">
+                            Secc. {name}
                           </span>
-                        ))}
-                        {Object.keys(dist).length === 0 && (
-                          <span className="text-xs text-slate-400 italic">
-                            Sin matrícula entrante
+                          <span className="bg-white text-primary px-1.5 py-0.5 rounded-md font-black font-mono text-[9px] border border-primary/10 shadow-3xs">
+                            {count}
                           </span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                        </span>
+                      ))}
+                      {Object.keys(dist).length === 0 && (
+                        <span className="text-xs text-slate-400 font-medium italic">
+                          Sin matrícula entrante
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
           {rows.length === 0 && (
-            <div className="text-center py-16 text-slate-400">
+            <div className="text-center py-16 text-slate-400 bg-white rounded-2xl border border-slate-200/85 shadow-3xs">
               <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-40" />
               <p className="text-sm font-medium">No se encontraron grados activos configurados.</p>
             </div>
