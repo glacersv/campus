@@ -27,11 +27,12 @@ import ParvulariaDashboard from './components/coordinacion/ParvulariaDashboard';
 import RegistroDashboard from './components/registro/RegistroDashboard';
 import EnfermeriaDashboard from './components/enfermeria/EnfermeriaDashboard';
 import PsicopedagogiaDashboard from './components/psicopedagogico/PsicopedagogicoDashboard';
-import TeacherDashboard from './components/docente/TeacherDashboard';
+import TeacherLayout from './components/docente/TeacherLayout';
+import TeacherHome from './components/docente/TeacherHome';
+import ModulePlaceholder from './components/docente/ModulePlaceholder';
 import StudentDashboard from './components/alumno/StudentDashboard';
 import Dashboard from './components/docente/Dashboard';
-import TeacherProjects from './components/docente/TeacherProjects';
-import StudentProjects from './components/alumno/StudentProjects';
+import ProjectsModule from './components/proyectos/ProjectsModule';
 import { Teacher, SystemModuleId } from './types';
 import { getTeacher, seedInitialData } from './lib/firestore';
 
@@ -61,7 +62,7 @@ const roleModuleColors: Record<SystemModuleId, string> = {
 };
 
 function AppContent() {
-  const { firebaseUser, userProfile, loading, signOut, userRole, hasPermission } = useAuth();
+  const { firebaseUser, userProfile, loading, signOut, userRole, hasPermission, roleConfig } = useAuth();
   const [teacherData, setTeacherData] = useState<Teacher | null>(null);
 
   useEffect(() => {
@@ -248,24 +249,43 @@ function AppContent() {
     );
   }
 
-  // Teacher view
+  // Teacher view (Docente)
   if (userRole === 'docente') {
+    const permissions = roleConfig?.permissions || [];
+
     return (
       <Routes>
-        <Route path="/" element={
-          <TeacherDashboard
-            teacherName={userProfile.displayName}
-            onLogout={signOut}
-          />
-        } />
-        <Route path="/attendance" element={
-          teacherData ? (
-            <Dashboard teacher={teacherData} onLogout={signOut} />
-          ) : (
-            <div className="min-h-screen flex justify-center items-center">Cargando datos del docente...</div>
-          )
-        } />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/docente" element={<TeacherLayout />}>
+          <Route index element={<TeacherHome />} />
+
+          <Route path="formacion" element={
+            permissions.includes('formacion') ? (
+              teacherData ? (
+                <div className="bg-white rounded-2xl border border-slate-200/80 p-1">
+                  <Dashboard teacher={teacherData} onLogout={signOut} />
+                </div>
+              ) : (
+                <div className="flex justify-center items-center py-20 text-slate-500">Cargando datos del docente...</div>
+              )
+            ) : <Navigate to="/docente" replace />
+          } />
+
+          <Route path="proyectos" element={
+            permissions.includes('proyectos') ? (
+              <div className="bg-white rounded-2xl border border-slate-200/80 p-6">
+                <ProjectsModule view="docente" />
+              </div>
+            ) : <Navigate to="/docente" replace />
+          } />
+
+          {/* Placeholders for other modules */}
+          <Route path="notas" element={permissions.includes('notas') ? <ModulePlaceholder /> : <Navigate to="/docente" replace />} />
+          <Route path="clase" element={permissions.includes('clase') ? <ModulePlaceholder /> : <Navigate to="/docente" replace />} />
+          <Route path="horario" element={permissions.includes('horario') ? <ModulePlaceholder /> : <Navigate to="/docente" replace />} />
+          <Route path="eventos" element={permissions.includes('eventos') ? <ModulePlaceholder /> : <Navigate to="/docente" replace />} />
+          <Route path="avisos" element={permissions.includes('avisos') ? <ModulePlaceholder /> : <Navigate to="/docente" replace />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/docente" replace />} />
       </Routes>
     );
   }
