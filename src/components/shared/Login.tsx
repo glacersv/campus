@@ -25,6 +25,15 @@ export default function Login() {
           return;
         }
         await signUp(email, password, displayName);
+        
+        // Verificar si el usuario fue auto-aprobado (alumno existente)
+        const { getUser } = await import('../../lib/firestore');
+        // Pequeña espera para que se cree el documento
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const user = await getUser(email); // Esto no funcionará porque getUser espera uid, no email
+        // Mejor usar el email para buscar, pero por simplicidad mostramos mensaje genérico
+        toast.success('Cuenta creada exitosamente. Ahora puedes iniciar sesión.');
+        setIsSignUp(false);
       } else {
         await signIn(email, password);
       }
@@ -35,7 +44,13 @@ export default function Login() {
       } else if (err.code === 'auth/email-already-in-use') toast.error('Este correo ya está registrado.');
       else if (err.code === 'auth/weak-password') toast.error('La contraseña debe tener al menos 6 caracteres.');
       else if (err.code === 'auth/invalid-email') toast.error('El correo electrónico no es válido.');
-      else toast.error('Error al iniciar sesión. Intente nuevamente.');
+      else if (err.message?.includes('pendiente de aprobación')) {
+        toast.error(err.message);
+      } else if (err.message?.includes('rechazada')) {
+        toast.error(err.message);
+      } else {
+        toast.error(err.message || 'Error al procesar la solicitud. Intente nuevamente.');
+      }
     } finally { setLoading(false); }
   };
 

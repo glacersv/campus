@@ -14,7 +14,7 @@ import {
   addDoc
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { User, Grade, Section, Subject, Teacher, Student, BaccalaureateTypeDoc, Building, ComputerLab, RoleConfig, UserRole } from '../types';
+import { User, Grade, Section, Subject, Teacher, Student, BaccalaureateTypeDoc, Building, ComputerLab, RoleConfig, UserRole, UserStatus, ApprovalRequest, NewUserNotification } from '../types';
 import {
   validateUser,
   validateGrade,
@@ -43,6 +43,8 @@ const BUILDINGS_COLLECTION = 'buildings';
 const COMPUTER_LABS_COLLECTION = 'computer_labs';
 const SCHOOL_YEAR_COLLECTION = 'school_year_status';
 const ROLES_COLLECTION = 'roles';
+const APPROVAL_REQUESTS_COLLECTION = 'approval_requests';
+const NEW_USER_NOTIFICATIONS_COLLECTION = 'new_user_notifications';
 
 // ==================== USERS ====================
 
@@ -979,4 +981,206 @@ export async function logActivity(action: string, details: Record<string, any>):
   } catch (err) {
     console.error('Error in logActivity:', err);
   }
+}
+
+// ==================== APPROVAL REQUESTS ====================
+
+export async function createApprovalRequest(data: Omit<ApprovalRequest, 'createdAt'>): Promise<void> {
+  const ref = doc(db, APPROVAL_REQUESTS_COLLECTION, data.id);
+  await setDoc(ref, { ...data, createdAt: serverTimestamp() });
+}
+
+export async function getPendingApprovalRequests(): Promise<ApprovalRequest[]> {
+  const q = query(collection(db, APPROVAL_REQUESTS_COLLECTION), where('status', '==', 'pending'), orderBy('createdAt', 'asc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ApprovalRequest));
+}
+
+export async function getAllApprovalRequests(): Promise<ApprovalRequest[]> {
+  const q = query(collection(db, APPROVAL_REQUESTS_COLLECTION), orderBy('createdAt', 'desc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ApprovalRequest));
+}
+
+export async function updateApprovalRequest(id: string, data: Partial<ApprovalRequest>): Promise<void> {
+  const ref = doc(db, APPROVAL_REQUESTS_COLLECTION, id);
+  await updateDoc(ref, data);
+}
+
+// ==================== NEW USER NOTIFICATIONS ====================
+
+export async function createNewUserNotification(data: Omit<NewUserNotification, 'createdAt'>): Promise<void> {
+  const ref = doc(db, NEW_USER_NOTIFICATIONS_COLLECTION, data.id);
+  await setDoc(ref, { ...data, createdAt: serverTimestamp() });
+}
+
+export async function getNewUserNotifications(): Promise<NewUserNotification[]> {
+  const q = query(collection(db, NEW_USER_NOTIFICATIONS_COLLECTION), where('status', '==', 'new'), orderBy('createdAt', 'desc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as NewUserNotification));
+}
+
+export async function getAllNewUserNotifications(): Promise<NewUserNotification[]> {
+  const q = query(collection(db, NEW_USER_NOTIFICATIONS_COLLECTION), orderBy('createdAt', 'desc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as NewUserNotification));
+}
+
+export async function markNotificationAsNotified(notificationId: string): Promise<void> {
+  const ref = doc(db, NEW_USER_NOTIFICATIONS_COLLECTION, notificationId);
+  await updateDoc(ref, { status: 'notified', notifiedAt: serverTimestamp() });
+}
+
+// ==================== AUTO-PROVISIONING ====================
+
+export async function createUserForTeacher(uid: string, email: string, displayName: string, teacherId?: string): Promise<void> {
+  if (!teacherId) {
+    // Si no se proporciona teacherId, buscar por email
+    const teacher = await getTeacherByEmail(email);
+    if (teacher) {
+      teacherId = teacher.id;
+    } else {
+      // Crear perfil de docente básico
+      const newTeacherId = `t_${Date.now()}`;
+      await createTeacher({
+        id: newTeacherId,
+        name: displayName,
+        email,
+        subjects: [],
+        status: 'ACTIVO',
+      });
+      await updateUser(uid, { teacherId: newTeacherId });
+      return;
+    }
+  }
+
+  // Actualizar el usuario con el teacherId
+  await updateUser(uid, { teacherId });
+}
+
+export async function createUserForStudent(uid: string, email: string, displayName: string, studentId?: string): Promise<void> {
+  if (!studentId) {
+    // Si no se proporciona studentId, buscar por carnet
+    const carnet = email.split('@')[0];
+    const student = await getStudentByCarnet(carnet);
+    if (student) {
+      studentId = student.id;
+    } else {
+      // No se puede crear alumno sin datos mínimos
+      console.warn('No se encontró alumno para el carnet:', carnet);
+      return;
+    }
+  }
+
+  // Actualizar el usuario con el studentId
+  await updateUser(uid, { studentId });
+}
+
+// ==================== USER HELPERS ====================
+
+export async function getUserByEmail(email: string): Promise<User | null> {
+  const q = query(collection(db, USERS_COLLECTION), where('email', '==', email.toLowerCase()));
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return null;
+  const d = snapshot.docs[0];
+  return { uid: d.id, ...d.data() } as User;
+}
+
+export async function getUsersByRole(role: UserRole): Promise<User[]> {
+  const q = query(collection(db, USERS_COLLECTION), where('role', '==', role), orderBy('createdAt', 'desc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => ({ uid: d.id, ...d.data() } as User));
+}
+
+export async function getUsersByStatus(status: UserStatus): Promise<User[]> {
+  const q = query(collection(db, USERS_COLLECTION), where('status', '==', status), orderBy('createdAt', 'desc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => ({ uid: d.id, ...d.data() } as User));
+}
+
+// ==================== USER APPROVAL ACTIONS ====================
+
+export async function approveUser(uid: string, role: UserRole): Promise<void> {
+  const user = await getUser(uid);
+  if (!user) throw new Error('Usuario no encontrado');
+
+  // Auto-provisionar según rol
+  if (role === 'docente') {
+    const teacher = await getTeacherByEmail(user.email);
+    if (teacher) {
+      await createUserForTeacher(uid, user.email, user.displayName, teacher.id);
+    } else {
+      await createUserForTeacher(uid, user.email, user.displayName);
+    }
+  } else if (role === 'alumno') {
+    const carnet = user.email.split('@')[0];
+    const student = await getStudentByCarnet(carnet);
+    if (student) {
+      await createUserForStudent(uid, user.email, user.displayName, student.id);
+    } else {
+      await createUserForStudent(uid, user.email, user.displayName);
+    }
+  }
+
+  // Actualizar usuario
+  await updateUser(uid, {
+    role,
+    status: 'approved',
+    requestedRole: undefined,
+    updatedAt: new Date() as any,
+  });
+
+  // Actualizar solicitud de aprobación
+  await updateApprovalRequest(uid, {
+    status: 'approved',
+    reviewedBy: 'admin',
+    reviewedAt: new Date() as any,
+  });
+
+  // Crear notificación para el admin
+  const userAfterUpdate = await getUser(uid);
+  if (userAfterUpdate?.teacherId) {
+    const teacher = await getTeacher(userAfterUpdate.teacherId);
+    await createNewUserNotification({
+      id: `notif_${Date.now()}_${uid}`,
+      userId: uid,
+      email: user.email,
+      displayName: user.displayName,
+      role,
+      teacherId: userAfterUpdate.teacherId,
+      teacherName: teacher?.name,
+      password: '***',
+      status: 'new',
+    });
+  } else if (userAfterUpdate?.studentId) {
+    const student = await getStudent(userAfterUpdate.studentId);
+    await createNewUserNotification({
+      id: `notif_${Date.now()}_${uid}`,
+      userId: uid,
+      email: user.email,
+      displayName: user.displayName,
+      role,
+      studentId: userAfterUpdate.studentId,
+      studentName: student?.name,
+      gradeName: student?.gradeId,
+      sectionName: student?.sectionId,
+      password: '***',
+      status: 'new',
+    });
+  }
+}
+
+export async function rejectUser(uid: string, reason?: string): Promise<void> {
+  await updateUser(uid, {
+    status: 'rejected',
+    rejectionReason: reason,
+    updatedAt: new Date() as any,
+  });
+
+  await updateApprovalRequest(uid, {
+    status: 'rejected',
+    reviewedBy: 'admin',
+    reviewedAt: new Date() as any,
+    rejectionReason: reason,
+  });
 }

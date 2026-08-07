@@ -15,14 +15,66 @@ export type UserRole =
   | 'enfermeria'
   | 'psicopedagogico';
 
+export type UserStatus = 'pending' | 'approved' | 'rejected';
+
 export interface User {
   uid: string;
   email: string;
   displayName: string;
-  role: UserRole;
+  role: UserRole | null;
+  status: UserStatus;
   teacherId?: string;
+  studentId?: string;
+  requestedRole?: UserRole;
+  rejectionReason?: string;
   createdAt?: Timestamp;
+  updatedAt?: Timestamp;
   microsoftId?: string;
+}
+
+// ==================== APPROVAL & ONBOARDING ====================
+
+export interface ApprovalRequest {
+  id: string;
+  userId: string;
+  email: string;
+  displayName: string;
+  requestedRole: UserRole | null;
+  studentId?: string;
+  studentName?: string;
+  gradeId?: string;
+  sectionId?: string;
+  teacherId?: string;
+  teacherName?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  reviewedBy?: string;
+  reviewedAt?: Timestamp;
+  rejectionReason?: string;
+  createdAt: Timestamp;
+}
+
+export interface NewUserNotification {
+  id: string;
+  userId: string;
+  email: string;
+  displayName: string;
+  role: UserRole;
+  studentId?: string;
+  studentName?: string;
+  gradeName?: string;
+  sectionName?: string;
+  teacherId?: string;
+  teacherName?: string;
+  password: string;
+  status: 'new' | 'notified';
+  createdAt: Timestamp;
+  notifiedAt?: Timestamp;
+}
+
+export interface CredentialShareOptions {
+  email: boolean;
+  pdf: boolean;
+  clipboard: boolean;
 }
 
 // ==================== ROLES & PERMISSIONS ====================
