@@ -99,10 +99,6 @@ export default function SubjectsManager() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) { toast.error('El nombre es obligatorio'); return; }
-    if (form.type === 'INSTITUCIONAL' && !form.parentSubjectId) {
-      toast.error('Debes seleccionar la materia base MINED a la que pertenece');
-      return;
-    }
 
     try {
       // Derive primary cycle and primary gradeId from the first selected grade
@@ -142,7 +138,7 @@ export default function SubjectsManager() {
         status: form.status,
         weeklyHours: form.weeklyHours,
         type: form.type,
-        parentSubjectId: form.type === 'INSTITUCIONAL' ? form.parentSubjectId : null,
+        parentSubjectId: (form.type === 'INSTITUCIONAL' && form.parentSubjectId) ? form.parentSubjectId : null,
       };
 
       const sanitizedData = sanitizePayload(rawData);
@@ -543,8 +539,19 @@ export default function SubjectsManager() {
                 {/* Parent Subject Grid Selector (Only if Institutional) */}
                 {form.type === 'INSTITUCIONAL' && (
                   <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                    <label className="form-label text-slate-700">Materia Base MINED a la que pertenece *</label>
+                    <label className="form-label text-slate-700">Materia Base MINED a la que pertenece (Opcional)</label>
                     <div className="grid grid-cols-1 gap-1.5 max-h-[120px] overflow-y-auto pr-1">
+                      <button
+                        type="button"
+                        onClick={() => setForm(p => ({ ...p, parentSubjectId: '' }))}
+                        className={`p-2 rounded-lg border text-left text-xs font-semibold cursor-pointer transition-all ${
+                          !form.parentSubjectId
+                            ? 'bg-slate-800 border-slate-800 text-white shadow-xs'
+                            : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
+                        }`}
+                      >
+                        Ninguna (Materia Institucional Independiente)
+                      </button>
                       {minedSubjects.map(m => {
                         const isSelected = form.parentSubjectId === m.id;
                         return (
@@ -784,7 +791,9 @@ export default function SubjectsManager() {
                       </div>
                     ) : isMined ? (
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Materia Única / Autónoma</span>
-                    ) : null}
+                    ) : (
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Materia Institucional Independiente</span>
+                    )}
                   </div>
                 </div>
 
@@ -889,11 +898,15 @@ export default function SubjectsManager() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-slate-800 text-sm">{s.name}</span>
-                          {parentSubject && (
+                          {parentSubject ? (
                             <span className="text-[10px] font-medium bg-slate-50 text-slate-600 px-2 py-0.5 rounded-md border border-slate-200/60">
                               Sub-materia de: {parentSubject.name}
                             </span>
-                          )}
+                          ) : !isMined ? (
+                            <span className="text-[10px] font-medium bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md border border-slate-200/60">
+                              Institucional Independiente
+                            </span>
+                          ) : null}
                         </div>
                         {s.description && <div className="text-xs text-slate-400 mt-0.5 line-clamp-1">{s.description}</div>}
                       </td>
