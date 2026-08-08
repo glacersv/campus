@@ -72,7 +72,14 @@ export async function getUser(uid: string): Promise<User | null> {
 
 export async function updateUser(uid: string, data: Partial<User>): Promise<void> {
   const userRef = doc(db, USERS_COLLECTION, uid);
-  await updateDoc(userRef, data);
+  const cleanData: Record<string, unknown> = {};
+  for (const key of Object.keys(data)) {
+    const value = (data as any)[key];
+    if (value !== undefined) {
+      cleanData[key] = value;
+    }
+  }
+  await updateDoc(userRef, cleanData);
 }
 
 export async function updateUserRole(uid: string, role: UserRole): Promise<void> {
@@ -1030,6 +1037,14 @@ export async function updateApprovalRequest(id: string, data: Partial<ApprovalRe
   await updateDoc(ref, data);
 }
 
+export async function updateApprovalRequestByUserId(userId: string, data: Partial<ApprovalRequest>): Promise<void> {
+  const q = query(collection(db, APPROVAL_REQUESTS_COLLECTION), where('userId', '==', userId));
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return;
+  const ref = doc(db, APPROVAL_REQUESTS_COLLECTION, snapshot.docs[0].id);
+  await updateDoc(ref, data);
+}
+
 // ==================== NEW USER NOTIFICATIONS ====================
 
 export async function createNewUserNotification(data: Omit<NewUserNotification, 'createdAt'>): Promise<void> {
@@ -1206,8 +1221,8 @@ export async function createPendingApprovalForStudent(studentId: string): Promis
   const email = carnet.includes('@') ? carnet : `${carnet}@salesianosanjose.edu.sv`;
 
   await createApprovalRequest({
-    id: `approval_${Date.now()}_${studentId}`,
-    userId: `temp_${Date.now()}`,
+    id: studentId,
+    userId: studentId,
     email,
     displayName: student.name,
     requestedRole: 'alumno',

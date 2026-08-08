@@ -102,13 +102,19 @@ function AppContent() {
     return <Login />;
   }
 
+  if (userProfile.status === 'pending' || userProfile.status === 'rejected') {
+    return <Login />;
+  }
+
   const getModules = () => {
-    if (userRole === 'admin') return getDefaultModulesForRole('admin');
-    return roleConfig?.permissions || getDefaultModulesForRole(userRole || '');
+    const normalizedRole = (userRole || '').toLowerCase();
+    if (normalizedRole === 'admin') return getDefaultModulesForRole('admin');
+    return roleConfig?.permissions || getDefaultModulesForRole(normalizedRole);
   };
 
   // Admin view
-  if (userRole === 'admin') {
+  const normalizedRoleForView = (userRole || '').toLowerCase();
+  if (normalizedRoleForView === 'admin') {
     return (
       <Routes>
         <Route path="/admin" element={<AdminLayout />}>
@@ -133,8 +139,7 @@ function AppContent() {
     );
   }
 
-  // Coordinacion view
-  if (userRole === 'coordinacion') {
+  if (normalizedRoleForView === 'coordinacion') {
     const modules = getModules();
     return (
       <Routes>
@@ -149,7 +154,7 @@ function AppContent() {
   }
 
   // Coordinacion Academica view
-  if (userRole === 'coordinacion_academica') {
+  if (normalizedRoleForView === 'coordinacion_academica') {
     const modules = getModules();
     return (
       <Routes>
@@ -164,7 +169,7 @@ function AppContent() {
   }
 
   // Coordinacion Convivencia view
-  if (userRole === 'coordinacion_convivencia') {
+  if (normalizedRoleForView === 'coordinacion_convivencia') {
     const modules = getModules();
     return (
       <Routes>
@@ -179,7 +184,7 @@ function AppContent() {
   }
 
   // Coordinacion Primaria view
-  if (userRole === 'coordinacion_primaria') {
+  if (normalizedRoleForView === 'coordinacion_primaria') {
     const modules = getModules();
     return (
       <Routes>
@@ -194,7 +199,7 @@ function AppContent() {
   }
 
   // Coordinacion Parvularia view
-  if (userRole === 'coordinacion_parvularia') {
+  if (normalizedRoleForView === 'coordinacion_parvularia') {
     const modules = getModules();
     return (
       <Routes>
@@ -209,7 +214,7 @@ function AppContent() {
   }
 
   // Registro academico view
-  if (userRole === 'registro_academico') {
+  if (normalizedRoleForView === 'registro_academico') {
     const modules = getModules();
     return (
       <Routes>
@@ -224,7 +229,7 @@ function AppContent() {
   }
 
   // Enfermeria view
-  if (userRole === 'enfermeria') {
+  if (normalizedRoleForView === 'enfermeria') {
     const modules = getModules();
     return (
       <Routes>
@@ -239,7 +244,7 @@ function AppContent() {
   }
 
   // Psicopedagogia view
-  if (userRole === 'psicopedagogico') {
+  if (normalizedRoleForView === 'psicopedagogico') {
     const modules = getModules();
     return (
       <Routes>
@@ -249,6 +254,36 @@ function AppContent() {
           </RoleLayout>
         } />
         <Route path="*" element={<Navigate to="/psicopedagogico" replace />} />
+      </Routes>
+    );
+  }
+
+  // Docente view
+  if (normalizedRoleForView === 'docente') {
+    const modules = getModules();
+    return (
+      <Routes>
+        <Route path="/docente" element={
+          <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
+            <TeacherHome />
+          </RoleLayout>
+        } />
+        <Route path="*" element={<Navigate to="/docente" replace />} />
+      </Routes>
+    );
+  }
+
+  // Alumno view
+  if (normalizedRoleForView === 'alumno') {
+    const modules = getModules();
+    return (
+      <Routes>
+        <Route path="/alumno" element={
+          <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
+            <StudentDashboard />
+          </RoleLayout>
+        } />
+        <Route path="*" element={<Navigate to="/alumno" replace />} />
       </Routes>
     );
   }

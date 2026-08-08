@@ -65,7 +65,8 @@ service cloud.firestore {
     // Approval Requests Collection
     match /approval_requests/{requestId} {
       allow read: if isAdmin();
-      allow write: if isAdmin();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
     }
 
     // New User Notifications Collection

@@ -31,7 +31,9 @@ export default function Login() {
         await signIn(email, password);
       }
     } catch (err: any) {
-      console.error('Auth error:', err.code);
+      console.error('Auth error full:', err);
+      console.error('Auth error code:', err.code);
+      console.error('Auth error message:', err.message);
       if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         toast.error('Correo o contraseña incorrectos.');
       } else if (err.code === 'auth/email-already-in-use') toast.error('Este correo ya está registrado.');

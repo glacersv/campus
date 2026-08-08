@@ -74,17 +74,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, displayName: string) => {
+    console.log('[signUp] Inicio registro', email);
     if (!email.endsWith('@salesianosanjose.edu.sv')) {
       throw new Error('Solo se permiten correos institucionales (@salesianosanjose.edu.sv)');
     }
 
-    const existingUser = await getUserByEmail(email);
-    if (existingUser) {
-      throw new Error('Este correo ya está registrado.');
+    console.log('[signUp] Creando en Firebase Auth');
+    let result;
+    try {
+      result = await createUserWithEmailAndPassword(auth, email, password);
+    } catch (err: any) {
+      if (err.code === 'auth/email-already-in-use') {
+        throw new Error('Este correo ya está registrado.');
+      }
+      throw err;
     }
-
-    const result = await createUserWithEmailAndPassword(auth, email, password);
     const uid = result.user.uid;
+    console.log('[signUp] Auth OK', uid);
 
     const userData: Omit<User, 'createdAt' | 'updatedAt'> = {
       uid,
@@ -94,16 +100,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       status: 'pending',
       requestedRole: null,
     };
+    console.log('[signUp] Creando user en Firestore');
     await createUser(userData);
+    console.log('[signUp] User creado');
 
+    console.log('[signUp] Creando approval request');
     await createApprovalRequest({
-      id: `approval_${Date.now()}_${uid}`,
+      id: uid,
       userId: uid,
       email,
       displayName,
       requestedRole: null,
       status: 'pending',
     });
+    console.log('[signUp] Approval request creada');
   };
 
   const signOut = async () => {
@@ -152,16 +162,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Actualizar usuario
-    await updateUser(uid, {
+    const updatePayload: any = {
       role,
       status: 'approved',
-      requestedRole: undefined,
       updatedAt: new Date() as any,
-    });
+    };
+    if (user.requestedRole) {
+      updatePayload.requestedRole = undefined;
+    }
+    await updateUser(uid, updatePayload);
 
     // Actualizar solicitud de aprobación
-    const { updateApprovalRequest } = await import('../lib/firestore');
-    await updateApprovalRequest(uid, {
+    const { updateApprovalRequestByUserId } = await import('../lib/firestore');
+    await updateApprovalRequestByUserId(uid, {
       status: 'approved',
       reviewedBy: 'admin',
       reviewedAt: new Date() as any,
