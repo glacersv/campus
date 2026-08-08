@@ -48,10 +48,10 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
   return (
     <div className="flex h-screen bg-[#F3F5F6] overflow-y-auto">
       {/* Sidebar */}
-      <aside className={`${sidebarCollapsed ? 'w-[72px]' : 'w-64'} bg-white border-r border-slate-200 flex flex-col justify-between shrink-0 transition-all duration-300 z-30`}>
+      <aside className={`${sidebarCollapsed ? 'w-[72px]' : 'w-64'} bg-white/90 backdrop-blur-xl border-r border-slate-200/80 flex flex-col justify-between shrink-0 transition-all duration-300 z-30`}>
         <div className="flex flex-col flex-1 min-h-0">
           {/* Logo Section */}
-          <div className="h-16 px-4 flex items-center justify-between border-b border-slate-100 shrink-0">
+          <div className="h-16 px-4 flex items-center justify-between border-b border-slate-100/80 shrink-0">
             {!sidebarCollapsed && (
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
@@ -59,7 +59,7 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
                 </div>
                 <div>
                   <h1 className="text-sm font-bold text-slate-900 font-display">Campus</h1>
-                  <p className="text-[10px] text-slate-500 font-medium">Salesiano San José</p>
+                  <p className="text-[10px] text-secondary font-medium">Salesiano San José</p>
                 </div>
               </div>
             )}
@@ -67,7 +67,7 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
               className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
             >
-              {sidebarCollapsed ? <Menu className="w-5 h-5 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+              {sidebarCollapsed ? <Menu className="w-5 h-5 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-secondary" />}
             </button>
           </div>
 

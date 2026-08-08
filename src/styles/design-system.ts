@@ -96,11 +96,11 @@ export const DS = {
 
   // ==================== COLORES POR CICLO ====================
   cycleColors: {
-    parvularia: { bg: 'bg-pink-100', text: 'text-pink-700', border: 'border-pink-300' },
-    1: { bg: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-300' },
-    2: { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-300' },
-    3: { bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-300' },
-    4: { bg: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-300' },
+    parvularia: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
+    1: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+    2: { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200' },
+    3: { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200' },
+    4: { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' },
   },
 
   // ==================== ANIMACIÓN ====================

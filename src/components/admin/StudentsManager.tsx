@@ -179,7 +179,7 @@ export default function StudentsManager() {
       {/* Búsqueda y filtros */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary" />
           <input type="text" placeholder="Buscar por nombre o carnet..." value={search} onChange={e => setSearch(e.target.value)} className="input pl-9" />
         </div>
 
@@ -236,14 +236,14 @@ export default function StudentsManager() {
       {/* Formulario Modal */}
       <AnimatePresence>
         {showForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden flex flex-col"
+              className="w-full max-w-lg bg-white/90 backdrop-blur-xl border border-white/40 rounded-2xl shadow-xl overflow-hidden flex flex-col"
             >
-              <div className="bg-slate-50 border-b border-slate-100 p-5 flex justify-between items-center shrink-0">
+              <div className="bg-slate-50/80 border-b border-slate-100 p-5 flex justify-between items-center shrink-0">
                 <h3 className="font-bold text-slate-900 text-base">{editingId ? 'Editar Alumno' : 'Nuevo Alumno'}</h3>
                 <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1.5 hover:bg-slate-200 rounded-lg transition-colors"><X className="w-4 h-4 text-slate-500" /></button>
               </div>
@@ -325,8 +325,8 @@ export default function StudentsManager() {
                 </td>
                 <td className="px-4 py-2.5 text-sm text-slate-500 font-mono">{s.carnet || '—'}</td>
                 <td className="px-4 py-2.5 text-sm text-slate-500">{s.gender === 'M' ? 'Masculino' : 'Femenino'}</td>
-                <td className="px-4 py-2.5"><span className="badge badge-green">{getGradeName(s.gradeId)}</span></td>
-                <td className="px-4 py-2.5"><span className="badge badge-blue">{getSectionName(s.sectionId)}</span></td>
+                <td className="px-4 py-2.5"><span className="status-badge status-active">{getGradeName(s.gradeId)}</span></td>
+                <td className="px-4 py-2.5"><span className="status-badge status-inactive">{getSectionName(s.sectionId)}</span></td>
                 <td className="px-4 py-2.5 text-sm text-slate-500 font-mono font-semibold">{currentYear}</td>
                 <td className="px-4 py-2.5 text-sm text-slate-500 font-mono">{s.enrollmentYear || '—'}</td>
                 <td className="px-4 py-2.5 text-right">
@@ -341,7 +341,7 @@ export default function StudentsManager() {
           </tbody>
         </table>
         {filtered.length === 0 && (
-          <div className="text-center py-12 text-slate-400">
+          <div className="text-center py-12 text-secondary">
             <UserCheck className="w-10 h-10 mx-auto mb-2 opacity-50" />
             <p className="text-sm font-medium">No se encontraron alumnos</p>
           </div>
@@ -350,8 +350,8 @@ export default function StudentsManager() {
 
       {/* Paginación */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between bg-white px-5 py-3.5 border border-slate-200 rounded-2xl shadow-sm">
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+        <div className="flex items-center justify-between bg-white/90 backdrop-blur-xl px-5 py-3.5 border border-slate-200/80 rounded-2xl shadow-sm">
+          <div className="text-xs font-semibold text-secondary uppercase tracking-wider">
             Mostrando {Math.min(filtered.length, (currentPage - 1) * itemsPerPage + 1)}-{Math.min(filtered.length, currentPage * itemsPerPage)} de {filtered.length} alumnos
           </div>
           <div className="flex items-center gap-2">

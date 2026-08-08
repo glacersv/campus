@@ -202,7 +202,7 @@ export default function SectionsManager() {
 
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary" />
           <input type="text" placeholder="Buscar sección..." value={search} onChange={e => setSearch(e.target.value)} className="input pl-9" />
         </div>
 
@@ -244,36 +244,36 @@ export default function SectionsManager() {
 
       {/* Premium Statistics Banner */}
       {filteredActiveSections.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50/50 border border-slate-200/80 rounded-2xl p-4 shadow-3xs">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-              <Users className="w-5 h-5 text-slate-500" />
+            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Matrícula Filtrada</span>
+              <span className="text-[10px] text-secondary font-bold uppercase tracking-wider block">Matrícula Filtrada</span>
               <span className="text-base font-extrabold text-slate-800 font-display">{totalStudentsFiltered} alumnos</span>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-              <Layers className="w-5 h-5 text-slate-500" />
+            <div className="w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center shrink-0">
+              <Layers className="w-5 h-5 text-accent" />
             </div>
             <div>
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Capacidad Total</span>
+              <span className="text-[10px] text-secondary font-bold uppercase tracking-wider block">Capacidad Total</span>
               <span className="text-base font-extrabold text-slate-800 font-display">{totalCapacityFiltered} espacios</span>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-secondary/10 border border-secondary/20 flex items-center justify-center shrink-0">
               <div className="relative w-7 h-7">
-                <svg viewBox="0 0 36 36" className="w-full h-full text-slate-500">
-                  <path className="text-slate-200" strokeWidth="4" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                  <path className="text-slate-500" strokeDasharray={`${occupancyPercentageFiltered}, 100`} strokeWidth="4" strokeLinecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <svg viewBox="0 0 36 36" className="w-full h-full text-secondary">
+                  <path className="text-secondary/20" strokeWidth="4" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                  <path className="text-secondary" strokeDasharray={`${occupancyPercentageFiltered}, 100`} strokeWidth="4" strokeLinecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                 </svg>
               </div>
             </div>
             <div>
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Promedio de Ocupación</span>
+              <span className="text-[10px] text-secondary font-bold uppercase tracking-wider block">Promedio de Ocupación</span>
               <span className="text-base font-extrabold text-slate-800 font-display">{occupancyPercentageFiltered}% ocupado</span>
             </div>
           </div>
@@ -283,14 +283,14 @@ export default function SectionsManager() {
       {/* Formulario Modal */}
       <AnimatePresence>
         {showForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden flex flex-col"
+              className="w-full max-w-lg bg-white/90 backdrop-blur-xl border border-white/40 rounded-2xl shadow-xl overflow-hidden flex flex-col"
             >
-              <div className="bg-slate-50 border-b border-slate-100 p-5 flex justify-between items-center shrink-0">
+              <div className="bg-slate-50/80 border-b border-slate-100 p-5 flex justify-between items-center shrink-0">
                 <h3 className="font-bold text-slate-900 text-base">{editingId ? 'Editar Sección' : 'Nueva Sección'}</h3>
                 <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1.5 hover:bg-slate-200 rounded-lg transition-colors"><X className="w-4 h-4 text-slate-500" /></button>
               </div>
@@ -352,7 +352,7 @@ export default function SectionsManager() {
                         );
                       })}
                       {computerLabs.length === 0 && (
-                        <p className="text-[11px] text-slate-400 w-full text-center py-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl">
+                        <p className="text-[11px] text-secondary w-full text-center py-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl">
                           No hay aulas especializadas creadas.
                         </p>
                       )}
