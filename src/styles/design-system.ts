@@ -5,11 +5,11 @@ export const DS = {
   // ==================== CONTENEDORES ====================
   page: 'space-y-6',
   
-  card: 'bg-white rounded-2xl border border-slate-200/80 shadow-sm',
-  cardHover: 'hover:shadow-md transition-shadow duration-200',
+  card: 'card',
+  cardHover: 'card-hover',
   cardPadding: 'p-5',
   
-  formCard: 'bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5',
+  formCard: 'card p-5',
 
   // ==================== HEADER DE MÓDULO ====================
   moduleHeader: 'flex items-center justify-between',
@@ -41,9 +41,9 @@ export const DS = {
   textarea: 'input min-h-[80px] resize-none',
 
   // ==================== TABLAS ====================
-  tableContainer: 'bg-white rounded-2xl border border-slate-200/80 overflow-hidden',
-  tableHeader: 'bg-slate-50 text-[11px] font-semibold text-slate-500 uppercase tracking-wider',
-  tableRow: 'border-b border-slate-100 hover:bg-slate-50/50 transition-colors',
+  tableContainer: 'table-container',
+  tableHeader: 'table-header',
+  tableRow: 'table-row',
   tableCell: 'px-4 py-3 text-sm text-slate-700',
   tableCellSmall: 'px-4 py-2 text-xs text-slate-500',
 
@@ -61,9 +61,9 @@ export const DS = {
   searchInput: 'input pl-9',
 
   // ==================== FILTROS ====================
-  filterPill: 'px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all',
-  filterPillActive: 'bg-primary text-white border-primary shadow-sm',
-  filterPillInactive: 'bg-white text-slate-600 border-slate-200 hover:border-primary hover:text-primary',
+  filterPill: 'filter-pill',
+  filterPillActive: 'active',
+  filterPillInactive: '',
   filterGroup: 'flex flex-wrap gap-2',
 
   // ==================== VACÍO ====================

@@ -51,20 +51,20 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex flex-col justify-center items-center p-4 relative overflow-hidden">
-      {/* Abstract Background Orbs */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-salesiano-green/10 blur-[100px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-salesiano-yellow/10 blur-[100px] rounded-full pointer-events-none" />
-      
+      {/* Institutional gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-salesiano-green/5 via-transparent to-salesiano-yellow/5 pointer-events-none" />
+      <div className="absolute top-[-20%] left-[50%] -translate-x-1/2 w-[80%] h-[60%] bg-salesiano-green/8 blur-[80px] rounded-full pointer-events-none" />
+
       <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-salesiano-green via-salesiano-yellow to-salesiano-red" />
 
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95, y: 10 }} 
-        animate={{ opacity: 1, scale: 1, y: 0 }} 
-        transition={{ duration: 0.5, type: 'spring', bounce: 0.4 }}
-        className="w-full max-w-md bg-white rounded-2xl border border-slate-200 p-8 relative z-10">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.5, type: 'spring', bounce: 0.1 }}
+        className="w-full max-w-md bg-white/85 backdrop-blur-xl rounded-2xl border border-white/40 shadow-lg relative z-10 p-8">
           <div className="flex flex-col items-center text-center mb-8">
             <InstitutionLogo className="w-20 h-20 mb-4" />
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight uppercase leading-tight">
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight leading-tight" style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}>
               Campus Colegio<br />Salesiano San José
             </h1>
           </div>
@@ -101,7 +101,7 @@ export default function Login() {
 
         {/* Microsoft Button (placeholder) */}
         <div className="mt-4">
-          <button disabled className="w-full py-2.5 px-4 border border-gray-200 rounded-lg text-sm font-medium text-gray-400 bg-gray-50 cursor-not-allowed flex items-center justify-center gap-2">
+          <button disabled className="w-full py-2.5 px-4 border border-gray-200 rounded-lg text-sm font-medium text-gray-400 bg-gray-50 cursor-not-allowed flex items-center justify-center gap-2 opacity-60 grayscale">
             <svg className="w-4 h-4" viewBox="0 0 21 21">
               <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
               <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
@@ -122,7 +122,7 @@ export default function Login() {
       <motion.p initial={{ opacity: 0, y: 5 }} animate={{ opacity: 0.8, y: 0 }} transition={{ delay: 0.4 }}
         className="mt-8 text-sm text-slate-600 italic text-center max-w-sm relative z-10">
         "La educación es cosa del corazón."
-        <span className="block text-xs font-black text-slate-400 mt-2 not-italic font-display uppercase tracking-widest">— San Juan Bosco</span>
+        <span className="block text-xs text-slate-400 mt-2 not-italic" style={{ fontFamily: 'var(--font-display)', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase' }}>— San Juan Bosco</span>
       </motion.p>
     </div>
   );
