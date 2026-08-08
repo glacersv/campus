@@ -36,7 +36,68 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setFirebaseUser(user);
       if (user) {
-        const profile = await getUser(user.uid);
+        let profile = await getUser(user.uid);
+        if (!profile) {
+          // SELF-HEALING FLOW: El usuario está en Auth pero no tiene registro en Firestore (Cuenta Huérfana)
+          console.log('[Self-Healing] Inicializando perfil en Firestore para usuario:', user.uid);
+          const email = user.email || '';
+          let detectedRole: UserRole | null = null;
+          let studentId: string | undefined;
+          let studentName: string | undefined;
+          let gradeId: string | undefined;
+          let sectionId: string | undefined;
+          let teacherId: string | undefined;
+          let teacherName: string | undefined;
+
+          // Detectar rol y detalles
+          const teacher = await getTeacherByEmail(email);
+          if (teacher) {
+            detectedRole = 'docente';
+            teacherId = teacher.id;
+            teacherName = teacher.name;
+          } else {
+            const carnet = email.split('@')[0];
+            const student = await getStudentByCarnet(carnet);
+            if (student) {
+              detectedRole = 'alumno';
+              studentId = student.id;
+              studentName = student.name;
+              gradeId = student.gradeId;
+              sectionId = student.sectionId;
+            }
+          }
+
+          const userData: Omit<User, 'createdAt' | 'updatedAt'> = {
+            uid: user.uid,
+            email,
+            displayName: user.displayName || email.split('@')[0],
+            role: null,
+            status: 'pending',
+            requestedRole: detectedRole || null,
+            ...(teacherId ? { teacherId } : {}),
+            ...(studentId ? { studentId } : {}),
+          };
+
+          await createUser(userData);
+
+          await createApprovalRequest({
+            id: user.uid,
+            userId: user.uid,
+            email,
+            displayName: user.displayName || email.split('@')[0],
+            requestedRole: detectedRole || null,
+            status: 'pending',
+            studentId,
+            studentName,
+            gradeId,
+            sectionId,
+            teacherId,
+            teacherName,
+          });
+
+          profile = await getUser(user.uid);
+        }
+
         setUserProfile(profile);
         if (profile?.role) {
           const rc = await getRole(profile.role);
@@ -92,13 +153,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const uid = result.user.uid;
     console.log('[signUp] Auth OK', uid);
 
+    let detectedRole: UserRole | null = null;
+    let studentId: string | undefined;
+    let studentName: string | undefined;
+    let gradeId: string | undefined;
+    let sectionId: string | undefined;
+    let teacherId: string | undefined;
+    let teacherName: string | undefined;
+
+    // Detectar rol y detalles del usuario registrado
+    const teacher = await getTeacherByEmail(email);
+    if (teacher) {
+      detectedRole = 'docente';
+      teacherId = teacher.id;
+      teacherName = teacher.name;
+    } else {
+      const carnet = email.split('@')[0];
+      const student = await getStudentByCarnet(carnet);
+      if (student) {
+        detectedRole = 'alumno';
+        studentId = student.id;
+        studentName = student.name;
+        gradeId = student.gradeId;
+        sectionId = student.sectionId;
+      }
+    }
+
     const userData: Omit<User, 'createdAt' | 'updatedAt'> = {
       uid,
       email,
       displayName,
       role: null,
       status: 'pending',
-      requestedRole: null,
+      requestedRole: detectedRole || null,
+      ...(teacherId ? { teacherId } : {}),
+      ...(studentId ? { studentId } : {}),
     };
     console.log('[signUp] Creando user en Firestore');
     await createUser(userData);
@@ -110,8 +199,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       userId: uid,
       email,
       displayName,
-      requestedRole: null,
+      requestedRole: detectedRole || null,
       status: 'pending',
+      studentId,
+      studentName,
+      gradeId,
+      sectionId,
+      teacherId,
+      teacherName,
     });
     console.log('[signUp] Approval request creada');
   };

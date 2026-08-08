@@ -258,35 +258,6 @@ function AppContent() {
     );
   }
 
-  // Docente view
-  if (normalizedRoleForView === 'docente') {
-    const modules = getModules();
-    return (
-      <Routes>
-        <Route path="/docente" element={
-          <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
-            <TeacherHome />
-          </RoleLayout>
-        } />
-        <Route path="*" element={<Navigate to="/docente" replace />} />
-      </Routes>
-    );
-  }
-
-  // Alumno view
-  if (normalizedRoleForView === 'alumno') {
-    const modules = getModules();
-    return (
-      <Routes>
-        <Route path="/alumno" element={
-          <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
-            <StudentDashboard />
-          </RoleLayout>
-        } />
-        <Route path="*" element={<Navigate to="/alumno" replace />} />
-      </Routes>
-    );
-  }
 
   // Teacher view (Docente)
   if (userRole === 'docente') {
