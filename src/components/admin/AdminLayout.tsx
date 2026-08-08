@@ -16,7 +16,8 @@ import {
   Menu,
   Users,
   Settings,
-  Handshake
+  Handshake,
+  School
 } from 'lucide-react';
 import { useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -51,7 +52,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     { title: 'ACADÉMICA', items: [
       { id: 'grades', label: 'Grados', icon: BookOpen },
       { id: 'sections', label: 'Secciones', icon: Layers },
-      { id: 'grade-section-assignment', label: 'Asignar Espacios', icon: GitBranch },
+      { id: 'grade-section-assignment', label: 'Asignar Edificios', icon: GitBranch },
       { id: 'subjects', label: 'Materias', icon: BookMarked },
     ]},
     { title: 'CONVIVENCIA', items: [
@@ -59,7 +60,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     ]},
     { title: 'INFRAESTRUCTURA', items: [
       { id: 'buildings', label: 'Edificios', icon: Building2 },
-      { id: 'computer-labs', label: 'Cómputo y Salones', icon: Monitor },
+      { id: 'computer-labs', label: 'Aulas Especializadas', icon: School },
     ]},
     { title: 'PERSONAL', items: [
       { id: 'teachers', label: 'Docentes', icon: GraduationCap },
