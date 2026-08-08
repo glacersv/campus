@@ -43,7 +43,7 @@ const CYCLE_COLORS: Record<Cycle, string> = {
   '1': 'bg-emerald-100 text-emerald-700',
   '2': 'bg-blue-100 text-blue-700',
   '3': 'bg-purple-100 text-purple-700',
-  '4': 'bg-amber-100 text-amber-700'
+  '4': 'bg-orange-100 text-orange-700'
 };
 
 const BAC_COLOR: Record<BaccalaureateType, string> = {
@@ -56,7 +56,7 @@ const STATUS_COLOR: Record<Cycle, string> = {
   '1': 'bg-emerald-100 text-emerald-700',
   '2': 'bg-blue-100 text-blue-700',
   '3': 'bg-purple-100 text-purple-700',
-  '4': 'bg-amber-100 text-amber-700'
+  '4': 'bg-orange-100 text-orange-700'
 };
 
 const CYCLE_HEX: Record<Cycle, string> = {
@@ -480,7 +480,7 @@ const CYCLE_ICON_COLORS: Record<Cycle, string> = {
   '1': 'text-emerald-600',
   '2': 'text-blue-600',
   '3': 'text-purple-600',
-  '4': 'text-amber-600'
+  '4': 'text-orange-600'
 };
 
 function GradeCard({ grade, index, sectionsCount, buildingName, selected, onToggleSelect, onEdit, onDelete, onToggleStatus }: {

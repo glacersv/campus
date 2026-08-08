@@ -282,7 +282,7 @@ export default function UsersManager() {
         >
           Solicitudes
           {pendingApprovals.length > 0 && (
-            <span className="bg-amber-400 text-amber-950 text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+            <span className="bg-primary text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
               {pendingApprovals.length}
             </span>
           )}
@@ -450,17 +450,17 @@ export default function UsersManager() {
             exit={{ opacity: 0, y: -10 }}
             className="space-y-4"
           >
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-              <h2 className="text-sm font-bold text-amber-900 flex items-center gap-2">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 shrink-0" /> Solicitudes Pendientes de Aprobación
               </h2>
-              <p className="text-xs text-amber-700 mt-1">
+              <p className="text-xs text-secondary mt-1">
                 A continuación se muestran los usuarios que se han registrado por el login utilizando correos institucionales y están esperando la autorización del administrador para acceder.
               </p>
             </div>
 
             {pendingApprovals.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center text-slate-400">
+              <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center text-secondary">
                 <Check className="w-10 h-10 mx-auto mb-3 text-slate-300" />
                 <p className="text-xs font-semibold">Todas las solicitudes han sido resueltas</p>
               </div>
@@ -476,21 +476,21 @@ export default function UsersManager() {
                   >
                     <div>
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center font-bold text-amber-700">
+                        <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center font-bold text-slate-700">
                           {req.displayName?.charAt(0)?.toUpperCase() || '?'}
                         </div>
                         <div>
                           <h3 className="text-sm font-bold text-slate-900">{req.displayName}</h3>
-                          <p className="text-xs text-slate-500 flex items-center gap-1">
-                            <Mail className="w-3 h-3 text-slate-400" /> {req.email}
+                          <p className="text-xs text-secondary flex items-center gap-1">
+                            <Mail className="w-3 h-3 text-secondary" /> {req.email}
                           </p>
                         </div>
                       </div>
 
                       <div className="mt-4 space-y-2 pt-4 border-t border-slate-100">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Rol solicitado:</span>
-                          <span className="bg-amber-100 text-amber-800 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                          <span className="text-secondary font-semibold uppercase tracking-wider text-[10px]">Rol solicitado:</span>
+                          <span className="bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold px-2 py-0.5 rounded-full">
                             {ROLE_LABELS[req.requestedRole || 'docente'] || req.requestedRole}
                           </span>
                         </div>
@@ -547,17 +547,17 @@ export default function UsersManager() {
             exit={{ opacity: 0, y: -10 }}
             className="space-y-4"
           >
-            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
-              <h2 className="text-sm font-bold text-emerald-900 flex items-center gap-2">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                 <UserCheck className="w-4 h-4 shrink-0" /> Centro de Credenciales Generadas
               </h2>
-              <p className="text-xs text-emerald-700 mt-1">
+              <p className="text-xs text-secondary mt-1">
                 Aquí se listan los accesos de docentes recién aprobados y alumnos autorizados que ya tienen credenciales generadas de forma segura. Puedes enviarles los datos por email, descargar un PDF oficial para imprimir o copiar la plantilla de invitación.
               </p>
             </div>
 
             {newNotifications.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center text-slate-400">
+              <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center text-secondary">
                 <Mail className="w-10 h-10 mx-auto mb-3 text-slate-300" />
                 <p className="text-xs font-semibold">No hay credenciales pendientes de distribución</p>
               </div>
@@ -571,7 +571,7 @@ export default function UsersManager() {
                     transition={{ delay: i * 0.05 }}
                     className={`rounded-2xl p-5 border ${
                       notif.status === 'new'
-                        ? 'bg-white border-accent/20 shadow-sm'
+                        ? 'bg-white border-slate-200/80 shadow-sm'
                         : 'bg-slate-50 border-slate-200 opacity-70'
                     }`}
                   >

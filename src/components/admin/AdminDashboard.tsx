@@ -47,9 +47,9 @@ const modules = [
   { id: 'formacion', label: 'Formación Buenos Días', icon: ClipboardCheck, color: 'bg-primary', active: true },
   { id: 'notas', label: 'Notas', icon: BookOpen, color: 'bg-accent', active: false },
   { id: 'clase', label: 'Clase', icon: School, color: 'bg-secondary', active: false },
-  { id: 'horario', label: 'Horario', icon: Calendar, color: 'bg-purple-500', active: false },
-  { id: 'eventos', label: 'Eventos', icon: CalendarDays, color: 'bg-emerald-500', active: false },
-  { id: 'avisos', label: 'Avisos', icon: Bell, color: 'bg-amber-500', active: false },
+  { id: 'horario', label: 'Horario', icon: Calendar, color: 'bg-indigo-500', active: false },
+  { id: 'eventos', label: 'Eventos', icon: CalendarDays, color: 'bg-teal-500', active: false },
+  { id: 'avisos', label: 'Avisos', icon: Bell, color: 'bg-orange-500', active: false },
 ];
 
 export default function AdminDashboard() {
@@ -68,11 +68,11 @@ export default function AdminDashboard() {
   }, []);
 
   const statCards = [
-    { label: 'Docentes', value: stats.teachers, icon: GraduationCap, accent: 'bg-primary' },
-    { label: 'Grados', value: stats.grades, icon: DoorOpen, accent: 'bg-accent' },
-    { label: 'Secciones', value: stats.sections, icon: Users, accent: 'bg-secondary' },
-    { label: 'Alumnos', value: stats.students, icon: UserCheck, accent: 'bg-emerald-500' },
-    { label: 'Materias', value: stats.subjects, icon: BookMarked, accent: 'bg-purple-500' },
+    { label: 'Docentes', value: stats.teachers, icon: GraduationCap, accent: 'bg-primary', text: 'text-primary' },
+    { label: 'Grados', value: stats.grades, icon: DoorOpen, accent: 'bg-accent', text: 'text-accent' },
+    { label: 'Secciones', value: stats.sections, icon: Users, accent: 'bg-secondary', text: 'text-secondary' },
+    { label: 'Alumnos', value: stats.students, icon: UserCheck, accent: 'bg-teal-500', text: 'text-teal-600' },
+    { label: 'Materias', value: stats.subjects, icon: BookMarked, accent: 'bg-indigo-500', text: 'text-indigo-600' },
   ];
 
   if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
@@ -90,11 +90,11 @@ export default function AdminDashboard() {
             className="bg-white rounded-2xl p-5 border border-slate-200/80 hover:border-slate-300 hover:shadow-md transition-all group"
           >
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <span className="text-xs font-semibold uppercase tracking-wider text-secondary">
                 {card.label}
               </span>
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${card.accent} bg-opacity-10`}>
-                <card.icon className={`w-4 h-4 ${card.accent.replace('bg-', 'text-')}`} />
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${card.accent}/10`}>
+                <card.icon className={`w-4 h-4 ${card.text}`} />
               </div>
             </div>
             <div className="text-4xl font-bold font-display tracking-tight mb-2 text-slate-900">
@@ -102,7 +102,7 @@ export default function AdminDashboard() {
             </div>
             <div className="flex items-center gap-1.5">
               <div className={`w-1 h-1 rounded-full ${card.accent}`} />
-              <span className="text-[11px] font-semibold text-slate-500">
+              <span className="text-[11px] font-semibold text-secondary">
                 Total registrados
               </span>
             </div>
@@ -193,7 +193,7 @@ export default function AdminDashboard() {
 
       {/* Modules */}
       <div>
-        <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Módulos del Sistema</h2>
+        <h2 className="text-sm font-semibold text-secondary uppercase tracking-wider mb-3">Módulos del Sistema</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {modules.map((mod, i) => (
             <motion.div
@@ -214,8 +214,8 @@ export default function AdminDashboard() {
               <h3 className="text-sm font-semibold text-slate-900 leading-tight">{mod.label}</h3>
               {!mod.active && (
                 <div className="flex items-center justify-center gap-1">
-                  <Lock className="w-3 h-3 text-slate-400" />
-                  <span className="text-[10px] text-slate-400 font-medium">Próximamente</span>
+                  <Lock className="w-3 h-3 text-tertiary" />
+                  <span className="text-[10px] text-tertiary font-medium">Próximamente</span>
                 </div>
               )}
             </motion.div>

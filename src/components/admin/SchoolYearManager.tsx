@@ -356,7 +356,7 @@ export default function SchoolYearManager() {
     return (
       <div className="flex flex-col items-center justify-center py-24 space-y-4">
         <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm font-semibold text-slate-500 font-display animate-pulse">
+        <p className="text-sm font-semibold text-secondary font-display animate-pulse">
           Cargando planificación del año escolar...
         </p>
       </div>
@@ -369,28 +369,28 @@ export default function SchoolYearManager() {
       <div className="relative bg-white/80 backdrop-blur-md rounded-2xl p-6 md:p-8 border border-slate-200/80 shadow-xs overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all hover:border-slate-300">
         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full pointer-events-none" />
         <div className="flex items-center gap-5 relative z-10">
-          <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-500 shadow-inner transition-transform hover:scale-105 duration-300">
+          <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-secondary shadow-inner transition-transform hover:scale-105 duration-300">
             <CalendarDays className="w-7 h-7 text-primary" />
           </div>
           <div>
             <h1 className="text-2xl font-black text-slate-900 font-display tracking-tight leading-tight">
               Apertura del Período Lectivo
             </h1>
-            <p className="text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-2">
+            <p className="text-xs text-secondary mt-1 flex flex-wrap items-center gap-2">
               {currentYear ? (
                 <>
                   <span>Lectivo actual:</span>
                   <span className="font-extrabold text-primary font-mono bg-primary/10 px-2.5 py-0.5 rounded-md">
                     {currentYear}
                   </span>
-                  <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+                  <ArrowRight className="w-3.5 h-3.5 text-tertiary" />
                   <span>Planificación próximo año:</span>
                   <span className="font-extrabold text-accent font-mono bg-accent/10 border border-accent/20 px-2.5 py-0.5 rounded-md">
                     {nextYear}
                   </span>
                 </>
               ) : (
-                <span className="text-amber-600 font-bold flex items-center gap-1.5">
+                <span className="text-secondary font-bold flex items-center gap-1.5">
                   <AlertTriangle className="w-4 h-4" />
                   Sin año lectivo activo. Por favor, inicialice el sistema.
                 </span>
@@ -399,7 +399,7 @@ export default function SchoolYearManager() {
           </div>
         </div>
         <div className="flex items-center gap-2 self-start md:self-auto relative z-10">
-          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-primary/5 via-accent/5 to-secondary/10 border border-primary/20 rounded-full text-xs font-bold text-primary shadow-3xs">
+          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-primary/5 via-accent/5 to-secondary/10 border border-primary/20 rounded-full text-xs font-bold text-primary shadow-sm">
             <Sparkles className="w-3.5 h-3.5 text-primary animate-spin-slow" />
             Planificación en Vivo
           </span>
@@ -412,14 +412,14 @@ export default function SchoolYearManager() {
         <div className="group bg-white rounded-2xl border border-slate-200/80 p-6 shadow-2xs hover:shadow-md hover:border-slate-300/80 hover:-translate-y-1 transition-all duration-300 flex items-center justify-between relative overflow-hidden">
           <div className="absolute top-0 left-0 w-1.5 h-full bg-primary rounded-l-2xl transition-all duration-300 group-hover:w-2" />
           <div className="flex items-center gap-4 pl-1">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary/20 transition-colors shadow-3xs">
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary/20 transition-colors shadow-sm">
               <Users className="w-6 h-6" />
             </div>
             <div>
-              <span className="block text-[11px] font-black text-slate-400 uppercase tracking-wider">
+              <span className="block text-[11px] font-black text-tertiary uppercase tracking-wider">
                 Alumnos a Promover
               </span>
-              <span className="block text-xs text-slate-500 mt-0.5 font-medium">
+              <span className="block text-xs text-secondary mt-0.5 font-medium">
                 Padrón activo para próximo ciclo
               </span>
             </div>
@@ -433,14 +433,14 @@ export default function SchoolYearManager() {
         <div className="group bg-white rounded-2xl border border-slate-200/80 p-6 shadow-2xs hover:shadow-md hover:border-slate-300/80 hover:-translate-y-1 transition-all duration-300 flex items-center justify-between relative overflow-hidden">
           <div className="absolute top-0 left-0 w-1.5 h-full bg-secondary rounded-l-2xl transition-all duration-300 group-hover:w-2" />
           <div className="flex items-center gap-4 pl-1">
-            <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary group-hover:bg-secondary/20 transition-colors shadow-3xs">
+            <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary group-hover:bg-secondary/20 transition-colors shadow-sm">
               <GraduationCap className="w-6 h-6" />
             </div>
             <div>
-              <span className="block text-[11px] font-black text-slate-400 uppercase tracking-wider">
+              <span className="block text-[11px] font-black text-tertiary uppercase tracking-wider">
                 Egresados a Graduar
               </span>
-              <span className="block text-xs text-slate-500 mt-0.5 font-medium">
+              <span className="block text-xs text-secondary mt-0.5 font-medium">
                 Saldrán del sistema (11G / 12T)
               </span>
             </div>
@@ -454,14 +454,14 @@ export default function SchoolYearManager() {
         <div className="group bg-white rounded-2xl border border-slate-200/80 p-6 shadow-2xs hover:shadow-md hover:border-slate-300/80 hover:-translate-y-1 transition-all duration-300 flex items-center justify-between relative overflow-hidden">
           <div className="absolute top-0 left-0 w-1.5 h-full bg-accent rounded-l-2xl transition-all duration-300 group-hover:w-2" />
           <div className="flex items-center gap-4 pl-1">
-            <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center text-accent group-hover:bg-accent/20 transition-colors shadow-3xs">
+            <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center text-accent group-hover:bg-accent/20 transition-colors shadow-sm">
               <Layers className="w-6 h-6" />
             </div>
             <div>
-              <span className="block text-[11px] font-black text-slate-400 uppercase tracking-wider">
+              <span className="block text-[11px] font-black text-tertiary uppercase tracking-wider">
                 Nuevas Secciones
               </span>
-              <span className="block text-xs text-slate-500 mt-0.5 font-medium">
+              <span className="block text-xs text-secondary mt-0.5 font-medium">
                 Aulas virtuales a generar
               </span>
             </div>
@@ -480,17 +480,17 @@ export default function SchoolYearManager() {
               <TrendingUp className="w-5.5 h-5.5 text-primary" />
               Estructura de Promoción y Aulas
             </h3>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-secondary mt-1">
               Configure las secciones que estarán disponibles para el período lectivo {nextYear}. El sistema distribuirá de forma óptima a los alumnos.
             </p>
           </div>
-          <span className="text-xs font-bold text-slate-500 font-mono bg-white border border-slate-200/80 px-4 py-2 rounded-xl shadow-3xs self-start sm:self-auto">
+          <span className="text-xs font-bold text-secondary font-mono bg-white border border-slate-200/80 px-4 py-2 rounded-xl shadow-sm self-start sm:self-auto">
             {rows.length} Grados Configurables
           </span>
         </div>
 
         {rows.length === 0 ? (
-          <div className="text-center py-16 bg-white border border-slate-200/80 rounded-2xl text-slate-400 shadow-3xs">
+          <div className="text-center py-16 bg-white border border-slate-200/80 rounded-2xl text-tertiary shadow-sm">
             <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-40" />
             <p className="text-sm font-medium">No se encontraron grados activos configurados en el sistema.</p>
           </div>
@@ -528,21 +528,21 @@ export default function SchoolYearManager() {
                         <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${
                           r.cycle === 'parvularia' ? 'bg-pink-50 text-pink-700 border-pink-100' :
                           r.cycle === '1' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                          r.cycle === '2' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                          r.cycle === '3' ? 'bg-purple-50 text-purple-700 border-purple-100' :
-                          'bg-amber-50 text-amber-700 border-amber-100'
+                          r.cycle === '2' ? 'bg-sky-50 text-sky-700 border-sky-100' :
+                          r.cycle === '3' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
+                          'bg-orange-50 text-orange-700 border-orange-100'
                         }`}>
                           {CYCLE_LABEL[r.cycle] || r.cycle}
                         </span>
                       </div>
 
                       {r.nextGradeId === null ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-black text-amber-600 bg-amber-50 border border-amber-100 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-black text-secondary bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-full uppercase tracking-wider">
                           <GraduationCap className="w-3.5 h-3.5" />
                           Egreso
                         </span>
                       ) : (
-                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider bg-slate-100 px-2 py-1 rounded-md">
+                        <span className="text-[10px] text-tertiary font-bold uppercase tracking-wider bg-slate-100 px-2 py-1 rounded-md">
                           {r.nextGradeName}
                         </span>
                       )}
@@ -550,11 +550,11 @@ export default function SchoolYearManager() {
 
                     {/* Flow / Matrícula Entrante */}
                     <div className="bg-slate-50/70 rounded-xl p-3 border border-slate-100 space-y-2">
-                      <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                      <div className="text-[10px] font-black text-tertiary uppercase tracking-wider">
                         Flujo de Matrícula
                       </div>
                       <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
-                        <span className="truncate max-w-[100px] bg-white border border-slate-200 px-2 py-0.5 rounded-md text-[10px] text-slate-500">
+                        <span className="truncate max-w-[100px] bg-white border border-slate-200 px-2 py-0.5 rounded-md text-[10px] text-secondary">
                           {r.sourceGradeName}
                         </span>
                         <div className="flex items-center gap-1 text-primary">
@@ -567,7 +567,7 @@ export default function SchoolYearManager() {
                           {r.gradeName}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between text-[11px] text-slate-400">
+                      <div className="flex items-center justify-between text-[11px] text-tertiary">
                         <span>Padrón actual en grado:</span>
                         <span className="font-bold text-slate-600">{r.outgoingCount} alumnos</span>
                       </div>
@@ -575,7 +575,7 @@ export default function SchoolYearManager() {
 
                     {/* Aulas en Curso (Año actual) */}
                     <div className="space-y-1.5">
-                      <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                      <div className="text-[10px] font-black text-tertiary uppercase tracking-wider">
                         Aulas en Curso
                       </div>
                       {r.currentSectionNames.length > 0 ? (
@@ -583,14 +583,14 @@ export default function SchoolYearManager() {
                           {r.currentSectionNames.map(n => (
                             <span
                               key={n}
-                              className="px-2.5 py-0.5 bg-slate-100 border border-slate-200/80 rounded-md text-slate-600 font-black font-mono text-[11px] shadow-3xs"
+                              className="px-2.5 py-0.5 bg-slate-100 border border-slate-200/80 rounded-md text-slate-600 font-black font-mono text-[11px] shadow-sm"
                             >
                               {n}
                             </span>
                           ))}
                         </div>
                       ) : (
-                        <span className="text-[11px] text-slate-400 font-medium italic">
+                        <span className="text-[11px] text-tertiary font-medium italic">
                           Sin aulas asignadas
                         </span>
                       )}
@@ -599,23 +599,23 @@ export default function SchoolYearManager() {
                     {/* Nuevas Secciones (Planificadas) */}
                     <div className="space-y-2.5 pt-3 border-t border-slate-100">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                        <span className="text-[10px] font-black text-secondary uppercase tracking-wider">
                           Aulas Planificadas ({nextYear})
                         </span>
                         {isReconfigured && (
-                          <span className="text-[9px] font-black uppercase text-amber-600 bg-amber-50 border border-amber-100/60 px-1.5 py-0.5 rounded">
+                          <span className="text-[9px] font-black uppercase text-secondary bg-slate-50 border border-slate-200/60 px-1.5 py-0.5 rounded">
                             Reconfigurado
                           </span>
                         )}
                       </div>
 
                       <div className="flex items-center gap-3">
-                        <div className="inline-flex items-center bg-slate-50 border border-slate-200 rounded-lg p-0.5 shadow-3xs shrink-0">
+                        <div className="inline-flex items-center bg-slate-50 border border-slate-200 rounded-lg p-0.5 shadow-sm shrink-0">
                           <button
                             type="button"
                             onClick={() => updateCount(r.gradeId, r.newSectionNames.length - 1)}
                             disabled={r.newSectionNames.length <= 1}
-                            className="w-6 h-6 rounded-md flex items-center justify-center text-slate-500 hover:bg-primary hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all font-bold cursor-pointer"
+                            className="w-6 h-6 rounded-md flex items-center justify-center text-secondary hover:bg-primary hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all font-bold cursor-pointer"
                           >
                             <Minus className="w-3 h-3" />
                           </button>
@@ -626,7 +626,7 @@ export default function SchoolYearManager() {
                             type="button"
                             onClick={() => updateCount(r.gradeId, r.newSectionNames.length + 1)}
                             disabled={r.newSectionNames.length >= 6}
-                            className="w-6 h-6 rounded-md flex items-center justify-center text-slate-500 hover:bg-primary hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all font-bold cursor-pointer"
+                            className="w-6 h-6 rounded-md flex items-center justify-center text-secondary hover:bg-primary hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all font-bold cursor-pointer"
                           >
                             <Plus className="w-3 h-3" />
                           </button>
@@ -642,7 +642,7 @@ export default function SchoolYearManager() {
                               maxLength={2}
                               placeholder="A"
                               title="Identificador de la sección"
-                              className="w-8 h-8 text-center text-xs font-black uppercase bg-white border border-slate-200 rounded-lg text-primary focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none transition-all shadow-3xs"
+                              className="w-8 h-8 text-center text-xs font-black uppercase bg-white border border-slate-200 rounded-lg text-primary focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none transition-all shadow-sm"
                             />
                           ))}
                         </div>
@@ -651,25 +651,25 @@ export default function SchoolYearManager() {
 
                     {/* LIVE Distribution counts */}
                     <div className="space-y-1.5 pt-3 border-t border-slate-100">
-                      <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                      <div className="text-[10px] font-black text-secondary uppercase tracking-wider">
                         Distribución Proyectada
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {Object.entries(dist).map(([name, count]) => (
                           <span
                             key={name}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary/5 border border-primary/10 rounded-lg text-[11px] font-bold text-primary shadow-3xs hover:scale-105 hover:bg-primary/10 transition-all duration-200 cursor-default"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary/5 border border-primary/10 rounded-lg text-[11px] font-bold text-primary shadow-sm hover:scale-105 hover:bg-primary/10 transition-all duration-200 cursor-default"
                           >
                             <span className="text-[9px] text-primary/70 uppercase font-black tracking-wider">
                               Secc. {name}
                             </span>
-                            <span className="bg-white text-primary px-1.5 py-0.2 rounded font-black font-mono text-[10px] border border-primary/10 shadow-3xs">
+                            <span className="bg-white text-primary px-1.5 py-0.2 rounded font-black font-mono text-[10px] border border-primary/10 shadow-sm">
                               {count}
                             </span>
                           </span>
                         ))}
                         {Object.keys(dist).length === 0 && (
-                          <span className="text-xs text-slate-400 italic">
+                          <span className="text-xs text-tertiary italic">
                             Sin alumnos proyectados
                           </span>
                         )}
@@ -693,7 +693,7 @@ export default function SchoolYearManager() {
             <h4 className="text-sm font-black text-slate-900 font-display uppercase tracking-wider">
               Políticas de Preservación Histórica
             </h4>
-            <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+            <p className="text-xs text-secondary mt-1 leading-relaxed">
               Toda la información académica de ciclos lectivos anteriores (secciones, directores, registros de control, asistencias y reportes) queda estrictamente salvaguardada en almacenamiento histórico aislado. Al iniciar el período, el sistema estructurará el año <span className="font-extrabold text-primary font-mono">{nextYear}</span> de forma completamente limpia.
             </p>
           </div>
@@ -725,13 +725,13 @@ export default function SchoolYearManager() {
           className="w-full px-6 py-4.5 flex items-center justify-between text-left font-display text-xs font-black uppercase tracking-wider text-slate-700 hover:bg-slate-200/50 transition-colors cursor-pointer"
         >
           <div className="flex items-center gap-2.5">
-            <Wrench className="w-4.5 h-4.5 text-slate-500" />
+            <Wrench className="w-4.5 h-4.5 text-secondary" />
             <span>Herramientas del Sistema y Calibración de Datos</span>
           </div>
           {maintenanceOpen ? (
-            <ChevronUp className="w-4.5 h-4.5 text-slate-500" />
+            <ChevronUp className="w-4.5 h-4.5 text-secondary" />
           ) : (
-            <ChevronDown className="w-4.5 h-4.5 text-slate-500" />
+            <ChevronDown className="w-4.5 h-4.5 text-secondary" />
           )}
         </button>
 
@@ -744,13 +744,13 @@ export default function SchoolYearManager() {
               className="overflow-hidden"
             >
               <div className="px-6 py-6 border-t border-slate-200 bg-white/50 space-y-5">
-                <div className="p-4 bg-amber-50 border-l-4 border-amber-500 rounded-r-xl flex items-start gap-3.5">
-                  <AlertTriangle className="w-5.5 h-5.5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="p-4 bg-slate-50 border-l-4 border-slate-400 rounded-r-xl flex items-start gap-3.5">
+                  <AlertTriangle className="w-5.5 h-5.5 text-secondary shrink-0 mt-0.5" />
                   <div>
-                    <h5 className="text-xs font-black text-amber-800 uppercase tracking-wider">
+                    <h5 className="text-xs font-black text-slate-900 uppercase tracking-wider">
                       Atención: Consola de Diagnóstico de Datos
                     </h5>
-                    <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+                    <p className="text-xs text-secondary mt-1 leading-relaxed">
                       Estas herramientas realizan operaciones profundas directamente sobre la base de datos de producción. Úselas con precaución para corregir desalineaciones históricas de padrones o limpiar simulaciones de pruebas.
                     </p>
                   </div>
@@ -758,19 +758,19 @@ export default function SchoolYearManager() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {/* Reset Pruebas */}
-                  <div className="bg-white border border-slate-200/80 p-5 rounded-xl flex flex-col justify-between gap-4 shadow-3xs hover:border-slate-300 transition-all hover:scale-[1.005] duration-200">
+                  <div className="bg-white border border-slate-200/80 p-5 rounded-xl flex flex-col justify-between gap-4 shadow-sm hover:border-slate-300 transition-all hover:scale-[1.005] duration-200">
                     <div>
                       <h6 className="text-xs font-black text-slate-900 font-display uppercase tracking-wider flex items-center gap-1.5">
                         <AlertTriangle className="w-4 h-4 text-red-500" />
                         Reinicio de Matrícula y Pruebas
                       </h6>
-                      <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                      <p className="text-[11px] text-tertiary mt-1 leading-relaxed">
                         Limpia las secciones temporales de prueba, restableciendo el año lectivo y permitiendo ejecutar múltiples flujos interactivos de simulación de migración escolar.
                       </p>
                     </div>
                     <button
                       onClick={handleReset}
-                      className="btn-secondary text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 text-[11px] font-bold py-2.5 px-4 self-start rounded-xl flex items-center gap-2 shadow-3xs hover:scale-[1.02] active:scale-[0.98] transition-all duration-150 cursor-pointer"
+                      className="btn-secondary text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 text-[11px] font-bold py-2.5 px-4 self-start rounded-xl flex items-center gap-2 shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all duration-150 cursor-pointer"
                     >
                       <RotateCcw className="w-4 h-4" />
                       <span>Resetear Escenario</span>
@@ -778,18 +778,18 @@ export default function SchoolYearManager() {
                   </div>
 
                   {/* Corregir Historial */}
-                  <div className="bg-white border border-slate-200/80 p-5 rounded-xl flex flex-col justify-between gap-4 shadow-3xs hover:border-slate-300 transition-all hover:scale-[1.005] duration-200">
+                  <div className="bg-white border border-slate-200/80 p-5 rounded-xl flex flex-col justify-between gap-4 shadow-sm hover:border-slate-300 transition-all hover:scale-[1.005] duration-200">
                     <div>
                       <h6 className="text-xs font-black text-slate-900 font-display uppercase tracking-wider">
                         Reconstrucción Académica de Historiales
                       </h6>
-                      <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                      <p className="text-[11px] text-tertiary mt-1 leading-relaxed">
                         Audita, recalcula y reconstruye cronológicamente año por año el historial completo de inscripciones de todo el alumnado activo del plantel desde su respectiva fecha de ingreso.
                       </p>
                     </div>
                     <button
                       onClick={handleFixHistories}
-                      className="btn-secondary text-primary border-primary/20 hover:bg-primary/5 hover:border-primary/30 text-[11px] font-bold py-2.5 px-4 self-start rounded-xl flex items-center gap-2 shadow-3xs hover:scale-[1.02] active:scale-[0.98] transition-all duration-150 cursor-pointer"
+                      className="btn-secondary text-primary border-primary/20 hover:bg-primary/5 hover:border-primary/30 text-[11px] font-bold py-2.5 px-4 self-start rounded-xl flex items-center gap-2 shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all duration-150 cursor-pointer"
                     >
                       <BookOpen className="w-4 h-4" />
                       <span>Reconstruir Historial Alumnos</span>
@@ -798,13 +798,13 @@ export default function SchoolYearManager() {
                 </div>
 
                 {/* Sincronizador Interactivo de Firebase */}
-                <div className="bg-white border border-slate-200/80 p-6 rounded-2xl space-y-4 shadow-3xs hover:border-slate-300 transition-all">
+                <div className="bg-white border border-slate-200/80 p-6 rounded-2xl space-y-4 shadow-sm hover:border-slate-300 transition-all">
                   <div>
                     <h6 className="text-xs font-black text-slate-900 font-display uppercase tracking-wider flex items-center gap-2">
                       <Sparkles className="w-4.5 h-4.5 text-primary" />
                       Migrador Interactivo y Sincronización de Alumnos (Multi-Firebase SDK)
                     </h6>
-                    <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
+                    <p className="text-[11px] text-secondary mt-1.5 leading-relaxed">
                       Pega el JSON de configuración de Firebase de tu proyecto de origen (las credenciales Web o de Cliente de Firebase SDK).
                       Esta herramienta <strong className="text-red-600 font-semibold">limpiará por completo la colección actual de alumnos</strong> e insertará y reconstruirá de manera inteligente
                       los historiales de la base de datos de origen directamente en este Firebase de destino.
@@ -813,18 +813,18 @@ export default function SchoolYearManager() {
 
                   <form onSubmit={handleInteractiveMigration} className="space-y-4">
                     <div>
-                      <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1.5">JSON de Configuración SDK de Firebase de Origen</label>
+                      <label className="block text-[10px] font-extrabold text-tertiary uppercase tracking-wider mb-1.5">JSON de Configuración SDK de Firebase de Origen</label>
                       <textarea
                         rows={5}
                         value={migrationSdk}
                         onChange={e => setMigrationSdk(e.target.value)}
                         placeholder={`{\n  "apiKey": "AIzaSy...",\n  "authDomain": "...",\n  "projectId": "...",\n  "storageBucket": "...",\n  "messagingSenderId": "...",\n  "appId": "..."\n}`}
-                        className="w-full text-xs font-mono p-4 border border-slate-200 rounded-2xl bg-slate-50/80 focus:ring-4 focus:ring-primary/15 focus:border-primary focus:outline-none transition-all shadow-3xs"
+                        className="w-full text-xs font-mono p-4 border border-slate-200 rounded-2xl bg-slate-50/80 focus:ring-4 focus:ring-primary/15 focus:border-primary focus:outline-none transition-all shadow-sm"
                       />
                     </div>
 
                     {migrationStatus && (
-                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 shadow-3xs">
+                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 shadow-sm">
                         <div className="flex justify-between items-center">
                           <span className="text-[11px] font-bold text-slate-600">{migrationStatus}</span>
                           <span className="text-[11px] font-extrabold text-primary font-mono">{migrationProgress}%</span>
@@ -838,7 +838,7 @@ export default function SchoolYearManager() {
                     <button
                       type="submit"
                       disabled={runningMigration}
-                      className="btn-primary text-xs py-3 px-6 rounded-2xl flex items-center gap-2 disabled:opacity-40 transition-all shadow-3xs cursor-pointer"
+                      className="btn-primary text-xs py-3 px-6 rounded-2xl flex items-center gap-2 disabled:opacity-40 transition-all shadow-sm cursor-pointer"
                     >
                       {runningMigration ? (
                         <>
