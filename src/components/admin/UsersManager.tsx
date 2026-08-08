@@ -276,7 +276,7 @@ export default function UsersManager() {
           onClick={() => setActiveTab('approvals')}
           className={`px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
             activeTab === 'approvals'
-              ? 'bg-amber-500 text-white shadow-xs'
+              ? 'bg-primary text-white shadow-xs'
               : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/60'
           }`}
         >
@@ -291,13 +291,13 @@ export default function UsersManager() {
           onClick={() => setActiveTab('notifications')}
           className={`px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
             activeTab === 'notifications'
-              ? 'bg-emerald-600 text-white shadow-xs'
+              ? 'bg-accent text-white shadow-xs'
               : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/60'
           }`}
         >
           Entregar Credenciales
           {newNotifications.filter(n => n.status === 'new').length > 0 && (
-            <span className="bg-emerald-400 text-emerald-950 text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+            <span className="bg-accent text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
               {newNotifications.filter(n => n.status === 'new').length}
             </span>
           )}
@@ -371,16 +371,16 @@ export default function UsersManager() {
             </div>
 
             {/* Users Table */}
-            <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-2xs">
+            <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200">
-                      <th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Usuario</th>
-                      <th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Correo Institucional</th>
-                      <th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Rol de Acceso</th>
-                      <th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Docente Vinculado</th>
-                      <th className="px-5 py-3 text-right text-[10px] font-bold text-slate-500 uppercase tracking-wider">Acciones</th>
+                      <th className="px-5 py-3 text-[10px] font-bold text-secondary uppercase tracking-wider">Usuario</th>
+                      <th className="px-5 py-3 text-[10px] font-bold text-secondary uppercase tracking-wider">Correo Institucional</th>
+                      <th className="px-5 py-3 text-[10px] font-bold text-secondary uppercase tracking-wider">Rol de Acceso</th>
+                      <th className="px-5 py-3 text-[10px] font-bold text-secondary uppercase tracking-wider">Docente Vinculado</th>
+                      <th className="px-5 py-3 text-right text-[10px] font-bold text-secondary uppercase tracking-wider">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -393,7 +393,7 @@ export default function UsersManager() {
                             </div>
                             <div>
                               <p className="text-sm font-semibold text-slate-800">{u.displayName}</p>
-                              <p className="text-[10px] text-slate-400 font-mono tracking-wider">{u.uid.slice(0, 8)}...{u.uid.slice(-4)}</p>
+                              <p className="text-[10px] text-secondary font-mono tracking-wider">{u.uid.slice(0, 8)}...{u.uid.slice(-4)}</p>
                             </div>
                           </div>
                         </td>
@@ -571,7 +571,7 @@ export default function UsersManager() {
                     transition={{ delay: i * 0.05 }}
                     className={`rounded-2xl p-5 border ${
                       notif.status === 'new'
-                        ? 'bg-white border-emerald-200 shadow-2xs'
+                        ? 'bg-white border-accent/20 shadow-sm'
                         : 'bg-slate-50 border-slate-200 opacity-70'
                     }`}
                   >
@@ -582,8 +582,8 @@ export default function UsersManager() {
                         </div>
                         <div>
                           <h3 className="text-sm font-bold text-slate-900">{notif.displayName}</h3>
-                          <p className="text-xs text-slate-500 flex items-center gap-1">
-                            <Mail className="w-3 h-3 text-slate-400" /> {notif.email}
+                          <p className="text-xs text-secondary flex items-center gap-1">
+                            <Mail className="w-3 h-3 text-secondary" /> {notif.email}
                           </p>
                         </div>
                       </div>
@@ -676,7 +676,7 @@ export default function UsersManager() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedUser(null)}
-              className="absolute inset-0 bg-black/40 backdrop-blur-xs"
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             />
 
             {/* Modal Body */}
@@ -684,18 +684,18 @@ export default function UsersManager() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-3xl p-6 w-full max-w-lg shadow-xl relative z-10 border border-slate-200 flex flex-col max-h-[85vh] overflow-hidden"
+              className="bg-white/90 backdrop-blur-xl border border-white/40 rounded-3xl p-6 w-full max-w-lg shadow-xl relative z-10 flex flex-col max-h-[85vh] overflow-hidden"
             >
               <div className="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0">
                 <div>
                   <h3 className="font-black text-slate-800 text-base">Modificar Acceso de Usuario</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">{selectedUser.displayName}</p>
+                  <p className="text-xs text-secondary mt-0.5">{selectedUser.displayName}</p>
                 </div>
                 <button
                   onClick={() => setSelectedUser(null)}
                   className="p-1.5 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
                 >
-                  <X className="w-5 h-5 text-slate-400" />
+                  <X className="w-5 h-5 text-secondary" />
                 </button>
               </div>
 
