@@ -154,7 +154,7 @@ export default function TeachersManager() {
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary" />
           <input type="text" placeholder="Buscar docente..." value={search} onChange={e => setSearch(e.target.value)} className="input pl-9" />
         </div>
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="input w-auto">
@@ -167,14 +167,14 @@ export default function TeachersManager() {
       {/* Formulario Modal */}
       <AnimatePresence>
         {showForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden flex flex-col"
+              className="w-full max-w-2xl bg-white/90 backdrop-blur-xl border border-white/40 rounded-2xl shadow-xl overflow-hidden flex flex-col"
             >
-              <div className="bg-slate-50 border-b border-slate-100 p-5 flex justify-between items-center shrink-0">
+              <div className="bg-slate-50/80 border-b border-slate-100 p-5 flex justify-between items-center shrink-0">
                 <h3 className="font-bold text-slate-900 text-base">{editingId ? 'Editar Docente' : 'Nuevo Docente'}</h3>
                 <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1.5 hover:bg-slate-200 rounded-lg transition-colors"><X className="w-4 h-4 text-slate-500" /></button>
               </div>
