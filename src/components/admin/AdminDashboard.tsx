@@ -68,11 +68,11 @@ export default function AdminDashboard() {
   }, []);
 
   const statCards = [
-    { label: 'Docentes', value: stats.teachers, icon: GraduationCap, color: 'text-white', bgDark: true, iconBg: 'bg-white/15 border border-white/20' },
-    { label: 'Grados', value: stats.grades, icon: DoorOpen, color: 'text-slate-500', bgDark: false, iconBg: 'bg-slate-100 border border-slate-200' },
-    { label: 'Secciones', value: stats.sections, icon: Users, color: 'text-slate-500', bgDark: false, iconBg: 'bg-slate-100 border border-slate-200' },
-    { label: 'Alumnos', value: stats.students, icon: UserCheck, color: 'text-slate-500', bgDark: false, iconBg: 'bg-slate-100 border border-slate-200' },
-    { label: 'Materias', value: stats.subjects, icon: BookMarked, color: 'text-slate-500', bgDark: false, iconBg: 'bg-slate-100 border border-slate-200' },
+    { label: 'Docentes', value: stats.teachers, icon: GraduationCap, accent: 'bg-primary' },
+    { label: 'Grados', value: stats.grades, icon: DoorOpen, accent: 'bg-accent' },
+    { label: 'Secciones', value: stats.sections, icon: Users, accent: 'bg-secondary' },
+    { label: 'Alumnos', value: stats.students, icon: UserCheck, accent: 'bg-emerald-500' },
+    { label: 'Materias', value: stats.subjects, icon: BookMarked, accent: 'bg-purple-500' },
   ];
 
   if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
@@ -86,29 +86,26 @@ export default function AdminDashboard() {
             key={card.label}
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-            className={`rounded-2xl p-5 border transition-all ${
-              card.bgDark
-                ? 'bg-primary-dark text-white border-primary-dark'
-                : 'bg-white text-slate-900 border-slate-200/80 hover:border-slate-300'
-            }`}
+            transition={{ delay: i * 0.06, type: 'spring', bounce: 0.1 }}
+            className="bg-white rounded-2xl p-5 border border-slate-200/80 hover:border-slate-300 hover:shadow-md transition-all group"
           >
-            <div className={`flex items-center justify-between mb-3`}>
-              <span className={`text-xs font-semibold uppercase tracking-wider ${card.bgDark ? 'text-white/70' : 'text-slate-500'}`}>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                 {card.label}
               </span>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${card.iconBg}`}>
-                <card.icon className={`w-4 h-4 ${card.color}`} />
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${card.accent} bg-opacity-10`}>
+                <card.icon className={`w-4 h-4 ${card.accent.replace('bg-', 'text-')}`} />
               </div>
             </div>
-            <div className={`text-4xl font-bold font-display tracking-tight mb-2 ${card.bgDark ? 'text-white' : 'text-slate-900'}`}>
+            <div className="text-4xl font-bold font-display tracking-tight mb-2 text-slate-900">
               {card.value}
             </div>
-            <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full ${
-              card.bgDark ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-600'
-            }`}>
-              Total registrados
-            </span>
+            <div className="flex items-center gap-1.5">
+              <div className={`w-1 h-1 rounded-full ${card.accent}`} />
+              <span className="text-[11px] font-semibold text-slate-500">
+                Total registrados
+              </span>
+            </div>
           </motion.div>
         ))}
       </div>
@@ -203,9 +200,9 @@ export default function AdminDashboard() {
               key={mod.id}
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.3 + i * 0.05 }}
+              transition={{ delay: 0.3 + i * 0.05, type: 'spring', bounce: 0.1 }}
               className={`bg-white rounded-2xl p-5 border border-slate-200/80 flex flex-col items-center text-center gap-3 transition-all ${
-                !mod.active ? 'opacity-50' : 'hover:shadow-md hover:-translate-y-0.5'
+                mod.active ? 'hover:shadow-md hover:-translate-y-0.5 cursor-pointer' : 'opacity-50 grayscale cursor-not-allowed'
               }`}
             >
               <div className={`${mod.color} w-12 h-12 rounded-xl flex items-center justify-center`}>
