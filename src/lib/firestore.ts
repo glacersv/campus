@@ -46,6 +46,12 @@ const ROLES_COLLECTION = 'roles';
 const APPROVAL_REQUESTS_COLLECTION = 'approval_requests';
 const NEW_USER_NOTIFICATIONS_COLLECTION = 'new_user_notifications';
 
+export function sanitizePayload<T extends Record<string, any>>(obj: T): T {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== undefined)
+  ) as T;
+}
+
 // ==================== USERS ====================
 
 export async function createUser(userData: Omit<User, 'createdAt'>): Promise<void> {
@@ -53,7 +59,8 @@ export async function createUser(userData: Omit<User, 'createdAt'>): Promise<voi
   validate(userData, validateUser);
   
   const userRef = doc(db, USERS_COLLECTION, userData.uid);
-  await setDoc(userRef, { ...userData, createdAt: serverTimestamp() });
+  const cleanData = sanitizePayload(userData);
+  await setDoc(userRef, { ...cleanData, createdAt: serverTimestamp() });
 }
 
 export async function getUser(uid: string): Promise<User | null> {
