@@ -7,7 +7,7 @@ export default function AcademicaDashboard() {
     { id: 'notas', label: 'Calificaciones', icon: BookOpen, color: 'bg-accent', desc: 'Gestión de notas y evaluaciones', count: '—' },
     { id: 'horario', label: 'Horarios', icon: Calendar, color: 'bg-purple-500', desc: 'Horarios de clases', count: '—' },
     { id: 'carga-docente', label: 'Carga Docente', icon: Users, color: 'bg-emerald-500', desc: 'Asignación de materias', count: '—' },
-    { id: 'reportes', label: 'Reportes', icon: BarChart3, color: 'bg-amber-500', desc: 'Estadísticas académicas', count: '—' },
+    { id: 'reportes', label: 'Reportes', icon: BarChart3, color: 'bg-blue-500', desc: 'Estadísticas académicas', count: '—' },
   ];
 
   return (
@@ -34,7 +34,7 @@ export default function AcademicaDashboard() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.06, type: 'spring', bounce: 0.1 }}
               className="module-card-accent group"
-              style={{ borderLeftColor: `var(--color-${mod.id === 'notas' ? 'accent' : mod.id === 'horario' ? 'purple-500' : mod.id === 'carga-docente' ? 'emerald-500' : 'amber-500'})` }}
+              style={{ borderLeftColor: `var(--color-${mod.id === 'notas' ? 'accent' : mod.id === 'horario' ? 'purple-500' : mod.id === 'carga-docente' ? 'emerald-500' : 'blue-500'})` }}
             >
               <div className="flex items-center gap-3 mb-3">
                 <div className={`w-10 h-10 rounded-xl ${mod.color} flex items-center justify-center`}>

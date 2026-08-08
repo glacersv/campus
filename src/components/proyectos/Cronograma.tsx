@@ -22,7 +22,7 @@ const FECHAS: FechaItem[] = [
 
 const FASE_STYLES: Record<string, { bg: string; border: string; text: string; dot: string }> = {
   inscripcion: { bg: 'bg-blue-50',    border: 'border-blue-200',    text: 'text-blue-800',    dot: 'bg-blue-500' },
-  limite:      { bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-800',   dot: 'bg-amber-500' },
+  limite:      { bg: 'bg-slate-50',   border: 'border-slate-200',   text: 'text-slate-800',   dot: 'bg-slate-500' },
   feria:       { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-800', dot: 'bg-emerald-500' },
 };
 
@@ -82,7 +82,7 @@ export default function Cronograma() {
 
       <div className="mt-6 pt-5 border-t border-slate-200">
         <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-amber-500" /> Normas clave
+          <AlertTriangle className="w-4 h-4 text-slate-500" /> Normas clave
         </h4>
         {[
           '5 mínimo y 6 integrantes máximo por equipo. No se acepta trabajo individual.',

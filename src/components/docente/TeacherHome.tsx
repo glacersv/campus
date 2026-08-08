@@ -32,7 +32,7 @@ const moduleColors: Record<SystemModuleId, string> = {
   clase: 'bg-secondary text-primary',
   horario: 'bg-purple-500 text-white',
   eventos: 'bg-emerald-500 text-white',
-  avisos: 'bg-amber-500 text-white',
+  avisos: 'bg-blue-500 text-white',
   proyectos: 'bg-orange-500 text-white',
 };
 
@@ -65,12 +65,12 @@ export default function TeacherHome() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-4 bg-amber-50 border border-amber-200 rounded-xl"
+          className="p-4 bg-slate-50 border border-slate-200 rounded-xl"
         >
-          <p className="text-sm text-amber-800 font-medium">
+          <p className="text-sm text-slate-800 font-medium">
             Hoy es Lunes - <span className="font-bold">Acto Cívico Automático</span>
           </p>
-          <p className="text-xs text-amber-600 mt-1">La formación de hoy será en modalidad Acto Cívico.</p>
+          <p className="text-xs text-slate-500 mt-1">La formación de hoy será en modalidad Acto Cívico.</p>
         </motion.div>
       )}
 

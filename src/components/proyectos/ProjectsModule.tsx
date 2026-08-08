@@ -20,7 +20,7 @@ interface Props {
 const STATUS_COLORS: Record<string, string> = {
   green: 'bg-emerald-100 text-emerald-800',
   blue: 'bg-blue-100 text-blue-800',
-  amber: 'bg-amber-100 text-amber-800',
+  amber: 'bg-slate-100 text-slate-700',
   purple: 'bg-purple-100 text-purple-800',
   red: 'bg-red-100 text-red-800',
   gray: 'bg-slate-100 text-slate-600',
@@ -118,7 +118,7 @@ export default function ProjectsModule({ view, compact = false }: Props) {
         {[
           { num: stats.total, label: 'Total', color: 'text-slate-700' },
           { num: stats.aprobados, label: 'Aprobados', color: 'text-emerald-600' },
-          { num: stats.pendientes, label: 'Pendientes', color: 'text-amber-600' },
+          { num: stats.pendientes, label: 'Pendientes', color: 'text-slate-600' },
           { num: stats.rechazados, label: 'Rechazados', color: 'text-red-600' },
         ].map(s => (
           <div key={s.label} className="bg-white py-2 text-center">
@@ -294,7 +294,7 @@ function ModalDocente({ proyectos, modal, formModal, setFormModal, onAccion, onC
       </div>
       <div className="flex gap-2 justify-end">
         <button className="text-xs px-3 py-1.5 border border-slate-200 rounded-lg" onClick={onCancel}>Cancelar</button>
-        <button className="text-xs px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg"
+        <button className="text-xs px-3 py-1.5 bg-slate-50 text-slate-700 border border-slate-200 rounded-lg"
           onClick={() => onAccion('reclasificar')}>Reclasificar</button>
         <button className="text-xs px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 rounded-lg"
           onClick={() => onAccion('rechazar')}>Rechazar</button>

@@ -27,7 +27,7 @@ const modules = [
   { id: 'clase', label: 'Clase', desc: 'Control de clases del día', icon: School, color: 'bg-secondary', active: false },
   { id: 'horario', label: 'Horario', desc: 'Horarios de clases', icon: Calendar, color: 'bg-purple-500', active: false },
   { id: 'eventos', label: 'Eventos', desc: 'Eventos del colegio', icon: CalendarDays, color: 'bg-emerald-500', active: false },
-  { id: 'avisos', label: 'Avisos', desc: 'Comunicados y anuncios', icon: Bell, color: 'bg-amber-500', active: false },
+  { id: 'avisos', label: 'Avisos', desc: 'Comunicados y anuncios', icon: Bell, color: 'bg-blue-500', active: false },
   { id: 'proyectos', label: 'Semana de la Juventud', desc: 'Gestión de proyectos estudiantiles', icon: Medal, color: 'bg-orange-500', active: true },
 ];
 
@@ -85,15 +85,15 @@ export default function TeacherDashboard({ teacherName, onLogout }: TeacherDashb
 
             {/* Monday Notice */}
             {isMonday && (
-              <motion.div initial={{ opacity: 0, y: -10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: 'spring', bounce: 0.1 }} className="mb-6 p-4 bg-amber-50/80 border border-amber-200/60 rounded-xl flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
-                  <Calendar className="w-4 h-4 text-amber-700" />
+              <motion.div initial={{ opacity: 0, y: -10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: 'spring', bounce: 0.1 }} className="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                  <Calendar className="w-4 h-4 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-amber-800 font-medium">
+                  <p className="text-sm text-slate-700 font-medium">
                     Hoy es Lunes - <span className="font-bold">Acto Cívico Automático</span>
                   </p>
-                  <p className="text-xs text-amber-600 mt-1">La formación de hoy será en modalidad Acto Cívico</p>
+                  <p className="text-xs text-slate-500 mt-1">La formación de hoy será en modalidad Acto Cívico</p>
                 </div>
               </motion.div>
             )}

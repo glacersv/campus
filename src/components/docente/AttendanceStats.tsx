@@ -25,7 +25,7 @@ export default function AttendanceStats({ presentCount, tardyCount, absentCount,
       <motion.div whileHover={{ y: -4 }} className="bg-white rounded-2xl p-5 border border-slate-200/80 flex flex-col justify-between">
         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Llegadas Tarde</span>
         <div className="flex items-baseline gap-1 mt-2">
-          <span className="text-4xl font-bold text-amber-600 font-display tracking-tight">{tardyCount}</span>
+          <span className="text-4xl font-bold text-slate-600 font-display tracking-tight">{tardyCount}</span>
         </div>
         <span className="text-[11px] text-slate-500 font-semibold mt-2 bg-slate-100 w-fit px-2 py-0.5 rounded-full">
           Con retardo

@@ -310,9 +310,9 @@ export default function Dashboard({ teacher, onLogout }: DashboardProps) {
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex items-center gap-2.5 font-medium"
+              className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-xs flex items-center gap-2.5 font-medium"
             >
-              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+              <AlertTriangle className="w-5 h-5 text-slate-600 shrink-0" />
               <span>
                 <strong>Modo Simulación Activo:</strong> La hora de llegada actual está establecida a las <strong>06:46 AM</strong>. Cualquier alumno que sea marcado como <strong>&ldquo;Tarde&rdquo;</strong> registrará automáticamente esta hora como su tiempo de retardo.
               </span>

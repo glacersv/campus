@@ -21,7 +21,7 @@ const moduleColors: Record<SystemModuleId, string> = {
   clase: 'bg-secondary',
   horario: 'bg-purple-500',
   eventos: 'bg-emerald-500',
-  avisos: 'bg-amber-500',
+  avisos: 'bg-blue-500',
   proyectos: 'bg-orange-500',
 };
 
@@ -49,7 +49,7 @@ export default function RegistroDashboard() {
               transition={{ delay: i * 0.06, type: 'spring', bounce: 0.1 }}
               onClick={() => navigate(`/registro/${mod.id}`)}
               className="group relative bg-white rounded-2xl p-5 border-l-[3px] border-y border-r border-slate-200/80 hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer"
-              style={{ borderLeftColor: `var(--color-${mod.id === 'formacion' ? 'primary' : mod.id === 'notas' ? 'accent' : mod.id === 'clase' ? 'secondary' : mod.id === 'horario' ? 'purple-500' : mod.id === 'eventos' ? 'emerald-500' : mod.id === 'avisos' ? 'amber-500' : 'orange-500'})` }}
+              style={{ borderLeftColor: `var(--color-${mod.id === 'formacion' ? 'primary' : mod.id === 'notas' ? 'accent' : mod.id === 'clase' ? 'secondary' : mod.id === 'horario' ? 'purple-500' : mod.id === 'eventos' ? 'emerald-500' : mod.id === 'avisos' ? 'blue-500' : 'orange-500'})` }}
             >
               <div className="flex items-start gap-4">
                 <div className={`${moduleColors[mod.id]} w-12 h-12 rounded-xl flex items-center justify-center shrink-0`}>

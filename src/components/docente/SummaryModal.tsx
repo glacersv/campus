@@ -553,9 +553,9 @@ export default function SummaryModal({
                 <span className="block text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Presentes</span>
                 <span className="text-2xl font-bold text-emerald-800 font-mono">{presentCount}</span>
               </div>
-              <div className="p-4 bg-amber-50 border border-amber-100 rounded-lg text-center">
-                <span className="block text-xs font-bold text-amber-700 uppercase tracking-wider mb-1">Tardes</span>
-                <span className="text-2xl font-bold text-amber-800 font-mono">{tardyCount}</span>
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg text-center">
+                <span className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Tardes</span>
+                <span className="text-2xl font-bold text-slate-800 font-mono">{tardyCount}</span>
               </div>
               <div className="p-4 bg-red-50 border border-red-100 rounded-lg text-center">
                 <span className="block text-xs font-bold text-red-700 uppercase tracking-wider mb-1">Ausentes</span>
@@ -571,19 +571,19 @@ export default function SummaryModal({
               <div className="grid grid-cols-3 gap-4">
                 <div className="flex justify-between items-center p-2.5 bg-white border border-slate-200 rounded text-xs">
                   <span className="font-semibold text-slate-600">Cabello Largo:</span>
-                  <span className={`font-mono font-bold px-2 py-0.5 rounded ${cabelloLargoCount > 0 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>
+                  <span className={`font-mono font-bold px-2 py-0.5 rounded ${cabelloLargoCount > 0 ? 'bg-slate-100 text-slate-800' : 'bg-slate-100 text-slate-600'}`}>
                     {cabelloLargoCount}
                   </span>
                 </div>
                 <div className="flex justify-between items-center p-2.5 bg-white border border-slate-200 rounded text-xs">
                   <span className="font-semibold text-slate-600">Uñas Pintadas/Acríl:</span>
-                  <span className={`font-mono font-bold px-2 py-0.5 rounded ${unasPintadasCount > 0 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>
+                  <span className={`font-mono font-bold px-2 py-0.5 rounded ${unasPintadasCount > 0 ? 'bg-slate-100 text-slate-800' : 'bg-slate-100 text-slate-600'}`}>
                     {unasPintadasCount}
                   </span>
                 </div>
                 <div className="flex justify-between items-center p-2.5 bg-white border border-slate-200 rounded text-xs">
                   <span className="font-semibold text-slate-600">Uniforme Incorrecto:</span>
-                  <span className={`font-mono font-bold px-2 py-0.5 rounded ${uniformeIncorrectoCount > 0 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>
+                  <span className={`font-mono font-bold px-2 py-0.5 rounded ${uniformeIncorrectoCount > 0 ? 'bg-slate-100 text-slate-800' : 'bg-slate-100 text-slate-600'}`}>
                     {uniformeIncorrectoCount}
                   </span>
                 </div>
@@ -665,7 +665,7 @@ export default function SummaryModal({
                         <span className="font-semibold text-slate-800 block">{student.name}</span>
                         <div className="flex flex-wrap gap-1.5 mt-1">
                           {status === 'Tarde' && (
-                            <span className="text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded">
+                            <span className="text-[10px] font-bold bg-slate-50 text-slate-800 border border-slate-200 px-2 py-0.5 rounded">
                               Llegada Tarde ({arrivalTime || '06:45 AM'})
                             </span>
                           )}

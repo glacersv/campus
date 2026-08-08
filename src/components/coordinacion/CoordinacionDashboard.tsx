@@ -21,7 +21,7 @@ const moduleColors: Record<SystemModuleId, string> = {
   clase: 'bg-secondary',
   horario: 'bg-purple-500',
   eventos: 'bg-emerald-500',
-  avisos: 'bg-amber-500',
+  avisos: 'bg-blue-500',
   proyectos: 'bg-orange-500',
 };
 
@@ -43,15 +43,15 @@ export default function CoordinacionDashboard() {
       </div>
 
       {isMonday && (
-        <motion.div initial={{ opacity: 0, y: -10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: 'spring', bounce: 0.1 }} className="mb-6 p-4 bg-amber-50/80 border border-amber-200/60 rounded-xl flex items-start gap-3">
-          <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
-            <Calendar className="w-4 h-4 text-amber-700" />
+        <motion.div initial={{ opacity: 0, y: -10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: 'spring', bounce: 0.1 }} className="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+            <Calendar className="w-4 h-4 text-blue-600" />
           </div>
           <div>
-            <p className="text-sm text-amber-800 font-medium">
+            <p className="text-sm text-slate-700 font-medium">
               Hoy es Lunes - <span className="font-bold">Acto Cívico Automático</span>
             </p>
-            <p className="text-xs text-amber-600 mt-1">La formación de hoy será en modalidad Acto Cívico</p>
+            <p className="text-xs text-slate-500 mt-1">La formación de hoy será en modalidad Acto Cívico</p>
           </div>
         </motion.div>
       )}
@@ -68,7 +68,7 @@ export default function CoordinacionDashboard() {
               transition={{ delay: i * 0.06, type: 'spring', bounce: 0.1 }}
               onClick={() => navigate(`/coordinacion/${mod.id}`)}
               className="group relative bg-white rounded-2xl p-5 border-l-[3px] border-y border-r border-slate-200/80 hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer"
-              style={{ borderLeftColor: `var(--color-${mod.id === 'formacion' ? 'primary' : mod.id === 'notas' ? 'accent' : mod.id === 'clase' ? 'secondary' : mod.id === 'horario' ? 'purple-500' : mod.id === 'eventos' ? 'emerald-500' : mod.id === 'avisos' ? 'amber-500' : 'orange-500'})` }}
+              style={{ borderLeftColor: `var(--color-${mod.id === 'formacion' ? 'primary' : mod.id === 'notas' ? 'accent' : mod.id === 'clase' ? 'secondary' : mod.id === 'horario' ? 'purple-500' : mod.id === 'eventos' ? 'emerald-500' : mod.id === 'avisos' ? 'blue-500' : 'orange-500'})` }}
             >
               <div className="flex items-start gap-4">
                 <div className={`${moduleColors[mod.id]} w-12 h-12 rounded-xl flex items-center justify-center shrink-0`}>

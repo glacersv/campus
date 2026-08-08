@@ -5,7 +5,7 @@ import ProjectsModule from '../proyectos/ProjectsModule';
 export default function ConvivenciaDashboard() {
   const modules = [
     { id: 'asistencia', label: 'Asistencia', icon: CheckCircle, color: 'bg-emerald-500', desc: 'Control de asistencia diaria', count: '—' },
-    { id: 'disciplina', label: 'Disciplina', icon: AlertTriangle, color: 'bg-amber-500', desc: 'Registro de infracciones', count: '—' },
+    { id: 'disciplina', label: 'Disciplina', icon: AlertTriangle, color: 'bg-blue-500', desc: 'Registro de infracciones', count: '—' },
     { id: 'incidentes', label: 'Incidentes', icon: Shield, color: 'bg-red-500', desc: 'Reportes de incidentes', count: '—' },
   ];
 

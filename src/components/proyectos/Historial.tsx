@@ -5,7 +5,7 @@ const ACCION_INFO: Record<AccionHistorial, { label: string; icon: string; color:
   registro:                { label: 'Proyecto registrado',          icon: '📝', color: 'bg-blue-500' },
   envio_validacion:        { label: 'Enviado a validación',         icon: '📤', color: 'bg-blue-500' },
   aprobacion_materia:      { label: 'Materia aprobada por docente', icon: '✅', color: 'bg-emerald-500' },
-  reclasificacion:         { label: 'Reclasificado por docente',    icon: '🔄', color: 'bg-amber-500' },
+  reclasificacion:         { label: 'Reclasificado por docente',    icon: '🔄', color: 'bg-slate-500' },
   rechazo_materia:         { label: 'Rechazado por docente',        icon: '❌', color: 'bg-red-500' },
   aprobacion_coordinacion: { label: 'Aprobado oficialmente',        icon: '🏆', color: 'bg-emerald-500' },
   rechazo_coordinacion:    { label: 'Rechazado por coordinación',   icon: '🚫', color: 'bg-red-500' },
