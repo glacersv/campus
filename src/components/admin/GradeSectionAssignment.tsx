@@ -20,17 +20,23 @@ import {
   getAllGrades,
   getAllSections,
   getAllBuildings,
-  updateSection,
-  getCurrentSchoolYear,
-  getAllStudents
+  updateSection
 } from '../../lib/firestore';
-import { Grade, Section, Building as BuildingType, Cycle, CYCLE_NAMES, Student } from '../../types';
+import { getGradeSortWeight, sortGradesChronological } from '../../lib/ordering';
+import { Grade, Section, Building as BuildingType, Cycle, CYCLE_NAMES } from '../../types';
+
+const CYCLE_STYLES: Record<Cycle, { color: string; bg: string; dot: string }> = {
+  'parvularia': { color: 'text-pink-700', bg: 'bg-pink-50', dot: 'bg-pink-500' },
+  '1': { color: 'text-emerald-700', bg: 'bg-emerald-50', dot: 'bg-emerald-500' },
+  '2': { color: 'text-blue-700', bg: 'bg-blue-50', dot: 'bg-blue-500' },
+  '3': { color: 'text-purple-700', bg: 'bg-purple-50', dot: 'bg-purple-500' },
+  '4': { color: 'text-amber-700', bg: 'bg-amber-50', dot: 'bg-amber-500' }
+};
 
 export default function GradeSectionAssignment() {
   const [grades, setGrades] = useState<Grade[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
   const [buildings, setBuildings] = useState<BuildingType[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [assignments, setAssignments] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -44,25 +50,14 @@ export default function GradeSectionAssignment() {
 
   const loadData = async () => {
     try {
-      const [g, s, b, cy, st] = await Promise.all([
+      const [g, s, b] = await Promise.all([
         getAllGrades(),
         getAllSections(),
-        getAllBuildings(),
-        getCurrentSchoolYear(),
-        getAllStudents()
+        getAllBuildings()
       ]);
-      const activeYear = cy || new Date().getFullYear();
-      const hasYearSections = s.some(sec => sec.schoolYear === activeYear);
-      const filteredSecs = s.filter(sec =>
-        hasYearSections ? sec.schoolYear === activeYear : !sec.schoolYear
-      );
-      setGrades(g);
-      setSections(filteredSecs);
-      setBuildings(b);
-      setStudents(st);
-
+      setGrades(g); setSections(s); setBuildings(b);
       const init: Record<string, string> = {};
-      filteredSecs.forEach(sec => { if (sec.buildingId) init[sec.id] = sec.buildingId; });
+      s.forEach(sec => { if (sec.buildingId) init[sec.id] = sec.buildingId; });
       setAssignments(init);
     } finally { setLoading(false); }
   };
@@ -160,9 +155,9 @@ export default function GradeSectionAssignment() {
             <GitBranch className="w-5 h-5 text-slate-600" />
           </div>
           <div>
-            <h1 className="module-title">Edificios por Sección</h1>
-            <p className="module-subtitle">
-              {changedCount} de {totalSections} secciones con edificio asignado
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight font-display">Edificios por Sección</h1>
+            <p className="text-sm text-slate-500 mt-0.5">
+              {changedCount} de {totalSections} secciones con edificio asignado (Haz clic en cualquier sección para editar)
             </p>
           </div>
         </div>
@@ -171,40 +166,44 @@ export default function GradeSectionAssignment() {
         </button>
       </div>
 
-      {/* Filter and settings bar */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-2 flex-wrap bg-slate-100/80 p-1.5 rounded-xl border border-slate-200">
-          <Filter className="w-3.5 h-3.5 text-slate-400 ml-1" />
-          {buildings.map(b => {
-            const count = Object.values(assignments).filter(v => v === b.id).length;
-            const isActive = filterBuilding === b.id;
-            return (
-              <button
-                key={b.id}
-                onClick={() => setFilterBuilding(isActive ? null : b.id)}
-                className={`flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
-                  isActive
-                    ? 'bg-primary text-white shadow-xs'
-                    : 'text-slate-600 hover:bg-slate-200/50'
-                }`}
-              >
-                {b.name}
-                <span className={`font-mono text-[10px] ${isActive ? 'text-white/80' : 'text-slate-400'}`}>{count}</span>
-              </button>
-            );
-          })}
-          <button
-            onClick={() => setFilterBuilding(filterBuilding === '__unassigned__' ? null : '__unassigned__')}
-            className={`flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
-              filterBuilding === '__unassigned__'
-                ? 'bg-primary text-white shadow-xs'
-                : 'text-slate-500 hover:bg-slate-200/50'
-            }`}
-          >
-            Sin asignar
-            <span className={`font-mono text-[10px] ${filterBuilding === '__unassigned__' ? 'text-white/80' : 'text-slate-400'}`}>
-              {totalSections - changedCount}
-            </span>
+      {/* Filter bar - Clean neutral building pills (No colors) */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <Filter className="w-3.5 h-3.5 text-slate-400" />
+        {buildings.map(b => {
+          const count = Object.values(assignments).filter(v => v === b.id).length;
+          const isActive = filterBuilding === b.id;
+          return (
+            <button
+              key={b.id}
+              onClick={() => setFilterBuilding(isActive ? null : b.id)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                isActive
+                  ? 'bg-primary text-white border-primary shadow-sm'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <Building2 className="w-3.5 h-3.5 shrink-0" />
+              {b.name}
+              <span className={`font-mono font-bold ${isActive ? 'text-white/85' : 'text-slate-400'}`}>{count}</span>
+            </button>
+          );
+        })}
+        <button
+          onClick={() => setFilterBuilding('__unassigned__')}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+            filterBuilding === '__unassigned__'
+              ? 'bg-slate-800 text-white border-slate-800 shadow-sm'
+              : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'
+          }`}
+        >
+          <XCircle className="w-3.5 h-3.5" />
+          Sin asignar
+          <span className="font-mono opacity-70">{totalSections - changedCount}</span>
+        </button>
+        {filterBuilding && (
+          <button onClick={() => setFilterBuilding(null)}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white border border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700 transition-all cursor-pointer">
+            <X className="w-3.5 h-3.5" /> Limpiar filtro
           </button>
           {filterBuilding && (
             <button onClick={() => setFilterBuilding(null)}
@@ -297,7 +296,6 @@ export default function GradeSectionAssignment() {
                       : true
                   );
                   const assignedCount = gradeSections.filter(s => assignments[s.id]).length;
-
                   return (
                     <motion.div
                       key={grade.id}
@@ -324,6 +322,14 @@ export default function GradeSectionAssignment() {
                             {assignedCount}/{gradeSections.length}
                           </span>
                         </div>
+                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border ${
+                          assignedCount === gradeSections.length && gradeSections.length > 0
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : 'bg-amber-50 text-amber-700 border-amber-200'
+                        }`}>
+                          {assignedCount}/{gradeSections.length}
+                        </span>
+                      </div>
 
                         {/* Secciones */}
                         <div className="mb-3">
@@ -333,37 +339,41 @@ export default function GradeSectionAssignment() {
                           </div>
                         </div>
 
-                        {/* Edificios asignados (Botones Interactivos de Edición) */}
-                        <div className="mb-4">
-                          <div className="flex flex-col gap-1.5 pr-1">
-                            {gradeSections.map(sec => {
-                              const buildingId = assignments[sec.id];
-                              const building = buildings.find(b => b.id === buildingId);
-                              return (
-                                <button
-                                  type="button"
-                                  key={sec.id}
-                                  onClick={() => setEditingSection(sec)}
-                                  className="group flex items-center justify-between text-left text-xs font-mono px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:border-slate-300 text-slate-700 hover:shadow-3xs cursor-pointer transition-all"
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-bold">Sección {sec.name}</span>
-                                    {building ? (
-                                      <span className="font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md text-[10px]">
-                                        {building.name}
-                                      </span>
-                                    ) : (
-                                      <span className="text-[10px] italic bg-slate-50 px-1.5 py-0.5 rounded text-slate-400">Sin asignar</span>
-                                    )}
-                                  </div>
-                                  <Edit2 className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                </button>
-                              );
-                            })}
-                            {gradeSections.length === 0 && (
-                              <span className="text-xs text-slate-400 italic">Sin secciones</span>
-                            )}
-                          </div>
+                      {/* Edificios asignados (Botones Interactivos de Edición Sobrios sin colores) */}
+                      <div className="mb-4">
+                        <div className="flex flex-col gap-2">
+                          {gradeSections.map(sec => {
+                            const buildingId = assignments[sec.id];
+                            const building = buildings.find(b => b.id === buildingId);
+                            return (
+                              <button
+                                type="button"
+                                key={sec.id}
+                                onClick={() => setEditingSection(sec)}
+                                className={`group flex items-center justify-between text-left text-xs font-mono px-3 py-2 rounded-xl border transition-all cursor-pointer ${
+                                  building
+                                    ? 'bg-slate-50 border-slate-200 hover:border-slate-300 text-slate-800 hover:shadow-2xs'
+                                    : 'bg-white border-dashed border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-400 hover:text-slate-600'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold">Sección {sec.name}</span>
+                                  {building ? (
+                                    <span className="flex items-center gap-1">
+                                      <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                      <span className="font-bold text-slate-700">{building.name}</span>
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] italic bg-slate-50 px-1.5 py-0.5 rounded text-slate-400">Sin asignar</span>
+                                  )}
+                                </div>
+                                <Edit2 className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </button>
+                            );
+                          })}
+                          {gradeSections.length === 0 && (
+                            <span className="text-xs text-slate-400 italic">Sin secciones</span>
+                          )}
                         </div>
                       </div>
 
@@ -381,7 +391,7 @@ export default function GradeSectionAssignment() {
         })}
       </div>
 
-      {/* Modal interactivo Premium para editar la asignación de edificios */}
+      {/* Modal interactivo Premium para editar la asignación de edificios (Diseño sobrio sin colores) */}
       <AnimatePresence>
         {editingSection && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
@@ -429,16 +439,16 @@ export default function GradeSectionAssignment() {
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-100">
-                            <Building2 className="w-4 h-4 text-slate-600" />
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-50 border border-slate-100 text-slate-600">
+                            <Building2 className="w-4 h-4" />
                           </div>
                           <div>
-                            <span className="font-bold text-slate-800 text-sm block">{building.name}</span>
-                            <span className="text-xs text-slate-400">Impartir clases en esta infraestructura</span>
+                            <span className="font-bold text-slate-850 text-sm block">{building.name}</span>
+                            <span className="text-[10px] text-slate-400 font-mono font-medium">Código: {building.code}</span>
                           </div>
                         </div>
                         {isSelected && (
-                          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                          <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
                         )}
                       </button>
                     );

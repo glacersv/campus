@@ -88,9 +88,14 @@ export async function updateUserRole(uid: string, role: UserRole): Promise<void>
 }
 
 export async function getAllUsers(): Promise<User[]> {
-  const q = query(collection(db, USERS_COLLECTION), orderBy('createdAt', 'desc'));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(d => ({ uid: d.id, ...d.data() } as User));
+  const snapshot = await getDocs(collection(db, USERS_COLLECTION));
+  const users = snapshot.docs.map(d => ({ uid: d.id, ...d.data() } as User));
+  // Sort in memory by createdAt desc, fallback to 0 if undefined to prevent omitting documents
+  return users.sort((a, b) => {
+    const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+    const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+    return timeB - timeA;
+  });
 }
 
 // ==================== ROLES & PERMISSIONS ====================

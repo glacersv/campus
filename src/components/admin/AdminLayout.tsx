@@ -17,7 +17,7 @@ import {
   Users,
   Settings,
   Handshake,
-  Calendar
+  School
 } from 'lucide-react';
 import { useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -60,7 +60,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     ]},
     { title: 'INFRAESTRUCTURA', items: [
       { id: 'buildings', label: 'Edificios', icon: Building2 },
-      { id: 'computer-labs', label: 'Laboratorios', icon: Monitor },
+      { id: 'computer-labs', label: 'Aulas Especializadas', icon: School },
     ]},
     { title: 'PERSONAL', items: [
       { id: 'teachers', label: 'Docentes', icon: GraduationCap },

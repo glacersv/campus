@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Layers, Plus, Edit2, Trash2, Save, X, Search, Users, Check } from 'lucide-react';
+import { Layers, Plus, Edit2, Trash2, Save, X, Search, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAllSections, createSection, updateSection, deleteSection, getAllGrades, getAllBuildings, getAllComputerLabs, toggleSectionStatus, getAllBaccalaureateTypes, getAllStudents, getCurrentSchoolYear } from '../../lib/firestore';
 import { Section, Grade, Building, ComputerLab, BaccalaureateTypeDoc, Student } from '../../types';
@@ -22,7 +22,7 @@ export default function SectionsManager() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabIds: [] as string[] });
+  const [form, setForm] = useState({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabId: '' });
   const [search, setSearch] = useState('');
   const [onlyActive, setOnlyActive] = useState(true);
   const [letterFilter, setLetterFilter] = useState<string>('all');
@@ -82,6 +82,8 @@ export default function SectionsManager() {
         computerLabIds: form.computerLabIds.length > 0 ? form.computerLabIds : null
       };
       if (form.capacity) data.capacity = parseInt(form.capacity);
+      if (form.buildingId) data.buildingId = form.buildingId;
+      if (form.computerLabId) data.computerLabId = form.computerLabId;
 
       if (editingId) {
         await updateSection(editingId, data);
@@ -98,7 +100,7 @@ export default function SectionsManager() {
         });
         toast.success('Sección creada');
       }
-      setShowForm(false); setEditingId(null); setForm({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabIds: [] });
+      setShowForm(false); setEditingId(null); setForm({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabId: '' });
       loadData();
     } catch (err) {
       toast.error('Error al guardar sección');
@@ -108,13 +110,7 @@ export default function SectionsManager() {
 
   const handleEdit = (s: Section) => {
     setEditingId(s.id);
-    setForm({
-      name: s.name,
-      gradeId: s.gradeId,
-      capacity: s.capacity?.toString() || '',
-      buildingId: s.buildingId || '',
-      computerLabIds: s.computerLabIds || (s.computerLabId ? [s.computerLabId] : [])
-    });
+    setForm({ name: s.name, gradeId: s.gradeId, capacity: s.capacity?.toString() || '', buildingId: s.buildingId || '', computerLabId: s.computerLabId || '' });
     setShowForm(true);
   };
 
@@ -195,7 +191,7 @@ export default function SectionsManager() {
             <p className="module-subtitle">{sortedSections.length} sección(es) registrada(s)</p>
           </div>
         </div>
-        <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabIds: [] }); }} className="btn-primary">
+        <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabId: '' }); }} className="btn-primary">
           <Plus className="w-4 h-4" /> Nueva Sección
         </button>
       </div>
@@ -319,44 +315,11 @@ export default function SectionsManager() {
                     </select>
                   </div>
                   <div className="col-span-2">
-                    <label className="form-label mb-2.5 block text-slate-500 font-bold uppercase tracking-wider text-[10px]">
-                      LABORATORIOS / CC / SALONES ESPECIALIZADOS
-                    </label>
-                    <div className="flex flex-wrap gap-2 max-h-[150px] overflow-y-auto pr-1">
-                      {computerLabs.map(cl => {
-                        const isChecked = form.computerLabIds.includes(cl.id);
-                        return (
-                          <button
-                            type="button"
-                            key={cl.id}
-                            onClick={() => {
-                              setForm(prev => {
-                                const isIncluded = prev.computerLabIds.includes(cl.id);
-                                const nextIds = isIncluded
-                                  ? prev.computerLabIds.filter(id => id !== cl.id)
-                                  : [...prev.computerLabIds, cl.id];
-                                return { ...prev, computerLabIds: nextIds };
-                              });
-                            }}
-                            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer select-none ${
-                              isChecked
-                                ? 'bg-primary text-white border-primary shadow-sm hover:bg-primary/95'
-                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-100/50'
-                            }`}
-                          >
-                            <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors ${isChecked ? 'bg-white border-white text-primary' : 'border-slate-400 bg-white'}`}>
-                              {isChecked && <Check className="w-2.5 h-2.5 stroke-[3px]" />}
-                            </div>
-                            <span>{cl.name}</span>
-                          </button>
-                        );
-                      })}
-                      {computerLabs.length === 0 && (
-                        <p className="text-[11px] text-slate-400 w-full text-center py-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl">
-                          No hay aulas especializadas creadas.
-                        </p>
-                      )}
-                    </div>
+                    <label className="form-label">Aula Especializada / Laboratorio (Dibujo, Inglés, Cómputo)</label>
+                    <select value={form.computerLabId} onChange={e => setForm({ ...form, computerLabId: e.target.value })} className="input">
+                      <option value="">Sin asignar</option>
+                      {computerLabs.map(cl => <option key={cl.id} value={cl.id}>{cl.name}</option>)}
+                    </select>
                   </div>
                 </div>
                 <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 shrink-0">
@@ -470,6 +433,195 @@ export default function SectionsManager() {
             );
           })}
         </div>
+      )}
+
+      {selectedGroup && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold text-slate-900">Analytics - Sección {selectedGroup.letter}</h3>
+            <button onClick={closeAnalytics} className="text-xs text-slate-500 hover:text-slate-700">Cerrar</button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+              <h4 className="text-sm font-bold text-slate-900 mb-4">Distribución por Niveles</h4>
+              <div className="space-y-3">
+                {selectedGroup.levels.map((level, idx) => {
+                  const maxCount = Math.max(...selectedGroup.levels.map(l => l.count), 1);
+                  const percentage = Math.round((level.count / maxCount) * 100);
+                  const barColors = [
+                    'bg-gradient-to-r from-emerald-600 to-emerald-400',
+                    'bg-gradient-to-r from-emerald-500 to-emerald-300',
+                    'bg-gradient-to-r from-emerald-700 to-emerald-500',
+                    'bg-gradient-to-r from-emerald-400 to-emerald-200',
+                    'bg-gradient-to-r from-emerald-800 to-emerald-600',
+                    'bg-gradient-to-r from-emerald-600 to-emerald-400'
+                  ];
+                  const barColor = barColors[idx % barColors.length];
+                  return (
+                    <div key={level.label} className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600">
+                        <span className="truncate pr-2">{level.label}</span>
+                        <span className="text-slate-900 font-bold">{level.count} Grados</span>
+                      </div>
+                      <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full rounded-full ${barColor} transition-all duration-500`}
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100 flex flex-col items-center">
+              <h4 className="text-sm font-bold text-slate-900 mb-4">Ocupación de la Sección</h4>
+              <div className="relative w-48 h-24">
+                <svg viewBox="0 0 200 110" className="w-full h-full">
+                  <path d="M 25 100 A 75 75 0 0 1 175 100" fill="none" stroke="#e2e8f0" strokeWidth="20" strokeLinecap="round" />
+                  <path d="M 25 100 A 75 75 0 0 1 175 100" fill="none" stroke="#12562E" strokeWidth="20" strokeDasharray={`${selectedGroup.occupancyPercentage * 2.35}, 235`} strokeLinecap="round" />
+                </svg>
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center">
+                  <div className="text-2xl font-extrabold text-slate-900">{selectedGroup.occupancyPercentage}%</div>
+                  <div className="text-[10px] font-semibold text-slate-500">Ocupación</div>
+                </div>
+              </div>
+              <div className="mt-4 text-center">
+                <div className="text-2xl font-extrabold text-slate-900">{selectedGroup.totalStudents}</div>
+                <div className="text-[10px] font-semibold text-slate-500">Alumnos matriculados</div>
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 bg-slate-50 rounded-2xl p-4 border border-slate-100">
+            <div className="flex items-center justify-between text-sm font-semibold text-slate-700">
+              <span>Total Alumnos</span>
+              <span className="text-slate-900">{selectedGroup.totalStudents}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm font-semibold text-slate-700 mt-2">
+              <span>Capacidad</span>
+              <span className="text-slate-900">{selectedGroup.totalCapacity}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm font-semibold text-slate-700 mt-2">
+              <span>% Ocupación</span>
+              <span className="text-slate-900">{selectedGroup.occupancyPercentage}%</span>
+            </div>
+          </div>
+
+          <div className="mt-4 bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-5 border-b border-slate-100 pb-4">
+              <div>
+                <h4 className="text-sm font-bold text-slate-900">Capacidad vs Matriculados por Grado</h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">Ordenado cronológicamente desde Kínder hasta Bachillerato</p>
+              </div>
+
+              {/* Filtro de Grados Cronológico */}
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => setGradeFilter('all')}
+                  className={`filter-pill ${gradeFilter === 'all' ? 'active' : ''}`}
+                >
+                  Todos
+                </button>
+                <button
+                  onClick={() => setGradeFilter('parvularia')}
+                  className={`filter-pill ${gradeFilter === 'parvularia' ? 'active' : ''}`}
+                >
+                  Parvularia (K4-Prep)
+                </button>
+                <button
+                  onClick={() => setGradeFilter('basica')}
+                  className={`filter-pill ${gradeFilter === 'basica' ? 'active' : ''}`}
+                >
+                  Básica (1°-9°)
+                </button>
+                <button
+                  onClick={() => setGradeFilter('bachillerato')}
+                  className={`filter-pill ${gradeFilter === 'bachillerato' ? 'active' : ''}`}
+                >
+                  Bachillerato
+                </button>
+              </div>
+            </div>
+
+            {/* Lista Filtrada */}
+            {(() => {
+              const filteredGrades = selectedGroup.gradeDetails.filter(detail => {
+                if (gradeFilter === 'all') return true;
+                if (gradeFilter === 'parvularia') return detail.sortWeight >= 10 && detail.sortWeight <= 12;
+                if (gradeFilter === 'basica') return detail.sortWeight >= 20 && detail.sortWeight <= 29;
+                if (gradeFilter === 'bachillerato') return detail.sortWeight >= 40 && detail.sortWeight <= 45;
+                return true;
+              });
+
+              if (filteredGrades.length === 0) {
+                return (
+                  <div className="text-center py-6 text-slate-400 text-xs font-medium">
+                    No hay grados de este nivel asignados a la Sección "{selectedGroup.letter}"
+                  </div>
+                );
+              }
+
+              return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredGrades.map((detail) => {
+                    const strokeColor = detail.percentage >= 90 ? '#dc2626' : detail.percentage >= 70 ? '#d97706' : '#059669';
+                    const bgColor = detail.percentage >= 90 ? 'bg-red-50' : detail.percentage >= 70 ? 'bg-amber-50' : 'bg-emerald-50';
+                    const textColor = detail.percentage >= 90 ? 'text-red-700' : detail.percentage >= 70 ? 'text-amber-700' : 'text-emerald-700';
+                    const circumference = 2 * Math.PI * 40;
+                    const strokeDashoffset = circumference - (detail.percentage / 100) * circumference;
+
+                    return (
+                      <div key={detail.gradeId} className={`${bgColor} rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:scale-[1.01] transition-all flex flex-col justify-between h-[210px]`}>
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-bold text-slate-700">{detail.gradeName}</span>
+                            <div className="flex gap-1 shrink-0">
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleEdit(detail.rawSection); }}
+                                className="p-1 hover:bg-white/60 rounded text-slate-500 hover:text-slate-700 transition-colors"
+                                title="Editar Sección"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleDelete(detail.sectionId); closeAnalytics(); }}
+                                className="p-1 hover:bg-red-100/60 rounded text-red-500 hover:text-red-700 transition-colors"
+                                title="Eliminar Sección"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="relative w-18 h-18 mx-auto mb-2">
+                            <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                              <circle cx="50" cy="50" r="40" fill="none" stroke="#e2e8f0" strokeWidth="8" strokeLinecap="round" />
+                              <circle cx="50" cy="50" r="40" fill="none" stroke={strokeColor} strokeWidth="8" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} />
+                            </svg>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className={`text-[13px] font-extrabold ${textColor}`}>{detail.percentage}%</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex justify-between text-[10px] font-semibold text-slate-600 pt-2 border-t border-slate-100 shrink-0">
+                          <div className="text-center">
+                            <div className="text-slate-900 font-bold font-mono">{detail.capacity}</div>
+                            <div className="text-[9px] text-slate-400">Capacidad</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-slate-900 font-bold font-mono">{detail.enrolled}</div>
+                            <div className="text-[9px] text-slate-400">Alumnos</div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
+        </motion.div>
       )}
     </div>
   );

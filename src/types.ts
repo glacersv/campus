@@ -147,7 +147,6 @@ export interface Section {
   capacity?: number;
   buildingId?: string;
   computerLabId?: string;
-  computerLabIds?: string[];
   status?: 'ACTIVO' | 'INACTIVO';
   schoolYear?: number;
   createdAt?: Timestamp;
@@ -165,6 +164,7 @@ export interface Building {
 export interface ComputerLab {
   id: string;
   name: string;
+  type?: 'computo' | 'dibujo' | 'ingles' | 'ciencias' | 'otros';
   buildingId?: string;
   capacity?: number;
   devices?: number;
