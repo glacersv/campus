@@ -126,10 +126,10 @@ export default function UsersManager() {
     }
   };
 
-  const handleReject = async (requestId: string) => {
+  const handleReject = async (userId: string) => {
     const reason = prompt('Motivo del rechazo (opcional):') || '';
     try {
-      await rejectUser(requestId, reason);
+      await rejectUser(userId, reason);
       toast.success('Usuario rechazado');
       loadData();
     } catch (err) {
@@ -526,7 +526,7 @@ export default function UsersManager() {
                         <Check className="w-3.5 h-3.5" /> Aprobar Acceso
                       </button>
                       <button
-                        onClick={() => handleReject(req.id)}
+                        onClick={() => handleReject(req.userId)}
                         className="btn-secondary text-red-600 border-red-200 hover:bg-red-50 text-xs py-2 px-3 cursor-pointer"
                       >
                         Rechazar

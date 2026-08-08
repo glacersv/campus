@@ -1040,7 +1040,14 @@ export async function updateApprovalRequest(id: string, data: Partial<ApprovalRe
 export async function updateApprovalRequestByUserId(userId: string, data: Partial<ApprovalRequest>): Promise<void> {
   const q = query(collection(db, APPROVAL_REQUESTS_COLLECTION), where('userId', '==', userId));
   const snapshot = await getDocs(q);
-  if (snapshot.empty) return;
+  if (snapshot.empty) {
+    const ref = doc(db, APPROVAL_REQUESTS_COLLECTION, userId);
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      await updateDoc(ref, data);
+    }
+    return;
+  }
   const ref = doc(db, APPROVAL_REQUESTS_COLLECTION, snapshot.docs[0].id);
   await updateDoc(ref, data);
 }
@@ -1174,7 +1181,7 @@ export async function approveUser(uid: string, role: UserRole): Promise<void> {
   });
 
   // Actualizar solicitud de aprobación
-  await updateApprovalRequest(uid, {
+  await updateApprovalRequestByUserId(uid, {
     status: 'approved',
     reviewedBy: 'admin',
     reviewedAt: new Date() as any,
@@ -1241,7 +1248,7 @@ export async function rejectUser(uid: string, reason?: string): Promise<void> {
     updatedAt: new Date() as any,
   });
 
-  await updateApprovalRequest(uid, {
+  await updateApprovalRequestByUserId(uid, {
     status: 'rejected',
     reviewedBy: 'admin',
     reviewedAt: new Date() as any,
