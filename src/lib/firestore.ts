@@ -941,8 +941,8 @@ export async function getStudentByCarnet(carnet: string): Promise<Student | null
 }
 
 export async function isEmailPreAuthorized(email: string): Promise<boolean> {
-  const superAdmin = 'jose.marquez@salesianosanjose.edu.sv';
-  if (email.toLowerCase() === superAdmin.toLowerCase()) return true;
+  const superAdmins = ['admin@salesianosanjose.edu.sv', 'jose.marquez@salesianosanjose.edu.sv'];
+  if (superAdmins.includes(email.toLowerCase())) return true;
 
   // Check teachers
   const teacher = await getTeacherByEmail(email);
