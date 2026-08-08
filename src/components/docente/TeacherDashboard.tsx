@@ -112,11 +112,23 @@ export default function TeacherDashboard({ teacherName, onLogout }: TeacherDashb
                       if (mod.id === 'proyectos') setActiveModule('proyectos');
                     }
                   }}
-                  className={`group relative bg-white rounded-2xl p-5 border-l-[3px] transition-all ${
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      if (mod.active) {
+                        if (mod.id === 'formacion') navigate('/attendance');
+                        if (mod.id === 'proyectos') setActiveModule('proyectos');
+                      }
+                    }
+                  }}
+                  className={`group relative bg-white rounded-2xl p-5 border-l-[3px] transition-all focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2 ${
                     mod.active
                       ? 'border-l-primary border-y border-r border-slate-200/80 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer'
                       : 'border-l-slate-200 border-y border-r border-slate-200/80 opacity-50 grayscale cursor-not-allowed'
                   }`}
+                  tabIndex={mod.active ? 0 : -1}
+                  role="button"
+                  aria-disabled={!mod.active}
                 >
                   <div className="flex items-start gap-4">
                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${mod.active ? mod.color : 'bg-slate-100'}`}>

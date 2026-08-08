@@ -72,25 +72,25 @@ export default function Login() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && (
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Nombre Completo</label>
+                <label htmlFor="signup-name" className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Nombre Completo</label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><UserPlus className="w-4 h-4" /></span>
-                  <input type="text" required placeholder="Nombre del docente" value={displayName} onChange={e => setDisplayName(e.target.value)} className="input pl-9" />
+                  <input id="signup-name" type="text" required placeholder="Nombre del docente" value={displayName} onChange={e => setDisplayName(e.target.value)} className="input pl-9" />
                 </div>
               </div>
             )}
             <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Correo Electrónico</label>
+              <label htmlFor="login-email" className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Correo Electrónico</label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><Mail className="w-4 h-4" /></span>
-                <input type="email" required placeholder="correo@salesianosanjose.edu.sv" value={email} onChange={e => setEmail(e.target.value)} className="input pl-9" />
+                <input id="login-email" type="email" required placeholder="correo@salesianosanjose.edu.sv" value={email} onChange={e => setEmail(e.target.value)} className="input pl-9" />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Contraseña</label>
+              <label htmlFor="login-password" className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Contraseña</label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><Lock className="w-4 h-4" /></span>
-                <input type="password" required placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="input pl-9" />
+                <input id="login-password" type="password" required placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="input pl-9" />
               </div>
             </div>
             <button type="submit" disabled={loading} className="btn-primary w-full justify-center py-3 rounded-full disabled:opacity-50">

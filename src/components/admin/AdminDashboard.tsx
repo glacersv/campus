@@ -201,9 +201,12 @@ export default function AdminDashboard() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.3 + i * 0.05, type: 'spring', bounce: 0.1 }}
-              className={`bg-white rounded-2xl p-5 border border-slate-200/80 flex flex-col items-center text-center gap-3 transition-all ${
+              className={`bg-white rounded-2xl p-5 border border-slate-200/80 flex flex-col items-center text-center gap-3 transition-all focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2 ${
                 mod.active ? 'hover:shadow-md hover:-translate-y-0.5 cursor-pointer' : 'opacity-50 grayscale cursor-not-allowed'
               }`}
+              tabIndex={mod.active ? 0 : -1}
+              role="button"
+              aria-disabled={!mod.active}
             >
               <div className={`${mod.color} w-12 h-12 rounded-xl flex items-center justify-center`}>
                 <mod.icon className="w-6 h-6 text-white" />
