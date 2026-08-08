@@ -112,7 +112,7 @@ service cloud.firestore {
 
     // Students Collection
     match /students/{studentId} {
-      allow read: if isStaff() || (isAlumno() && studentId == request.auth.uid);
+      allow read: if true;
       allow write: if isAdmin();
     }
 
