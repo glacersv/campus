@@ -89,49 +89,9 @@ function AppContent() {
     return <Login />;
   }
 
-  const getModulesForRole = (role: string): SystemModuleId[] => {
-    const moduleMap: Record<string, SystemModuleId[]> = {
-      coordinacion: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'],
-      coordinacion_academica: ['notas', 'horario', 'clase'],
-      coordinacion_convivencia: ['formacion', 'notas'],
-      coordinacion_primaria: ['formacion', 'notas', 'horario'],
-      coordinacion_parvularia: ['formacion'],
-      registro_academico: ['notas', 'horario'],
-      enfermeria: ['formacion', 'avisos'],
-      psicopedagogico: ['formacion', 'notas', 'avisos'],
-    };
-    return moduleMap[role] || [];
-  };
-
-  // Admin view
-  if (userRole === 'admin') {
-    return (
-      <Routes>
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminDashboard />} />
-          <Route path="grades" element={<GradesManager />} />
-          <Route path="sections" element={<SectionsManager />} />
-          <Route path="subjects" element={<SubjectsManager />} />
-          <Route path="computer-labs" element={<ComputerLabsManager />} />
-          <Route path="baccalaureate-types" element={<BaccalaureateTypesManager />} />
-          <Route path="buildings" element={<BuildingsManager />} />
-          <Route path="grade-section-assignment" element={<GradeSectionAssignment />} />
-          <Route path="teachers" element={<TeachersManager />} />
-          <Route path="students" element={<StudentsManager />} />
-          <Route path="roles" element={<RolesManager />} />
-          <Route path="users" element={<UsersManager />} />
-          <Route path="coordinaciones-config" element={<CoordinacionesConfig />} />
-          <Route path="convivencia" element={<ConvivenciaPanel />} />
-          <Route path="school-year" element={<SchoolYearManager />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/admin" replace />} />
-      </Routes>
-    );
-  }
-
   // Coordinacion view
   if (userRole === 'coordinacion') {
-    const modules = getModulesForRole('coordinacion');
+    const modules = roleConfig?.permissions || [];
     return (
       <Routes>
         <Route path="/coordinacion" element={
@@ -146,7 +106,7 @@ function AppContent() {
 
   // Coordinacion Academica view
   if (userRole === 'coordinacion_academica') {
-    const modules = getModulesForRole('coordinacion_academica');
+    const modules = roleConfig?.permissions || [];
     return (
       <Routes>
         <Route path="/coordinacion-academica" element={
@@ -161,7 +121,7 @@ function AppContent() {
 
   // Coordinacion Convivencia view
   if (userRole === 'coordinacion_convivencia') {
-    const modules = getModulesForRole('coordinacion_convivencia');
+    const modules = roleConfig?.permissions || [];
     return (
       <Routes>
         <Route path="/coordinacion-convivencia" element={
@@ -176,7 +136,7 @@ function AppContent() {
 
   // Coordinacion Primaria view
   if (userRole === 'coordinacion_primaria') {
-    const modules = getModulesForRole('coordinacion_primaria');
+    const modules = roleConfig?.permissions || [];
     return (
       <Routes>
         <Route path="/coordinacion-primaria" element={
@@ -191,7 +151,7 @@ function AppContent() {
 
   // Coordinacion Parvularia view
   if (userRole === 'coordinacion_parvularia') {
-    const modules = getModulesForRole('coordinacion_parvularia');
+    const modules = roleConfig?.permissions || [];
     return (
       <Routes>
         <Route path="/coordinacion-parvularia" element={
@@ -206,7 +166,7 @@ function AppContent() {
 
   // Registro academico view
   if (userRole === 'registro_academico') {
-    const modules = getModulesForRole('registro_academico');
+    const modules = roleConfig?.permissions || [];
     return (
       <Routes>
         <Route path="/registro" element={
@@ -221,7 +181,7 @@ function AppContent() {
 
   // Enfermeria view
   if (userRole === 'enfermeria') {
-    const modules = getModulesForRole('enfermeria');
+    const modules = roleConfig?.permissions || [];
     return (
       <Routes>
         <Route path="/enfermeria" element={
@@ -236,7 +196,7 @@ function AppContent() {
 
   // Psicopedagogia view
   if (userRole === 'psicopedagogico') {
-    const modules = getModulesForRole('psicopedagogico');
+    const modules = roleConfig?.permissions || [];
     return (
       <Routes>
         <Route path="/psicopedagogico" element={

@@ -2,8 +2,9 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { User as FirebaseUser, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { auth, functions } from '../firebase';
-import { getUser, createUser, getRole, isEmailPreAuthorized, getStudentByCarnet, createApprovalRequest, createNewUserNotification, updateUser, getTeacherByEmail, getTeacher, createUserForTeacher, createUserForStudent, getStudent, updateApprovalRequest } from '../lib/firestore';
+import { getUser, createUser, getRole, isEmailPreAuthorized, getStudentByCarnet, createApprovalRequest, createNewUserNotification, updateUser, getTeacherByEmail, getTeacher, createUserForTeacher, createUserForStudent, getStudent, updateApprovalRequest, getAllRoles } from '../lib/firestore';
 import { User, UserRole, SystemModuleId, RoleConfig, ApprovalRequest } from '../types';
+import { updateRoleLabelsFromFirestore } from '../types';
 
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
@@ -40,6 +41,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (profile?.role) {
           const rc = await getRole(profile.role);
           setRoleConfig(rc);
+          
+          // Cargar roles dinámicos desde Firestore
+          const allRoles = await getAllRoles();
+          updateRoleLabelsFromFirestore(allRoles);
         } else {
           setRoleConfig(null);
         }

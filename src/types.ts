@@ -107,7 +107,7 @@ export interface RoleConfig {
   createdAt?: Timestamp;
 }
 
-export const ROLE_LABELS: Record<UserRole, string> = {
+export const ROLE_LABELS_BASE: Record<UserRole, string> = {
   admin: 'Administrador',
   docente: 'Docente',
   alumno: 'Alumno',
@@ -120,6 +120,16 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   enfermeria: 'Enfermería',
   psicopedagogico: 'Psicopedagógico',
 };
+
+export let ROLE_LABELS: Record<UserRole, string> = { ...ROLE_LABELS_BASE };
+
+export function updateRoleLabelsFromFirestore(roles: RoleConfig[]) {
+  const dynamicLabels: Record<string, string> = {};
+  for (const role of roles) {
+    dynamicLabels[role.id] = role.name;
+  }
+  ROLE_LABELS = { ...ROLE_LABELS_BASE, ...dynamicLabels } as Record<UserRole, string>;
+}
 
 // ==================== ACADEMIC ENTITIES ====================
 

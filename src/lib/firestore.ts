@@ -748,16 +748,6 @@ export async function seedInitialData(): Promise<void> {
   // Roles
   const rolesData: Omit<RoleConfig, 'createdAt'>[] = [
     { id: 'admin', name: 'Administrador', description: 'Control total del sistema', permissions: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'], isSystem: true },
-    { id: 'docente', name: 'Docente', description: 'Profesor de aula', permissions: ['formacion', 'proyectos'], isSystem: true },
-    { id: 'alumno', name: 'Alumno', description: 'Estudiante del colegio', permissions: ['formacion', 'proyectos'], isSystem: true },
-    { id: 'coordinacion', name: 'Coordinación', description: 'Coordinación académica general', permissions: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'], isSystem: true },
-    { id: 'coordinacion_academica', name: 'Coord. Académica', description: 'Coordinación de áreas académicas y horarios', permissions: ['notas', 'horario', 'clase'], isSystem: true },
-    { id: 'coordinacion_convivencia', name: 'Coord. Convivencia', description: 'Coordinación de formación y disciplina', permissions: ['formacion', 'notas'], isSystem: true },
-    { id: 'coordinacion_primaria', name: 'Coord. Primaria', description: 'Coordinación de grados 1° - 6°', permissions: ['formacion', 'notas', 'horario'], isSystem: true },
-    { id: 'coordinacion_parvularia', name: 'Coord. Parvularia', description: 'Coordinación de grados K4 - K6', permissions: ['formacion'], isSystem: true },
-    { id: 'registro_academico', name: 'Registro Académico', description: 'Gestión de registros y matrícula', permissions: ['notas', 'horario'], isSystem: true },
-    { id: 'enfermeria', name: 'Enfermería', description: 'Control de salud estudiantil', permissions: ['formacion', 'avisos'], isSystem: true },
-    { id: 'psicopedagogico', name: 'Psicopedagógico', description: 'Apoyo psicológico y pedagógico', permissions: ['formacion', 'notas', 'avisos'], isSystem: true },
   ];
   for (const r of rolesData) await createRole(r);
 
