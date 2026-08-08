@@ -2,18 +2,7 @@ import { Timestamp } from 'firebase/firestore';
 
 // ==================== USER & AUTH ====================
 
-export type UserRole =
-  | 'admin'
-  | 'docente'
-  | 'alumno'
-  | 'coordinacion'
-  | 'coordinacion_academica'
-  | 'coordinacion_convivencia'
-  | 'coordinacion_primaria'
-  | 'coordinacion_parvularia'
-  | 'registro_academico'
-  | 'enfermeria'
-  | 'psicopedagogico';
+export type UserRole = 'admin' | 'docente' | 'alumno' | (string & {});
 
 export type UserStatus = 'pending' | 'approved' | 'rejected';
 
@@ -107,28 +96,24 @@ export interface RoleConfig {
   createdAt?: Timestamp;
 }
 
-export const ROLE_LABELS_BASE: Record<UserRole, string> = {
+export const ROLE_LABELS_BASE: Record<string, string> = {
   admin: 'Administrador',
   docente: 'Docente',
   alumno: 'Alumno',
-  coordinacion: 'Coordinación',
-  coordinacion_academica: 'Coord. Académica',
-  coordinacion_convivencia: 'Coord. Convivencia',
-  coordinacion_primaria: 'Coord. Primaria',
-  coordinacion_parvularia: 'Coord. Parvularia',
-  registro_academico: 'Registro Académico',
-  enfermeria: 'Enfermería',
-  psicopedagogico: 'Psicopedagógico',
 };
 
-export let ROLE_LABELS: Record<UserRole, string> = { ...ROLE_LABELS_BASE };
+export let ROLE_LABELS: Record<string, string> = { ...ROLE_LABELS_BASE };
 
 export function updateRoleLabelsFromFirestore(roles: RoleConfig[]) {
   const dynamicLabels: Record<string, string> = {};
+  const baseKeysLower = new Set(Object.keys(ROLE_LABELS_BASE).map(k => k.toLowerCase()));
   for (const role of roles) {
-    dynamicLabels[role.id] = role.name;
+    const roleIdLower = role.id.toLowerCase();
+    if (!baseKeysLower.has(roleIdLower)) {
+      dynamicLabels[role.id] = role.name;
+    }
   }
-  ROLE_LABELS = { ...ROLE_LABELS_BASE, ...dynamicLabels } as Record<UserRole, string>;
+  ROLE_LABELS = { ...ROLE_LABELS_BASE, ...dynamicLabels };
 }
 
 // ==================== ACADEMIC ENTITIES ====================

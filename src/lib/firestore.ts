@@ -981,9 +981,14 @@ export async function createApprovalRequest(data: Omit<ApprovalRequest, 'created
 }
 
 export async function getPendingApprovalRequests(): Promise<ApprovalRequest[]> {
-  const q = query(collection(db, APPROVAL_REQUESTS_COLLECTION), where('status', '==', 'pending'), orderBy('createdAt', 'asc'));
+  const q = query(collection(db, APPROVAL_REQUESTS_COLLECTION), where('status', '==', 'pending'));
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ApprovalRequest));
+  const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ApprovalRequest));
+  return items.sort((a, b) => {
+    const tA = a.createdAt?.toMillis() || 0;
+    const tB = b.createdAt?.toMillis() || 0;
+    return tA - tB;
+  });
 }
 
 export async function getAllApprovalRequests(): Promise<ApprovalRequest[]> {
@@ -1005,9 +1010,14 @@ export async function createNewUserNotification(data: Omit<NewUserNotification, 
 }
 
 export async function getNewUserNotifications(): Promise<NewUserNotification[]> {
-  const q = query(collection(db, NEW_USER_NOTIFICATIONS_COLLECTION), where('status', '==', 'new'), orderBy('createdAt', 'desc'));
+  const q = query(collection(db, NEW_USER_NOTIFICATIONS_COLLECTION), where('status', '==', 'new'));
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as NewUserNotification));
+  const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as NewUserNotification));
+  return items.sort((a, b) => {
+    const tA = a.createdAt?.toMillis() || 0;
+    const tB = b.createdAt?.toMillis() || 0;
+    return tB - tA;
+  });
 }
 
 export async function getAllNewUserNotifications(): Promise<NewUserNotification[]> {
