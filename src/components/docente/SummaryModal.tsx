@@ -402,7 +402,7 @@ export default function SummaryModal({
                 <svg width="60" height="60" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <circle cx="50" cy="50" r="48" stroke="#12562E" stroke-width="4" fill="none"/>
                   <path d="M50 15 L20 40 L30 40 L30 80 L70 80 L70 40 L80 40 Z" fill="#12562E"/>
-                  <path d="M42 50 L58 50 M50 42 L50 58" stroke="#FAB700" stroke-width="6"/>
+                   <path d="M42 50 L58 50 M50 42 L50 58" stroke="#475569" stroke-width="6"/>
                 </svg>
               </td>
               <td class="title-section" style="vertical-align: middle; padding-left: 15px;">

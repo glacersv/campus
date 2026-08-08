@@ -18,7 +18,7 @@ import { getAllBuildings, createBuilding, updateBuilding, deleteBuilding, getAll
 import { Building, Section, Grade, Student } from '../../types';
 
 const BUILDING_COLORS = [
-  '#12562E', '#0D71B9', '#FAB700', '#D32F2F', '#7B1FA2',
+  '#12562E', '#0D71B9', '#475569', '#D32F2F', '#7B1FA2',
   '#00897B', '#5D4037', '#455A64', '#E65100', '#1565C0'
 ];
 

@@ -44,7 +44,7 @@ const COORDINACION_AREAS: CoordinacionArea[] = [
     id: 'parvularia',
     name: 'Coordinación de Parvularia',
     icon: Baby,
-    color: '#FAB700',
+    color: '#475569',
     description: 'Módulos de formación para grados K4 - K6',
     modules: ['formacion', 'actividades'],
     gradeRange: 'K4 - K6',

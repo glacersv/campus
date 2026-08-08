@@ -17,7 +17,7 @@ interface ThemePaletteColors {
 const PALETTES: Record<ThemePalette, ThemePaletteColors> = {
   salesiano: {
     primary: '#12562E', primaryDark: '#0A391D', primaryLight: '#E8F5E9',
-    secondary: '#FAB700', secondaryDark: '#D99E00', accent: '#0D71B9', danger: '#D32F2F',
+    secondary: '#475569', secondaryDark: '#334155', accent: '#0D71B9', danger: '#D32F2F',
     label: 'Salesiano', icon: '🌿'
   },
   oceano: {
@@ -37,7 +37,7 @@ const PALETTES: Record<ThemePalette, ThemePaletteColors> = {
   },
   donezo: {
     primary: '#25855A', primaryDark: '#124D37', primaryLight: '#48BB78',
-    secondary: '#FAB700', secondaryDark: '#D99E00', accent: '#0D71B9', danger: '#D32F2F',
+    secondary: '#475569', secondaryDark: '#334155', accent: '#0D71B9', danger: '#D32F2F',
     label: 'Donezo', icon: '✨'
   }
 };
