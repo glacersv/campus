@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { UserCheck, Plus, Edit2, Trash2, Save, X, Search, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
-import { getAllStudents, createStudent, updateStudent, deleteStudent, getAllGrades, getAllSections, getCurrentSchoolYear, createPendingApprovalForStudent } from '../../lib/firestore';
+import { getAllStudents, createStudent, updateStudent, deleteStudent, getAllGrades, getAllSections } from '../../lib/firestore';
+import { sortGradesChronological } from '../../lib/ordering';
 import { Student, Grade, Section } from '../../types';
 import StudentHistory from './StudentHistory';
 
@@ -10,7 +11,6 @@ export default function StudentsManager() {
   const [students, setStudents] = useState<Student[]>([]);
   const [grades, setGrades] = useState<Grade[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
-  const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -31,30 +31,13 @@ export default function StudentsManager() {
 
   const loadData = async () => {
     try {
-      const [s, g, sec, cy] = await Promise.all([
-        getAllStudents(),
-        getAllGrades(),
-        getAllSections(),
-        getCurrentSchoolYear()
-      ]);
-      setStudents(s);
-      setGrades(g);
-      setSections(sec);
-      if (cy) setCurrentYear(cy);
+      const [s, g, sec] = await Promise.all([getAllStudents(), getAllGrades(), getAllSections()]);
+      setStudents(s); setGrades(g); setSections(sec);
     } finally { setLoading(false); }
   };
 
   const getGradeName = (id: string) => grades.find(g => g.id === id)?.name || id;
-  const getSectionName = (id: string) => {
-    const activeSection = sections.find(s => s.id === id);
-    if (activeSection) return activeSection.name;
-    if (id && id.includes('-')) {
-      const parts = id.split('-');
-      const lastPart = parts[parts.length - 1] || 'A';
-      return lastPart.replace(/[0-9]/g, '').replace('g', '').replace('t', '').toUpperCase();
-    }
-    return id || '—';
-  };
+  const getSectionName = (id: string) => sections.find(s => s.id === id)?.name || id;
 
   const resetForm = () => {
     setForm({ firstName: '', lastName: '', carnet: '', gender: 'M', gradeId: '', sectionId: '', enrollmentYear: new Date().getFullYear() });
@@ -97,13 +80,11 @@ export default function StudentsManager() {
           sectionId: form.sectionId,
           status: 'EN_CURSO' as const
         };
-        const newStudentId = `s${Date.now()}`;
         await createStudent({
-          id: newStudentId,
+          id: `s${Date.now()}`,
           ...data,
           enrollmentHistory: [newRecord]
         });
-        await createPendingApprovalForStudent(newStudentId);
       }
       toast.success('Alumno guardado con historial');
       setShowForm(false); setEditingId(null); resetForm(); loadData();
@@ -134,10 +115,7 @@ export default function StudentsManager() {
   const filtered = students.filter(s => {
     const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.carnet?.toLowerCase().includes(search.toLowerCase());
     const matchGrade = filterGrade === 'all' || s.gradeId === filterGrade;
-    const matchSection = filterSection === 'all' || (() => {
-      const studentSec = sections.find(sec => sec.id === s.sectionId);
-      return studentSec?.name.trim().toUpperCase() === filterSection.trim().toUpperCase();
-    })();
+    const matchSection = filterSection === 'all' || s.sectionId === filterSection;
     return matchSearch && matchGrade && matchSection;
   });
 
@@ -145,16 +123,7 @@ export default function StudentsManager() {
   const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
   const paginatedStudents = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  const hasYearSections = sections.some(s => s.schoolYear === currentYear);
-  const activeSections = sections.filter(s =>
-    hasYearSections ? s.schoolYear === currentYear : !s.schoolYear
-  );
-
-  const uniqueByName = (list: Section[]) => list.filter(
-    (s, i, arr) => arr.findIndex(x => x.name.trim().toUpperCase() === s.name.trim().toUpperCase()) === i
-  );
-
-  const filteredSections = uniqueByName(activeSections.filter(s => s.gradeId === form.gradeId));
+  const filteredSections = sections.filter(s => s.gradeId === form.gradeId);
 
   if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
@@ -177,59 +146,40 @@ export default function StudentsManager() {
       </div>
 
       {/* Búsqueda y filtros */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 max-w-sm">
+      <div className="space-y-3">
+        <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input type="text" placeholder="Buscar por nombre o carnet..." value={search} onChange={e => setSearch(e.target.value)} className="input pl-9" />
         </div>
 
-        <div className="flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-xl border border-slate-200">
-          <button onClick={() => { setFilterGrade('all'); setFilterSection('all'); }}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              filterGrade === 'all'
-                ? 'bg-primary text-white shadow-xs'
-                : 'text-slate-600 hover:bg-slate-200/50'
-            }`}>
-            Todos
-          </button>
-          {grades.map(g => (
-            <button key={g.id} onClick={() => { setFilterGrade(g.id); setFilterSection('all'); }}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                filterGrade === g.id
-                  ? 'bg-primary text-white shadow-xs'
-                  : 'text-slate-600 hover:bg-slate-200/50'
-              }`}>
-              {g.name}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Grados:</span>
+            <button onClick={() => { setFilterGrade('all'); setFilterSection('all'); }}
+              className={`filter-pill ${filterGrade === 'all' ? 'active' : ''}`}>
+              Todos
             </button>
-          ))}
-        </div>
+            {sortGradesChronological(grades).map(g => (
+              <button key={g.id} onClick={() => { setFilterGrade(g.id); setFilterSection('all'); }}
+                className={`filter-pill ${filterGrade === g.id ? 'active' : ''}`}>
+                {g.name}
+              </button>
+            ))}
+          </div>
 
-        <div className="flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-xl border border-slate-200">
-          <button onClick={() => setFilterSection('all')} disabled={filterGrade === 'all'}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer disabled:opacity-50 ${
-              filterSection === 'all'
-                ? 'bg-primary text-white shadow-xs'
-                : 'text-slate-600 hover:bg-slate-200/50'
-            }`}>
-            Todas Secciones
-          </button>
-          {uniqueByName(activeSections.filter(s => s.gradeId === filterGrade)).map(section => {
-            const secLetter = section.name.trim().toUpperCase();
-            return (
-              <button
-                key={section.id}
-                onClick={() => setFilterSection(secLetter)}
-                disabled={filterGrade === 'all'}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  filterSection === secLetter
-                    ? 'bg-primary text-white shadow-xs'
-                    : 'text-slate-600 hover:bg-slate-200/50'
-                }`}
-              >
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Secciones:</span>
+            <button onClick={() => setFilterSection('all')} disabled={filterGrade === 'all'}
+              className={`filter-pill ${filterSection === 'all' ? 'active' : ''}`}>
+              Todas
+            </button>
+            {sections.filter(s => s.gradeId === filterGrade).map(section => (
+              <button key={section.id} onClick={() => setFilterSection(section.id)} disabled={filterGrade === 'all'}
+                className={`filter-pill ${filterSection === section.id ? 'active' : ''}`}>
                 {section.name}
               </button>
-            );
-          })}
+            ))}
+          </div>
         </div>
       </div>
 
@@ -272,7 +222,7 @@ export default function StudentsManager() {
                     <label className="form-label">Grado *</label>
                     <select required value={form.gradeId} onChange={e => setForm({ ...form, gradeId: e.target.value, sectionId: '' })} className="input">
                       <option value="">Seleccionar grado</option>
-                      {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                      {sortGradesChronological(grades).map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                     </select>
                   </div>
                   <div>
@@ -307,8 +257,7 @@ export default function StudentsManager() {
               <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Género</th>
               <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Grado</th>
               <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Sección</th>
-              <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Año en Curso</th>
-              <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Año de Ingreso</th>
+              <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Ingreso</th>
               <th className="text-right px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Acciones</th>
             </tr>
           </thead>
@@ -327,8 +276,7 @@ export default function StudentsManager() {
                 <td className="px-4 py-2.5 text-sm text-slate-500">{s.gender === 'M' ? 'Masculino' : 'Femenino'}</td>
                 <td className="px-4 py-2.5"><span className="badge badge-green">{getGradeName(s.gradeId)}</span></td>
                 <td className="px-4 py-2.5"><span className="badge badge-blue">{getSectionName(s.sectionId)}</span></td>
-                <td className="px-4 py-2.5 text-sm text-slate-500 font-mono font-semibold">{currentYear}</td>
-                <td className="px-4 py-2.5 text-sm text-slate-500 font-mono">{s.enrollmentYear || '—'}</td>
+                <td className="px-4 py-2.5 text-sm text-slate-500">{s.enrollmentYear || '—'}</td>
                 <td className="px-4 py-2.5 text-right">
                   <div className="flex justify-end gap-1">
                     <button onClick={() => setSelectedStudent(s)} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors" title="Ver historial"><BookOpen className="w-4 h-4 text-slate-500" /></button>

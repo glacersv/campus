@@ -2,9 +2,8 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { User as FirebaseUser, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { auth, functions } from '../firebase';
-import { getUser, createUser, getRole, isEmailPreAuthorized, getStudentByCarnet, createApprovalRequest, createNewUserNotification, updateUser, getTeacherByEmail, getTeacher, createUserForTeacher, createUserForStudent, getStudent, updateApprovalRequest, getAllRoles, getUserByEmail } from '../lib/firestore';
-import { User, UserRole, SystemModuleId, RoleConfig, ApprovalRequest } from '../types';
-import { updateRoleLabelsFromFirestore } from '../types';
+import { getUser, createUser, getRole, isEmailPreAuthorized } from '../lib/firestore';
+import { User, UserRole, SystemModuleId, RoleConfig } from '../types';
 
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
@@ -17,11 +16,6 @@ interface AuthContextType {
   roleConfig: RoleConfig | null;
   hasPermission: (module: SystemModuleId) => boolean;
   isRole: (...roles: UserRole[]) => boolean;
-  approveUser: (uid: string, role: UserRole) => Promise<void>;
-  rejectUser: (uid: string, reason?: string) => Promise<void>;
-  getPendingApprovals: () => Promise<ApprovalRequest[]>;
-  getNewUserNotifications: () => Promise<any[]>;
-  markNotificationAsNotified: (notificationId: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,76 +30,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setFirebaseUser(user);
       if (user) {
-        let profile = await getUser(user.uid);
-        if (!profile) {
-          // SELF-HEALING FLOW: El usuario está en Auth pero no tiene registro en Firestore (Cuenta Huérfana)
-          console.log('[Self-Healing] Inicializando perfil en Firestore para usuario:', user.uid);
-          const email = user.email || '';
-          let detectedRole: UserRole | null = null;
-          let studentId: string | undefined;
-          let studentName: string | undefined;
-          let gradeId: string | undefined;
-          let sectionId: string | undefined;
-          let teacherId: string | undefined;
-          let teacherName: string | undefined;
-
-          // Detectar rol y detalles
-          const teacher = await getTeacherByEmail(email);
-          if (teacher) {
-            detectedRole = 'docente';
-            teacherId = teacher.id;
-            teacherName = teacher.name;
-          } else {
-            const carnet = email.split('@')[0];
-            const student = await getStudentByCarnet(carnet);
-            if (student) {
-              detectedRole = 'alumno';
-              studentId = student.id;
-              studentName = student.name;
-              gradeId = student.gradeId;
-              sectionId = student.sectionId;
-            }
-          }
-
-          const userData: Omit<User, 'createdAt' | 'updatedAt'> = {
-            uid: user.uid,
-            email,
-            displayName: user.displayName || email.split('@')[0],
-            role: null,
-            status: 'pending',
-            requestedRole: detectedRole || null,
-            ...(teacherId ? { teacherId } : {}),
-            ...(studentId ? { studentId } : {}),
-          };
-
-          await createUser(userData);
-
-          await createApprovalRequest({
-            id: user.uid,
-            userId: user.uid,
-            email,
-            displayName: user.displayName || email.split('@')[0],
-            requestedRole: detectedRole || null,
-            status: 'pending',
-            studentId,
-            studentName,
-            gradeId,
-            sectionId,
-            teacherId,
-            teacherName,
-          });
-
-          profile = await getUser(user.uid);
-        }
-
+        const profile = await getUser(user.uid);
         setUserProfile(profile);
         if (profile?.role) {
           const rc = await getRole(profile.role);
           setRoleConfig(rc);
-          
-          // Cargar roles dinámicos desde Firestore
-          const allRoles = await getAllRoles();
-          updateRoleLabelsFromFirestore(allRoles);
         } else {
           setRoleConfig(null);
         }
@@ -121,94 +50,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     await signInWithEmailAndPassword(auth, email, password);
-    
-    // Verificar estado del usuario después del login
-    const profile = await getUser(auth.currentUser?.uid || '');
-    if (profile?.status === 'pending') {
-      await firebaseSignOut(auth);
-      throw new Error('Tu cuenta está pendiente de aprobación. Un administrador revisará tu solicitud pronto.');
-    }
-    if (profile?.status === 'rejected') {
-      await firebaseSignOut(auth);
-      throw new Error('Tu solicitud de acceso fue rechazada. Contacta al administrador para más información.');
-    }
   };
 
-  const signUp = async (email: string, password: string, displayName: string) => {
-    console.log('[signUp] Inicio registro', email);
+  const signUp = async (email: string, password: string, displayName: string, role: UserRole = 'docente') => {
+    // Restrict registration to institutional email domain
     if (!email.endsWith('@salesianosanjose.edu.sv')) {
       throw new Error('Solo se permiten correos institucionales (@salesianosanjose.edu.sv)');
     }
 
-    console.log('[signUp] Creando en Firebase Auth');
-    let result;
-    try {
-      result = await createUserWithEmailAndPassword(auth, email, password);
-    } catch (err: any) {
-      if (err.code === 'auth/email-already-in-use') {
-        throw new Error('Este correo ya está registrado.');
-      }
-      throw err;
-    }
-    const uid = result.user.uid;
-    console.log('[signUp] Auth OK', uid);
-
-    let detectedRole: UserRole | null = null;
-    let studentId: string | undefined;
-    let studentName: string | undefined;
-    let gradeId: string | undefined;
-    let sectionId: string | undefined;
-    let teacherId: string | undefined;
-    let teacherName: string | undefined;
-
-    // Detectar rol y detalles del usuario registrado
-    const teacher = await getTeacherByEmail(email);
-    if (teacher) {
-      detectedRole = 'docente';
-      teacherId = teacher.id;
-      teacherName = teacher.name;
-    } else {
-      const carnet = email.split('@')[0];
-      const student = await getStudentByCarnet(carnet);
-      if (student) {
-        detectedRole = 'alumno';
-        studentId = student.id;
-        studentName = student.name;
-        gradeId = student.gradeId;
-        sectionId = student.sectionId;
-      }
+    // Check pre-authorization against teacher or admin emails
+    const preAuthorized = await isEmailPreAuthorized(email);
+    if (!preAuthorized) {
+      throw new Error('Este correo institucional no está pre-autorizado por la administración. Por favor, solicita a tu coordinador que registre tu correo en el panel de Docentes antes de crear tu cuenta.');
     }
 
-    const userData: Omit<User, 'createdAt' | 'updatedAt'> = {
-      uid,
-      email,
-      displayName,
-      role: null,
-      status: 'pending',
-      requestedRole: detectedRole || null,
-      ...(teacherId ? { teacherId } : {}),
-      ...(studentId ? { studentId } : {}),
-    };
-    console.log('[signUp] Creando user en Firestore');
-    await createUser(userData);
-    console.log('[signUp] User creado');
+    // First create the user with Firebase Auth
+    const result = await createUserWithEmailAndPassword(auth, email, password);
 
-    console.log('[signUp] Creando approval request');
-    await createApprovalRequest({
-      id: uid,
-      userId: uid,
+    // Then create the user profile in Firestore with the default role
+    // The role will be validated by Cloud Function if needed
+    await createUser({
+      uid: result.user.uid,
       email,
       displayName,
-      requestedRole: detectedRole || null,
-      status: 'pending',
-      studentId,
-      studentName,
-      gradeId,
-      sectionId,
-      teacherId,
-      teacherName,
+      role: 'docente' // Always default to docente for security
     });
-    console.log('[signUp] Approval request creada');
+
+    // If an admin is creating a user with a different role, they should use assignUserRole Cloud Function
+    // For self-registration, we always use 'docente' as default
   };
 
   const signOut = async () => {
@@ -230,117 +99,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return roles.includes(userRole);
   };
 
-  const approveUser = async (uid: string, role: UserRole) => {
-    const user = await getUser(uid);
-    if (!user) throw new Error('Usuario no encontrado');
-
-    // Auto-provisionar según rol
-    if (role === 'docente') {
-      const { createUserForTeacher } = await import('../lib/firestore');
-      const { getTeacherByEmail } = await import('../lib/firestore');
-      const teacher = await getTeacherByEmail(user.email);
-      if (teacher) {
-        await createUserForTeacher(uid, user.email, user.displayName, teacher.id);
-      } else {
-        await createUserForTeacher(uid, user.email, user.displayName);
-      }
-    } else if (role === 'alumno') {
-      const { createUserForStudent } = await import('../lib/firestore');
-      const carnet = user.email.split('@')[0];
-      const { getStudentByCarnet } = await import('../lib/firestore');
-      const student = await getStudentByCarnet(carnet);
-      if (student) {
-        await createUserForStudent(uid, user.email, user.displayName, student.id);
-      } else {
-        await createUserForStudent(uid, user.email, user.displayName);
-      }
-    }
-
-    // Actualizar usuario
-    const updatePayload: any = {
-      role,
-      status: 'approved',
-      updatedAt: new Date() as any,
-    };
-    if (user.requestedRole) {
-      updatePayload.requestedRole = undefined;
-    }
-    await updateUser(uid, updatePayload);
-
-    // Actualizar solicitud de aprobación
-    const { updateApprovalRequestByUserId } = await import('../lib/firestore');
-    await updateApprovalRequestByUserId(uid, {
-      status: 'approved',
-      reviewedBy: 'admin',
-      reviewedAt: new Date() as any,
-    });
-
-    // Crear notificación para el admin
-    const userAfterUpdate = await getUser(uid);
-    if (userAfterUpdate?.teacherId) {
-      const { getTeacher } = await import('../lib/firestore');
-      const teacher = await getTeacher(userAfterUpdate.teacherId);
-      await createNewUserNotification({
-        id: `notif_${Date.now()}_${uid}`,
-        userId: uid,
-        email: user.email,
-        displayName: user.displayName,
-        role,
-        teacherId: userAfterUpdate.teacherId,
-        teacherName: teacher?.name,
-        password: '***',
-        status: 'new',
-      });
-    } else if (userAfterUpdate?.studentId) {
-      const { getStudent } = await import('../lib/firestore');
-      const student = await getStudent(userAfterUpdate.studentId);
-      await createNewUserNotification({
-        id: `notif_${Date.now()}_${uid}`,
-        userId: uid,
-        email: user.email,
-        displayName: user.displayName,
-        role,
-        studentId: userAfterUpdate.studentId,
-        studentName: student?.name,
-        gradeName: student?.gradeId,
-        sectionName: student?.sectionId,
-        password: '***',
-        status: 'new',
-      });
-    }
-  };
-
-  const rejectUser = async (uid: string, reason?: string) => {
-    await updateUser(uid, {
-      status: 'rejected',
-      rejectionReason: reason,
-      updatedAt: new Date() as any,
-    });
-
-    const { updateApprovalRequest } = await import('../lib/firestore');
-    await updateApprovalRequest(uid, {
-      status: 'rejected',
-      reviewedBy: 'admin',
-      reviewedAt: new Date() as any,
-      rejectionReason: reason,
-    });
-  };
-
-  const getPendingApprovals = async (): Promise<ApprovalRequest[]> => {
-    const { getPendingApprovalRequests } = await import('../lib/firestore');
-    return getPendingApprovalRequests();
-  };
-
-  const getNewUserNotifications = async () => {
-    const { getNewUserNotifications: getNotifs } = await import('../lib/firestore');
-    return getNotifs();
-  };
-
-  const markNotificationAsNotified = async (notificationId: string) => {
-    const { markNotificationAsNotified: markNotif } = await import('../lib/firestore');
-    return markNotif(notificationId);
-  };
-
   return (
     <AuthContext.Provider value={{
       firebaseUser,
@@ -352,12 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       userRole,
       roleConfig,
       hasPermission,
-      isRole,
-      approveUser,
-      rejectUser,
-      getPendingApprovals,
-      getNewUserNotifications,
-      markNotificationAsNotified,
+      isRole
     }}>
       {children}
     </AuthContext.Provider>

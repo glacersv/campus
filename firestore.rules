@@ -8,8 +8,7 @@ service cloud.firestore {
     }
 
     function getUserRole() {
-      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
-      return userDoc.data.role;
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
 
     function isAdmin() {
@@ -37,7 +36,7 @@ service cloud.firestore {
     }
 
     function isPsicopedagogia() {
-      return isAuthenticated() && getUserRole() == 'psicopedagogico';
+      return isAuthenticated() && getUserRole() == 'psicopedagogio';
     }
 
     function isStaff() {
@@ -60,25 +59,6 @@ service cloud.firestore {
       allow create: if isOwner(userId) && hasValidEmailDomain();
       allow update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
-    }
-
-    // Approval Requests Collection
-    match /approval_requests/{requestId} {
-      allow read: if isAdmin();
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAdmin();
-    }
-
-    // New User Notifications Collection
-    match /new_user_notifications/{notificationId} {
-      allow read: if isAdmin();
-      allow write: if isAdmin();
-    }
-
-    // Activity Logs Collection
-    match /activity_logs/{logId} {
-      allow read: if isAdmin();
-      allow create: if isAuthenticated();
     }
 
     // Roles Collection
@@ -113,7 +93,7 @@ service cloud.firestore {
 
     // Students Collection
     match /students/{studentId} {
-      allow read: if true;
+      allow read: if isStaff() || (isAlumno() && studentId == request.auth.uid);
       allow write: if isAdmin();
     }
 

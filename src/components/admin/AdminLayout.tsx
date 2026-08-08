@@ -73,7 +73,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       { id: 'roles', label: 'Roles y Permisos', icon: Shield },
     ]},
     { title: 'SISTEMA', items: [
-      { id: 'school-year', label: 'Iniciar Año', icon: Calendar },
       { id: 'baccalaureate-types', label: 'Tipos de Bachillerato', icon: Award },
       { id: 'coordinaciones-config', label: 'Config. Coordinaciones', icon: Settings },
     ]},

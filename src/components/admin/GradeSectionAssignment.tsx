@@ -9,11 +9,7 @@ import {
   Filter,
   X,
   DoorOpen,
-  Edit2,
-  Check,
-  BookOpen,
-  Layers,
-  Users
+  Edit2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -41,7 +37,6 @@ export default function GradeSectionAssignment() {
   const [assignments, setAssignments] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [filterBuilding, setFilterBuilding] = useState<string | null>(null);
-  const [onlyActive, setOnlyActive] = useState(true);
 
   // State for interactive assignment editor
   const [editingSection, setEditingSection] = useState<Section | null>(null);
@@ -62,6 +57,7 @@ export default function GradeSectionAssignment() {
     } finally { setLoading(false); }
   };
 
+  const getSectionsByGrade = (gradeId: string) => sections.filter(s => s.gradeId === gradeId);
   const getGradeName = (id: string) => grades.find(g => g.id === id)?.name || id;
 
   const selectBuildingForSection = (sectionId: string, buildingId: string) => {
@@ -98,47 +94,13 @@ export default function GradeSectionAssignment() {
   const changedCount = Object.values(assignments).filter(Boolean).length;
   const totalSections = sections.length;
 
-  const activeGradeIds = new Set(students.map(st => st.gradeId).filter(Boolean));
-
-  // Extract grade sorting weight
-  const getGradeSortWeight = (gradeId: string): number => {
-    if (gradeId === 'k4') return 10;
-    if (gradeId === 'k5') return 11;
-    if (gradeId === 'k6') return 12;
-
-    const numStr = gradeId.replace(/[^0-9]/g, '');
-    const num = parseInt(numStr, 10);
-    if (Number.isFinite(num)) {
-      if (num >= 1 && num <= 9) return 20 + num;
-      if (num >= 10 && num <= 12) return 40 + (num - 10);
-    }
-    return 100;
-  };
-
-  const sortedGrades = [...grades].sort((a, b) => {
-    const weightA = getGradeSortWeight(a.id);
-    const weightB = getGradeSortWeight(b.id);
-    return weightA - weightB;
-  });
-
-  const filteredGradesList = sortedGrades.filter(g => {
-    const matchesActive = !onlyActive || activeGradeIds.has(g.id);
-    return matchesActive;
-  });
-
   const groupedGrades = {
-    'parvularia': filteredGradesList.filter(g => g.cycle === 'parvularia'),
-    '1': filteredGradesList.filter(g => g.cycle === '1'),
-    '2': filteredGradesList.filter(g => g.cycle === '2'),
-    '3': filteredGradesList.filter(g => g.cycle === '3'),
-    '4': filteredGradesList.filter(g => g.cycle === '4')
+    'parvularia': grades.filter(g => g.cycle === 'parvularia'),
+    '1': grades.filter(g => g.cycle === '1'),
+    '2': grades.filter(g => g.cycle === '2'),
+    '3': grades.filter(g => g.cycle === '3'),
+    '4': grades.filter(g => g.cycle === '4')
   };
-
-  // Sections that belong to the filtered grades list
-  const filteredSections = sections.filter(sec => filteredGradesList.some(g => g.id === sec.gradeId));
-  const filteredStudentsCount = students.filter(st => filteredGradesList.some(g => g.id === st.gradeId)).length;
-
-  const getSectionsByGrade = (gradeId: string) => sections.filter(s => s.gradeId === gradeId);
 
   if (loading) return (
     <div className="flex justify-center py-12">
@@ -149,10 +111,10 @@ export default function GradeSectionAssignment() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="module-header">
-        <div className="module-title-group">
-          <div className="module-icon">
-            <GitBranch className="w-5 h-5 text-slate-600" />
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-secondary/10 flex items-center justify-center shrink-0 border border-secondary/20">
+            <GitBranch className="w-6 h-6 text-secondary-dark" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight font-display">Edificios por Sección</h1>
@@ -205,63 +167,17 @@ export default function GradeSectionAssignment() {
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white border border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700 transition-all cursor-pointer">
             <X className="w-3.5 h-3.5" /> Limpiar filtro
           </button>
-          {filterBuilding && (
-            <button onClick={() => setFilterBuilding(null)}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-200/50 transition-all cursor-pointer border-0">
-              <X className="w-3 h-3" /> Limpiar
-            </button>
-          )}
-        </div>
-
-        {/* Toggle only active with students */}
-        <div className="flex items-center gap-2 bg-white px-3.5 py-1.5 rounded-xl border border-slate-200 shadow-3xs cursor-pointer select-none hover:bg-slate-50 transition-colors" onClick={() => setOnlyActive(!onlyActive)}>
-          <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors ${onlyActive ? 'bg-primary border-primary text-white' : 'border-slate-300'}`}>
-            {onlyActive && <Check className="w-2.5 h-2.5 stroke-[3px]" />}
-          </div>
-          <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Sólo Grados con Alumnos</span>
-        </div>
+        )}
       </div>
-
-      {/* Premium Statistics Banner */}
-      {filteredGradesList.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50/50 border border-slate-200/80 rounded-2xl p-4 shadow-3xs">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-              <BookOpen className="w-5 h-5 text-slate-500" />
-            </div>
-            <div>
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Grados Visibles</span>
-              <span className="text-base font-extrabold text-slate-800 font-display">{filteredGradesList.length} registrados</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-              <Layers className="w-5 h-5 text-slate-500" />
-            </div>
-            <div>
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Secciones Visibles</span>
-              <span className="text-base font-extrabold text-slate-800 font-display">{filteredSections.length} secciones</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-              <Users className="w-5 h-5 text-slate-500" />
-            </div>
-            <div>
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Alumnos Matriculados</span>
-              <span className="text-base font-extrabold text-slate-800 font-display">{filteredStudentsCount} alumnos</span>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Assignment Grid */}
       <div className="space-y-8">
         {(Object.keys(groupedGrades) as Cycle[]).map(cycle => {
           const gradesInCycle = groupedGrades[cycle];
           if (gradesInCycle.length === 0) return null;
+          const cs = CYCLE_STYLES[cycle];
 
-          // Filter grades based on selected building
+          // Filter grades based on selected building & Sort chronologically using helper weight
           const filteredGrades = filterBuilding
             ? gradesInCycle.filter(g => {
                 const gradeSections = getSectionsByGrade(g.id);
@@ -275,19 +191,24 @@ export default function GradeSectionAssignment() {
 
           if (filteredGrades.length === 0) return null;
 
+          // Order grades chronologically K4 -> 12
+          const sortedGrades = [...filteredGrades].sort((a, b) => getGradeSortWeight(a.id) - getGradeSortWeight(b.id));
+
           return (
-            <div key={cycle} className="space-y-3">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+            <div key={cycle}>
+              <div className="flex items-center gap-3 mb-4">
+                <span className={`w-2 h-2 rounded-full ${cs.dot}`} />
+                <span className={`text-xs font-bold uppercase tracking-wider ${cs.color}`}>
                   {CYCLE_NAMES[cycle]}
                 </span>
+                <span className="text-xs text-slate-300">/</span>
                 <span className="text-xs text-slate-400">
-                  ({filteredGrades.reduce((acc, g) => acc + getSectionsByGrade(g.id).length, 0)} secciones)
+                  {sortedGrades.reduce((acc, g) => acc + getSectionsByGrade(g.id).length, 0)} secciones
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                {filteredGrades.map(grade => {
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {sortedGrades.map(grade => {
                   const gradeSections = getSectionsByGrade(grade.id).filter(s =>
                     filterBuilding
                       ? filterBuilding === '__unassigned__'
@@ -299,28 +220,19 @@ export default function GradeSectionAssignment() {
                   return (
                     <motion.div
                       key={grade.id}
-                      initial={{ opacity: 0, y: 12 }}
+                      initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="bg-white rounded-2xl p-5 border border-slate-200/80 transition-all hover:shadow-md flex flex-col justify-between"
+                      className="bg-white rounded-2xl p-5 border border-slate-200/80 transition-all hover:shadow-md"
                     >
-                      <div>
-                        {/* Header */}
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl flex items-center justify-center border bg-slate-50 border-slate-200/60 text-slate-500">
-                              <DoorOpen className="w-5 h-5" />
-                            </div>
-                            <div>
-                              <h3 className="text-sm font-bold text-slate-900 leading-tight">{grade.name}</h3>
-                            </div>
+                      {/* Header */}
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-700 border border-slate-200 bg-slate-50">
+                            <DoorOpen className="w-5 h-5" />
                           </div>
-                          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border ${
-                            assignedCount === gradeSections.length && gradeSections.length > 0
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : 'bg-amber-50 text-amber-700 border-amber-200'
-                          }`}>
-                            {assignedCount}/{gradeSections.length}
-                          </span>
+                          <div>
+                            <h3 className="text-sm font-bold text-slate-900 leading-tight">{grade.name}</h3>
+                          </div>
                         </div>
                         <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border ${
                           assignedCount === gradeSections.length && gradeSections.length > 0
@@ -331,13 +243,13 @@ export default function GradeSectionAssignment() {
                         </span>
                       </div>
 
-                        {/* Secciones */}
-                        <div className="mb-3">
-                          <div className="flex items-baseline gap-1">
-                            <span className="text-2xl font-bold text-slate-900 font-display tracking-tight">{gradeSections.length}</span>
-                            <span className="text-xs text-slate-400 font-medium">secciones</span>
-                          </div>
+                      {/* Secciones */}
+                      <div className="mb-5">
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-3xl font-bold text-slate-900 font-display tracking-tight">{gradeSections.length}</span>
+                          <span className="text-sm text-slate-400 font-medium">secciones</span>
                         </div>
+                      </div>
 
                       {/* Edificios asignados (Botones Interactivos de Edición Sobrios sin colores) */}
                       <div className="mb-4">
@@ -378,8 +290,10 @@ export default function GradeSectionAssignment() {
                       </div>
 
                       {/* Footer */}
-                      <div className="flex items-center justify-between pt-3 border-t border-slate-100 shrink-0 mt-2">
-                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{CYCLE_NAMES[cycle]}</span>
+                      <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-semibold text-slate-600">{CYCLE_NAMES[cycle]}</span>
+                        </div>
                         <span className="text-[10px] text-slate-400 font-medium">Presiona para asignar</span>
                       </div>
                     </motion.div>

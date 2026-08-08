@@ -3,8 +3,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   BookOpen,
   Plus,
-  Layers,
-  Users,
   Edit2,
   Trash2,
   Save,
@@ -32,11 +30,10 @@ import {
   deleteGrade,
   toggleGradeStatus,
   getAllSections,
-  getAllBuildings,
-  getCurrentSchoolYear,
-  getAllStudents
+  getAllBuildings
 } from '../../lib/firestore';
-import { Grade, Section, Building, Cycle, BaccalaureateType, CYCLE_NAMES, Student } from '../../types';
+import { Grade, Section, Building, Cycle, BaccalaureateType, CYCLE_NAMES } from '../../types';
+import { getGradeSortWeight, sortGradesChronological } from '../../lib/ordering';
 
 const CYCLE_COLORS: Record<Cycle, string> = {
   'parvularia': 'bg-pink-100 text-pink-700',
@@ -79,7 +76,6 @@ export default function GradesManager() {
   const [grades, setGrades] = useState<Grade[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -87,7 +83,6 @@ export default function GradesManager() {
   const [search, setSearch] = useState('');
   const [cycleFilter, setCycleFilter] = useState<Cycle | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<'ACTIVO' | 'INACTIVO' | 'all'>('all');
-  const [onlyActive, setOnlyActive] = useState(true);
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -95,22 +90,8 @@ export default function GradesManager() {
 
   const loadData = async () => {
     try {
-      const [g, s, b, cy, st] = await Promise.all([
-        getAllGrades(),
-        getAllSections(),
-        getAllBuildings(),
-        getCurrentSchoolYear(),
-        getAllStudents()
-      ]);
-      const activeYear = cy || new Date().getFullYear();
-      const hasYearSections = s.some(sec => sec.schoolYear === activeYear);
-      const filteredSecs = s.filter(sec =>
-        hasYearSections ? sec.schoolYear === activeYear : !sec.schoolYear
-      );
-      setGrades(g);
-      setSections(filteredSecs);
-      setBuildings(b);
-      setStudents(st);
+      const [g, s, b] = await Promise.all([getAllGrades(), getAllSections(), getAllBuildings()]);
+      setGrades(g); setSections(s); setBuildings(b);
     } finally { setLoading(false); }
   };
 
@@ -189,38 +170,20 @@ export default function GradesManager() {
     else setSelected(new Set(filtered.map((g) => g.id)));
   };
 
-  const activeGradeIds = new Set(students.map(st => st.gradeId).filter(Boolean));
-
   const filtered = grades.filter((g) => {
     const matchesSearch = g.name.toLowerCase().includes(search.toLowerCase());
     const matchesCycle = cycleFilter === 'all' || g.cycle === cycleFilter;
     const matchesStatus = statusFilter === 'all' || (g.status || 'ACTIVO') === statusFilter;
-    const matchesActive = !onlyActive || activeGradeIds.has(g.id);
-    return matchesSearch && matchesCycle && matchesStatus && matchesActive;
+    return matchesSearch && matchesCycle && matchesStatus;
   });
 
-  const filteredSectionsCount = sections.filter(sec => filtered.some(g => g.id === sec.gradeId)).length;
-  const filteredStudentsCount = students.filter(st => filtered.some(g => g.id === st.gradeId)).length;
-
   const cycleGroups = {
-    'parvularia': filtered.filter((g) => g.cycle === 'parvularia').sort((a, b) => extractGradeNumber(a) - extractGradeNumber(b)),
-    '1': filtered.filter((g) => g.cycle === '1').sort((a, b) => extractGradeNumber(a) - extractGradeNumber(b)),
-    '2': filtered.filter((g) => g.cycle === '2').sort((a, b) => extractGradeNumber(a) - extractGradeNumber(b)),
-    '3': filtered.filter((g) => g.cycle === '3').sort((a, b) => extractGradeNumber(a) - extractGradeNumber(b)),
-    '4': filtered.filter((g) => g.cycle === '4').sort((a, b) => sortBaccalaureate(a, b))
+    'parvularia': sortGradesChronological(filtered.filter((g) => g.cycle === 'parvularia')),
+    '1': sortGradesChronological(filtered.filter((g) => g.cycle === '1')),
+    '2': sortGradesChronological(filtered.filter((g) => g.cycle === '2')),
+    '3': sortGradesChronological(filtered.filter((g) => g.cycle === '3')),
+    '4': sortGradesChronological(filtered.filter((g) => g.cycle === '4'))
   } as const;
-
-  function extractGradeNumber(grade: Grade): number {
-    const match = grade.name.match(/(\d+)/);
-    return match ? parseInt(match[1]) : 0;
-  }
-
-  function sortBaccalaureate(a: Grade, b: Grade): number {
-    const aType = a.baccalaureateType === 'tecnico' ? 1 : 0;
-    const bType = b.baccalaureateType === 'tecnico' ? 1 : 0;
-    if (aType !== bType) return aType - bType;
-    return extractGradeNumber(a) - extractGradeNumber(b);
-  }
 
   if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
@@ -228,8 +191,8 @@ export default function GradesManager() {
     <div className="space-y-6">
       <div className="module-header">
         <div className="module-title-group">
-          <div className="module-icon">
-            <BookOpen className="w-5 h-5" />
+          <div className="module-icon bg-primary/10">
+            <BookOpen className="w-5 h-5 text-primary" />
           </div>
           <div>
             <h1 className="module-title">Grados</h1>
@@ -246,25 +209,17 @@ export default function GradesManager() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input type="text" placeholder="Buscar grado..." value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-9" />
           </div>
-          <div className="flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-xl border border-slate-200">
-            <button onClick={() => setCycleFilter('all')} className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${cycleFilter === 'all' ? 'bg-primary text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200/50'}`}>Todos</button>
+          <div className="flex gap-1.5">
+            <button onClick={() => setCycleFilter('all')} className={`filter-pill ${cycleFilter === 'all' ? 'active' : ''}`}>Todos</button>
             {(Object.keys(CYCLE_NAMES) as Cycle[]).map((c) => (
-              <button key={c} onClick={() => setCycleFilter(c)} className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${cycleFilter === c ? 'bg-primary text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200/50'}`}>{CYCLE_NAMES[c]}</button>
+              <button key={c} onClick={() => setCycleFilter(c)} className={`filter-pill ${cycleFilter === c ? 'active' : ''}`}>{CYCLE_NAMES[c]}</button>
             ))}
           </div>
-          <div className="flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-xl border border-slate-200">
-            <button onClick={() => setStatusFilter('all')} className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${statusFilter === 'all' ? 'bg-primary text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200/50'}`}>Todos</button>
-            <button onClick={() => setStatusFilter('ACTIVO')} className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${statusFilter === 'ACTIVO' ? 'bg-primary text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200/50'}`}>Activos</button>
-            <button onClick={() => setStatusFilter('INACTIVO')} className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${statusFilter === 'INACTIVO' ? 'bg-primary text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200/50'}`}>Inactivos</button>
+          <div className="flex gap-1.5">
+            <button onClick={() => setStatusFilter('all')} className={`filter-pill ${statusFilter === 'all' ? 'active' : ''}`}>Todos</button>
+            <button onClick={() => setStatusFilter('ACTIVO')} className={`filter-pill ${statusFilter === 'ACTIVO' ? 'active' : ''}`}>Activos</button>
+            <button onClick={() => setStatusFilter('INACTIVO')} className={`filter-pill ${statusFilter === 'INACTIVO' ? 'active' : ''}`}>Inactivos</button>
           </div>
-
-          <div className="flex items-center gap-2 bg-white px-3.5 py-1.5 rounded-xl border border-slate-200 shadow-3xs cursor-pointer select-none hover:bg-slate-50 transition-colors" onClick={() => setOnlyActive(!onlyActive)}>
-            <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors ${onlyActive ? 'bg-primary border-primary text-white' : 'border-slate-300'}`}>
-              {onlyActive && <Check className="w-2.5 h-2.5 stroke-[3px]" />}
-            </div>
-            <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Sólo Grados con Alumnos</span>
-          </div>
-
           {selected.size > 0 && (
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-2 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
               <span className="text-sm text-red-700 font-medium">{selected.size} seleccionado(s)</span>
@@ -277,39 +232,6 @@ export default function GradesManager() {
             <button onClick={() => setViewMode('list')} className={`p-2 transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}><List className="w-4 h-4" /></button>
           </div>
         </div>
-
-      {/* Premium Statistics Banner */}
-      {filtered.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50/50 border border-slate-200/80 rounded-2xl p-4 shadow-3xs">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-              <BookOpen className="w-5 h-5 text-slate-500" />
-            </div>
-            <div>
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Grados Activos</span>
-              <span className="text-base font-extrabold text-slate-800 font-display">{filtered.length} registrados</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-              <Layers className="w-5 h-5 text-slate-500" />
-            </div>
-            <div>
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Secciones Totales</span>
-              <span className="text-base font-extrabold text-slate-800 font-display">{filteredSectionsCount} secciones</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-              <Users className="w-5 h-5 text-slate-500" />
-            </div>
-            <div>
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Alumnos Matriculados</span>
-              <span className="text-base font-extrabold text-slate-800 font-display">{filteredStudentsCount} alumnos</span>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Formulario Modal */}
       <AnimatePresence>
@@ -366,7 +288,7 @@ export default function GradesManager() {
             return (
               <div key={c}>
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">{CYCLE_NAMES[c]}</span>
+                  <span className={`px-2.5 py-1 rounded-md text-xs font-bold ${CYCLE_COLORS[c]}`}>{CYCLE_NAMES[c]}</span>
                   <span className="text-xs text-slate-400">({items.length})</span>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
@@ -475,14 +397,6 @@ export default function GradesManager() {
   );
 }
 
-const CYCLE_ICON_COLORS: Record<Cycle, string> = {
-  'parvularia': 'text-pink-600',
-  '1': 'text-emerald-600',
-  '2': 'text-blue-600',
-  '3': 'text-purple-600',
-  '4': 'text-amber-600'
-};
-
 function GradeCard({ grade, index, sectionsCount, buildingName, selected, onToggleSelect, onEdit, onDelete, onToggleStatus }: {
   grade: Grade;
   index: number;
@@ -494,12 +408,11 @@ function GradeCard({ grade, index, sectionsCount, buildingName, selected, onTogg
   onDelete: () => void;
   onToggleStatus: () => void;
 }) {
-  const cycle = grade.cycle as Cycle;
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }} className={`bg-white rounded-2xl p-5 border border-slate-200/80 transition-all ${selected ? 'ring-2 ring-primary border-primary' : 'hover:shadow-md'}`}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center border bg-slate-50 border-slate-200/60 text-slate-500">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-700 border border-slate-200 bg-white">
             <DoorOpen className="w-5 h-5" />
           </div>
           <div>
@@ -532,11 +445,12 @@ function GradeCard({ grade, index, sectionsCount, buildingName, selected, onTogg
       <div className="flex items-center justify-between pt-3 border-t border-slate-100">
         <div className="flex items-center gap-2">
           {(() => {
+            const cycle = grade.cycle as Cycle;
             const cfg = CYCLE_LABEL[cycle] || CYCLE_LABEL['1'];
             const Icon = cfg.Icon;
             return (
               <>
-                <Icon className={`${cfg.size} text-slate-400`} />
+                <Icon className={`${cfg.size} text-slate-500`} />
                 <span className="text-[11px] font-semibold text-slate-600">{cfg.label}</span>
               </>
             );
