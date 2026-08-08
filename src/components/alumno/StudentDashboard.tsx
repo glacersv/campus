@@ -43,13 +43,15 @@ export default function StudentDashboard({ studentName, onLogout }: StudentDashb
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4">
+      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/80 px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <InstitutionLogo className="w-10 h-10" />
+            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
+              <InstitutionLogo className="w-5 h-5" />
+            </div>
             <div>
-              <h1 className="text-lg font-bold text-slate-900">Campus Salesiano</h1>
-              <p className="text-xs text-slate-400">San José</p>
+              <h1 className="text-lg font-bold text-slate-900" style={{ fontFamily: 'var(--font-display)' }}>Campus Salesiano</h1>
+              <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">San José</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -59,8 +61,8 @@ export default function StudentDashboard({ studentName, onLogout }: StudentDashb
                 {today.toLocaleDateString('es-SV', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               </p>
             </div>
-            <button onClick={onLogout} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-              <LogOut className="w-5 h-5 text-slate-500" />
+            <button onClick={onLogout} className="p-2 hover:bg-red-50 rounded-lg transition-colors group">
+              <LogOut className="w-5 h-5 text-slate-500 group-hover:text-red-600 transition-colors" />
             </button>
           </div>
         </div>
@@ -70,7 +72,7 @@ export default function StudentDashboard({ studentName, onLogout }: StudentDashb
       <main className="max-w-6xl mx-auto p-6">
         {activeModule === 'proyectos' ? (
           <div>
-            <button onClick={() => setActiveModule(null)} className="text-xs text-slate-400 hover:text-slate-600 mb-4 flex items-center gap-1">
+            <button onClick={() => setActiveModule(null)} className="text-xs text-slate-400 hover:text-slate-600 mb-4 flex items-center gap-1 transition-colors">
               ← Volver al menú
             </button>
             <ProjectsModule view="alumno" />
@@ -79,17 +81,22 @@ export default function StudentDashboard({ studentName, onLogout }: StudentDashb
           <>
             {/* Welcome */}
             <div className="mb-8">
-              <h2 className="text-2xl font-bold text-slate-900">Bienvenido, {studentName}</h2>
+              <h2 className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'var(--font-display)' }}>Bienvenido, {studentName}</h2>
               <p className="text-slate-500 mt-1">Selecciona un módulo para comenzar</p>
             </div>
 
             {/* Monday Notice */}
             {isMonday && (
-              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-                <p className="text-sm text-amber-800 font-medium">
-                  Hoy es Lunes - <span className="font-bold">Acto Cívico Automático</span>
-                </p>
-                <p className="text-xs text-amber-600 mt-1">La formación de hoy será en modalidad Acto Cívico</p>
+              <motion.div initial={{ opacity: 0, y: -10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: 'spring', bounce: 0.1 }} className="mb-6 p-4 bg-amber-50/80 border border-amber-200/60 rounded-xl flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                  <Calendar className="w-4 h-4 text-amber-700" />
+                </div>
+                <div>
+                  <p className="text-sm text-amber-800 font-medium">
+                    Hoy es Lunes - <span className="font-bold">Acto Cívico Automático</span>
+                  </p>
+                  <p className="text-xs text-amber-600 mt-1">La formación de hoy será en modalidad Acto Cívico</p>
+                </div>
               </motion.div>
             )}
 
@@ -100,17 +107,21 @@ export default function StudentDashboard({ studentName, onLogout }: StudentDashb
                   key={mod.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.08 }}
+                  transition={{ delay: i * 0.06, type: 'spring', bounce: 0.1 }}
                   onClick={() => {
                     if (mod.active && mod.id === 'proyectos') {
                       setActiveModule('proyectos');
                     }
                   }}
-                  className={`module-card text-left ${mod.active && mod.id === 'proyectos' ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}
+                  className={`group relative bg-white rounded-2xl p-5 border-l-[3px] transition-all ${
+                    mod.active && mod.id === 'proyectos'
+                      ? 'border-l-primary border-y border-r border-slate-200/80 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer'
+                      : 'border-l-slate-200 border-y border-r border-slate-200/80 opacity-50 grayscale cursor-not-allowed'
+                  }`}
                 >
                   <div className="flex items-start gap-4">
-                    <div className={`${mod.color} w-12 h-12 rounded-xl flex items-center justify-center shrink-0`}>
-                      <mod.icon className="w-6 h-6 text-white" />
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${mod.active && mod.id === 'proyectos' ? mod.color : 'bg-slate-100'}`}>
+                      <mod.icon className={`w-6 h-6 ${mod.active && mod.id === 'proyectos' ? 'text-white' : 'text-slate-400'}`} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="text-base font-semibold text-slate-900">{mod.label}</h3>
@@ -123,6 +134,13 @@ export default function StudentDashboard({ studentName, onLogout }: StudentDashb
                       )}
                     </div>
                   </div>
+                  {mod.active && mod.id === 'proyectos' && (
+                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                      </div>
+                    </div>
+                  )}
                 </motion.div>
               ))}
             </div>
