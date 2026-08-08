@@ -495,7 +495,7 @@ export default function SchoolYearManager() {
             <p className="text-sm font-medium">No se encontraron grados activos configurados en el sistema.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {rows.map((r, rowIndex) => {
               const dist = getDistribution(r);
               const isReconfigured =
@@ -507,16 +507,10 @@ export default function SchoolYearManager() {
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: rowIndex * 0.02 }}
-                  className="bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col justify-between hover:shadow-md hover:border-slate-300 transition-all duration-300 relative group/card overflow-hidden min-h-[360px]"
+                  className="bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col justify-between hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 relative group/card overflow-hidden min-h-[360px]"
                 >
-                  {/* Decorative corner accent bar based on Cycle */}
-                  <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${
-                    r.cycle === 'parvularia' ? 'from-pink-400 to-pink-500' :
-                    r.cycle === '1' ? 'from-emerald-400 to-emerald-500' :
-                    r.cycle === '2' ? 'from-blue-400 to-blue-500' :
-                    r.cycle === '3' ? 'from-purple-400 to-purple-500' :
-                    'from-amber-400 to-amber-500'
-                  }`} />
+                  {/* Decorative premium slate/primary gradient top border */}
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/10 via-primary/30 to-primary/10" />
 
                   <div className="space-y-4">
                     {/* Header: Grade & Cycle */}
@@ -525,24 +519,18 @@ export default function SchoolYearManager() {
                         <h4 className="text-base font-black text-slate-900 font-display group-hover/card:text-primary transition-colors">
                           {r.gradeName}
                         </h4>
-                        <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${
-                          r.cycle === 'parvularia' ? 'bg-pink-50 text-pink-700 border-pink-100' :
-                          r.cycle === '1' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                          r.cycle === '2' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                          r.cycle === '3' ? 'bg-purple-50 text-purple-700 border-purple-100' :
-                          'bg-amber-50 text-amber-700 border-amber-100'
-                        }`}>
+                        <span className="inline-flex items-center gap-1 mt-1 px-2.5 py-1 rounded-md text-[10px] font-bold border bg-slate-50 text-slate-500 border-slate-200/60">
                           {CYCLE_LABEL[r.cycle] || r.cycle}
                         </span>
                       </div>
 
                       {r.nextGradeId === null ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-black text-amber-600 bg-amber-50 border border-amber-100 px-2.5 py-1 rounded-full uppercase tracking-wider">
-                          <GraduationCap className="w-3.5 h-3.5" />
+                        <span className="inline-flex items-center gap-1 text-[10px] font-black text-slate-600 bg-slate-50 border border-slate-200/80 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                          <GraduationCap className="w-3.5 h-3.5 text-slate-500" />
                           Egreso
                         </span>
                       ) : (
-                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider bg-slate-100 px-2 py-1 rounded-md">
+                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider bg-slate-100 px-2 py-1 rounded-md">
                           {r.nextGradeName}
                         </span>
                       )}
