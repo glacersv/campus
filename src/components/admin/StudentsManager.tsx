@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { UserCheck, Plus, Edit2, Trash2, Save, X, Search, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
-import { getAllStudents, createStudent, updateStudent, deleteStudent, getAllGrades, getAllSections, getCurrentSchoolYear } from '../../lib/firestore';
+import { getAllStudents, createStudent, updateStudent, deleteStudent, getAllGrades, getAllSections, getCurrentSchoolYear, createPendingApprovalForStudent } from '../../lib/firestore';
 import { Student, Grade, Section } from '../../types';
 import StudentHistory from './StudentHistory';
 
@@ -97,11 +97,13 @@ export default function StudentsManager() {
           sectionId: form.sectionId,
           status: 'EN_CURSO' as const
         };
+        const newStudentId = `s${Date.now()}`;
         await createStudent({
-          id: `s${Date.now()}`,
+          id: newStudentId,
           ...data,
           enrollmentHistory: [newRecord]
         });
+        await createPendingApprovalForStudent(newStudentId);
       }
       toast.success('Alumno guardado con historial');
       setShowForm(false); setEditingId(null); resetForm(); loadData();

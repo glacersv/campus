@@ -98,20 +98,14 @@ export interface RoleConfig {
 
 export const ROLE_LABELS_BASE: Record<string, string> = {
   admin: 'Administrador',
-  docente: 'Docente',
-  alumno: 'Alumno',
 };
 
 export let ROLE_LABELS: Record<string, string> = { ...ROLE_LABELS_BASE };
 
 export function updateRoleLabelsFromFirestore(roles: RoleConfig[]) {
   const dynamicLabels: Record<string, string> = {};
-  const baseKeysLower = new Set(Object.keys(ROLE_LABELS_BASE).map(k => k.toLowerCase()));
   for (const role of roles) {
-    const roleIdLower = role.id.toLowerCase();
-    if (!baseKeysLower.has(roleIdLower)) {
-      dynamicLabels[role.id] = role.name;
-    }
+    dynamicLabels[role.id] = role.name;
   }
   ROLE_LABELS = { ...ROLE_LABELS_BASE, ...dynamicLabels };
 }

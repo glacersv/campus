@@ -25,7 +25,7 @@ export default function Login() {
           return;
         }
         await signUp(email, password, displayName);
-        toast.success('Cuenta creada exitosamente. Ahora puedes iniciar sesión.');
+        toast.success('Solicitud enviada. Espera la aprobación del administrador.');
         setIsSignUp(false);
       } else {
         await signIn(email, password);

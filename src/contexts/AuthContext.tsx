@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { User as FirebaseUser, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { auth, functions } from '../firebase';
-import { getUser, createUser, getRole, isEmailPreAuthorized, getStudentByCarnet, createApprovalRequest, createNewUserNotification, updateUser, getTeacherByEmail, getTeacher, createUserForTeacher, createUserForStudent, getStudent, updateApprovalRequest, getAllRoles } from '../lib/firestore';
+import { getUser, createUser, getRole, isEmailPreAuthorized, getStudentByCarnet, createApprovalRequest, createNewUserNotification, updateUser, getTeacherByEmail, getTeacher, createUserForTeacher, createUserForStudent, getStudent, updateApprovalRequest, getAllRoles, getUserByEmail } from '../lib/firestore';
 import { User, UserRole, SystemModuleId, RoleConfig, ApprovalRequest } from '../types';
 import { updateRoleLabelsFromFirestore } from '../types';
 
@@ -73,106 +73,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, displayName: string, role: UserRole = 'docente') => {
-    // Restrict registration to institutional email domain
+  const signUp = async (email: string, password: string, displayName: string) => {
     if (!email.endsWith('@salesianosanjose.edu.sv')) {
       throw new Error('Solo se permiten correos institucionales (@salesianosanjose.edu.sv)');
     }
 
-    // Check pre-authorization against teacher, student or admin emails
-    const preAuthorized = await isEmailPreAuthorized(email);
-    if (!preAuthorized) {
-      throw new Error('Este correo institucional no está pre-autorizado por la administración. Por favor, solicita a tu coordinador que registre tu correo antes de crear tu cuenta.');
+    const existingUser = await getUserByEmail(email);
+    if (existingUser) {
+      throw new Error('Este correo ya está registrado.');
     }
 
-    // Import on-the-fly dynamically to avoid circular dependencies
-    const { getTeacherByEmail } = await import('../lib/firestore');
-
-    // Detect if they are a super-admin override
-    const superAdmins = ['admin@salesianosanjose.edu.sv', 'jose.marquez@salesianosanjose.edu.sv'];
-    const isSuperAdmin = superAdmins.includes(email.toLowerCase());
-
-    // Detect if they are a pre-registered Student (auto-approve)
-    const carnet = email.split('@')[0];
-    const student = await getStudentByCarnet(carnet);
-
-    let detectedRole: UserRole | null = null;
-    let teacherId: string | undefined = undefined;
-    let studentId: string | undefined = undefined;
-    let userStatus: 'pending' | 'approved' = 'pending';
-    let approvalRequest: Omit<ApprovalRequest, 'createdAt'> | null = null;
-
-    if (isSuperAdmin) {
-      detectedRole = 'admin';
-      userStatus = 'approved';
-    } else if (student) {
-      // AUTO-APPROVE: alumno existe en el sistema
-      detectedRole = 'alumno';
-      studentId = student.id;
-      userStatus = 'approved';
-    } else {
-      // Check if they are a pre-registered Teacher
-      const teacher = await getTeacherByEmail(email);
-      if (teacher) {
-        detectedRole = 'docente';
-        teacherId = teacher.id;
-        userStatus = 'pending'; // Docentes necesitan aprobación manual
-        approvalRequest = {
-          id: `temp_${Date.now()}`,
-          userId: `temp_${Date.now()}`,
-          email,
-          displayName,
-          requestedRole: 'docente',
-          teacherId: teacher.id,
-          teacherName: teacher.name,
-          status: 'pending',
-        };
-      } else {
-        // No pre-registered profile found
-        throw new Error('No se encontró un perfil pre-registrado para este correo. Solicita a la administración que registre tu perfil primero.');
-      }
-    }
-
-    // First create the user with Firebase Auth
     const result = await createUserWithEmailAndPassword(auth, email, password);
     const uid = result.user.uid;
 
-    // Create the user profile
     const userData: Omit<User, 'createdAt' | 'updatedAt'> = {
       uid,
       email,
       displayName,
-      role: detectedRole,
-      status: userStatus,
-      teacherId,
-      studentId,
-      requestedRole: detectedRole || undefined,
+      role: null,
+      status: 'pending',
+      requestedRole: null,
     };
     await createUser(userData);
 
-    // If pending, create approval request for admin notification
-    if (approvalRequest && userStatus === 'pending') {
-      await createApprovalRequest({
-        ...approvalRequest,
-      });
-    }
-
-    // If auto-approved (student), create notification for admin
-    if (userStatus === 'approved' && student) {
-      await createNewUserNotification({
-        id: `notif_${Date.now()}_${uid}`,
-        userId: uid,
-        email,
-        displayName,
-        role: 'alumno',
-        studentId: student.id,
-        studentName: student.name,
-        gradeName: student.gradeId,
-        sectionName: student.sectionId,
-        password,
-        status: 'new',
-      });
-    }
+    await createApprovalRequest({
+      id: `approval_${Date.now()}_${uid}`,
+      userId: uid,
+      email,
+      displayName,
+      requestedRole: null,
+      status: 'pending',
+    });
   };
 
   const signOut = async () => {

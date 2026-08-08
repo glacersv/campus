@@ -378,6 +378,27 @@ export async function createStudent(data: Omit<Student, 'createdAt' | 'updatedAt
   
   const ref = doc(db, STUDENTS_COLLECTION, data.id);
   await setDoc(ref, { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+
+  // Auto-create approval request for pre-registered students
+  const carnet = data.carnet || data.id;
+  const email = carnet.includes('@') ? carnet : `${carnet}@salesianosanjose.edu.sv`;
+  
+  try {
+    await createApprovalRequest({
+      id: `approval_${Date.now()}_${data.id}`,
+      userId: `temp_${Date.now()}`,
+      email,
+      displayName: data.name,
+      requestedRole: 'alumno',
+      studentId: data.id,
+      studentName: data.name,
+      gradeId: data.gradeId,
+      sectionId: data.sectionId,
+      status: 'pending',
+    });
+  } catch (error) {
+    console.error('Error creating approval request for student:', error);
+  }
 }
 
 export async function createStudentWithTimestamps(data: Omit<Student, 'createdAt' | 'updatedAt'>, createdAt: Timestamp, updatedAt: Timestamp): Promise<void> {
@@ -1175,6 +1196,27 @@ export async function approveUser(uid: string, role: UserRole): Promise<void> {
       status: 'new',
     });
   }
+}
+
+export async function createPendingApprovalForStudent(studentId: string): Promise<void> {
+  const student = await getStudent(studentId);
+  if (!student) return;
+
+  const carnet = student.carnet || student.id;
+  const email = carnet.includes('@') ? carnet : `${carnet}@salesianosanjose.edu.sv`;
+
+  await createApprovalRequest({
+    id: `approval_${Date.now()}_${studentId}`,
+    userId: `temp_${Date.now()}`,
+    email,
+    displayName: student.name,
+    requestedRole: 'alumno',
+    studentId: student.id,
+    studentName: student.name,
+    gradeId: student.gradeId,
+    sectionId: student.sectionId,
+    status: 'pending',
+  });
 }
 
 export async function rejectUser(uid: string, reason?: string): Promise<void> {
