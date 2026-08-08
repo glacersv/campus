@@ -166,7 +166,7 @@ export default function RolesManager() {
               <span className="text-[10px] font-semibold text-tertiary uppercase">Usuarios:</span>
               <span className="text-xs font-bold text-slate-700">{userCount[role.id] || 0}</span>
               {role.isSystem && (
-                <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-semibold">Sistema</span>
+                <span className="text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded-full font-semibold">Sistema</span>
               )}
             </div>
 
