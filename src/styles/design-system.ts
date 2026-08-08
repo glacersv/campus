@@ -14,8 +14,7 @@ export const DS = {
   // ==================== HEADER DE MÓDULO ====================
   moduleHeader: 'flex items-center justify-between',
   moduleTitleGroup: 'flex items-center gap-3',
-  moduleIcon: 'w-10 h-10 rounded-xl flex items-center justify-center bg-slate-100 text-slate-600',
-  moduleIconNeutral: 'w-10 h-10 rounded-xl flex items-center justify-center bg-slate-100 text-slate-600',
+  moduleIcon: 'w-10 h-10 rounded-xl flex items-center justify-center',
   moduleIconSize: 'w-5 h-5',
   moduleTitle: 'text-xl font-bold text-slate-900',
   moduleSubtitle: 'text-sm text-slate-500 mt-1',

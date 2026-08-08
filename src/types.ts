@@ -2,68 +2,27 @@ import { Timestamp } from 'firebase/firestore';
 
 // ==================== USER & AUTH ====================
 
-export type UserRole = 'admin' | 'docente' | 'alumno' | (string & {});
-
-export type UserStatus = 'pending' | 'approved' | 'rejected';
+export type UserRole =
+  | 'admin'
+  | 'docente'
+  | 'alumno'
+  | 'coordinacion'
+  | 'coordinacion_academica'
+  | 'coordinacion_convivencia'
+  | 'coordinacion_primaria'
+  | 'coordinacion_parvularia'
+  | 'registro_academico'
+  | 'enfermeria'
+  | 'psicopedagogico';
 
 export interface User {
   uid: string;
   email: string;
   displayName: string;
-  role: UserRole | null;
-  status: UserStatus;
-  teacherId?: string;
-  studentId?: string;
-  requestedRole?: UserRole;
-  rejectionReason?: string;
-  createdAt?: Timestamp;
-  updatedAt?: Timestamp;
-  microsoftId?: string;
-}
-
-// ==================== APPROVAL & ONBOARDING ====================
-
-export interface ApprovalRequest {
-  id: string;
-  userId: string;
-  email: string;
-  displayName: string;
-  requestedRole: UserRole | null;
-  studentId?: string;
-  studentName?: string;
-  gradeId?: string;
-  sectionId?: string;
-  teacherId?: string;
-  teacherName?: string;
-  status: 'pending' | 'approved' | 'rejected';
-  reviewedBy?: string;
-  reviewedAt?: Timestamp;
-  rejectionReason?: string;
-  createdAt: Timestamp;
-}
-
-export interface NewUserNotification {
-  id: string;
-  userId: string;
-  email: string;
-  displayName: string;
   role: UserRole;
-  studentId?: string;
-  studentName?: string;
-  gradeName?: string;
-  sectionName?: string;
   teacherId?: string;
-  teacherName?: string;
-  password: string;
-  status: 'new' | 'notified';
-  createdAt: Timestamp;
-  notifiedAt?: Timestamp;
-}
-
-export interface CredentialShareOptions {
-  email: boolean;
-  pdf: boolean;
-  clipboard: boolean;
+  createdAt?: Timestamp;
+  microsoftId?: string;
 }
 
 // ==================== ROLES & PERMISSIONS ====================
@@ -96,19 +55,19 @@ export interface RoleConfig {
   createdAt?: Timestamp;
 }
 
-export const ROLE_LABELS_BASE: Record<string, string> = {
+export const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'Administrador',
+  docente: 'Docente',
+  alumno: 'Alumno',
+  coordinacion: 'Coordinación',
+  coordinacion_academica: 'Coord. Académica',
+  coordinacion_convivencia: 'Coord. Convivencia',
+  coordinacion_primaria: 'Coord. Primaria',
+  coordinacion_parvularia: 'Coord. Parvularia',
+  registro_academico: 'Registro Académico',
+  enfermeria: 'Enfermería',
+  psicopedagogico: 'Psicopedagógico',
 };
-
-export let ROLE_LABELS: Record<string, string> = { ...ROLE_LABELS_BASE };
-
-export function updateRoleLabelsFromFirestore(roles: RoleConfig[]) {
-  const dynamicLabels: Record<string, string> = {};
-  for (const role of roles) {
-    dynamicLabels[role.id] = role.name;
-  }
-  ROLE_LABELS = { ...ROLE_LABELS_BASE, ...dynamicLabels };
-}
 
 // ==================== ACADEMIC ENTITIES ====================
 
@@ -156,7 +115,7 @@ export interface Building {
   id: string;
   name: string;
   code: string;
-  color: string;
+  color?: string;
   description?: string;
   createdAt?: Timestamp;
 }
@@ -185,11 +144,8 @@ export interface Subject {
   name: string;
   description?: string;
   cycle?: Cycle;
-  gradeId?: string;
   status?: 'ACTIVO' | 'INACTIVO';
   weeklyHours?: number;
-  type?: 'MINED' | 'INSTITUCIONAL';
-  parentSubjectId?: string;
   createdAt?: Timestamp;
 }
 

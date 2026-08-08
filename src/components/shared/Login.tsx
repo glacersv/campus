@@ -25,27 +25,17 @@ export default function Login() {
           return;
         }
         await signUp(email, password, displayName);
-        toast.success('Solicitud enviada. Espera la aprobación del administrador.');
-        setIsSignUp(false);
       } else {
         await signIn(email, password);
       }
     } catch (err: any) {
-      console.error('Auth error full:', err);
-      console.error('Auth error code:', err.code);
-      console.error('Auth error message:', err.message);
+      console.error('Auth error:', err.code);
       if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         toast.error('Correo o contraseña incorrectos.');
       } else if (err.code === 'auth/email-already-in-use') toast.error('Este correo ya está registrado.');
       else if (err.code === 'auth/weak-password') toast.error('La contraseña debe tener al menos 6 caracteres.');
       else if (err.code === 'auth/invalid-email') toast.error('El correo electrónico no es válido.');
-      else if (err.message?.includes('pendiente de aprobación')) {
-        toast.error(err.message);
-      } else if (err.message?.includes('rechazada')) {
-        toast.error(err.message);
-      } else {
-        toast.error(err.message || 'Error al procesar la solicitud. Intente nuevamente.');
-      }
+      else toast.error('Error al iniciar sesión. Intente nuevamente.');
     } finally { setLoading(false); }
   };
 
