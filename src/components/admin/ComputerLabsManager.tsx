@@ -16,11 +16,7 @@ import {
   GraduationCap,
   Cpu,
   BarChart3,
-  MapPin,
-  Palette,
-  Languages,
-  FlaskConical,
-  DoorOpen
+  MapPin
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -405,7 +401,6 @@ export default function ComputerLabsManager() {
                   </button>
                 </th>
                 <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Nombre</th>
-                <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Tipo</th>
                 <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Edificio</th>
                 <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Capacidad</th>
                 <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Equipos</th>

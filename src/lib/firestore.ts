@@ -14,7 +14,7 @@ import {
   addDoc
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { User, Grade, Section, Subject, Teacher, Student, BaccalaureateTypeDoc, Building, ComputerLab, RoleConfig, UserRole } from '../types';
+import { User, Grade, Section, Subject, Teacher, Student, BaccalaureateTypeDoc, Building, ComputerLab, RoleConfig, UserRole, UserStatus, ApprovalRequest, NewUserNotification } from '../types';
 import {
   validateUser,
   validateGrade,
@@ -28,6 +28,7 @@ import {
   validateRoleConfig,
   validate
 } from './validation';
+import { getNextGradeId, distributeStudents, isActiveStudent, uniqueNames } from './migration';
 
 // ==================== COLLECTIONS ====================
 
@@ -42,6 +43,14 @@ const BUILDINGS_COLLECTION = 'buildings';
 const COMPUTER_LABS_COLLECTION = 'computer_labs';
 const SCHOOL_YEAR_COLLECTION = 'school_year_status';
 const ROLES_COLLECTION = 'roles';
+const APPROVAL_REQUESTS_COLLECTION = 'approval_requests';
+const NEW_USER_NOTIFICATIONS_COLLECTION = 'new_user_notifications';
+
+export function sanitizePayload<T extends Record<string, any>>(obj: T): T {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== undefined)
+  ) as T;
+}
 
 // ==================== USERS ====================
 
@@ -50,7 +59,8 @@ export async function createUser(userData: Omit<User, 'createdAt'>): Promise<voi
   validate(userData, validateUser);
   
   const userRef = doc(db, USERS_COLLECTION, userData.uid);
-  await setDoc(userRef, { ...userData, createdAt: serverTimestamp() });
+  const cleanData = sanitizePayload(userData);
+  await setDoc(userRef, { ...cleanData, createdAt: serverTimestamp() });
 }
 
 export async function getUser(uid: string): Promise<User | null> {
@@ -62,7 +72,14 @@ export async function getUser(uid: string): Promise<User | null> {
 
 export async function updateUser(uid: string, data: Partial<User>): Promise<void> {
   const userRef = doc(db, USERS_COLLECTION, uid);
-  await updateDoc(userRef, data);
+  const cleanData: Record<string, unknown> = {};
+  for (const key of Object.keys(data)) {
+    const value = (data as any)[key];
+    if (value !== undefined) {
+      cleanData[key] = value;
+    }
+  }
+  await updateDoc(userRef, cleanData);
 }
 
 export async function updateUserRole(uid: string, role: UserRole): Promise<void> {
@@ -373,6 +390,27 @@ export async function createStudent(data: Omit<Student, 'createdAt' | 'updatedAt
   
   const ref = doc(db, STUDENTS_COLLECTION, data.id);
   await setDoc(ref, { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+
+  // Auto-create approval request for pre-registered students
+  const carnet = data.carnet || data.id;
+  const email = carnet.includes('@') ? carnet : `${carnet}@salesianosanjose.edu.sv`;
+  
+  try {
+    await createApprovalRequest({
+      id: `approval_${Date.now()}_${data.id}`,
+      userId: `temp_${Date.now()}`,
+      email,
+      displayName: data.name,
+      requestedRole: 'alumno',
+      studentId: data.id,
+      studentName: data.name,
+      gradeId: data.gradeId,
+      sectionId: data.sectionId,
+      status: 'pending',
+    });
+  } catch (error) {
+    console.error('Error creating approval request for student:', error);
+  }
 }
 
 export async function createStudentWithTimestamps(data: Omit<Student, 'createdAt' | 'updatedAt'>, createdAt: Timestamp, updatedAt: Timestamp): Promise<void> {
@@ -503,7 +541,6 @@ export async function fixAllStudentHistories(): Promise<void> {
   await logActivity('fix_all_student_histories', { timestamp: new Date().toISOString() });
   const currentStatus = await getCurrentSchoolYear();
   const currentYear = currentStatus ?? new Date().getFullYear();
-  const baseYear = 2025;
 
   const gradesSnap = await getDocs(collection(db, GRADES_COLLECTION));
   const studentsSnap = await getDocs(collection(db, STUDENTS_COLLECTION));
@@ -517,46 +554,85 @@ export async function fixAllStudentHistories(): Promise<void> {
     const data = d.data() as Student;
     const ref = d.ref;
     const carnet = String(data.carnet || '');
-    const entryYear = parseInt(carnet.slice(0, 4), 10);
-    if (!Number.isFinite(entryYear) || entryYear < 1900 || entryYear > baseYear) return;
+
+    // Obtener año de ingreso de s.enrollmentYear o del carnet (primeros 4 caracteres)
+    let entryYear = data.enrollmentYear || parseInt(carnet.slice(0, 4), 10);
+    if (!Number.isFinite(entryYear) || entryYear < 1900 || entryYear > currentYear) {
+      entryYear = currentYear;
+    }
 
     const currentGradeId = String(data.gradeId || '');
     const numStr = currentGradeId.replace(/[^0-9]/g, '');
-    const suffix = currentGradeId.replace(/[0-9]/g, '');
-    const baseGradeNum = parseInt(numStr, 10);
-    if (!Number.isFinite(baseGradeNum) || baseGradeNum < 1) return;
+    const suffix = currentGradeId.toLowerCase().includes('t') ? 't' : currentGradeId.toLowerCase().includes('g') ? 'g' : '';
 
-    const sectionId = data.sectionId || `${suffix.toLowerCase()}a`;
+    let currentGradeNum: number;
+    if (currentGradeId === 'k4') {
+      currentGradeNum = -1;
+    } else if (currentGradeId === 'k5') {
+      currentGradeNum = 0;
+    } else if (currentGradeId === 'k6') {
+      currentGradeNum = 0; // En la progresión simplificada, tratamos K5/K6 equivalentemente
+    } else {
+      currentGradeNum = parseInt(numStr, 10);
+    }
+
+    if (Number.isNaN(currentGradeNum)) return;
+
+    // Ajustar año de ingreso para evitar repeticiones de K4 si el carnet indica el año de nacimiento
+    const logicalMinYear = currentYear - (currentGradeNum - (-1));
+    if (entryYear < logicalMinYear) {
+      entryYear = logicalMinYear;
+    }
+
+    const sectionId = data.sectionId || 'A';
 
     const newHistory: Record<string, unknown>[] = [];
 
     for (let year = entryYear; year <= currentYear; year++) {
-      let gradeNum: number;
-      if (year < baseYear) {
-        gradeNum = baseGradeNum - (baseYear - year);
-      } else if (year === baseYear) {
-        gradeNum = baseGradeNum;
-      } else {
-        gradeNum = baseGradeNum + (year - baseYear);
-      }
-      if (gradeNum < 1) continue;
+      const diffYears = currentYear - year;
+      const targetGradeNum = currentGradeNum - diffYears;
 
-      const gradeForYear = gradeNum <= 9 ? String(gradeNum) : `${gradeNum}${suffix}`;
+      let gradeForYear = '';
+      if (targetGradeNum === -1) {
+        gradeForYear = 'k4';
+      } else if (targetGradeNum === 0) {
+        gradeForYear = 'k5';
+      } else if (targetGradeNum < -1) {
+        gradeForYear = 'k4'; // límite inferior
+      } else {
+        gradeForYear = targetGradeNum <= 9 ? String(targetGradeNum) : `${targetGradeNum}${suffix}`;
+      }
+
       const gradeData = gradeMap.get(gradeForYear);
+
+      // La sección para el año en curso o anteriores usa la sección lógica correspondiente
+      // Extraer la letra de la sección actual de manera segura
+      const sectionLetter = sectionId.includes('-')
+        ? sectionId.split('-').pop()?.toUpperCase() || 'A'
+        : sectionId.toUpperCase();
+      const cleanLetter = sectionLetter.replace(/[0-9]/g, '').replace('G', '').replace('T', '').toLowerCase();
+
+      const histSectionId = `${year}-${gradeForYear}-${cleanLetter}`;
+
       newHistory.push({
         year,
         gradeId: gradeForYear,
-        gradeName: gradeData?.name || gradeForYear,
-        sectionId: year === currentYear ? sectionId : `${gradeNum}${suffix.toLowerCase()}a`,
+        gradeName: gradeData?.name || `${gradeForYear}° Grado`,
+        sectionId: histSectionId,
         status: year === currentYear ? 'EN_CURSO' : 'FINALIZADO'
       });
     }
 
+    // Obtener los datos del grado y la sección correspondientes al año en curso para sincronizar la tabla
+    const latestRecord = newHistory.find(r => r.year === currentYear);
+    const updatedGradeId = latestRecord ? latestRecord.gradeId as string : currentGradeId;
+    const updatedSectionId = latestRecord ? latestRecord.sectionId as string : sectionId;
+
     updates.push(
       updateDoc(ref, {
         enrollmentHistory: newHistory,
-        gradeId: currentGradeId,
-        sectionId,
+        gradeId: updatedGradeId,
+        sectionId: updatedSectionId,
         enrollmentYear: entryYear,
         status: 'ACTIVO',
         updatedAt: serverTimestamp()
@@ -567,7 +643,12 @@ export async function fixAllStudentHistories(): Promise<void> {
   await Promise.all(updates);
 }
 
-export async function startSchoolYear(year: number): Promise<void> {
+export interface YearSectionConfig {
+  gradeId: string;
+  sectionNames: string[];
+}
+
+export async function startSchoolYear(year: number, sectionConfig?: YearSectionConfig[]): Promise<void> {
   await logActivity('start_school_year', { year });
   const yearStatusRef = doc(db, SCHOOL_YEAR_COLLECTION, 'current');
   const yearStatusSnap = await getDoc(yearStatusRef);
@@ -580,56 +661,121 @@ export async function startSchoolYear(year: number): Promise<void> {
   const gradesSnap = await getDocs(collection(db, GRADES_COLLECTION));
   const sectionsSnap = await getDocs(collection(db, SECTIONS_COLLECTION));
   const studentsSnap = await getDocs(collection(db, STUDENTS_COLLECTION));
-  const studentUpdates: Promise<void>[] = [];
+  const grades = gradesSnap.docs.map(d => ({ id: d.id, ...d.data() } as Grade));
+  const sections = sectionsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Section));
+  const baccalaureateTypes = await getAllBaccalaureateTypes();
 
-  studentsSnap.docs.forEach((d) => {
-    const data = d.data() as Student;
-    const ref = d.ref;
-    const history = data.enrollmentHistory || [];
+  // Config de secciones por grado: si no se provee, conserva las letras del año anterior
+  const configByGrade = new Map<string, string[]>();
+  if (sectionConfig && sectionConfig.length > 0) {
+    sectionConfig.forEach(c => configByGrade.set(c.gradeId, c.sectionNames));
+  } else {
+    grades.forEach(g => {
+      const prevSections = sections.filter(s => s.gradeId === g.id && (s.schoolYear === previousYear || !s.schoolYear));
+      const names = uniqueNames(prevSections);
+      if (names.length > 0) configByGrade.set(g.id, names);
+    });
+  }
 
-    if (data.status === 'ACTIVO') {
-      const lastYear = history.length > 0 ? history[history.length - 1].year : previousYear;
-      const updatedHistory = history.map(record =>
-        record.year === lastYear ? { ...record, status: 'FINALIZADO' as const } : record
+  // 1. Crea las secciones del nuevo año según la configuración
+  const sectionPromises: Promise<void>[] = [];
+  configByGrade.forEach((names, gradeId) => {
+    names.forEach(name => {
+      const cleanName = name.trim().toUpperCase();
+      const newSecId = `${year}-${gradeId}-${cleanName.toLowerCase()}`;
+      const prevSection = sections.find(s =>
+        s.gradeId === gradeId &&
+        s.name.trim().toUpperCase() === cleanName &&
+        (s.schoolYear === previousYear || !s.schoolYear)
       );
+      const newSecRef = doc(db, SECTIONS_COLLECTION, newSecId);
+      sectionPromises.push(
+        setDoc(newSecRef, {
+          id: newSecId,
+          name: cleanName,
+          gradeId,
+          schoolYear: year,
+          status: 'ACTIVO',
+          ...(prevSection?.capacity ? { capacity: prevSection.capacity } : {}),
+          ...(prevSection?.buildingId ? { buildingId: prevSection.buildingId } : {}),
+          ...(prevSection?.computerLabId ? { computerLabId: prevSection.computerLabId } : {}),
+          createdAt: serverTimestamp()
+        })
+      );
+    });
+  });
+  await Promise.all(sectionPromises);
 
-      const numStr = String(data.gradeId).replace(/[^0-9]/g, '');
-      const suffix = String(data.gradeId).replace(/[0-9]/g, '');
-      const num = parseInt(numStr, 10);
-      const nextNum = Number.isNaN(num) ? num : num + 1;
-      const nextGradeId = !Number.isNaN(num) ? `${nextNum}${suffix}` : data.gradeId;
+  // 2. Promueve a los alumnos y actualiza su historial
+  const students = studentsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Student));
+  const activeStudents = students.filter(s => isActiveStudent(s));
 
-      const newRecord = {
-        year,
-        gradeId: nextGradeId,
-        sectionId: data.sectionId,
-        status: 'EN_CURSO' as const
-      };
+  // Agrupa por grado de destino para distribuir de forma consistente con la vista previa
+  const destinationGroups: Record<string, Student[]> = {};
+  activeStudents.forEach(s => {
+    const dest = getNextGradeId(s.gradeId, grades, baccalaureateTypes);
+    if (!dest) return;
+    (destinationGroups[dest] = destinationGroups[dest] || []).push(s);
+  });
 
-      const fullHistory = [...updatedHistory, newRecord];
-      if (fullHistory.filter(r => r.year === year).length > 1) return;
+  const assignedSection: Record<string, string> = {};
+  Object.entries(destinationGroups).forEach(([dest, group]) => {
+    const names = configByGrade.get(dest) || [];
+    const dist = distributeStudents(group, names);
+    group.forEach(s => {
+      const letter = dist.assigned[s.id];
+      assignedSection[s.id] = letter ? `${year}-${dest}-${letter.toLowerCase()}` : '';
+    });
+  });
 
+  const studentUpdates: Promise<void>[] = [];
+  activeStudents.forEach(s => {
+    const ref = doc(db, STUDENTS_COLLECTION, s.id);
+    const history = s.enrollmentHistory || [];
+    const dest = getNextGradeId(s.gradeId, grades, baccalaureateTypes);
+    const updatedHistory = history.map(record =>
+      record.year === previousYear ? { ...record, status: 'FINALIZADO' as const } : record
+    );
+
+    // Graduación: el alumno egresa y no continúa al siguiente grado
+    if (!dest) {
       studentUpdates.push(
         updateDoc(ref, {
-          enrollmentHistory: fullHistory,
-          gradeId: nextGradeId,
-          sectionId: data.sectionId,
-          enrollmentYear: year,
-          status: 'ACTIVO',
+          enrollmentHistory: updatedHistory,
+          status: 'GRADUADO',
           updatedAt: serverTimestamp()
         })
       );
+      return;
     }
-  });
 
+    const newRecord = {
+      year,
+      gradeId: dest,
+      sectionId: assignedSection[s.id] || `${year}-${dest}-a`,
+      status: 'EN_CURSO' as const
+    };
+
+    const fullHistory = [...updatedHistory, newRecord];
+    if (fullHistory.filter(r => r.year === year).length > 1) return;
+
+    studentUpdates.push(
+      updateDoc(ref, {
+        enrollmentHistory: fullHistory,
+        gradeId: dest,
+        sectionId: newRecord.sectionId,
+        status: 'ACTIVO',
+        updatedAt: serverTimestamp()
+      })
+    );
+  });
   await Promise.all(studentUpdates);
 
+  // 3. Actualiza el año lectivo de los grados
   const gradeUpdates = gradesSnap.docs.map(d => updateDoc(d.ref, { schoolYear: year, status: 'ACTIVO', updatedAt: serverTimestamp() }));
   await Promise.all(gradeUpdates);
 
-  const sectionUpdates = sectionsSnap.docs.map(d => updateDoc(d.ref, { schoolYear: year, status: 'ACTIVO', updatedAt: serverTimestamp() }));
-  await Promise.all(sectionUpdates);
-
+  // 4. Guarda el estado de inicio de año
   await setDoc(yearStatusRef, { year, startedAt: serverTimestamp() });
 }
 
@@ -642,16 +788,6 @@ export async function seedInitialData(): Promise<void> {
   // Roles
   const rolesData: Omit<RoleConfig, 'createdAt'>[] = [
     { id: 'admin', name: 'Administrador', description: 'Control total del sistema', permissions: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'], isSystem: true },
-    { id: 'docente', name: 'Docente', description: 'Profesor de aula', permissions: ['formacion', 'proyectos'], isSystem: true },
-    { id: 'alumno', name: 'Alumno', description: 'Estudiante del colegio', permissions: ['formacion', 'proyectos'], isSystem: true },
-    { id: 'coordinacion', name: 'Coordinación', description: 'Coordinación académica general', permissions: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'], isSystem: true },
-    { id: 'coordinacion_academica', name: 'Coord. Académica', description: 'Coordinación de áreas académicas y horarios', permissions: ['notas', 'horario', 'clase'], isSystem: true },
-    { id: 'coordinacion_convivencia', name: 'Coord. Convivencia', description: 'Coordinación de formación y disciplina', permissions: ['formacion', 'notas'], isSystem: true },
-    { id: 'coordinacion_primaria', name: 'Coord. Primaria', description: 'Coordinación de grados 1° - 6°', permissions: ['formacion', 'notas', 'horario'], isSystem: true },
-    { id: 'coordinacion_parvularia', name: 'Coord. Parvularia', description: 'Coordinación de grados K4 - K6', permissions: ['formacion'], isSystem: true },
-    { id: 'registro_academico', name: 'Registro Académico', description: 'Gestión de registros y matrícula', permissions: ['notas', 'horario'], isSystem: true },
-    { id: 'enfermeria', name: 'Enfermería', description: 'Control de salud estudiantil', permissions: ['formacion', 'avisos'], isSystem: true },
-    { id: 'psicopedagogico', name: 'Psicopedagógico', description: 'Apoyo psicológico y pedagógico', permissions: ['formacion', 'notas', 'avisos'], isSystem: true },
   ];
   for (const r of rolesData) await createRole(r);
 
@@ -820,14 +956,44 @@ export async function seedInitialData(): Promise<void> {
 
 // ==================== SECURITY & AUDIT LOGS ====================
 
-export async function isEmailPreAuthorized(email: string): Promise<boolean> {
-  const superAdmin = 'jose.marquez@salesianosanjose.edu.sv';
-  if (email.toLowerCase() === superAdmin.toLowerCase()) return true;
-
-  // Check if a teacher document exists with this email
+export async function getTeacherByEmail(email: string): Promise<Teacher | null> {
   const q = query(collection(db, TEACHERS_COLLECTION), where('email', '==', email));
   const snap = await getDocs(q);
-  return !snap.empty;
+  if (snap.empty) {
+    const all = await getDocs(collection(db, TEACHERS_COLLECTION));
+    const found = all.docs.find(d => (d.data().email || '').toLowerCase() === email.toLowerCase());
+    return found ? { id: found.id, ...found.data() } as Teacher : null;
+  }
+  const d = snap.docs[0];
+  return { id: d.id, ...d.data() } as Teacher;
+}
+
+export async function getStudentByCarnet(carnet: string): Promise<Student | null> {
+  const q = query(collection(db, STUDENTS_COLLECTION), where('carnet', '==', carnet.toUpperCase()));
+  const snap = await getDocs(q);
+  if (snap.empty) {
+    const all = await getDocs(collection(db, STUDENTS_COLLECTION));
+    const found = all.docs.find(d => (d.data().carnet || '').toUpperCase() === carnet.toUpperCase());
+    return found ? { id: found.id, ...found.data() } as Student : null;
+  }
+  const d = snap.docs[0];
+  return { id: d.id, ...d.data() } as Student;
+}
+
+export async function isEmailPreAuthorized(email: string): Promise<boolean> {
+  const superAdmins = ['admin@salesianosanjose.edu.sv', 'jose.marquez@salesianosanjose.edu.sv'];
+  if (superAdmins.includes(email.toLowerCase())) return true;
+
+  // Check teachers
+  const teacher = await getTeacherByEmail(email);
+  if (teacher) return true;
+
+  // Check students
+  const prefix = email.split('@')[0];
+  const student = await getStudentByCarnet(prefix);
+  if (student) return true;
+
+  return false;
 }
 
 export async function logActivity(action: string, details: Record<string, any>): Promise<void> {
@@ -845,4 +1011,252 @@ export async function logActivity(action: string, details: Record<string, any>):
   } catch (err) {
     console.error('Error in logActivity:', err);
   }
+}
+
+// ==================== APPROVAL REQUESTS ====================
+
+export async function createApprovalRequest(data: Omit<ApprovalRequest, 'createdAt'>): Promise<void> {
+  const ref = doc(db, APPROVAL_REQUESTS_COLLECTION, data.id);
+  await setDoc(ref, { ...data, createdAt: serverTimestamp() });
+}
+
+export async function getPendingApprovalRequests(): Promise<ApprovalRequest[]> {
+  const q = query(collection(db, APPROVAL_REQUESTS_COLLECTION), where('status', '==', 'pending'));
+  const snapshot = await getDocs(q);
+  const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ApprovalRequest));
+  return items.sort((a, b) => {
+    const tA = a.createdAt?.toMillis() || 0;
+    const tB = b.createdAt?.toMillis() || 0;
+    return tA - tB;
+  });
+}
+
+export async function getAllApprovalRequests(): Promise<ApprovalRequest[]> {
+  const q = query(collection(db, APPROVAL_REQUESTS_COLLECTION), orderBy('createdAt', 'desc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ApprovalRequest));
+}
+
+export async function updateApprovalRequest(id: string, data: Partial<ApprovalRequest>): Promise<void> {
+  const ref = doc(db, APPROVAL_REQUESTS_COLLECTION, id);
+  await updateDoc(ref, data);
+}
+
+export async function updateApprovalRequestByUserId(userId: string, data: Partial<ApprovalRequest>): Promise<void> {
+  const q = query(collection(db, APPROVAL_REQUESTS_COLLECTION), where('userId', '==', userId));
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) {
+    const ref = doc(db, APPROVAL_REQUESTS_COLLECTION, userId);
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      await updateDoc(ref, data);
+    }
+    return;
+  }
+  const ref = doc(db, APPROVAL_REQUESTS_COLLECTION, snapshot.docs[0].id);
+  await updateDoc(ref, data);
+}
+
+// ==================== NEW USER NOTIFICATIONS ====================
+
+export async function createNewUserNotification(data: Omit<NewUserNotification, 'createdAt'>): Promise<void> {
+  const ref = doc(db, NEW_USER_NOTIFICATIONS_COLLECTION, data.id);
+  await setDoc(ref, { ...data, createdAt: serverTimestamp() });
+}
+
+export async function getNewUserNotifications(): Promise<NewUserNotification[]> {
+  const q = query(collection(db, NEW_USER_NOTIFICATIONS_COLLECTION), where('status', '==', 'new'));
+  const snapshot = await getDocs(q);
+  const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as NewUserNotification));
+  return items.sort((a, b) => {
+    const tA = a.createdAt?.toMillis() || 0;
+    const tB = b.createdAt?.toMillis() || 0;
+    return tB - tA;
+  });
+}
+
+export async function getAllNewUserNotifications(): Promise<NewUserNotification[]> {
+  const q = query(collection(db, NEW_USER_NOTIFICATIONS_COLLECTION), orderBy('createdAt', 'desc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as NewUserNotification));
+}
+
+export async function markNotificationAsNotified(notificationId: string): Promise<void> {
+  const ref = doc(db, NEW_USER_NOTIFICATIONS_COLLECTION, notificationId);
+  await updateDoc(ref, { status: 'notified', notifiedAt: serverTimestamp() });
+}
+
+// ==================== AUTO-PROVISIONING ====================
+
+export async function createUserForTeacher(uid: string, email: string, displayName: string, teacherId?: string): Promise<void> {
+  if (!teacherId) {
+    // Si no se proporciona teacherId, buscar por email
+    const teacher = await getTeacherByEmail(email);
+    if (teacher) {
+      teacherId = teacher.id;
+    } else {
+      // Crear perfil de docente básico
+      const newTeacherId = `t_${Date.now()}`;
+      await createTeacher({
+        id: newTeacherId,
+        name: displayName,
+        email,
+        subjects: [],
+        status: 'ACTIVO',
+      });
+      await updateUser(uid, { teacherId: newTeacherId });
+      return;
+    }
+  }
+
+  // Actualizar el usuario con el teacherId
+  await updateUser(uid, { teacherId });
+}
+
+export async function createUserForStudent(uid: string, email: string, displayName: string, studentId?: string): Promise<void> {
+  if (!studentId) {
+    // Si no se proporciona studentId, buscar por carnet
+    const carnet = email.split('@')[0];
+    const student = await getStudentByCarnet(carnet);
+    if (student) {
+      studentId = student.id;
+    } else {
+      // No se puede crear alumno sin datos mínimos
+      console.warn('No se encontró alumno para el carnet:', carnet);
+      return;
+    }
+  }
+
+  // Actualizar el usuario con el studentId
+  await updateUser(uid, { studentId });
+}
+
+// ==================== USER HELPERS ====================
+
+export async function getUserByEmail(email: string): Promise<User | null> {
+  const q = query(collection(db, USERS_COLLECTION), where('email', '==', email.toLowerCase()));
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return null;
+  const d = snapshot.docs[0];
+  return { uid: d.id, ...d.data() } as User;
+}
+
+export async function getUsersByRole(role: UserRole): Promise<User[]> {
+  const q = query(collection(db, USERS_COLLECTION), where('role', '==', role), orderBy('createdAt', 'desc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => ({ uid: d.id, ...d.data() } as User));
+}
+
+export async function getUsersByStatus(status: UserStatus): Promise<User[]> {
+  const q = query(collection(db, USERS_COLLECTION), where('status', '==', status), orderBy('createdAt', 'desc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => ({ uid: d.id, ...d.data() } as User));
+}
+
+// ==================== USER APPROVAL ACTIONS ====================
+
+export async function approveUser(uid: string, role: UserRole): Promise<void> {
+  const user = await getUser(uid);
+  if (!user) throw new Error('Usuario no encontrado');
+
+  // Auto-provisionar según rol
+  if (role === 'docente') {
+    const teacher = await getTeacherByEmail(user.email);
+    if (teacher) {
+      await createUserForTeacher(uid, user.email, user.displayName, teacher.id);
+    } else {
+      await createUserForTeacher(uid, user.email, user.displayName);
+    }
+  } else if (role === 'alumno') {
+    const carnet = user.email.split('@')[0];
+    const student = await getStudentByCarnet(carnet);
+    if (student) {
+      await createUserForStudent(uid, user.email, user.displayName, student.id);
+    } else {
+      await createUserForStudent(uid, user.email, user.displayName);
+    }
+  }
+
+  // Actualizar usuario
+  await updateUser(uid, {
+    role,
+    status: 'approved',
+    requestedRole: undefined,
+    updatedAt: new Date() as any,
+  });
+
+  // Actualizar solicitud de aprobación
+  await updateApprovalRequestByUserId(uid, {
+    status: 'approved',
+    reviewedBy: 'admin',
+    reviewedAt: new Date() as any,
+  });
+
+  // Crear notificación para el admin
+  const userAfterUpdate = await getUser(uid);
+  if (userAfterUpdate?.teacherId) {
+    const teacher = await getTeacher(userAfterUpdate.teacherId);
+    await createNewUserNotification({
+      id: `notif_${Date.now()}_${uid}`,
+      userId: uid,
+      email: user.email,
+      displayName: user.displayName,
+      role,
+      teacherId: userAfterUpdate.teacherId,
+      teacherName: teacher?.name,
+      password: '***',
+      status: 'new',
+    });
+  } else if (userAfterUpdate?.studentId) {
+    const student = await getStudent(userAfterUpdate.studentId);
+    await createNewUserNotification({
+      id: `notif_${Date.now()}_${uid}`,
+      userId: uid,
+      email: user.email,
+      displayName: user.displayName,
+      role,
+      studentId: userAfterUpdate.studentId,
+      studentName: student?.name,
+      gradeName: student?.gradeId,
+      sectionName: student?.sectionId,
+      password: '***',
+      status: 'new',
+    });
+  }
+}
+
+export async function createPendingApprovalForStudent(studentId: string): Promise<void> {
+  const student = await getStudent(studentId);
+  if (!student) return;
+
+  const carnet = student.carnet || student.id;
+  const email = carnet.includes('@') ? carnet : `${carnet}@salesianosanjose.edu.sv`;
+
+  await createApprovalRequest({
+    id: studentId,
+    userId: studentId,
+    email,
+    displayName: student.name,
+    requestedRole: 'alumno',
+    studentId: student.id,
+    studentName: student.name,
+    gradeId: student.gradeId,
+    sectionId: student.sectionId,
+    status: 'pending',
+  });
+}
+
+export async function rejectUser(uid: string, reason?: string): Promise<void> {
+  await updateUser(uid, {
+    status: 'rejected',
+    rejectionReason: reason,
+    updatedAt: new Date() as any,
+  });
+
+  await updateApprovalRequestByUserId(uid, {
+    status: 'rejected',
+    reviewedBy: 'admin',
+    reviewedAt: new Date() as any,
+    rejectionReason: reason,
+  });
 }

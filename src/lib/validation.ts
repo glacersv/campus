@@ -22,7 +22,7 @@ export function isValidUID(uid: string): boolean {
 }
 
 // Validate User data
-export function validateUser(data: { uid: string; email: string; displayName: string; role: string }): ValidationResult {
+export function validateUser(data: { uid: string; email: string; displayName: string; role: string | null }): ValidationResult {
   const errors: string[] = [];
 
   if (!isValidUID(data.uid)) {
@@ -37,14 +37,16 @@ export function validateUser(data: { uid: string; email: string; displayName: st
     errors.push('Display name must be 2-100 characters');
   }
 
-  const validRoles = [
-    'admin', 'docente', 'alumno',
-    'coordinacion', 'coordinacion_academica', 'coordinacion_convivencia',
-    'coordinacion_primaria', 'coordinacion_parvularia',
-    'registro_academico', 'enfermeria', 'psicopedagogico'
-  ];
-  if (!validRoles.includes(data.role)) {
-    errors.push(`Rol inválido. Debe ser uno de: ${validRoles.join(', ')}`);
+  if (data.role !== null) {
+    const validRoles = [
+      'admin', 'docente', 'alumno',
+      'coordinacion', 'coordinacion_academica', 'coordinacion_convivencia',
+      'coordinacion_primaria', 'coordinacion_parvularia',
+      'registro_academico', 'enfermeria', 'psicopedagogico'
+    ];
+    if (!validRoles.includes(data.role)) {
+      errors.push(`Rol inválido. Debe ser uno de: ${validRoles.join(', ')}`);
+    }
   }
 
   return { valid: errors.length === 0, errors };

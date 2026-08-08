@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield, Plus, Pencil, Trash2, X, Check, Lock } from 'lucide-react';
 import { getAllRoles, createRole, updateRole, deleteRole, getAllUsers, updateUserRole } from '../../lib/firestore';
-import { RoleConfig, SystemModuleId, SYSTEM_MODULES, UserRole, ROLE_LABELS } from '../../types';
+import { RoleConfig, SystemModuleId, SYSTEM_MODULES, UserRole, ROLE_LABELS_BASE } from '../../types';
+import { updateRoleLabelsFromFirestore } from '../../types';
 import { toast } from 'sonner';
 
 export default function RolesManager() {
@@ -53,6 +54,11 @@ export default function RolesManager() {
       }
       setEditingRole(null);
       setIsCreating(false);
+      
+      // Actualizar ROLE_LABELS dinámicamente
+      const allRoles = await getAllRoles();
+      updateRoleLabelsFromFirestore(allRoles);
+      
       await loadData();
     } catch (err) {
       toast.error('Error guardando rol');
@@ -70,6 +76,11 @@ export default function RolesManager() {
     try {
       await deleteRole(id);
       toast.success('Rol eliminado');
+      
+      // Actualizar ROLE_LABELS dinámicamente
+      const allRoles = await getAllRoles();
+      updateRoleLabelsFromFirestore(allRoles);
+      
       await loadData();
     } catch (err) {
       toast.error('Error eliminando rol');

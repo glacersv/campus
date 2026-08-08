@@ -15,6 +15,7 @@ import BuildingsManager from './components/admin/BuildingsManager';
 import GradeSectionAssignment from './components/admin/GradeSectionAssignment';
 import RolesManager from './components/admin/RolesManager';
 import UsersManager from './components/admin/UsersManager';
+import SchoolYearManager from './components/admin/SchoolYearManager';
 import CoordinacionesConfig from './components/admin/CoordinacionesConfig';
 import ConvivenciaPanel from './components/admin/ConvivenciaPanel';
 import RoleLayout from './components/shared/RoleLayout';
@@ -26,11 +27,12 @@ import ParvulariaDashboard from './components/coordinacion/ParvulariaDashboard';
 import RegistroDashboard from './components/registro/RegistroDashboard';
 import EnfermeriaDashboard from './components/enfermeria/EnfermeriaDashboard';
 import PsicopedagogiaDashboard from './components/psicopedagogico/PsicopedagogicoDashboard';
-import TeacherDashboard from './components/docente/TeacherDashboard';
+import TeacherLayout from './components/docente/TeacherLayout';
+import TeacherHome from './components/docente/TeacherHome';
+import ModulePlaceholder from './components/docente/ModulePlaceholder';
 import StudentDashboard from './components/alumno/StudentDashboard';
 import Dashboard from './components/docente/Dashboard';
-import TeacherProjects from './components/docente/TeacherProjects';
-import StudentProjects from './components/alumno/StudentProjects';
+import ProjectsModule from './components/proyectos/ProjectsModule';
 import { Teacher, SystemModuleId } from './types';
 import { getTeacher, seedInitialData } from './lib/firestore';
 
@@ -59,8 +61,21 @@ const roleModuleColors: Record<SystemModuleId, string> = {
   proyectos: 'bg-orange-500',
 };
 
+function getDefaultModulesForRole(role: string): SystemModuleId[] {
+  switch (role) {
+    case 'admin':
+      return ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'];
+    case 'docente':
+      return ['formacion', 'proyectos'];
+    case 'alumno':
+      return ['formacion', 'proyectos'];
+    default:
+      return [];
+  }
+}
+
 function AppContent() {
-  const { firebaseUser, userProfile, loading, signOut, userRole, hasPermission } = useAuth();
+  const { firebaseUser, userProfile, loading, signOut, userRole, hasPermission, roleConfig } = useAuth();
   const [teacherData, setTeacherData] = useState<Teacher | null>(null);
 
   useEffect(() => {
@@ -87,22 +102,19 @@ function AppContent() {
     return <Login />;
   }
 
-  const getModulesForRole = (role: string): SystemModuleId[] => {
-    const moduleMap: Record<string, SystemModuleId[]> = {
-      coordinacion: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'],
-      coordinacion_academica: ['notas', 'horario', 'clase'],
-      coordinacion_convivencia: ['formacion', 'notas'],
-      coordinacion_primaria: ['formacion', 'notas', 'horario'],
-      coordinacion_parvularia: ['formacion'],
-      registro_academico: ['notas', 'horario'],
-      enfermeria: ['formacion', 'avisos'],
-      psicopedagogico: ['formacion', 'notas', 'avisos'],
-    };
-    return moduleMap[role] || [];
+  if (userProfile.status === 'pending' || userProfile.status === 'rejected') {
+    return <Login />;
+  }
+
+  const getModules = () => {
+    const normalizedRole = (userRole || '').toLowerCase();
+    if (normalizedRole === 'admin') return getDefaultModulesForRole('admin');
+    return roleConfig?.permissions || getDefaultModulesForRole(normalizedRole);
   };
 
   // Admin view
-  if (userRole === 'admin') {
+  const normalizedRoleForView = (userRole || '').toLowerCase();
+  if (normalizedRoleForView === 'admin') {
     return (
       <Routes>
         <Route path="/admin" element={<AdminLayout />}>
@@ -120,15 +132,15 @@ function AppContent() {
           <Route path="users" element={<UsersManager />} />
           <Route path="coordinaciones-config" element={<CoordinacionesConfig />} />
           <Route path="convivencia" element={<ConvivenciaPanel />} />
+          <Route path="school-year" element={<SchoolYearManager />} />
         </Route>
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>
     );
   }
 
-  // Coordinacion view
-  if (userRole === 'coordinacion') {
-    const modules = getModulesForRole('coordinacion');
+  if (normalizedRoleForView === 'coordinacion') {
+    const modules = getModules();
     return (
       <Routes>
         <Route path="/coordinacion" element={
@@ -142,8 +154,8 @@ function AppContent() {
   }
 
   // Coordinacion Academica view
-  if (userRole === 'coordinacion_academica') {
-    const modules = getModulesForRole('coordinacion_academica');
+  if (normalizedRoleForView === 'coordinacion_academica') {
+    const modules = getModules();
     return (
       <Routes>
         <Route path="/coordinacion-academica" element={
@@ -157,8 +169,8 @@ function AppContent() {
   }
 
   // Coordinacion Convivencia view
-  if (userRole === 'coordinacion_convivencia') {
-    const modules = getModulesForRole('coordinacion_convivencia');
+  if (normalizedRoleForView === 'coordinacion_convivencia') {
+    const modules = getModules();
     return (
       <Routes>
         <Route path="/coordinacion-convivencia" element={
@@ -172,8 +184,8 @@ function AppContent() {
   }
 
   // Coordinacion Primaria view
-  if (userRole === 'coordinacion_primaria') {
-    const modules = getModulesForRole('coordinacion_primaria');
+  if (normalizedRoleForView === 'coordinacion_primaria') {
+    const modules = getModules();
     return (
       <Routes>
         <Route path="/coordinacion-primaria" element={
@@ -187,8 +199,8 @@ function AppContent() {
   }
 
   // Coordinacion Parvularia view
-  if (userRole === 'coordinacion_parvularia') {
-    const modules = getModulesForRole('coordinacion_parvularia');
+  if (normalizedRoleForView === 'coordinacion_parvularia') {
+    const modules = getModules();
     return (
       <Routes>
         <Route path="/coordinacion-parvularia" element={
@@ -202,8 +214,8 @@ function AppContent() {
   }
 
   // Registro academico view
-  if (userRole === 'registro_academico') {
-    const modules = getModulesForRole('registro_academico');
+  if (normalizedRoleForView === 'registro_academico') {
+    const modules = getModules();
     return (
       <Routes>
         <Route path="/registro" element={
@@ -217,8 +229,8 @@ function AppContent() {
   }
 
   // Enfermeria view
-  if (userRole === 'enfermeria') {
-    const modules = getModulesForRole('enfermeria');
+  if (normalizedRoleForView === 'enfermeria') {
+    const modules = getModules();
     return (
       <Routes>
         <Route path="/enfermeria" element={
@@ -232,8 +244,8 @@ function AppContent() {
   }
 
   // Psicopedagogia view
-  if (userRole === 'psicopedagogico') {
-    const modules = getModulesForRole('psicopedagogico');
+  if (normalizedRoleForView === 'psicopedagogico') {
+    const modules = getModules();
     return (
       <Routes>
         <Route path="/psicopedagogico" element={
@@ -246,24 +258,44 @@ function AppContent() {
     );
   }
 
-  // Teacher view
+
+  // Teacher view (Docente)
   if (userRole === 'docente') {
+    const permissions = roleConfig?.permissions || [];
+
     return (
       <Routes>
-        <Route path="/" element={
-          <TeacherDashboard
-            teacherName={userProfile.displayName}
-            onLogout={signOut}
-          />
-        } />
-        <Route path="/attendance" element={
-          teacherData ? (
-            <Dashboard teacher={teacherData} onLogout={signOut} />
-          ) : (
-            <div className="min-h-screen flex justify-center items-center">Cargando datos del docente...</div>
-          )
-        } />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/docente" element={<TeacherLayout />}>
+          <Route index element={<TeacherHome />} />
+
+          <Route path="formacion" element={
+            permissions.includes('formacion') ? (
+              teacherData ? (
+                <div className="bg-white rounded-2xl border border-slate-200/80 p-1">
+                  <Dashboard teacher={teacherData} onLogout={signOut} />
+                </div>
+              ) : (
+                <div className="flex justify-center items-center py-20 text-slate-500">Cargando datos del docente...</div>
+              )
+            ) : <Navigate to="/docente" replace />
+          } />
+
+          <Route path="proyectos" element={
+            permissions.includes('proyectos') ? (
+              <div className="bg-white rounded-2xl border border-slate-200/80 p-6">
+                <ProjectsModule view="docente" />
+              </div>
+            ) : <Navigate to="/docente" replace />
+          } />
+
+          {/* Placeholders for other modules */}
+          <Route path="notas" element={permissions.includes('notas') ? <ModulePlaceholder /> : <Navigate to="/docente" replace />} />
+          <Route path="clase" element={permissions.includes('clase') ? <ModulePlaceholder /> : <Navigate to="/docente" replace />} />
+          <Route path="horario" element={permissions.includes('horario') ? <ModulePlaceholder /> : <Navigate to="/docente" replace />} />
+          <Route path="eventos" element={permissions.includes('eventos') ? <ModulePlaceholder /> : <Navigate to="/docente" replace />} />
+          <Route path="avisos" element={permissions.includes('avisos') ? <ModulePlaceholder /> : <Navigate to="/docente" replace />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/docente" replace />} />
       </Routes>
     );
   }
