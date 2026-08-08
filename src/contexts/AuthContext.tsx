@@ -84,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { getTeacherByEmail } = await import('../lib/firestore');
 
     // Detect if they are a super-admin override
-    const superAdmin = 'jose.marquez@salesianosanjose.edu.sv';
+    const superAdmin = 'admin@salesianosanjose.edu.sv';
     const isSuperAdmin = email.toLowerCase() === superAdmin.toLowerCase();
 
     // Detect if they are a pre-registered Student (auto-approve)
