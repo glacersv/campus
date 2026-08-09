@@ -18,8 +18,9 @@ import {
   Sparkles,
   Layers,
   TrendingUp,
-  Award,
-  ChevronRight
+  Filter,
+  Check,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -33,7 +34,7 @@ import {
   getCurrentSchoolYear,
   YearSectionConfig
 } from '../../lib/firestore';
-import { Student, Grade, Section, BaccalaureateTypeDoc } from '../../types';
+import { Student, Grade, Section, BaccalaureateTypeDoc, Cycle } from '../../types';
 import {
   MigrationPlanRow,
   buildMigrationRows,
@@ -50,6 +51,8 @@ const CYCLE_LABEL: Record<string, string> = {
   '4': 'Bachillerato'
 };
 
+const CYCLE_KEYS: Cycle[] = ['parvularia', '1', '2', '3', '4'];
+
 export default function SchoolYearManager() {
   const [loading, setLoading] = useState(true);
   const [currentYear, setCurrentYear] = useState<number | null>(null);
@@ -57,6 +60,9 @@ export default function SchoolYearManager() {
   const [students, setStudents] = useState<Student[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [maintenanceOpen, setMaintenanceOpen] = useState(false);
+
+  // Filtering and view state
+  const [selectedCycle, setSelectedCycle] = useState<Cycle | 'all'>('all');
 
   const loadData = useCallback(async () => {
     try {
@@ -363,6 +369,11 @@ export default function SchoolYearManager() {
     );
   }
 
+  // Filter rows depending on selected cycle
+  const filteredRows = selectedCycle === 'all'
+    ? rows
+    : rows.filter(r => r.cycle === selectedCycle);
+
   return (
     <div className="space-y-8 fade-in max-w-7xl mx-auto pb-12">
       {/* Premium Header */}
@@ -472,7 +483,7 @@ export default function SchoolYearManager() {
         </div>
       </div>
 
-      {/* Main Configurations Grid */}
+      {/* Main Configurations Section */}
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -485,200 +496,102 @@ export default function SchoolYearManager() {
             </p>
           </div>
           <span className="text-xs font-bold text-slate-500 font-mono bg-white border border-slate-200/80 px-4 py-2 rounded-xl shadow-3xs self-start sm:self-auto">
-            {rows.length} Grados Configurables
+            {filteredRows.length} Grados Configurables
           </span>
         </div>
 
-        {rows.length === 0 ? (
+        {/* Dynamic Premium Cycle Filter Pills */}
+        <div className="flex items-center gap-2 flex-wrap bg-slate-100/80 p-1.5 rounded-xl border border-slate-200 w-fit">
+          <button
+            type="button"
+            onClick={() => setSelectedCycle('all')}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
+              selectedCycle === 'all'
+                ? 'bg-primary text-white shadow-xs'
+                : 'text-slate-600 hover:bg-slate-200/50'
+            }`}
+          >
+            <Filter className="w-3.5 h-3.5" />
+            Todos los niveles
+          </button>
+          {CYCLE_KEYS.map((c) => {
+            const cycleCount = rows.filter(r => r.cycle === c).length;
+            if (cycleCount === 0) return null;
+            return (
+              <button
+                type="button"
+                key={c}
+                onClick={() => setSelectedCycle(c)}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
+                  selectedCycle === c
+                    ? 'bg-primary text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-200/50'
+                }`}
+              >
+                {CYCLE_LABEL[c] || c}
+                <span className={`font-mono text-[10px] px-1.5 py-0.2 rounded-full ${
+                  selectedCycle === c
+                    ? 'bg-white/20 text-white'
+                    : 'bg-slate-200/80 text-slate-500'
+                }`}>
+                  {cycleCount}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {filteredRows.length === 0 ? (
           <div className="text-center py-16 bg-white border border-slate-200/80 rounded-2xl text-slate-400 shadow-3xs">
             <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-40" />
-            <p className="text-sm font-medium">No se encontraron grados activos configurados en el sistema.</p>
+            <p className="text-sm font-medium">No se encontraron grados activos configurados en el sistema para este nivel.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {rows.map((r, rowIndex) => {
-              const dist = getDistribution(r);
-              const isReconfigured =
-                r.currentSectionNames.length !==
-                r.newSectionNames.filter(n => n.trim()).length;
-              return (
-                <motion.div
-                  key={r.gradeId}
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: rowIndex * 0.02 }}
-                  className="bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col justify-between hover:shadow-md hover:border-slate-300 transition-all duration-300 relative group/card overflow-hidden min-h-[360px]"
-                >
-                  {/* Decorative corner accent bar based on Cycle */}
-                  <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${
-                    r.cycle === 'parvularia' ? 'from-pink-400 to-pink-500' :
-                    r.cycle === '1' ? 'from-emerald-400 to-emerald-500' :
-                    r.cycle === '2' ? 'from-blue-400 to-blue-500' :
-                    r.cycle === '3' ? 'from-purple-400 to-purple-500' :
-                    'from-amber-400 to-amber-500'
-                  }`} />
+          /* Cycle grouping logic inside grid when displaying 'all' or filtering */
+          <div className="space-y-10">
+            {selectedCycle === 'all' ? (
+              CYCLE_KEYS.map(cycleKey => {
+                const cycleRows = rows.filter(r => r.cycle === cycleKey);
+                if (cycleRows.length === 0) return null;
 
-                  <div className="space-y-4">
-                    {/* Header: Grade & Cycle */}
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h4 className="text-base font-black text-slate-900 font-display group-hover/card:text-primary transition-colors">
-                          {r.gradeName}
-                        </h4>
-                        <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${
-                          r.cycle === 'parvularia' ? 'bg-pink-50 text-pink-700 border-pink-100' :
-                          r.cycle === '1' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                          r.cycle === '2' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                          r.cycle === '3' ? 'bg-purple-50 text-purple-700 border-purple-100' :
-                          'bg-amber-50 text-amber-700 border-amber-100'
-                        }`}>
-                          {CYCLE_LABEL[r.cycle] || r.cycle}
-                        </span>
-                      </div>
-
-                      {r.nextGradeId === null ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-black text-amber-600 bg-amber-50 border border-amber-100 px-2.5 py-1 rounded-full uppercase tracking-wider">
-                          <GraduationCap className="w-3.5 h-3.5" />
-                          Egreso
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider bg-slate-100 px-2 py-1 rounded-md">
-                          {r.nextGradeName}
-                        </span>
-                      )}
+                return (
+                  <div key={cycleKey} className="space-y-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200/60 shadow-3xs">
+                        {CYCLE_LABEL[cycleKey]}
+                      </span>
+                      <span className="text-xs text-slate-400 font-medium font-mono">({cycleRows.length} grados)</span>
                     </div>
 
-                    {/* Flow / Matrícula Entrante */}
-                    <div className="bg-slate-50/70 rounded-xl p-3 border border-slate-100 space-y-2">
-                      <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                        Flujo de Matrícula
-                      </div>
-                      <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
-                        <span className="truncate max-w-[100px] bg-white border border-slate-200 px-2 py-0.5 rounded-md text-[10px] text-slate-500">
-                          {r.sourceGradeName}
-                        </span>
-                        <div className="flex items-center gap-1 text-primary">
-                          <ArrowRight className="w-3.5 h-3.5" />
-                          <span className="font-bold text-[10px] font-mono bg-primary/10 px-1.5 py-0.5 rounded-md">
-                            +{r.incomingCount}
-                          </span>
-                        </div>
-                        <span className="truncate max-w-[100px] bg-primary/5 border border-primary/20 text-primary px-2 py-0.5 rounded-md text-[10px]">
-                          {r.gradeName}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-[11px] text-slate-400">
-                        <span>Padrón actual en grado:</span>
-                        <span className="font-bold text-slate-600">{r.outgoingCount} alumnos</span>
-                      </div>
-                    </div>
-
-                    {/* Aulas en Curso (Año actual) */}
-                    <div className="space-y-1.5">
-                      <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                        Aulas en Curso
-                      </div>
-                      {r.currentSectionNames.length > 0 ? (
-                        <div className="flex flex-wrap gap-1.5">
-                          {r.currentSectionNames.map(n => (
-                            <span
-                              key={n}
-                              className="px-2.5 py-0.5 bg-slate-100 border border-slate-200/80 rounded-md text-slate-600 font-black font-mono text-[11px] shadow-3xs"
-                            >
-                              {n}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-[11px] text-slate-400 font-medium italic">
-                          Sin aulas asignadas
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Nuevas Secciones (Planificadas) */}
-                    <div className="space-y-2.5 pt-3 border-t border-slate-100">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                          Aulas Planificadas ({nextYear})
-                        </span>
-                        {isReconfigured && (
-                          <span className="text-[9px] font-black uppercase text-amber-600 bg-amber-50 border border-amber-100/60 px-1.5 py-0.5 rounded">
-                            Reconfigurado
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <div className="inline-flex items-center bg-slate-50 border border-slate-200 rounded-lg p-0.5 shadow-3xs shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => updateCount(r.gradeId, r.newSectionNames.length - 1)}
-                            disabled={r.newSectionNames.length <= 1}
-                            className="w-6 h-6 rounded-md flex items-center justify-center text-slate-500 hover:bg-primary hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all font-bold cursor-pointer"
-                          >
-                            <Minus className="w-3 h-3" />
-                          </button>
-                          <span className="w-6 text-center text-xs font-black text-slate-800 font-mono">
-                            {r.newSectionNames.length}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => updateCount(r.gradeId, r.newSectionNames.length + 1)}
-                            disabled={r.newSectionNames.length >= 6}
-                            className="w-6 h-6 rounded-md flex items-center justify-center text-slate-500 hover:bg-primary hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all font-bold cursor-pointer"
-                          >
-                            <Plus className="w-3 h-3" />
-                          </button>
-                        </div>
-
-                        {/* Interactive inputs for section letters */}
-                        <div className="flex flex-wrap gap-1.5 items-center">
-                          {r.newSectionNames.map((n, i) => (
-                            <input
-                              key={i}
-                              value={n}
-                              onChange={e => updateName(r.gradeId, i, e.target.value)}
-                              maxLength={2}
-                              placeholder="A"
-                              title="Identificador de la sección"
-                              className="w-8 h-8 text-center text-xs font-black uppercase bg-white border border-slate-200 rounded-lg text-primary focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none transition-all shadow-3xs"
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* LIVE Distribution counts */}
-                    <div className="space-y-1.5 pt-3 border-t border-slate-100">
-                      <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                        Distribución Proyectada
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {Object.entries(dist).map(([name, count]) => (
-                          <span
-                            key={name}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary/5 border border-primary/10 rounded-lg text-[11px] font-bold text-primary shadow-3xs hover:scale-105 hover:bg-primary/10 transition-all duration-200 cursor-default"
-                          >
-                            <span className="text-[9px] text-primary/70 uppercase font-black tracking-wider">
-                              Secc. {name}
-                            </span>
-                            <span className="bg-white text-primary px-1.5 py-0.2 rounded font-black font-mono text-[10px] border border-primary/10 shadow-3xs">
-                              {count}
-                            </span>
-                          </span>
-                        ))}
-                        {Object.keys(dist).length === 0 && (
-                          <span className="text-xs text-slate-400 italic">
-                            Sin alumnos proyectados
-                          </span>
-                        )}
-                      </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                      {cycleRows.map((r, rowIndex) => (
+                        <GradeMigrationCard
+                          key={r.gradeId}
+                          r={r}
+                          nextYear={nextYear}
+                          getDistribution={getDistribution}
+                          updateCount={updateCount}
+                          updateName={updateName}
+                        />
+                      ))}
                     </div>
                   </div>
-                </motion.div>
-              );
-            })}
+                );
+              })
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                {filteredRows.map((r, rowIndex) => (
+                  <GradeMigrationCard
+                    key={r.gradeId}
+                    r={r}
+                    nextYear={nextYear}
+                    getDistribution={getDistribution}
+                    updateCount={updateCount}
+                    updateName={updateName}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -858,6 +771,188 @@ export default function SchoolYearManager() {
             </motion.div>
         )}
         </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+interface GradeMigrationCardProps {
+  r: MigrationPlanRow;
+  nextYear: number;
+  getDistribution: (r: MigrationPlanRow) => Record<string, number>;
+  updateCount: (gradeId: string, count: number) => void;
+  updateName: (gradeId: string, index: number, value: string) => void;
+}
+
+function GradeMigrationCard({
+  r,
+  nextYear,
+  getDistribution,
+  updateCount,
+  updateName
+}: GradeMigrationCardProps) {
+  const dist = getDistribution(r);
+  const isReconfigured = r.currentSectionNames.length !== r.newSectionNames.filter(n => n.trim()).length;
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col justify-between hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 relative group/card overflow-hidden min-h-[420px]">
+      {/* Decorative premium slate/primary gradient top border */}
+      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/10 via-primary/30 to-primary/10" />
+
+      {/* Card Body Container */}
+      <div className="flex-1 flex flex-col justify-between space-y-4">
+        {/* Header Block */}
+        <div className="space-y-2">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h4 className="text-base font-black text-slate-900 font-display group-hover/card:text-primary transition-colors leading-tight">
+                {r.gradeName}
+              </h4>
+              <span className="inline-flex items-center gap-1 mt-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold border bg-slate-50 text-slate-500 border-slate-200/60">
+                {CYCLE_LABEL[r.cycle] || r.cycle}
+              </span>
+            </div>
+
+            {r.nextGradeId === null ? (
+              <span className="inline-flex items-center gap-1 text-[10px] font-black text-slate-600 bg-slate-50 border border-slate-200/80 px-2.5 py-1 rounded-full uppercase tracking-wider shrink-0">
+                <GraduationCap className="w-3.5 h-3.5 text-slate-500" />
+                Egreso
+              </span>
+            ) : (
+              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider bg-slate-100 px-2 py-1 rounded-md shrink-0">
+                {r.nextGradeName}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Enrollment Flow (Source to Destination) */}
+        <div className="bg-slate-50/70 rounded-xl p-3 border border-slate-100 space-y-2">
+          <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+            Flujo de Matrícula
+          </div>
+          <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
+            <span className="truncate max-w-[100px] bg-white border border-slate-200 px-2 py-0.5 rounded-md text-[10px] text-slate-500">
+              {r.sourceGradeName}
+            </span>
+            <div className="flex items-center gap-1 text-primary">
+              <ArrowRight className="w-3.5 h-3.5" />
+              <span className="font-bold text-[10px] font-mono bg-primary/10 px-1.5 py-0.5 rounded-md">
+                +{r.incomingCount}
+              </span>
+            </div>
+            <span className="truncate max-w-[100px] bg-primary/5 border border-primary/20 text-primary px-2 py-0.5 rounded-md text-[10px]">
+              {r.gradeName}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-slate-400 pt-0.5">
+            <span>Padrón actual en grado:</span>
+            <span className="font-bold text-slate-600">{r.outgoingCount} alumnos</span>
+          </div>
+        </div>
+
+        {/* Current Classrooms State */}
+        <div className="space-y-1.5">
+          <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+            Aulas en Curso
+          </div>
+          {r.currentSectionNames.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {r.currentSectionNames.map(n => (
+                <span
+                  key={n}
+                  className="px-2.5 py-0.5 bg-slate-100 border border-slate-200/80 rounded-md text-slate-600 font-black font-mono text-[11px] shadow-3xs"
+                >
+                  {n}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <span className="text-[11px] text-slate-400 font-medium italic">
+              Sin aulas asignadas
+            </span>
+          )}
+        </div>
+
+        {/* Next Year Section Settings Block */}
+        <div className="space-y-2.5 pt-3 border-t border-slate-100">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+              Aulas Planificadas ({nextYear})
+            </span>
+            {isReconfigured && (
+              <span className="text-[9px] font-black uppercase text-amber-600 bg-amber-50 border border-amber-100/60 px-1.5 py-0.5 rounded">
+                Reconfigurado
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="inline-flex items-center bg-slate-50 border border-slate-200 rounded-lg p-0.5 shadow-3xs shrink-0">
+              <button
+                type="button"
+                onClick={() => updateCount(r.gradeId, r.newSectionNames.length - 1)}
+                disabled={r.newSectionNames.length <= 1}
+                className="w-6 h-6 rounded-md flex items-center justify-center text-slate-500 hover:bg-primary hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all font-bold cursor-pointer"
+              >
+                <Minus className="w-3 h-3" />
+              </button>
+              <span className="w-6 text-center text-xs font-black text-slate-800 font-mono">
+                {r.newSectionNames.length}
+              </span>
+              <button
+                type="button"
+                onClick={() => updateCount(r.gradeId, r.newSectionNames.length + 1)}
+                disabled={r.newSectionNames.length >= 6}
+                className="w-6 h-6 rounded-md flex items-center justify-center text-slate-500 hover:bg-primary hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all font-bold cursor-pointer"
+              >
+                <Plus className="w-3 h-3" />
+              </button>
+            </div>
+
+            {/* Interactive inputs for section letters */}
+            <div className="flex flex-wrap gap-1.5 items-center">
+              {r.newSectionNames.map((n, i) => (
+                <input
+                  key={i}
+                  value={n}
+                  onChange={e => updateName(r.gradeId, i, e.target.value)}
+                  maxLength={2}
+                  placeholder="A"
+                  title="Identificador de la sección"
+                  className="w-8 h-8 text-center text-xs font-black uppercase bg-white border border-slate-200 rounded-lg text-primary focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none transition-all shadow-3xs"
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Live Promotion/Balance Distribution Block */}
+        <div className="space-y-1.5 pt-3 border-t border-slate-100">
+          <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+            Distribución Proyectada
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {Object.entries(dist).map(([name, count]) => (
+              <span
+                key={name}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary/5 border border-primary/10 rounded-lg text-[11px] font-bold text-primary shadow-3xs hover:scale-105 hover:bg-primary/10 transition-all duration-200 cursor-default"
+              >
+                <span className="text-[9px] text-primary/70 uppercase font-black tracking-wider">
+                  Secc. {name}
+                </span>
+                <span className="bg-white text-primary px-1.5 py-0.2 rounded font-black font-mono text-[10px] border border-primary/10 shadow-3xs">
+                  {count}
+                </span>
+              </span>
+            ))}
+            {Object.keys(dist).length === 0 && (
+              <span className="text-xs text-slate-400 italic">
+                Sin alumnos proyectados
+              </span>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
