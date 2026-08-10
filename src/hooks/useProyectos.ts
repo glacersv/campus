@@ -119,7 +119,48 @@ export function useProyectos() {
     campos: Partial<Proyecto>
   ): Promise<{ ok?: boolean; error?: string }> {
     try {
-      await updateDoc(doc(db, 'proyectos', proyectoId), { ...campos, estado: 'borrador' });
+      const proyectoActual = proyectos.find(p => p.id === proyectoId);
+      const cambios: string[] = [];
+
+      if (proyectoActual) {
+        if (campos.titulo && campos.titulo !== proyectoActual.titulo) {
+          cambios.push(`Título cambiado de "${proyectoActual.titulo}" a "${campos.titulo}"`);
+        }
+        if (campos.descripcion && campos.descripcion !== proyectoActual.descripcion) {
+          cambios.push('Descripción modificada');
+        }
+        if (campos.grado && campos.grado !== proyectoActual.grado) {
+          cambios.push(`Grado cambiado de "${proyectoActual.grado}" a "${campos.grado}"`);
+        }
+        if (campos.seccion && campos.seccion !== proyectoActual.seccion) {
+          cambios.push(`Sección cambiada de "${proyectoActual.seccion}" a "${campos.seccion}"`);
+        }
+        if (campos.materia_nombre && campos.materia_nombre !== proyectoActual.materia_nombre) {
+          cambios.push(`Materia cambiada de "${proyectoActual.materia_nombre}" a "${campos.materia_nombre}"`);
+        }
+
+        if (campos.integrantes_detalle) {
+          const viejos = proyectoActual.integrantes_detalle?.map(i => i.nombre) ?? [];
+          const nuevos = campos.integrantes_detalle.map(i => i.nombre);
+          const agregados = nuevos.filter(n => !viejos.includes(n));
+          const eliminados = viejos.filter(v => !nuevos.includes(v));
+          agregados.forEach(n => cambios.push(`Se agregó integrante: ${n}`));
+          eliminados.forEach(v => cambios.push(`Se eliminó integrante: ${v}`));
+        }
+      }
+
+      await updateDoc(doc(db, 'proyectos', proyectoId), campos);
+
+      if (cambios.length > 0 && proyectoActual) {
+        await _registrarHistorial(
+          proyectoId,
+          'edicion_proyecto',
+          { titulo: proyectoActual.titulo, integrantes: proyectoActual.integrantes_detalle?.map(i => i.nombre) },
+          { titulo: campos.titulo ?? proyectoActual.titulo, integrantes: campos.integrantes_detalle?.map(i => i.nombre) ?? proyectoActual.integrantes_detalle?.map(i => i.nombre) },
+          cambios.join(' | ')
+        );
+      }
+
       return { ok: true };
     } catch (e: any) {
       return { error: e.message };

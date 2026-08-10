@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useProyectos } from '../../hooks/useProyectos';
 import {
-  Proyecto, Integrante, GRADOS_PROYECTO, SECCIONES_POR_GRADO_PROYECTO,
+  Proyecto, Integrante, GRADOS_PROYECTO,
   Student, Subject
 } from '../../types';
 import { FileText, Users, AlertCircle, Search, ChevronDown, X, Check, Plus } from 'lucide-react';
-import { getAvailableStudentsBySection, getStudent, getAllSubjects } from '../../lib/firestore';
+import { getAvailableStudentsBySection, getStudent, getAllSubjects, getSectionsByGrade } from '../../lib/firestore';
 
 interface Props {
   proyectoInicial: Proyecto | null;
@@ -37,15 +37,11 @@ export default function FormularioProyecto({ proyectoInicial, onCancel, onSucces
   };
 
   const initialGrado = getInitialGrado();
-  const initialSecciones = SECCIONES_POR_GRADO_PROYECTO[initialGrado] ?? [];
 
   const getInitialSeccion = () => {
     if (proyectoInicial?.seccion) return proyectoInicial.seccion;
     if (userProfile?.sectionId) {
-      const sectionLetter = userProfile.sectionId.slice(-1).toUpperCase();
-      if (initialSecciones.includes(sectionLetter)) {
-        return sectionLetter;
-      }
+      return userProfile.sectionId.slice(-1).toUpperCase();
     }
     return '';
   };
@@ -68,6 +64,7 @@ export default function FormularioProyecto({ proyectoInicial, onCancel, onSucces
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeSelector, setActiveSelector] = useState<number | null>(null);
+  const [secciones, setSecciones] = useState<string[]>([]);
 
   const [errores, setErrores] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -103,7 +100,18 @@ export default function FormularioProyecto({ proyectoInicial, onCancel, onSucces
     loadSubjects();
   }, [userProfile]);
 
-  const secciones = SECCIONES_POR_GRADO_PROYECTO[grado] ?? [];
+  // Load sections from Firestore when grade changes
+  useEffect(() => {
+    if (!grado) { setSecciones([]); return; }
+    const cleanGrade = grado.replace('°', '');
+    getSectionsByGrade(cleanGrade)
+      .then(sections => {
+        const letters = sections.map(s => s.name?.slice(-1)?.toUpperCase()).filter(Boolean);
+        const unique = [...new Set(letters)].sort();
+        setSecciones(unique);
+      })
+      .catch(() => setSecciones([]));
+  }, [grado]);
 
   // Auto-load grade and section for students on mount
   useEffect(() => {
@@ -157,7 +165,7 @@ export default function FormularioProyecto({ proyectoInicial, onCancel, onSucces
     } else {
       setAvailableStudents([]);
     }
-  }, [grado, seccion]);
+  }, [grado, seccion, proyectoInicial?.id]);
 
   const loadAvailableStudents = async () => {
     setLoadingStudents(true);
@@ -204,6 +212,10 @@ export default function FormularioProyecto({ proyectoInicial, onCancel, onSucces
     } : it));
   }
 
+  function removeIntegrante(idx: number) {
+    setIntegrantes(prev => prev.filter((_, i) => i !== idx));
+  }
+
   function agregarIntegrante() {
     if (integrantes.length >= 6) return;
     setIntegrantes(prev => [...prev, { nombre: '', numero_lista: '', es_rep: false, uid: '' }]);
@@ -240,7 +252,8 @@ export default function FormularioProyecto({ proyectoInicial, onCancel, onSucces
     setLoading(true);
     try {
       const materia = materias.find(m => m.id === materiaId);
-      const data = {
+      const integrantesData = buildIntegrantesDetalle();
+      const baseData = {
         titulo: titulo.trim(),
         descripcion: descripcion.trim(),
         grado,
@@ -250,11 +263,15 @@ export default function FormularioProyecto({ proyectoInicial, onCancel, onSucces
         materias_secundarias: materiasSecundarias,
       };
       if (esEdicion && proyectoInicial) {
-        await guardarBorrador(proyectoInicial.id, data);
+        await guardarBorrador(proyectoInicial.id, {
+          ...baseData,
+          integrantes: integrantesData.map(i => i.uid),
+          integrantes_detalle: integrantesData,
+        });
       } else {
         await crearProyecto({
-          ...data,
-          integrantes: buildIntegrantesDetalle(),
+          ...baseData,
+          integrantes: integrantesData,
         });
       }
       onSuccess();
@@ -360,21 +377,18 @@ export default function FormularioProyecto({ proyectoInicial, onCancel, onSucces
                   <button
                     key={s}
                     type="button"
-                    onClick={() => { if (userProfile?.role !== 'alumno' && grado) setSeccion(s); }}
-                    disabled={!grado || userProfile?.role === 'alumno'}
+                    onClick={() => { if (grado) setSeccion(s); }}
+                    disabled={!grado}
                     className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                       seccion === s
                         ? 'bg-primary text-white shadow-xs'
                         : 'text-slate-600 hover:bg-slate-200/50'
-                    } ${(!grado || userProfile?.role === 'alumno') ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    } ${!grado ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     {s}
                   </button>
                 ))}
               </div>
-            )}
-            {userProfile?.role === 'alumno' && !loadingProfile && seccion && (
-              <span className="text-[10px] text-emerald-600 mt-1 block">✓ Auto-detectado de tu perfil</span>
             )}
           </FormField>
         </div>
@@ -497,14 +511,26 @@ export default function FormularioProyecto({ proyectoInicial, onCancel, onSucces
                         </button>
                       </div>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => setActiveSelector(activeSelector === idx ? null : idx)}
-                        className="form-input text-sm text-left text-slate-400 flex items-center justify-between w-full"
-                      >
-                        <span>{idx === 0 ? 'Seleccionar líder' : `Integrante ${idx + 1}`}</span>
-                        <ChevronDown className="w-3 h-3" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setActiveSelector(activeSelector === idx ? null : idx)}
+                          className="form-input text-sm text-left text-slate-400 flex items-center justify-between w-full"
+                        >
+                          <span>{idx === 0 ? 'Seleccionar líder' : `Integrante ${idx + 1}`}</span>
+                          <ChevronDown className="w-3 h-3" />
+                        </button>
+                        {idx > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => removeIntegrante(idx)}
+                            className="text-slate-400 hover:text-red-500 p-1 shrink-0"
+                            title="Eliminar slot"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                   <input className="form-input text-sm text-center" type="number" min={1} max={40} placeholder="00"
@@ -566,13 +592,18 @@ export default function FormularioProyecto({ proyectoInicial, onCancel, onSucces
       </div>
 
       <div className="flex gap-3 mt-4">
+        <button className="btn-secondary flex-1" onClick={onCancel} disabled={loading}>
+          Cancelar
+        </button>
         <button className="btn-secondary flex-1" onClick={handleBorrador} disabled={loading}>
-          {loading ? 'Guardando...' : 'Guardar borrador'}
+          {loading ? 'Guardando...' : 'Guardar cambios'}
         </button>
-        <button className="btn-primary flex-1"
-          onClick={handleEnviar} disabled={loading}>
-          {loading ? 'Enviando...' : 'Enviar a validación'}
-        </button>
+        {(!esEdicion || !proyectoInicial || ['borrador', 'rechazado_materia'].includes(proyectoInicial.estado)) && (
+          <button className="btn-primary flex-1"
+            onClick={handleEnviar} disabled={loading}>
+            {loading ? 'Enviando...' : 'Enviar a validación'}
+          </button>
+        )}
       </div>
     </div>
   );

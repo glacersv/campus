@@ -559,7 +559,7 @@ function ActividadCardAlumno({ actividad, proyecto, materias }: {
   };
 
   return (
-    <div className="bg-white rounded-xl p-4 border border-slate-200/80 shadow-sm">
+    <div className="bg-white rounded-lg p-4 border border-slate-200/80 shadow-sm">
       <div className="flex justify-between items-start mb-3">
         <div className="flex-1">
           <div className="text-base font-bold text-slate-800">{actividad.titulo}</div>
@@ -578,6 +578,14 @@ function ActividadCardAlumno({ actividad, proyecto, materias }: {
       </div>
 
       <p className="text-sm text-slate-500 mb-3 line-clamp-2">{actividad.descripcion}</p>
+
+      {/* Instrucciones detalladas */}
+      {actividad.instrucciones && (
+        <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="text-xs font-bold text-blue-700 mb-1">Instrucciones</div>
+          <p className="text-sm text-blue-600 whitespace-pre-line">{actividad.instrucciones}</p>
+        </div>
+      )}
 
       {/* Herramientas requeridas */}
       {actividad.herramientas_requeridas?.length > 0 && (

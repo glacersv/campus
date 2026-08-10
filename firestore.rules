@@ -154,7 +154,10 @@ service cloud.firestore {
       allow read: if isStaff() || isAlumno();
       allow create: if isAlumno() || isDocente();
       allow update: if isStaff() || isAdmin();
-      allow update: if isAlumno() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['actividades_evaluadas']);
+      allow update: if isAlumno() && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'titulo', 'descripcion', 'grado', 'seccion', 'materia_id', 'materia_nombre',
+        'materias_secundarias', 'integrantes', 'integrantes_detalle', 'actividades_evaluadas'
+      ]);
       allow delete: if isAdmin();
     }
 

@@ -558,6 +558,7 @@ function FormActividad({ proyecto, actividadInicial, onClose, onSaved }: {
   const [herramientas, setHerramientas] = useState<string[]>(actividadInicial?.herramientas_requeridas ?? []);
   const [herramientaInput, setHerramientaInput] = useState('');
   const [showToolSuggestions, setShowToolSuggestions] = useState(false);
+  const [detallesIA, setDetallesIA] = useState('');
 
   const TOOL_SUGGESTIONS = [
     'Google Docs', 'Google Sheets', 'Google Slides',
@@ -618,6 +619,7 @@ Contexto:
 - Tipo de actividad: ${tipoLabel}
 - Título: ${titulo}
 - Proyecto: ${proyecto.titulo}
+${detallesIA ? `- Detalles del docente: ${detallesIA}` : ''}
 
 Responde SOLO con la descripción, sin comillas ni texto adicional.`);
       const desc = text.trim().replace(/^["']|["']$/g, '');
@@ -643,6 +645,7 @@ Contexto:
 - Tipo: ${tipoLabel}
 - Título: ${titulo}
 - Descripción: ${descripcion || 'No especificada'}
+${detallesIA ? `- Detalles del docente: ${detallesIA}` : ''}
 
 Incluye herramientas gratuitas y accesibles para estudiantes. Ejemplos: Google Docs, Canva, PowerPoint, Excel, Arduino, Scratch, Python, VS Code, Figma, etc. NO incluyas texto fuera del JSON.`);
       const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -691,6 +694,7 @@ Contexto:
 - Título: ${titulo}
 - Descripción: ${descripcion || 'No especificada'}
 - Proyecto: ${proyecto.titulo}
+${detallesIA ? `- Detalles del docente: ${detallesIA}` : ''}
 
 Criterios sugeridos (incluye todos estos y otros relevantes):
 1. Investigación y contenido
@@ -897,6 +901,20 @@ NO incluyas texto fuera del JSON.`);
               className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-200"
               placeholder="Ej: Reporte de investigación científica"
             />
+          </div>
+
+          {/* Detalles para IA - Solo docente */}
+          <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl">
+            <label className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest block mb-1">
+              Detalles para generar con IA (opcional)
+            </label>
+            <textarea
+              value={detallesIA}
+              onChange={e => setDetallesIA(e.target.value)}
+              className="w-full px-3 py-2.5 text-sm border border-indigo-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-200 min-h-[70px] resize-y bg-white"
+              placeholder="Describe requisitos específicos, contexto del proyecto, nivel de los alumnos... La IA usará esto para generar descripción, instrucciones, rúbrica y herramientas."
+            />
+            <p className="text-[10px] text-indigo-500 mt-1">Este campo no se muestra a los alumnos, solo se usa para generar contenido con IA.</p>
           </div>
 
           {/* Descripción */}
