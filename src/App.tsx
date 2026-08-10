@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { NotificationsProvider } from './contexts/NotificationsContext';
 import Login from './components/shared/Login';
 import AdminLayout from './components/admin/AdminLayout';
 import AdminDashboard from './components/admin/AdminDashboard';
@@ -18,6 +19,13 @@ import UsersManager from './components/admin/UsersManager';
 import SchoolYearManager from './components/admin/SchoolYearManager';
 import CoordinacionesConfig from './components/admin/CoordinacionesConfig';
 import ConvivenciaPanel from './components/admin/ConvivenciaPanel';
+import AttendanceReportsHistory from './components/admin/AttendanceReportsHistory';
+import EstadisticasDashboard from './components/admin/EstadisticasDashboard';
+import NotasView from './components/notas/NotasView';
+import HorarioView from './components/horario/HorarioView';
+import ClaseView from './components/clase/ClaseView';
+import EventosView from './components/eventos/EventosView';
+import AvisosView from './components/avisos/AvisosView';
 import RoleLayout from './components/shared/RoleLayout';
 import CoordinacionDashboard from './components/coordinacion/CoordinacionDashboard';
 import AcademicaDashboard from './components/coordinacion/AcademicaDashboard';
@@ -33,8 +41,9 @@ import ModulePlaceholder from './components/docente/ModulePlaceholder';
 import StudentDashboard from './components/alumno/StudentDashboard';
 import Dashboard from './components/docente/Dashboard';
 import ProjectsModule from './components/proyectos/ProjectsModule';
+import ProyectosAdmin from './components/coordinacion/ProyectosAdmin';
 import { Teacher, SystemModuleId } from './types';
-import { getTeacher, seedInitialData } from './lib/firestore';
+import { getTeacher, seedInitialData, ensureAdminAccount, seedProyectoCultivoBacterias } from './lib/firestore';
 
 import { Routes, Route, Navigate } from 'react-router-dom';
 
@@ -49,6 +58,8 @@ const roleModuleIcons: Record<SystemModuleId, React.ElementType> = {
   eventos: CalendarDays,
   avisos: Bell,
   proyectos: Medal,
+  'semana-juventud': Medal,
+  'semana-juventud-admin': Medal,
 };
 
 const roleModuleColors: Record<SystemModuleId, string> = {
@@ -59,6 +70,8 @@ const roleModuleColors: Record<SystemModuleId, string> = {
   eventos: 'bg-emerald-500',
   avisos: 'bg-amber-500',
   proyectos: 'bg-orange-500',
+  'semana-juventud': 'bg-indigo-500',
+  'semana-juventud-admin': 'bg-indigo-500',
 };
 
 function getDefaultModulesForRole(role: string): SystemModuleId[] {
@@ -79,8 +92,11 @@ function AppContent() {
   const [teacherData, setTeacherData] = useState<Teacher | null>(null);
 
   useEffect(() => {
+    ensureAdminAccount();
     if (userProfile?.role === 'admin') {
       seedInitialData();
+      // Exponer función de seed en consola para el admin
+      (window as any).seedProyecto = seedProyectoCultivoBacterias;
     }
     if (userProfile?.teacherId) {
       getTeacher(userProfile.teacherId).then(setTeacherData);
@@ -132,6 +148,8 @@ function AppContent() {
           <Route path="users" element={<UsersManager />} />
           <Route path="coordinaciones-config" element={<CoordinacionesConfig />} />
           <Route path="convivencia" element={<ConvivenciaPanel />} />
+          <Route path="attendance-reports" element={<AttendanceReportsHistory />} />
+          <Route path="estadisticas" element={<EstadisticasDashboard />} />
           <Route path="school-year" element={<SchoolYearManager />} />
         </Route>
         <Route path="*" element={<Navigate to="/admin" replace />} />
@@ -156,11 +174,19 @@ function AppContent() {
   // Coordinacion Academica view
   if (normalizedRoleForView === 'coordinacion_academica') {
     const modules = getModules();
+    const permissions = roleConfig?.permissions || [];
     return (
       <Routes>
         <Route path="/coordinacion-academica" element={
           <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
             <AcademicaDashboard />
+          </RoleLayout>
+        } />
+        <Route path="/coordinacion-academica/semana-juventud-admin" element={
+          <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
+            {permissions.includes('semana-juventud-admin') ? (
+              <ProyectosAdmin />
+            ) : <Navigate to="/coordinacion-academica" replace />}
           </RoleLayout>
         } />
         <Route path="*" element={<Navigate to="/coordinacion-academica" replace />} />
@@ -261,7 +287,7 @@ function AppContent() {
 
   // Teacher view (Docente)
   if (userRole === 'docente') {
-    const permissions = roleConfig?.permissions || [];
+    const permissions = roleConfig?.permissions || getDefaultModulesForRole('docente');
 
     return (
       <Routes>
@@ -282,18 +308,16 @@ function AppContent() {
 
           <Route path="proyectos" element={
             permissions.includes('proyectos') ? (
-              <div className="bg-white rounded-2xl border border-slate-200/80 p-6">
-                <ProjectsModule view="docente" />
-              </div>
+              <ProjectsModule view="docente" />
             ) : <Navigate to="/docente" replace />
           } />
 
           {/* Placeholders for other modules */}
-          <Route path="notas" element={permissions.includes('notas') ? <ModulePlaceholder /> : <Navigate to="/docente" replace />} />
-          <Route path="clase" element={permissions.includes('clase') ? <ModulePlaceholder /> : <Navigate to="/docente" replace />} />
-          <Route path="horario" element={permissions.includes('horario') ? <ModulePlaceholder /> : <Navigate to="/docente" replace />} />
-          <Route path="eventos" element={permissions.includes('eventos') ? <ModulePlaceholder /> : <Navigate to="/docente" replace />} />
-          <Route path="avisos" element={permissions.includes('avisos') ? <ModulePlaceholder /> : <Navigate to="/docente" replace />} />
+          <Route path="notas" element={permissions.includes('notas') ? <NotasView /> : <Navigate to="/docente" replace />} />
+          <Route path="clase" element={permissions.includes('clase') ? <ClaseView /> : <Navigate to="/docente" replace />} />
+          <Route path="horario" element={permissions.includes('horario') ? <HorarioView /> : <Navigate to="/docente" replace />} />
+          <Route path="eventos" element={permissions.includes('eventos') ? <EventosView /> : <Navigate to="/docente" replace />} />
+          <Route path="avisos" element={permissions.includes('avisos') ? <AvisosView /> : <Navigate to="/docente" replace />} />
         </Route>
         <Route path="*" element={<Navigate to="/docente" replace />} />
       </Routes>
@@ -301,6 +325,44 @@ function AppContent() {
   }
 
   // Student view (alumno)
+  if (normalizedRoleForView === 'alumno') {
+    const modules = getModules();
+    const permissions = roleConfig?.permissions || getDefaultModulesForRole('alumno');
+    return (
+      <Routes>
+        <Route path="/alumno" element={
+          <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
+            <StudentDashboard studentName={userProfile.displayName} onLogout={signOut} />
+          </RoleLayout>
+        } />
+        <Route path="/alumno/formacion" element={
+          <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
+            {permissions.includes('formacion') ? (
+              <div className="bg-white rounded-2xl border border-slate-200/80 p-6">
+                <p className="text-sm text-slate-600">Módulo de Formación — Próximamente</p>
+              </div>
+            ) : <Navigate to="/alumno" replace />}
+          </RoleLayout>
+        } />
+        <Route path="/alumno/proyectos" element={
+          <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
+            {permissions.includes('proyectos') ? (
+              <ProjectsModule view="alumno" />
+            ) : <Navigate to="/alumno" replace />}
+          </RoleLayout>
+        } />
+        <Route path="/alumno/semana-juventud" element={
+          <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
+            {permissions.includes('semana-juventud') ? (
+              <ProjectsModule view="alumno" />
+            ) : <Navigate to="/alumno" replace />}
+          </RoleLayout>
+        } />
+        <Route path="*" element={<Navigate to="/alumno" replace />} />
+      </Routes>
+    );
+  }
+
   return (
     <Routes>
       <Route path="/" element={
@@ -317,9 +379,11 @@ function AppContent() {
 export default function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <NotificationsProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </NotificationsProvider>
     </ThemeProvider>
   );
 }

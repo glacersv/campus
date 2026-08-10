@@ -34,10 +34,11 @@ export default function RolesManager() {
 
   async function handleSave() {
     if (!editingRole?.id || !editingRole.name) return;
+    const roleId = editingRole.id.toLowerCase().trim();
     try {
       if (isCreating) {
         await createRole({
-          id: editingRole.id,
+          id: roleId,
           name: editingRole.name,
           description: editingRole.description || '',
           permissions: editingRole.permissions || [],
@@ -45,7 +46,7 @@ export default function RolesManager() {
         });
         toast.success('Rol creado');
       } else {
-        await updateRole(editingRole.id, {
+        await updateRole(roleId, {
           name: editingRole.name,
           description: editingRole.description,
           permissions: editingRole.permissions,
@@ -128,7 +129,7 @@ export default function RolesManager() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}
-            className="bg-white rounded-2xl p-5 border border-slate-200/80 hover:shadow-md transition-all"
+            className="card-crema p-5"
           >
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3">
@@ -194,22 +195,22 @@ export default function RolesManager() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+            className="modal-backdrop"
           >
             <motion.div
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
-              className="bg-white/90 backdrop-blur-xl border border-white/40 rounded-xl p-6 w-full max-w-lg shadow-xl"
+              className="modal-container max-w-lg"
             >
-              <div className="flex items-center justify-between mb-5">
+              <div className="modal-header">
                 <h3 className="font-bold text-slate-900">{isCreating ? 'Crear Rol' : 'Editar Rol'}</h3>
-                <button onClick={() => { setEditingRole(null); setIsCreating(false); }} className="p-1 hover:bg-slate-100 rounded-lg">
+                <button onClick={() => { setEditingRole(null); setIsCreating(false); }} className="modal-close-btn">
                   <X className="w-5 h-5 text-tertiary" />
                 </button>
               </div>
 
-              <div className="space-y-4">
+              <div className="modal-body space-y-4">
                 <div>
                   <label className="form-label">ID del Rol</label>
                   <input
@@ -217,7 +218,7 @@ export default function RolesManager() {
                     value={editingRole.id || ''}
                     onChange={e => setEditingRole({ ...editingRole, id: e.target.value })}
                     disabled={!isCreating}
-                    className={`w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono ${!isCreating ? 'bg-slate-50 text-tertiary' : ''}`}
+                    className={`input-crema font-mono ${!isCreating ? 'bg-slate-50 text-tertiary' : ''}`}
                     placeholder="ej: mi_rol"
                   />
                 </div>
@@ -227,7 +228,7 @@ export default function RolesManager() {
                     type="text"
                     value={editingRole.name || ''}
                     onChange={e => setEditingRole({ ...editingRole, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                    className="input-crema"
                     placeholder="Mi Nuevo Rol"
                   />
                 </div>
@@ -237,7 +238,7 @@ export default function RolesManager() {
                     type="text"
                     value={editingRole.description || ''}
                     onChange={e => setEditingRole({ ...editingRole, description: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                    className="input-crema"
                     placeholder="Describe las funciones de este rol"
                   />
                 </div>
@@ -270,7 +271,7 @@ export default function RolesManager() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 mt-5">
+              <div className="modal-footer flex justify-end gap-2 mt-5">
                 <button onClick={() => { setEditingRole(null); setIsCreating(false); }} className="btn-secondary">Cancelar</button>
                 <button onClick={handleSave} className="btn-primary"><Check className="w-4 h-4" /> Guardar</button>
               </div>

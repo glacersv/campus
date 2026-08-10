@@ -4,7 +4,6 @@ import {
   LogOut,
   Search,
   CheckCircle,
-  Sparkles,
   Calendar,
   AlertTriangle,
   UserX
@@ -325,7 +324,6 @@ export default function Dashboard({ teacher, onLogout }: DashboardProps) {
               animate={{ opacity: 1, y: 0 }}
               className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-indigo-900 text-xs flex items-center gap-2.5 font-medium"
             >
-              <Sparkles className="w-5 h-5 text-indigo-600 shrink-0" />
               <span>
                 <strong>Disposición de Acto Cívico:</strong> Se está utilizando el modo protocolar para los días lunes o efemérides nacionales. Los datos serán archivados bajo esta modalidad.
               </span>

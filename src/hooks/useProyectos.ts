@@ -2,14 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   collection, query, where, orderBy,
   onSnapshot, addDoc, updateDoc, doc,
-  serverTimestamp, getDocs
+  serverTimestamp, getDocs, arrayUnion, arrayRemove
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import {
   Proyecto, EstadoProyecto, Integrante,
-  FECHA_LIMITE_REGISTRO, FECHA_LIMITE_APROBACION, MATERIAS_PROYECTO
+  FECHA_LIMITE_REGISTRO, FECHA_LIMITE_APROBACION
 } from '../types';
+import { getAllSubjects, getTeacher } from '../lib/firestore';
 
 interface CrearProyectoData {
   titulo: string;
@@ -17,6 +18,7 @@ interface CrearProyectoData {
   grado: string;
   seccion: string;
   materia_id: string;
+  materias_secundarias?: string[];
   integrantes: Integrante[];
 }
 
@@ -39,14 +41,15 @@ export function useProyectos() {
     let q;
 
     if (userProfile.role === 'alumno') {
+      // Buscar proyectos donde el alumno es integrante usando uid
       q = query(col,
         where('integrantes', 'array-contains', userProfile.uid),
         orderBy('fecha_registro', 'desc')
       );
     } else if (userProfile.role === 'docente') {
+      // Docentes ven todos los proyectos
       q = query(col,
-        where('estado', 'in', ['registrado', 'en_revision_materia']),
-        orderBy('fecha_registro', 'desc')
+        where('estado', 'in', ['borrador', 'registrado', 'en_revision_materia', 'aprobado_oficial', 'rechazado_materia'])
       );
     } else {
       q = query(col, orderBy('fecha_registro', 'desc'));
@@ -65,12 +68,12 @@ export function useProyectos() {
   }, [userProfile]);
 
   async function crearProyecto(data: CrearProyectoData): Promise<{ id?: string; error?: string }> {
-    const hoy = new Date().toISOString().slice(0, 10);
-    if (hoy > FECHA_LIMITE_REGISTRO) return { error: 'La fecha límite de registro (17 de junio) ya pasó.' };
     if (!userProfile) return { error: 'No hay sesión activa.' };
-    if (data.integrantes.length < 5 || data.integrantes.length > 6) {
-      return { error: 'El equipo debe tener entre 5 y 6 integrantes.' };
+    if (data.integrantes.length < 1) {
+      return { error: 'Debe haber al menos un integrante (líder).' };
     }
+
+    const hoy = new Date().toISOString().slice(0, 10);
 
     const q = query(collection(db, 'proyectos'),
       where('titulo', '==', data.titulo),
@@ -80,7 +83,8 @@ export function useProyectos() {
     const dup = await getDocs(q);
     if (!dup.empty) return { error: 'Ya existe un proyecto con ese título en este grado y sección.' };
 
-    const materia = MATERIAS_PROYECTO.find(m => m.id === data.materia_id);
+    const materias = await getAllSubjects();
+    const materia = materias.find(m => m.id === data.materia_id);
     const rep = data.integrantes.find(i => i.es_rep);
 
     try {
@@ -90,7 +94,8 @@ export function useProyectos() {
         grado: data.grado,
         seccion: data.seccion,
         materia_id: data.materia_id,
-        materia_nombre: materia?.nombre ?? '',
+        materia_nombre: materia?.name ?? '',
+        materias_secundarias: data.materias_secundarias ?? [],
         representante_id: userProfile.uid,
         representante_nombre: userProfile.displayName,
         integrantes: data.integrantes.map(i => i.uid),
@@ -123,7 +128,6 @@ export function useProyectos() {
 
   async function enviarAValidacion(proyectoId: string): Promise<{ ok?: boolean; error?: string }> {
     const hoy = new Date().toISOString().slice(0, 10);
-    if (hoy > FECHA_LIMITE_REGISTRO) return { error: 'La fecha límite de registro (17 de junio) ya pasó.' };
 
     const proyecto = proyectos.find(p => p.id === proyectoId);
     if (!proyecto) return { error: 'Proyecto no encontrado.' };
@@ -147,13 +151,15 @@ export function useProyectos() {
     proyectoId: string,
     data: AccionDocenteData
   ): Promise<{ ok?: boolean; error?: string }> {
-    const materia = MATERIAS_PROYECTO.find(m => m.id === data.materia_id);
+    const materias = await getAllSubjects();
+    const materia = materias.find(m => m.id === data.materia_id);
     try {
       await updateDoc(doc(db, 'proyectos', proyectoId), {
-        estado: 'en_coordinacion',
+        estado: 'aprobado_oficial',
         materia_validada_id: data.materia_id,
-        materia_nombre: materia?.nombre ?? '',
+        materia_nombre: materia?.name ?? '',
         observaciones: data.comentario ?? null,
+        fecha_aprobacion: new Date().toISOString().slice(0, 10),
       });
       await _registrarHistorial(proyectoId, 'aprobacion_materia',
         undefined, { materia_id: data.materia_id }, data.comentario);
@@ -168,12 +174,13 @@ export function useProyectos() {
     data: AccionDocenteData
   ): Promise<{ ok?: boolean; error?: string }> {
     if (!data.comentario) return { error: 'Debes escribir un comentario para reclasificar.' };
-    const materia = MATERIAS_PROYECTO.find(m => m.id === data.materia_id);
+    const materias = await getAllSubjects();
+    const materia = materias.find(m => m.id === data.materia_id);
     try {
       await updateDoc(doc(db, 'proyectos', proyectoId), {
         estado: 'reclasificar',
         materia_id: data.materia_id,
-        materia_nombre: materia?.nombre ?? '',
+        materia_nombre: materia?.name ?? '',
         observaciones: data.comentario,
       });
       await _registrarHistorial(proyectoId, 'reclasificacion',
@@ -237,6 +244,34 @@ export function useProyectos() {
     }
   }
 
+  async function agregarMateriaSecundaria(
+    proyectoId: string,
+    materiaId: string
+  ): Promise<{ ok?: boolean; error?: string }> {
+    try {
+      await updateDoc(doc(db, 'proyectos', proyectoId), {
+        materias_secundarias: arrayUnion(materiaId),
+      });
+      return { ok: true };
+    } catch (e: any) {
+      return { error: e.message };
+    }
+  }
+
+  async function removerMateriaSecundaria(
+    proyectoId: string,
+    materiaId: string
+  ): Promise<{ ok?: boolean; error?: string }> {
+    try {
+      await updateDoc(doc(db, 'proyectos', proyectoId), {
+        materias_secundarias: arrayRemove(materiaId),
+      });
+      return { ok: true };
+    } catch (e: any) {
+      return { error: e.message };
+    }
+  }
+
   async function _registrarHistorial(
     proyectoId: string,
     accion: string,
@@ -267,5 +302,6 @@ export function useProyectos() {
     crearProyecto, guardarBorrador, enviarAValidacion,
     aprobarMateria, reclasificar, rechazarMateria,
     aprobarOficial, rechazarOficial,
+    agregarMateriaSecundaria, removerMateriaSecundaria,
   };
 }

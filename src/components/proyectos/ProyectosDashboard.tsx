@@ -1,16 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useProyectos } from '../../hooks/useProyectos';
-import { Proyecto, ESTADOS_PROYECTO, EstadoProyecto, MATERIAS_PROYECTO, ROLE_LABELS, UserRole } from '../../types';
+import { Proyecto, ESTADOS_PROYECTO, EstadoProyecto, ROLE_LABELS, UserRole, Subject, TIPOS_ACTIVIDAD } from '../../types';
+import { getAllSubjects } from '../../lib/firestore';
 import FormularioProyecto from './FormularioProyecto';
 import Historial from './Historial';
 import Cronograma from './Cronograma';
 import AdminPanel from './AdminPanel';
 import SugerenciaInformatica from './SugerenciaInformatica';
-import { FlaskConical, Calendar, Settings, Plus, ChevronLeft, ChevronRight, Clock, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
+import ActividadEvaluada from './ActividadEvaluada';
+import EvaluacionInformatica from './EvaluacionInformatica';
+import { FlaskConical, Calendar, Settings, Plus, ChevronLeft, ChevronRight, Clock, CheckCircle2, XCircle, AlertTriangle, ClipboardCheck, Award } from 'lucide-react';
 
 type Vista = 'lista' | 'form' | 'detalle';
-type MainTab = 'proyectos' | 'cronograma' | 'admin';
+type MainTab = 'proyectos' | 'cronograma' | 'admin' | 'evaluacion' | 'actividades';
 
 const STATUS_COLORS: Record<string, string> = {
   green: 'bg-emerald-100 text-emerald-800',
@@ -35,6 +38,11 @@ export default function ProyectosDashboard() {
   const [formModal, setFormModal] = useState({ materia: '', comentario: '' });
   const [msgAccion, setMsgAccion] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
   const [verHistorial, setVerHistorial] = useState(false);
+  const [materias, setMaterias] = useState<Subject[]>([]);
+
+  useEffect(() => {
+    getAllSubjects().then(setMaterias).catch(console.error);
+  }, []);
 
   const rol = userProfile?.role;
 
@@ -73,7 +81,7 @@ export default function ProyectosDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen" style={{ background: 'var(--bg-main)' }}>
       <div className="module-header">
         <div className="module-title-group">
           <div className="module-icon bg-indigo-100">
@@ -84,7 +92,7 @@ export default function ProyectosDashboard() {
             <p className="module-subtitle">{rol ? ROLE_LABELS[rol as UserRole] : ''} — {userProfile?.displayName}</p>
           </div>
         </div>
-        <button onClick={signOut} className="form-input !w-auto">Cerrar sesión</button>
+        <button onClick={signOut} className="btn-secondary">Cerrar sesión</button>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6">
@@ -124,6 +132,24 @@ export default function ProyectosDashboard() {
                 <Settings className="w-4 h-4 inline mr-1.5" />Admin
               </button>
             )}
+            {rol === 'docente' && (
+              <>
+                <button
+                  className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                    mainTab === 'actividades' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                  onClick={() => setMainTab('actividades')}>
+                  <Award className="w-4 h-4 inline mr-1.5" />Actividades
+                </button>
+                <button
+                  className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                    mainTab === 'evaluacion' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                  onClick={() => setMainTab('evaluacion')}>
+                  <ClipboardCheck className="w-4 h-4 inline mr-1.5" />Evaluar
+                </button>
+              </>
+            )}
           </div>
         )}
 
@@ -139,6 +165,7 @@ export default function ProyectosDashboard() {
           <DetalleProyecto
             proyecto={proyectos.find(p => p.id === proyectoActivo.id) ?? proyectoActivo}
             rol={rol}
+            materias={materias}
             verHistorial={verHistorial}
             onToggleHistorial={() => setVerHistorial(v => !v)}
             onVolver={() => { setVista('lista'); setProyectoActivo(null); setVerHistorial(false); }}
@@ -156,6 +183,14 @@ export default function ProyectosDashboard() {
           <AdminPanel proyectos={proyectos} />
         )}
 
+        {vista === 'lista' && mainTab === 'evaluacion' && rol === 'docente' && (
+          <EvaluacionInformatica />
+        )}
+
+        {vista === 'lista' && mainTab === 'actividades' && rol === 'docente' && (
+          <ActividadEvaluada />
+        )}
+
         {vista === 'lista' && mainTab === 'proyectos' && (
           <>
             <div className="grid grid-cols-4 gap-3 mb-4">
@@ -165,7 +200,7 @@ export default function ProyectosDashboard() {
                 { num: stats.pendientes, label: 'En revisión', icon: Clock, color: 'text-slate-600' },
                 { num: stats.rechazados, label: 'Rechazados', icon: XCircle, color: 'text-red-600' },
               ].map(({ num, label, icon: Icon, color }) => (
-                <div key={label} className="bg-white rounded-xl border border-slate-200/80 p-3 text-center">
+                <div key={label} className="card-crema p-3 text-center">
                   <Icon className={`w-5 h-5 ${color} mx-auto mb-1`} />
                   <div className={`text-xl font-bold ${color}`}>{num}</div>
                   <div className="text-[10px] text-slate-400 font-medium">{label}</div>
@@ -191,7 +226,7 @@ export default function ProyectosDashboard() {
             )}
 
             {!loading && proyectos.map(p => (
-              <ProyectoCard key={p.id} proyecto={p} rol={rol}
+              <ProyectoCard key={p.id} proyecto={p} rol={rol} materias={materias}
                 onVer={() => { setProyectoActivo(p); setVista('detalle'); }}
                 onRevisar={() => {
                   setModal({ tipo: rol!, proyectoId: p.id });
@@ -211,14 +246,29 @@ export default function ProyectosDashboard() {
               <>
                 <InfoRow label="Proyecto" value={p.titulo} />
                 <InfoRow label="Grado/Sección" value={`${p.grado} ${p.seccion}`} />
-                <InfoRow label="Materia solicitada" value={p.materia_nombre} />
+                <div className="py-2 border-b border-slate-100">
+                  <span className="text-sm text-slate-400">Materias</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    <span className="inline-flex items-center px-2.5 py-1 bg-primary/10 text-primary border border-primary/20 rounded-full text-xs font-bold">
+                      {p.materia_nombre}
+                    </span>
+                    {p.materias_secundarias?.map(mId => {
+                      const mat = materias.find(m => m.id === mId);
+                      return mat ? (
+                        <span key={mId} className="inline-flex items-center px-2.5 py-1 bg-slate-100 text-slate-600 border border-slate-200 rounded-full text-xs font-medium">
+                          {mat?.name}
+                        </span>
+                      ) : null;
+                    })}
+                  </div>
+                </div>
                 <InfoRow label="Descripción" value={p.descripcion} small />
 
                 <div className="mb-3">
                   <label className="form-label">Materia confirmada</label>
                   <select className="form-input" value={formModal.materia}
                     onChange={e => setFormModal(f => ({ ...f, materia: e.target.value }))}>
-                    {MATERIAS_PROYECTO.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+                    {materias.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                   </select>
                 </div>
                 <div className="mb-4">
@@ -253,7 +303,22 @@ export default function ProyectosDashboard() {
               <>
                 <InfoRow label="Proyecto" value={p.titulo} />
                 <InfoRow label="Grado/Sección" value={`${p.grado} ${p.seccion}`} />
-                <InfoRow label="Materia" value={p.materia_nombre} />
+                <div className="py-2 border-b border-slate-100">
+                  <span className="text-sm text-slate-400">Materias</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    <span className="inline-flex items-center px-2.5 py-1 bg-primary/10 text-primary border border-primary/20 rounded-full text-xs font-bold">
+                      {p.materia_nombre}
+                    </span>
+                    {p.materias_secundarias?.map(mId => {
+                      const mat = materias.find(m => m.id === mId);
+                      return mat ? (
+                        <span key={mId} className="inline-flex items-center px-2.5 py-1 bg-slate-100 text-slate-600 border border-slate-200 rounded-full text-xs font-medium">
+                          {mat?.name}
+                        </span>
+                      ) : null;
+                    })}
+                  </div>
+                </div>
                 <InfoRow label="Integrantes" value={`${p.integrantes_detalle?.length ?? 0}`} />
 
                 <CheckList proyecto={p} />
@@ -282,8 +347,8 @@ export default function ProyectosDashboard() {
   );
 }
 
-function ProyectoCard({ proyecto: p, rol, onVer, onRevisar }: {
-  proyecto: Proyecto; rol?: string; onVer: () => void; onRevisar: () => void;
+function ProyectoCard({ proyecto: p, rol, materias, onVer, onRevisar }: {
+  proyecto: Proyecto; rol?: string; materias: Subject[]; onVer: () => void; onRevisar: () => void;
 }) {
   const canRevisar =
     (rol === 'docente' && ['registrado', 'en_revision_materia'].includes(p.estado)) ||
@@ -292,13 +357,26 @@ function ProyectoCard({ proyecto: p, rol, onVer, onRevisar }: {
   const statusKey = ESTADOS_PROYECTO[p.estado]?.color ?? 'gray';
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200/80 p-4 mb-3 cursor-pointer hover:shadow-sm transition-all" onClick={onVer}>
+    <div className="card-crema p-4 mb-3 cursor-pointer" onClick={onVer}>
       <div className="flex justify-between items-start gap-3">
         <div className="flex-1 min-w-0">
           <div className="font-semibold text-sm text-slate-900 truncate">{p.titulo}</div>
           <div className="text-xs text-slate-400 mt-1">
-            {p.grado} {p.seccion} · {p.materia_nombre}
+            {p.grado} {p.seccion}
             {p.integrantes_detalle && ` · ${p.integrantes_detalle.length} integrantes`}
+          </div>
+          <div className="flex flex-wrap gap-1 mt-1.5">
+            <span className="inline-flex items-center px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-full text-[9px] font-bold">
+              {p.materia_nombre}
+            </span>
+            {p.materias_secundarias?.map(mId => {
+              const mat = materias.find(m => m.id === mId);
+              return mat ? (
+                <span key={mId} className="inline-flex items-center px-2 py-0.5 bg-slate-100 text-slate-600 border border-slate-200 rounded-full text-[9px] font-medium">
+                  {mat?.name}
+                </span>
+              ) : null;
+            })}
           </div>
           {p.observaciones && (
             <div className="bg-slate-50 rounded-lg px-3 py-2 text-xs text-slate-500 mt-2 border-l-2 border-slate-200">
@@ -330,8 +408,8 @@ function ProyectoCard({ proyecto: p, rol, onVer, onRevisar }: {
   );
 }
 
-function DetalleProyecto({ proyecto: p, rol, verHistorial, onToggleHistorial, onVolver, onEditar }: {
-  proyecto: Proyecto; rol?: string; verHistorial: boolean;
+function DetalleProyecto({ proyecto: p, rol, materias, verHistorial, onToggleHistorial, onVolver, onEditar }: {
+  proyecto: Proyecto; rol?: string; materias: Subject[]; verHistorial: boolean;
   onToggleHistorial: () => void; onVolver: () => void; onEditar: () => void;
 }) {
   const canEdit = ['reclasificar', 'rechazado_materia'].includes(p.estado) && p.intentos_envio < 2;
@@ -339,11 +417,11 @@ function DetalleProyecto({ proyecto: p, rol, verHistorial, onToggleHistorial, on
 
   return (
     <div>
-      <button className="form-input !w-auto mb-4" onClick={onVolver}>
+      <button className="btn-secondary !w-auto mb-4" onClick={onVolver}>
         <ChevronLeft className="w-4 h-4 inline mr-1" />Volver
       </button>
 
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-5 mb-3">
+      <div className="card-crema p-5 mb-3">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-base font-bold text-slate-900">{p.titulo}</h2>
           <span className={`text-[10px] px-2.5 py-1 rounded-full font-medium ${STATUS_COLORS[ESTADOS_PROYECTO[p.estado]?.color ?? 'gray']}`}>
@@ -351,13 +429,28 @@ function DetalleProyecto({ proyecto: p, rol, verHistorial, onToggleHistorial, on
           </span>
         </div>
         <InfoRow label="Grado / Sección" value={`${p.grado} ${p.seccion}`} />
-        <InfoRow label="Materia base" value={p.materia_nombre} />
+        <div className="py-2 border-b border-slate-100">
+          <span className="text-sm text-slate-400">Materias</span>
+          <div className="flex flex-wrap gap-1 mt-1">
+            <span className="inline-flex items-center px-2.5 py-1 bg-primary/10 text-primary border border-primary/20 rounded-full text-xs font-bold">
+              {p.materia_nombre}
+            </span>
+            {p.materias_secundarias?.map(mId => {
+              const mat = materias.find(m => m.id === mId);
+              return mat ? (
+                <span key={mId} className="inline-flex items-center px-2.5 py-1 bg-slate-100 text-slate-600 border border-slate-200 rounded-full text-xs font-medium">
+                  {mat?.name}
+                </span>
+              ) : null;
+            })}
+          </div>
+        </div>
         <InfoRow label="Descripción" value={p.descripcion} />
         <InfoRow label="Fecha de registro" value={p.fecha_registro} />
         <InfoRow label="Intentos de envío" value={`${p.intentos_envio}/2`} />
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-5 mb-3">
+      <div className="card-crema p-5 mb-3">
         <h3 className="text-sm font-bold text-slate-900 mb-3">
           Equipo ({p.integrantes_detalle?.length ?? 0} integrantes)
         </h3>
@@ -393,7 +486,64 @@ function DetalleProyecto({ proyecto: p, rol, verHistorial, onToggleHistorial, on
         <SugerenciaInformatica proyecto={p} onAsignado={() => {}} />
       )}
 
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-5">
+      {/* Evaluación del proyecto */}
+      {p.evaluacion_informatica && (
+        <div className="card-crema p-5 mb-3">
+          <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+            📋 Actividad Evaluada
+          </h3>
+          <InfoRow label="Título" value={p.evaluacion_informatica.titulo} />
+          <InfoRow label="Tipo" value={TIPOS_ACTIVIDAD[p.evaluacion_informatica.tipo_actividad]?.label || p.evaluacion_informatica.tipo_actividad} />
+          <InfoRow label="Estado" value={p.evaluacion_informatica.estado} />
+          {p.evaluacion_informatica.calificacion_nota != null && (
+            <InfoRow label="Calificación" value={`${p.evaluacion_informatica.calificacion_nota}/10`} />
+          )}
+          <div className="mt-3">
+            <p className="text-xs text-slate-500 mb-2">{p.evaluacion_informatica.descripcion}</p>
+            {p.evaluacion_informatica.herramientas_requeridas?.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {p.evaluacion_informatica.herramientas_requeridas.map(h => (
+                  <span key={h} className="text-[10px] px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">{h}</span>
+                ))}
+              </div>
+            )}
+          </div>
+          {p.evaluacion_informatica.rubrica?.length > 0 && (
+            <div className="mt-3">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Rúbrica de Evaluación</p>
+              <div className="text-[9px] text-slate-500 mb-2">
+                Escala 1-5 · {p.evaluacion_informatica.rubrica.length} criterios · Total: {p.evaluacion_informatica.rubrica.reduce((sum, c) => sum + c.peso, 0)} pts
+              </div>
+              {p.evaluacion_informatica.rubrica.map(c => (
+                <div key={c.id} className="bg-slate-50 rounded-lg p-2 mb-1.5 border border-slate-100">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-medium text-slate-700">{c.descripcion}</span>
+                    <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                      {c.peso} pts
+                    </span>
+                  </div>
+                  {(c.descripcion_nivel1 || c.descripcion_nivel5) && (
+                    <div className="mt-1.5 flex gap-1 flex-wrap">
+                      {c.descripcion_nivel1 && (
+                        <span className="text-[8px] px-1.5 py-0.5 bg-red-50 text-red-600 rounded">
+                          1: {c.descripcion_nivel1.substring(0, 40)}...
+                        </span>
+                      )}
+                      {c.descripcion_nivel5 && (
+                        <span className="text-[8px] px-1.5 py-0.5 bg-green-50 text-green-600 rounded">
+                          5: {c.descripcion_nivel5.substring(0, 40)}...
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="card-crema p-5">
         <div className="flex justify-between items-center cursor-pointer" onClick={onToggleHistorial}>
           <h3 className="text-sm font-bold text-slate-900">Historial de actividad</h3>
           <span className="text-xs text-slate-400">{verHistorial ? 'Ocultar' : 'Mostrar'}</span>
@@ -430,14 +580,18 @@ function CheckList({ proyecto: p }: { proyecto: Proyecto }) {
 
 function Modal({ titulo, onClose, children }: { titulo: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 bg-black/45 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-white rounded-2xl p-6 max-w-[500px] w-[90%] max-h-[85vh] overflow-y-auto border border-slate-200/80 shadow-xl"
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-container max-w-lg"
         onClick={e => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-base font-bold text-slate-900">{titulo}</h3>
-          <button className="text-slate-400 hover:text-slate-600 text-xl" onClick={onClose}>×</button>
+        <div className="modal-header">
+          <h3 className="modal-title">{titulo}</h3>
+          <button className="modal-close-btn" onClick={onClose}>
+            <span className="text-lg">×</span>
+          </button>
         </div>
-        {children}
+        <div className="modal-body">
+          {children}
+        </div>
       </div>
     </div>
   );

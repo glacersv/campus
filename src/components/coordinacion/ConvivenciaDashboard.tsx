@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { Handshake, CheckCircle, AlertTriangle, Shield, Users, FileText } from 'lucide-react';
 import ProjectsModule from '../proyectos/ProjectsModule';
 
@@ -32,8 +33,7 @@ export default function ConvivenciaDashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.06, type: 'spring', bounce: 0.1 }}
-              className="module-card-accent group"
-              style={{ borderLeftColor: `var(--color-${mod.id === 'asistencia' ? 'emerald-500' : mod.id === 'disciplina' ? 'amber-500' : 'red-500'})` }}
+              className="card-crema group card-interactive"
             >
               <div className="flex items-center gap-3 mb-3">
                 <div className={`w-10 h-10 rounded-xl ${mod.color} flex items-center justify-center`}>
@@ -53,7 +53,7 @@ export default function ConvivenciaDashboard() {
         })}
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-6">
+      <div className="card-crema p-6">
         <div className="flex items-center gap-3 mb-4">
           <Users className="w-5 h-5 text-slate-400" />
           <h3 className="text-sm font-bold text-slate-900">Estadísticas de Convivencia</h3>

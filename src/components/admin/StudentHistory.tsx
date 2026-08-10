@@ -39,20 +39,19 @@ export default function StudentHistory({ student, grades, sections, onClose }: S
     .filter((record, index, self) => index === self.findIndex(r => r.year === record.year));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-2xl shadow-2xl max-h-[80vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-6">
+    <div className="modal-backdrop">
+      <div className="modal-container max-w-2xl">
+        <div className="modal-header">
           <div>
-            <h3 className="text-lg font-bold text-slate-900">Historial Académico</h3>
-            <p className="text-sm text-slate-500">{student.name}</p>
+            <h3 className="modal-title">Historial Académico</h3>
+            <p className="text-sm text-slate-400">{student.name}</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full">
-            <X className="w-5 h-5 text-slate-500" />
+          <button onClick={onClose} className="modal-close-btn">
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Línea de tiempo del historial */}
-        <div className="space-y-4">
+        <div className="modal-body space-y-4">
           {sortedHistory.length === 0 ? (
             <div className="text-center py-8 text-slate-500">
               <p>No hay historial académico registrado.</p>
@@ -60,7 +59,7 @@ export default function StudentHistory({ student, grades, sections, onClose }: S
           ) : (
             <div className="space-y-3">
               {sortedHistory.map((record, idx) => (
-                <div key={idx} className="flex items-start gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <div key={idx} className="flex items-start gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
                   <div className="flex flex-col items-center">
                     <div className="w-16 h-16 rounded-full bg-white border-2 border-slate-200 flex items-center justify-center">
                       <Calendar className="w-6 h-6 text-slate-400" />
@@ -90,20 +89,19 @@ export default function StudentHistory({ student, grades, sections, onClose }: S
               ))}
             </div>
           )}
-        </div>
 
-        {/* Resumen */}
-        <div className="mt-6 pt-4 border-t border-slate-100">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-extrabold text-slate-900">{sortedHistory.length}</div>
-              <div className="text-xs text-slate-500">Años cursados</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-extrabold text-emerald-600">
-                {sortedHistory.filter(r => r.status === 'EN_CURSO').length}
+          <div className="pt-4 border-t border-slate-100">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-extrabold text-slate-900">{sortedHistory.length}</div>
+                <div className="text-xs text-slate-500">Años cursados</div>
               </div>
-              <div className="text-xs text-slate-500">Año actual</div>
+              <div className="text-center">
+                <div className="text-2xl font-extrabold text-emerald-600">
+                  {sortedHistory.filter(r => r.status === 'EN_CURSO').length}
+                </div>
+                <div className="text-xs text-slate-500">Año actual</div>
+              </div>
             </div>
           </div>
         </div>

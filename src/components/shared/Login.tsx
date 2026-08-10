@@ -18,7 +18,6 @@ export default function Login() {
     setLoading(true);
     try {
       if (isSignUp) {
-        // Restrict registration to institutional email domain
         if (!email.endsWith('@salesianosanjose.edu.sv')) {
           toast.error('Solo se permiten correos institucionales (@salesianosanjose.edu.sv)');
           setLoading(false);
@@ -58,64 +57,96 @@ export default function Login() {
       <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-salesiano-green via-salesiano-yellow to-salesiano-red" />
 
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        initial={{ opacity: 0, scale: 0.96, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.5, type: 'spring', bounce: 0.1 }}
-        className="w-full max-w-md bg-white/85 backdrop-blur-xl rounded-2xl border border-white/40 shadow-lg relative z-10 p-8">
+        className="w-full max-w-md relative z-10"
+      >
+        {/* Premium glass card */}
+        <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/60 shadow-premium p-8 relative overflow-hidden">
+          {/* Top accent glow */}
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent" />
+          
           <div className="flex flex-col items-center text-center mb-8">
-            <InstitutionLogo className="w-20 h-20 mb-4" />
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight leading-tight" style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}>
-              Campus Colegio<br />Salesiano San José
-            </h1>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, type: 'spring', bounce: 0.1 }}
+              className="mb-4"
+            >
+              <InstitutionLogo className="w-20 h-20" />
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, type: 'spring', bounce: 0.1 }}
+            >
+              <h1 className="text-xl font-bold text-slate-900 tracking-tight leading-tight" style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}>
+                Campus Colegio<br />Salesiano San José
+              </h1>
+              <p className="text-xs text-slate-500 mt-2 font-medium">Educación para el corazón</p>
+            </motion.div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {isSignUp && (
-              <div>
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
+              >
                 <label htmlFor="signup-name" className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Nombre Completo</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><UserPlus className="w-4 h-4" /></span>
-                  <input id="signup-name" type="text" required placeholder="Nombre del docente" value={displayName} onChange={e => setDisplayName(e.target.value)} className="input pl-9" />
+                <div className="relative group">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 group-focus-within:text-salesiano-green transition-colors"><UserPlus className="w-4 h-4" /></span>
+                  <input id="signup-name" type="text" required placeholder="Nombre del docente" value={displayName} onChange={e => setDisplayName(e.target.value)} className="input pl-9 bg-white/60 focus:bg-white" />
                 </div>
-              </div>
+              </motion.div>
             )}
             <div>
               <label htmlFor="login-email" className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Correo Electrónico</label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><Mail className="w-4 h-4" /></span>
-                <input id="login-email" type="email" required placeholder="correo@salesianosanjose.edu.sv" value={email} onChange={e => setEmail(e.target.value)} className="input pl-9" />
+              <div className="relative group">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 group-focus-within:text-salesiano-green transition-colors"><Mail className="w-4 h-4" /></span>
+                <input id="login-email" type="email" required placeholder="correo@salesianosanjose.edu.sv" value={email} onChange={e => setEmail(e.target.value)} className="input pl-9 bg-white/60 focus:bg-white" />
               </div>
             </div>
             <div>
               <label htmlFor="login-password" className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Contraseña</label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><Lock className="w-4 h-4" /></span>
-                <input id="login-password" type="password" required placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="input pl-9" />
+              <div className="relative group">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 group-focus-within:text-salesiano-green transition-colors"><Lock className="w-4 h-4" /></span>
+                <input id="login-password" type="password" required placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="input pl-9 bg-white/60 focus:bg-white" />
               </div>
             </div>
-            <button type="submit" disabled={loading} className="btn-primary w-full justify-center py-3 rounded-full disabled:opacity-50">
+            <motion.button 
+              type="submit" 
+              disabled={loading} 
+              className="btn-primary w-full justify-center py-3 rounded-full disabled:opacity-50"
+              whileTap={{ scale: 0.97 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+            >
               <LogIn className="w-4 h-4" />
               {loading ? 'Procesando...' : isSignUp ? 'Crear Cuenta' : 'Iniciar Sesión'}
-            </button>
+            </motion.button>
           </form>
 
-        {/* Microsoft Button (placeholder) */}
-        <div className="mt-4">
-          <button disabled className="w-full py-2.5 px-4 border border-gray-200 rounded-lg text-sm font-medium text-gray-400 bg-gray-50 cursor-not-allowed flex items-center justify-center gap-2 opacity-60 grayscale">
-            <svg className="w-4 h-4" viewBox="0 0 21 21">
-              <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
-              <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
-              <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
-              <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
-            </svg>
-            Iniciar con Microsoft (Próximamente)
-          </button>
-        </div>
+          {/* Microsoft Button (placeholder) */}
+          <div className="mt-4">
+            <button disabled className="w-full py-2.5 px-4 border border-slate-200/80 rounded-xl text-sm font-medium text-slate-400 bg-white/40 cursor-not-allowed flex items-center justify-center gap-2 opacity-60 backdrop-blur-sm">
+              <svg className="w-4 h-4" viewBox="0 0 21 21">
+                <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+                <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+                <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+                <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+              </svg>
+              Iniciar con Microsoft (Próximamente)
+            </button>
+          </div>
 
-        <div className="mt-6 pt-4 border-t border-slate-200/50 text-center">
-          <button onClick={() => { setIsSignUp(!isSignUp); }} className="text-xs font-bold text-salesiano-green hover:text-salesiano-green-dark transition-colors uppercase tracking-wider">
-            {isSignUp ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate'}
-          </button>
+          <div className="mt-6 pt-4 border-t border-slate-200/60 text-center">
+            <button onClick={() => { setIsSignUp(!isSignUp); }} className="text-xs font-bold text-salesiano-green hover:text-salesiano-green-dark transition-colors uppercase tracking-wider">
+              {isSignUp ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate'}
+            </button>
+          </div>
         </div>
       </motion.div>
 

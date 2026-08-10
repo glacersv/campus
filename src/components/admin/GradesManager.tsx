@@ -84,7 +84,6 @@ export default function GradesManager() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', cycle: '1' as Cycle, baccalaureateType: '' as '' | BaccalaureateType });
-  const [search, setSearch] = useState('');
   const [cycleFilter, setCycleFilter] = useState<Cycle | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<'ACTIVO' | 'INACTIVO' | 'all'>('all');
   const [onlyActive, setOnlyActive] = useState(true);
@@ -192,11 +191,10 @@ export default function GradesManager() {
   const activeGradeIds = new Set(students.map(st => st.gradeId).filter(Boolean));
 
   const filtered = grades.filter((g) => {
-    const matchesSearch = g.name.toLowerCase().includes(search.toLowerCase());
     const matchesCycle = cycleFilter === 'all' || g.cycle === cycleFilter;
     const matchesStatus = statusFilter === 'all' || (g.status || 'ACTIVO') === statusFilter;
     const matchesActive = !onlyActive || activeGradeIds.has(g.id);
-    return matchesSearch && matchesCycle && matchesStatus && matchesActive;
+    return matchesCycle && matchesStatus && matchesActive;
   });
 
   const filteredSectionsCount = sections.filter(sec => filtered.some(g => g.id === sec.gradeId)).length;
@@ -242,10 +240,6 @@ export default function GradesManager() {
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary" />
-            <input type="text" placeholder="Buscar grado..." value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-9" />
-          </div>
           <div className="flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-xl border border-slate-200">
             <button onClick={() => setCycleFilter('all')} className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${cycleFilter === 'all' ? 'bg-primary text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200/50'}`}>Todos</button>
             {(Object.keys(CYCLE_NAMES) as Cycle[]).map((c) => (
@@ -311,44 +305,96 @@ export default function GradesManager() {
         </div>
       )}
 
-      {/* Formulario Modal */}
+      {/* CREMA Modal */}
       <AnimatePresence>
         {showForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="modal-backdrop">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              initial={{ opacity: 0, scale: 0.96, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="w-full max-w-lg bg-white/90 backdrop-blur-xl border border-white/40 rounded-2xl shadow-xl overflow-hidden flex flex-col"
+              exit={{ opacity: 0, scale: 0.96, y: 20 }}
+              transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
+              className="modal-container max-w-lg"
             >
-              <div className="bg-slate-50/80 border-b border-slate-100 p-5 flex justify-between items-center shrink-0">
-                <h3 className="font-bold text-slate-900 text-base">{editingId ? 'Editar Grado' : 'Nuevo Grado'}</h3>
-                <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1.5 hover:bg-slate-200 rounded-lg transition-colors"><X className="w-4 h-4 text-slate-500" /></button>
+              <div className="modal-header">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-2xl bg-primary/10 flex items-center justify-center">
+                    <BookOpen className="w-5 h-5 text-primary" />
+                  </div>
+                  <h3 className="modal-title">
+                    {editingId ? 'Editar Grado' : 'Nuevo Grado'}
+                  </h3>
+                </div>
+                <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="modal-close-btn">
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                <div className="grid grid-cols-1 gap-4">
-                  <div>
+
+              <form onSubmit={handleSubmit} className="flex flex-col">
+                <div className="modal-body space-y-4">
+                  <div className="space-y-1.5">
                     <label className="form-label">Nombre *</label>
-                    <input type="text" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ej: 10mo Grado" className="input" autoFocus />
+                    <input type="text" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ej: 10mo Grado" className="input-crema" autoFocus />
                   </div>
-                  <div>
+                  <div className="space-y-1.5">
                     <label className="form-label">Ciclo *</label>
-                    <select value={form.cycle} onChange={(e) => setForm({ ...form, cycle: e.target.value as Cycle })} className="input">
+                    <div className="grid grid-cols-2 gap-2">
                       {(Object.keys(CYCLE_NAMES) as Cycle[]).map((c) => (
-                        <option key={c} value={c}>{CYCLE_NAMES[c]}</option>
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setForm({ ...form, cycle: c })}
+                          className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                            form.cycle === c
+                              ? 'bg-primary border-primary text-white shadow-sm'
+                              : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          {CYCLE_NAMES[c]}
+                        </button>
                       ))}
-                    </select>
+                    </div>
                   </div>
-                  <div>
+                  <div className="space-y-1.5">
                     <label className="form-label">Tipo de Bachillerato</label>
-                    <select value={form.baccalaureateType} onChange={(e) => setForm({ ...form, baccalaureateType: e.target.value as '' | BaccalaureateType })} className="input">
-                      <option value="">Ninguno</option>
-                      <option value="general">General</option>
-                      <option value="tecnico">Técnico</option>
-                    </select>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, baccalaureateType: '' })}
+                        className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                          form.baccalaureateType === ''
+                            ? 'bg-primary border-primary text-white shadow-sm'
+                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        Ninguno
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, baccalaureateType: 'general' })}
+                        className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                          form.baccalaureateType === 'general'
+                            ? 'bg-primary border-primary text-white shadow-sm'
+                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        General
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, baccalaureateType: 'tecnico' })}
+                        className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                          form.baccalaureateType === 'tecnico'
+                            ? 'bg-primary border-primary text-white shadow-sm'
+                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        Técnico
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 shrink-0">
+                <div className="modal-footer">
                   <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="btn-secondary">Cancelar</button>
                   <button type="submit" className="btn-primary"><Save className="w-4 h-4" /> {editingId ? 'Actualizar' : 'Crear'}</button>
                 </div>
@@ -495,57 +541,75 @@ function GradeCard({ grade, index, sectionsCount, buildingName, selected, onTogg
   onToggleStatus: () => void;
 }) {
   const cycle = grade.cycle as Cycle;
+  const cycleDotColor = CYCLE_HEX[cycle] || '#25855A';
+  const studentsCount = 0; // Would need to be passed as prop
+
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }} className={`bg-white rounded-2xl p-5 border border-slate-200/80 transition-all ${selected ? 'ring-2 ring-primary border-primary' : 'hover:shadow-md'}`}>
-      <div className="flex items-center justify-between mb-4">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.04, duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
+      className={`card-crema p-5 relative overflow-hidden card-interactive ${
+        selected ? 'ring-2 ring-primary' : ''
+      }`}
+    >
+      {/* Header with icon and title */}
+      <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center border bg-slate-50 border-slate-200/60 text-slate-500">
-            <DoorOpen className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center shrink-0">
+            <GraduationCap className="w-5 h-5 text-slate-600" />
           </div>
           <div>
             <h3 className="text-sm font-bold text-slate-900 leading-tight">{grade.name}</h3>
+            <p className="text-[10px] text-slate-400 font-medium mt-0.5">{CYCLE_NAMES[cycle]}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={onToggleStatus} className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-colors ${(grade.status || 'ACTIVO') === 'ACTIVO' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
-            {(grade.status || 'ACTIVO') === 'ACTIVO' ? 'Activo' : 'Inactivo'}
-          </button>
-          <button className="p-1 hover:bg-slate-100 rounded-lg transition-colors"><span className="text-slate-400 text-xs font-bold tracking-widest">•••</span></button>
+        <button
+          onClick={onToggleStatus}
+          className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-colors ${
+            (grade.status || 'ACTIVO') === 'ACTIVO'
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              : 'bg-slate-100 text-slate-500 border-slate-200'
+          }`}
+        >
+          {(grade.status || 'ACTIVO') === 'ACTIVO' ? 'Activo' : 'Inactivo'}
+        </button>
+      </div>
+
+      {/* Stats row at bottom */}
+      <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-100">
+        <div className="text-center">
+          <span className="text-2xl font-black text-emerald-600 font-display">{sectionsCount}</span>
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">Secciones</p>
+        </div>
+        <div className="text-center">
+          <span className="text-2xl font-black text-blue-600 font-display">{studentsCount}</span>
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">Alumnos</p>
         </div>
       </div>
 
-      <div className="mb-5">
-        <div className="flex items-baseline gap-1">
-          <span className="text-3xl font-bold text-slate-900 font-display tracking-tight">{sectionsCount ?? '—'}</span>
-          <span className="text-sm text-slate-400 font-medium">secciones</span>
-        </div>
-        <p className="text-[11px] text-slate-400 mt-1">{grade.baccalaureateType ? (grade.baccalaureateType === 'general' ? 'Bachillerato General' : 'Bachillerato Técnico') : 'Educación Básica'}</p>
-      </div>
-
-      <div className="mb-4">
-        <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
-          <Building2 className="w-4 h-4 text-slate-400" />
-          {buildingName ? (<span className="truncate">{buildingName}</span>) : (<span className="text-slate-400">Sin edificio asignado</span>)}
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-        <div className="flex items-center gap-2">
-          {(() => {
-            const cfg = CYCLE_LABEL[cycle] || CYCLE_LABEL['1'];
-            const Icon = cfg.Icon;
-            return (
-              <>
-                <Icon className={`${cfg.size} text-slate-400`} />
-                <span className="text-[11px] font-semibold text-slate-600">{cfg.label}</span>
-              </>
-            );
-          })()}
-        </div>
-        <div className="flex gap-1">
-          <button onClick={onEdit} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors" title="Editar"><Edit2 className="w-3.5 h-3.5 text-slate-500" /></button>
-          <button onClick={onDelete} className="p-1.5 hover:bg-red-50 rounded-lg transition-colors" title="Eliminar"><Trash2 className="w-3.5 h-3.5 text-red-500" /></button>
-        </div>
+      {/* Action buttons */}
+      <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-100">
+        <button
+          onClick={onEdit}
+          className="flex-1 py-2 px-3 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-xs transition-colors"
+        >
+          Gestionar Grado
+        </button>
+        <button
+          onClick={onEdit}
+          className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-500"
+          title="Editar"
+        >
+          <Edit2 className="w-4 h-4" />
+        </button>
+        <button
+          onClick={onDelete}
+          className="p-2 hover:bg-red-50 rounded-xl transition-colors text-red-500"
+          title="Eliminar"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
       </div>
     </motion.div>
   );

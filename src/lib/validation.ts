@@ -16,9 +16,9 @@ export function isValidString(value: string, minLength: number = 1, maxLength: n
   return typeof value === 'string' && value.trim().length >= minLength && value.trim().length <= maxLength;
 }
 
-// UID validation (Firebase UIDs are 28 characters)
+// UID validation (Firebase UIDs are 28 characters, but internal IDs can be shorter)
 export function isValidUID(uid: string): boolean {
-  return typeof uid === 'string' && uid.length >= 20 && uid.length <= 36;
+  return typeof uid === 'string' && uid.length >= 2 && uid.length <= 36;
 }
 
 // Validate User data

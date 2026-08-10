@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { GraduationCap, BookOpen, Users, Calendar, ClipboardCheck, Award } from 'lucide-react';
 import ProjectsModule from '../proyectos/ProjectsModule';
 
@@ -42,8 +43,7 @@ export default function PrimariaDashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.06, type: 'spring', bounce: 0.1 }}
-              className="module-card-accent group"
-              style={{ borderLeftColor: `var(--color-${mod.id === 'formacion' ? 'primary' : mod.id === 'notas' ? 'accent' : mod.id === 'horario' ? 'purple-500' : 'emerald-500'})` }}
+              className="card-crema group card-interactive"
             >
               <div className="flex items-center gap-3 mb-3">
                 <div className={`w-10 h-10 rounded-xl ${mod.color} flex items-center justify-center`}>
@@ -63,14 +63,14 @@ export default function PrimariaDashboard() {
         })}
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-6">
+      <div className="card-crema p-6">
         <div className="flex items-center gap-3 mb-4">
           <Award className="w-5 h-5 text-emerald-500" />
           <h3 className="text-sm font-bold text-slate-900">Resumen por Grado</h3>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {gradeStats.map((stat) => (
-            <div key={stat.grade} className="bg-emerald-50 rounded-xl p-3 text-center border border-emerald-100">
+            <div key={stat.grade} className="card-crema p-3 text-center">
               <p className="text-lg font-bold text-emerald-700">{stat.grade}</p>
               <p className="text-[10px] text-emerald-600">{stat.sections} secciones</p>
               <p className="text-[10px] text-emerald-500">{stat.students} alumnos</p>

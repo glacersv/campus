@@ -17,13 +17,18 @@ import {
   Users,
   Settings,
   Handshake,
-  Calendar
+  Calendar,
+  FileText,
+  BarChart3,
+  Search
 } from 'lucide-react';
 import { useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import InstitutionLogo from '../shared/InstitutionLogo';
 import ThemeSwitcher from '../shared/ThemeSwitcher';
+import NotificationCenter from '../shared/NotificationCenter';
+import QuickStatsSidebar from '../shared/QuickStatsSidebar';
 
 interface AdminLayoutProps {
   children?: React.ReactNode;
@@ -76,10 +81,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       { id: 'school-year', label: 'Iniciar Año', icon: Calendar },
       { id: 'baccalaureate-types', label: 'Tipos de Bachillerato', icon: Award },
       { id: 'coordinaciones-config', label: 'Config. Coordinaciones', icon: Settings },
+      { id: 'attendance-reports', label: 'Historial de Reportes', icon: FileText },
+      { id: 'estadisticas', label: 'Estadísticas', icon: BarChart3 },
     ]},
   ];
-
-  const adminOnly = ['grades', 'sections', 'grade-section-assignment', 'subjects', 'buildings', 'computer-labs', 'baccalaureate-types', 'teachers', 'students', 'coordinaciones-config'];
 
   const menuSections = userRole === 'admin'
     ? fullMenuSections
@@ -94,13 +99,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <div className="flex h-screen bg-[#F3F5F6] overflow-y-auto">
-      {/* Sidebar */}
-      <aside className={`${sidebarCollapsed ? 'w-[72px]' : 'w-64'} bg-white border-r border-slate-200 flex flex-col justify-between shrink-0 transition-all duration-300`}>
+      {/* Sidebar - Glass premium */}
+      <aside className={`${sidebarCollapsed ? 'w-[72px]' : 'w-64'} bg-white/70 backdrop-blur-xl border-r border-slate-200/80 flex flex-col justify-between shrink-0 transition-all duration-300 z-30`}>
         <div className="flex flex-col flex-1 min-h-0">
-          <div className="h-16 px-4 flex items-center justify-between border-b border-slate-100 shrink-0">
+          <div className="h-16 px-4 flex items-center justify-between border-b border-slate-100/80 shrink-0">
             {!sidebarCollapsed && (
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center shadow-sm">
                   <InstitutionLogo className="w-5 h-5" />
                 </div>
                 <div>
@@ -111,7 +116,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             )}
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-slate-100/80 transition-colors"
             >
               {sidebarCollapsed ? <Menu className="w-5 h-5 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
             </button>
@@ -124,24 +129,27 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   <div className="sidebar-section-title">{section.title}</div>
                 )}
                 <div className="space-y-0.5">
-                  {section.items.map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => navigate(`/admin/${item.id === 'dashboard' ? '' : item.id}`)}
-                      className={`sidebar-item ${currentPath === item.id || (currentPath === 'admin' && item.id === 'dashboard') ? 'active' : ''}`}
-                      title={sidebarCollapsed ? item.label : undefined}
-                    >
-                      <item.icon className="w-5 h-5 shrink-0" />
-                      {!sidebarCollapsed && <span>{item.label}</span>}
-                    </button>
-                  ))}
+                  {section.items.map((item) => {
+                    const isActive = currentPath === item.id || (currentPath === 'admin' && item.id === 'dashboard');
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => navigate(`/admin/${item.id === 'dashboard' ? '' : item.id}`)}
+                        className={`sidebar-item ${isActive ? 'active' : ''}`}
+                        title={sidebarCollapsed ? item.label : undefined}
+                      >
+                        <item.icon className="w-5 h-5 shrink-0" />
+                        {!sidebarCollapsed && <span>{item.label}</span>}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             ))}
           </nav>
         </div>
 
-        <div className="p-3 border-t border-slate-100 shrink-0">
+        <div className="p-3 border-t border-slate-100/80 shrink-0">
           {!sidebarCollapsed && (
             <div className="px-3 py-2 mb-2">
               <p className="text-xs font-semibold text-slate-900 truncate">{userProfile?.displayName || 'Admin'}</p>
@@ -163,23 +171,34 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
       {/* Main */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-14 bg-white border-b border-slate-200 px-4 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-4">
-            <h1 className="text-base font-semibold text-slate-900 font-display">
-              {flatItems.find(i => i.id === currentPath || (currentPath === 'admin' && i.id === 'dashboard'))?.label || 'Dashboard'}
-            </h1>
+        <header className="h-16 bg-white/60 backdrop-blur-xl border-b border-slate-200/80 px-4 flex items-center justify-between shrink-0 z-20">
+          <div className="flex items-center gap-4 flex-1">
+            {/* Global Search - Glass style */}
+            <div className="relative max-w-md flex-1">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Buscar módulos, alumnos, docentes..."
+                className="w-full pl-9 pr-4 py-2 text-sm bg-white/60 backdrop-blur-sm border border-slate-200/80 rounded-xl focus:outline-none focus:border-primary focus:bg-white transition-all placeholder:text-slate-400"
+              />
+            </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <NotificationCenter />
+            <div className="w-px h-5 bg-slate-200 mx-1" />
             <ThemeSwitcher />
-            <div className="w-px h-5 bg-slate-200" />
+            <div className="w-px h-5 bg-slate-200 hidden md:block" />
             <span className="text-xs text-slate-400 hidden md:inline">Colegio Salesiano San José</span>
             <div className="w-px h-5 bg-slate-200 hidden md:block" />
             <span className="text-xs font-semibold text-primary bg-primary-light px-2.5 py-1 rounded-full capitalize">{userRole}</span>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-6">
-          {children || <Outlet />}
+        <div className="flex-1 flex min-h-0 overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-8 md:p-10 lg:p-12">
+            {children || <Outlet />}
+          </div>
+          <QuickStatsSidebar />
         </div>
       </main>
     </div>

@@ -187,7 +187,7 @@ export default function BuildingsManager() {
                   value={form.name}
                   onChange={e => setForm({ ...form, name: e.target.value })}
                   placeholder="Ej: Edificio Principal"
-                  className="input"
+                  className="input-crema"
                   autoFocus
                   required
                 />
@@ -199,7 +199,7 @@ export default function BuildingsManager() {
                   value={form.code}
                   onChange={e => setForm({ ...form, code: e.target.value })}
                   placeholder="Ej: EP"
-                  className="input"
+                  className="input-crema"
                   maxLength={3}
                   required
                 />
@@ -211,7 +211,7 @@ export default function BuildingsManager() {
                   value={form.description}
                   onChange={e => setForm({ ...form, description: e.target.value })}
                   placeholder="Ej: Administración y oficinas"
-                  className="input"
+                  className="input-crema"
                 />
               </div>
               <div className="col-span-2 flex justify-end gap-2">
@@ -228,7 +228,7 @@ export default function BuildingsManager() {
       </AnimatePresence>
 
       {/* Glassmorphism Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {buildings.map((b, i) => {
           const stats = computeStats(b);
           const isSelected = selectedBuildingId === b.id;
@@ -239,7 +239,7 @@ export default function BuildingsManager() {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
-              className={`bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col justify-between hover:shadow-md transition-all h-[240px] relative cursor-pointer ${isSelected ? 'ring-2 ring-primary border-primary' : ''}`}
+              className={`card-crema p-5 flex flex-col justify-between hover:shadow-md transition-all h-[240px] relative cursor-pointer ${isSelected ? 'ring-2 ring-primary border-primary' : ''}`}
               onClick={() => setSelectedBuildingId(isSelected ? null : b.id)}
             >
               <div>
@@ -342,7 +342,7 @@ export default function BuildingsManager() {
                  { icon: Users, label: 'Capacidad Total', value: stats.totalCapacity, sub: 'cupos disponibles', color: 'bg-accent/10 text-accent' },
                  { icon: GraduationCap, label: 'Alumnos Matriculados', value: stats.totalEnrolled, sub: `de ${stats.totalCapacity} cupos`, color: 'bg-secondary/10 text-secondary' }
                ].map(({ icon: Icon, label, value, sub, color }) => (
-                 <div key={label} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+                  <div key={label} className="stat-card">
                    <div className="flex items-center gap-3 mb-3">
                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${color}`}>
                        <Icon className="w-5 h-5" />
@@ -368,7 +368,7 @@ export default function BuildingsManager() {
                   {stats.gradeStats.map(gs => {
                     const pct = Math.min((gs.enrolledStudents / Math.max(gs.totalCapacity, 1)) * 100, 100);
                     return (
-                      <div key={gs.gradeId} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+                      <div key={gs.gradeId} className="stat-card">
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-bold text-slate-900">{gs.gradeName}</span>
@@ -413,7 +413,7 @@ export default function BuildingsManager() {
             )}
 
             {stats.gradeStats.length === 0 && (
-              <div className="text-center py-16 text-tertiary bg-white border border-slate-200 rounded-xl">
+              <div className="text-center py-16 text-tertiary stat-card">
                 <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p className="text-base font-medium">No hay secciones asignadas a este edificio</p>
                 <p className="text-sm mt-1">Asigna secciones desde el módulo de Secciones</p>
@@ -424,7 +424,7 @@ export default function BuildingsManager() {
       })()}
 
       {!selectedBuildingId && buildings.length > 0 && (
-        <div className="mt-6 text-center py-12 text-tertiary bg-white border border-dashed border-slate-200 rounded-xl">
+        <div className="mt-6 text-center py-12 text-tertiary stat-card">
           <BarChart3 className="w-10 h-10 mx-auto mb-2 opacity-40" />
           <p className="text-sm font-medium">Selecciona un edificio para ver sus estadísticas</p>
           <p className="text-xs mt-1">Haz clic en cualquier edificio de arriba</p>

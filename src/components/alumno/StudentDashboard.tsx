@@ -2,151 +2,145 @@ import React from 'react';
 import { motion } from 'motion/react';
 import {
   ClipboardCheck,
-  BookOpen,
-  School,
-  Calendar,
-  CalendarDays,
-  Bell,
-  Lock,
-  LogOut,
-  Users,
   Medal,
-  FolderOpen,
-  Plus,
+  ArrowUpRight,
+  CheckCircle2,
+  GraduationCap,
+  Calendar,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import InstitutionLogo from '../shared/InstitutionLogo';
-import ProjectsModule from '../proyectos/ProjectsModule';
+import { useAuth } from '../../contexts/AuthContext';
+import { SystemModuleId } from '../../types';
+
 
 interface StudentDashboardProps {
   studentName: string;
   onLogout: () => void;
 }
 
-const modules = [
-  { id: 'formacion', label: 'Formación Buenos Días', desc: 'Registro de asistencia y disciplina', icon: ClipboardCheck, color: 'bg-primary', active: true },
-  { id: 'notas', label: 'Notas', desc: 'Calificaciones y evaluaciones', icon: BookOpen, color: 'bg-accent', active: false },
-  { id: 'clase', label: 'Clase', desc: 'Control de clases del día', icon: School, color: 'bg-secondary', active: false },
-  { id: 'horario', label: 'Horario', desc: 'Horarios de clases', icon: Calendar, color: 'bg-purple-500', active: false },
-  { id: 'eventos', label: 'Eventos', desc: 'Eventos del colegio', icon: CalendarDays, color: 'bg-emerald-500', active: false },
-  { id: 'avisos', label: 'Avisos', desc: 'Comunicados y anuncios', icon: Bell, color: 'bg-blue-500', active: false },
-  { id: 'proyectos', label: 'Semana de la Juventud', desc: 'Sube y gestiona tu proyecto', icon: Medal, color: 'bg-orange-500', active: true, to: '/estudiante' },
-];
+const MODULE_CONFIG: Record<SystemModuleId, { label: string; desc: string; icon: React.ElementType; color: string }> = {
+  formacion: { label: 'Formación Buenos Días', desc: 'Registro de asistencia y disciplina', icon: ClipboardCheck, color: 'bg-emerald-500/10 text-emerald-600 border-emerald-200' },
+  proyectos: { label: 'Semana de la Juventud', desc: 'Sube y gestiona tu proyecto', icon: Medal, color: 'bg-indigo-500/10 text-indigo-600 border-indigo-200' },
+  'semana-juventud': { label: 'Mi Proyecto', desc: 'Ver estado de mi proyecto', icon: Medal, color: 'bg-indigo-500/10 text-indigo-600 border-indigo-200' },
+  notas: { label: 'Notas', desc: 'Calificaciones y evaluaciones', icon: ClipboardCheck, color: 'bg-sky-500/10 text-sky-600 border-sky-200' },
+  clase: { label: 'Clase', desc: 'Control de clases del día', icon: ClipboardCheck, color: 'bg-amber-500/10 text-amber-600 border-amber-200' },
+  horario: { label: 'Horario', desc: 'Horarios de clases', icon: Calendar, color: 'bg-purple-500/10 text-purple-600 border-purple-200' },
+  eventos: { label: 'Eventos', desc: 'Eventos del colegio', icon: Calendar, color: 'bg-teal-500/10 text-teal-600 border-teal-200' },
+  avisos: { label: 'Avisos', desc: 'Comunicados y anuncios', icon: Calendar, color: 'bg-blue-500/10 text-blue-600 border-blue-200' },
+  'semana-juventud-admin': { label: 'Semana de la Juventud', desc: 'Administrar proyectos estudiantiles', icon: Medal, color: 'bg-indigo-500/10 text-indigo-600 border-indigo-200' },
+};
 
 export default function StudentDashboard({ studentName, onLogout }: StudentDashboardProps) {
-  const navigate = useNavigate();
   const today = new Date();
   const dayOfWeek = today.getDay();
   const isMonday = dayOfWeek === 1;
-  const [activeModule, setActiveModule] = React.useState<string | null>(null);
+  const navigate = useNavigate();
+  const { roleConfig } = useAuth();
+  
+  const enabledModules = roleConfig?.permissions || [];
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB]">
-      {/* Header */}
-      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/80 px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-              <InstitutionLogo className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-slate-900" style={{ fontFamily: 'var(--font-display)' }}>Campus Salesiano</h1>
-              <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">San José</p>
-            </div>
+    <div className="space-y-6">
+      {/* Hero Banner */}
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+        className="relative rounded-3xl bg-gradient-to-r from-[#124D37] via-[#25855A] to-[#1D6F4B] text-white p-6 md:p-8 shadow-xl shadow-emerald-900/10 overflow-hidden"
+      >
+        <div className="absolute -right-10 -bottom-10 w-60 h-60 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="relative z-10 max-w-2xl space-y-3">
+          <h2 className="text-2xl md:text-3xl font-extrabold font-display leading-tight">
+            ¡Hola, {studentName}!
+          </h2>
+          <p className="text-sm text-emerald-100/90 leading-relaxed">
+            Bienvenido a tu plataforma del Colegio Salesiano San José.
+          </p>
+        </div>
+      </motion.div>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="stat-card">
+          <div className="stat-card-icon bg-emerald-50 text-emerald-600">
+            <GraduationCap className="w-5 h-5" />
           </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <p className="text-sm font-medium text-slate-900">{studentName}</p>
-              <p className="text-xs text-slate-400">
-                {today.toLocaleDateString('es-SV', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-              </p>
-            </div>
-            <button onClick={onLogout} className="p-2 hover:bg-red-50 rounded-lg transition-colors group">
-              <LogOut className="w-5 h-5 text-slate-500 group-hover:text-red-600 transition-colors" />
-            </button>
+          <div>
+            <span className="stat-card-label">Estado Alumno</span>
+            <div className="stat-card-value">Activo 2026</div>
           </div>
         </div>
-      </header>
 
-      {/* Content */}
-      <main className="max-w-6xl mx-auto p-6">
-        {activeModule === 'proyectos' ? (
-          <div>
-            <button onClick={() => setActiveModule(null)} className="text-xs text-slate-400 hover:text-slate-600 mb-4 flex items-center gap-1 transition-colors">
-              ← Volver al menú
-            </button>
-            <ProjectsModule view="alumno" />
+        <div className="stat-card">
+          <div className="stat-card-icon bg-sky-50 text-sky-600">
+            <CheckCircle2 className="w-5 h-5" />
           </div>
-        ) : (
-          <>
-            {/* Welcome */}
-            <div className="mb-8">
-              <h2 className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'var(--font-display)' }}>Bienvenido, {studentName}</h2>
-              <p className="text-slate-500 mt-1">Selecciona un módulo para comenzar</p>
-            </div>
+          <div>
+            <span className="stat-card-label">Asistencia</span>
+            <div className="stat-card-value text-emerald-600">Al Día</div>
+          </div>
+        </div>
 
-            {/* Monday Notice */}
-            {isMonday && (
-              <motion.div initial={{ opacity: 0, y: -10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: 'spring', bounce: 0.1 }} className="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                  <Calendar className="w-4 h-4 text-blue-600" />
+        <div className="stat-card">
+          <div className="stat-card-icon bg-purple-50 text-purple-600">
+            <Medal className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="stat-card-label">Proyectos</span>
+            <div className="stat-card-value">Habilitados</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Monday Notice */}
+      {isMonday && (
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-amber-500/10 border border-amber-200 rounded-3xl flex items-start gap-3">
+          <div className="w-9 h-9 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0">
+            <Calendar className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-amber-900 font-display">
+              Hoy es Lunes — <span className="font-extrabold">Acto Cívico Automático</span>
+            </p>
+            <p className="text-xs text-amber-800/80 mt-0.5">Asiste puntualmente a la cancha principal para la formación cívica.</p>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Modules Grid */}
+      <div className="space-y-3">
+        <h3 className="text-base font-bold text-slate-900 font-display">Tus Módulos</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {enabledModules.map((moduleId, i) => {
+            const config = MODULE_CONFIG[moduleId];
+            if (!config) return null;
+            const Icon = config.icon;
+            return (
+              <motion.div
+                key={moduleId}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                onClick={() => navigate(`/alumno/${moduleId}`)}
+                className="card-crema p-6 transition-all card-interactive hover:shadow-xl hover:-translate-y-1 cursor-pointer"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className={`w-14 h-14 rounded-2xl border flex items-center justify-center shrink-0 ${config.color}`}>
+                    <Icon className="w-7 h-7" />
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center">
+                    <ArrowUpRight className="w-4 h-4" />
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-slate-700 font-medium">
-                    Hoy es Lunes - <span className="font-bold">Acto Cívico Automático</span>
-                  </p>
-                  <p className="text-xs text-slate-500 mt-1">La formación de hoy será en modalidad Acto Cívico</p>
+                <div className="mt-5 space-y-1">
+                  <h4 className="text-base font-bold text-slate-900 font-display">{config.label}</h4>
+                  <p className="text-xs text-slate-400">{config.desc}</p>
                 </div>
               </motion.div>
-            )}
-
-            {/* Module Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {modules.map((mod, i) => (
-                <motion.div
-                  key={mod.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.06, type: 'spring', bounce: 0.1 }}
-                  onClick={() => {
-                    if (mod.active && mod.id === 'proyectos') {
-                      setActiveModule('proyectos');
-                    }
-                  }}
-                  className={`group relative bg-white rounded-2xl p-5 border-l-[3px] transition-all ${
-                    mod.active && mod.id === 'proyectos'
-                      ? 'border-l-primary border-y border-r border-slate-200/80 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer'
-                      : 'border-l-slate-200 border-y border-r border-slate-200/80 opacity-50 grayscale cursor-not-allowed'
-                  }`}
-                >
-                  <div className="flex items-start gap-4">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${mod.active && mod.id === 'proyectos' ? mod.color : 'bg-slate-100'}`}>
-                      <mod.icon className={`w-6 h-6 ${mod.active && mod.id === 'proyectos' ? 'text-white' : 'text-slate-400'}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-base font-semibold text-slate-900">{mod.label}</h3>
-                      <p className="text-xs text-slate-400 mt-0.5">{mod.desc}</p>
-                      {!mod.active && (
-                        <div className="flex items-center gap-1 mt-2">
-                          <Lock className="w-3 h-3 text-slate-400" />
-                          <span className="text-[10px] text-slate-400 font-medium">Próximamente</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  {mod.active && mod.id === 'proyectos' && (
-                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
-                        <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                      </div>
-                    </div>
-                  )}
-                </motion.div>
-              ))}
-            </div>
-          </>
-        )}
-      </main>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

@@ -87,8 +87,8 @@ export default function TeacherProjects() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB]">
-      <header className="bg-white border-b border-gray-200 px-6 py-4">
+    <div className="min-h-screen" style={{ background: 'var(--bg-main)' }}>
+      <header className="bg-white border-b border-slate-200/80 px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <InstitutionLogo className="w-10 h-10" />
@@ -111,7 +111,7 @@ export default function TeacherProjects() {
 
         <div className="space-y-4">
           {proyectos.map(proyecto => (
-            <div key={proyecto.id} className="bg-white rounded-xl p-5 border border-gray-200">
+            <div key={proyecto.id} className="card-crema p-5">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <h3 className="text-base font-semibold text-slate-900">{proyecto.titulo}</h3>
@@ -130,7 +130,7 @@ export default function TeacherProjects() {
               <div className="mt-4 flex items-center gap-2 flex-wrap">
                 <select
                   onChange={(e) => cambiarEstado(proyecto.id!, e.target.value)}
-                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="input-crema !w-auto text-xs"
                   defaultValue=""
                 >
                   <option value="" disabled>Cambiar estado...</option>

@@ -15,7 +15,6 @@ import {
   CheckCircle2,
   Plus,
   Minus,
-  Sparkles,
   Layers,
   TrendingUp,
   Award,
@@ -366,7 +365,7 @@ export default function SchoolYearManager() {
   return (
     <div className="space-y-8 fade-in max-w-7xl mx-auto pb-12">
       {/* Premium Header */}
-      <div className="relative bg-white/80 backdrop-blur-md rounded-2xl p-6 md:p-8 border border-slate-200/80 shadow-xs overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all hover:border-slate-300">
+      <div className="relative card-crema p-6 md:p-8 overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all hover:border-slate-300">
         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full pointer-events-none" />
         <div className="flex items-center gap-5 relative z-10">
           <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-secondary shadow-inner transition-transform hover:scale-105 duration-300">
@@ -400,7 +399,6 @@ export default function SchoolYearManager() {
         </div>
         <div className="flex items-center gap-2 self-start md:self-auto relative z-10">
           <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-primary/5 via-accent/5 to-secondary/10 border border-primary/20 rounded-full text-xs font-bold text-primary shadow-sm">
-            <Sparkles className="w-3.5 h-3.5 text-primary animate-spin-slow" />
             Planificación en Vivo
           </span>
         </div>
@@ -409,64 +407,58 @@ export default function SchoolYearManager() {
       {/* Premium KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         {/* Card 1: Alumnos a promover */}
-        <div className="group bg-white rounded-2xl border border-slate-200/80 p-6 shadow-2xs hover:shadow-md hover:border-slate-300/80 hover:-translate-y-1 transition-all duration-300 flex items-center justify-between relative overflow-hidden">
+        <div className="group stat-card relative overflow-hidden">
           <div className="absolute top-0 left-0 w-1.5 h-full bg-primary rounded-l-2xl transition-all duration-300 group-hover:w-2" />
-          <div className="flex items-center gap-4 pl-1">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary/20 transition-colors shadow-sm">
-              <Users className="w-6 h-6" />
-            </div>
-            <div>
-              <span className="block text-[11px] font-black text-tertiary uppercase tracking-wider">
-                Alumnos a Promover
-              </span>
-              <span className="block text-xs text-secondary mt-0.5 font-medium">
-                Padrón activo para próximo ciclo
-              </span>
-            </div>
+          <div className="stat-card-icon bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
+            <Users className="w-6 h-6" />
           </div>
-          <div className="text-3xl font-black text-slate-900 font-mono bg-slate-50 border border-slate-100 px-4 py-2 rounded-xl">
+          <div className="flex-1 min-w-0">
+            <span className="stat-card-label">
+              Alumnos a Promover
+            </span>
+            <span className="block text-xs text-secondary mt-0.5 font-medium">
+              Padrón activo para próximo ciclo
+            </span>
+          </div>
+          <div className="stat-card-value">
             {totalIncoming}
           </div>
         </div>
 
         {/* Card 2: Graduaciones */}
-        <div className="group bg-white rounded-2xl border border-slate-200/80 p-6 shadow-2xs hover:shadow-md hover:border-slate-300/80 hover:-translate-y-1 transition-all duration-300 flex items-center justify-between relative overflow-hidden">
+        <div className="group stat-card relative overflow-hidden">
           <div className="absolute top-0 left-0 w-1.5 h-full bg-secondary rounded-l-2xl transition-all duration-300 group-hover:w-2" />
-          <div className="flex items-center gap-4 pl-1">
-            <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary group-hover:bg-secondary/20 transition-colors shadow-sm">
-              <GraduationCap className="w-6 h-6" />
-            </div>
-            <div>
-              <span className="block text-[11px] font-black text-tertiary uppercase tracking-wider">
-                Egresados a Graduar
-              </span>
-              <span className="block text-xs text-secondary mt-0.5 font-medium">
-                Saldrán del sistema (11G / 12T)
-              </span>
-            </div>
+          <div className="stat-card-icon bg-secondary/10 text-secondary group-hover:bg-secondary/20 transition-colors">
+            <GraduationCap className="w-6 h-6" />
           </div>
-          <div className="text-3xl font-black text-slate-700 font-mono bg-slate-50 border border-slate-100 px-4 py-2 rounded-xl">
+          <div className="flex-1 min-w-0">
+            <span className="stat-card-label">
+              Egresados a Graduar
+            </span>
+            <span className="block text-xs text-secondary mt-0.5 font-medium">
+              Saldrán del sistema (11G / 12T)
+            </span>
+          </div>
+          <div className="stat-card-value text-slate-700">
             {totalGraduates}
           </div>
         </div>
 
         {/* Card 3: Secciones Nuevas */}
-        <div className="group bg-white rounded-2xl border border-slate-200/80 p-6 shadow-2xs hover:shadow-md hover:border-slate-300/80 hover:-translate-y-1 transition-all duration-300 flex items-center justify-between relative overflow-hidden">
+        <div className="group stat-card relative overflow-hidden">
           <div className="absolute top-0 left-0 w-1.5 h-full bg-accent rounded-l-2xl transition-all duration-300 group-hover:w-2" />
-          <div className="flex items-center gap-4 pl-1">
-            <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center text-accent group-hover:bg-accent/20 transition-colors shadow-sm">
-              <Layers className="w-6 h-6" />
-            </div>
-            <div>
-              <span className="block text-[11px] font-black text-tertiary uppercase tracking-wider">
-                Nuevas Secciones
-              </span>
-              <span className="block text-xs text-secondary mt-0.5 font-medium">
-                Aulas virtuales a generar
-              </span>
-            </div>
+          <div className="stat-card-icon bg-accent/10 text-accent group-hover:bg-accent/20 transition-colors">
+            <Layers className="w-6 h-6" />
           </div>
-          <div className="text-3xl font-black text-slate-700 font-mono bg-slate-50 border border-slate-100 px-4 py-2 rounded-xl">
+          <div className="flex-1 min-w-0">
+            <span className="stat-card-label">
+              Nuevas Secciones
+            </span>
+            <span className="block text-xs text-secondary mt-0.5 font-medium">
+              Aulas virtuales a generar
+            </span>
+          </div>
+          <div className="stat-card-value text-slate-700">
             {totalSections}
           </div>
         </div>
@@ -484,13 +476,13 @@ export default function SchoolYearManager() {
               Configure las secciones que estarán disponibles para el período lectivo {nextYear}. El sistema distribuirá de forma óptima a los alumnos.
             </p>
           </div>
-          <span className="text-xs font-bold text-secondary font-mono bg-white border border-slate-200/80 px-4 py-2 rounded-xl shadow-sm self-start sm:self-auto">
+          <span className="text-xs font-bold text-secondary font-mono card-crema px-4 py-2 self-start sm:self-auto">
             {rows.length} Grados Configurables
           </span>
         </div>
 
         {rows.length === 0 ? (
-          <div className="text-center py-16 bg-white border border-slate-200/80 rounded-2xl text-tertiary shadow-sm">
+          <div className="text-center py-16 card-crema text-tertiary">
             <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-40" />
             <p className="text-sm font-medium">No se encontraron grados activos configurados en el sistema.</p>
           </div>
@@ -507,7 +499,7 @@ export default function SchoolYearManager() {
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: rowIndex * 0.02 }}
-                  className="bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col justify-between hover:shadow-md hover:border-slate-300 transition-all duration-300 relative group/card overflow-hidden min-h-[360px]"
+                  className="card-crema p-5 flex flex-col justify-between transition-all duration-300 relative group/card overflow-hidden min-h-[360px]"
                 >
                   {/* Decorative corner accent bar based on Cycle */}
                   <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${
@@ -642,7 +634,7 @@ export default function SchoolYearManager() {
                               maxLength={2}
                               placeholder="A"
                               title="Identificador de la sección"
-                              className="w-8 h-8 text-center text-xs font-black uppercase bg-white border border-slate-200 rounded-lg text-primary focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none transition-all shadow-sm"
+                              className="w-8 h-8 text-center text-xs font-black uppercase input-crema text-primary"
                             />
                           ))}
                         </div>
@@ -684,7 +676,7 @@ export default function SchoolYearManager() {
       </div>
 
       {/* Safety Info & Activation Call to Action */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 md:p-8 shadow-xs flex flex-col lg:flex-row items-center justify-between gap-6 transition-all hover:border-slate-300">
+      <div className="card-crema p-6 md:p-8 flex flex-col lg:flex-row items-center justify-between gap-6 transition-all hover:border-slate-300">
         <div className="flex items-start gap-4 max-w-3xl">
           <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0 border border-primary/20">
             <CheckCircle2 className="w-5.5 h-5.5 animate-pulse" />
@@ -743,7 +735,7 @@ export default function SchoolYearManager() {
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden"
             >
-              <div className="px-6 py-6 border-t border-slate-200 bg-white/50 space-y-5">
+              <div className="px-6 py-6 border-t border-slate-200 space-y-5">
                 <div className="p-4 bg-slate-50 border-l-4 border-slate-400 rounded-r-xl flex items-start gap-3.5">
                   <AlertTriangle className="w-5.5 h-5.5 text-secondary shrink-0 mt-0.5" />
                   <div>
@@ -758,7 +750,7 @@ export default function SchoolYearManager() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {/* Reset Pruebas */}
-                  <div className="bg-white border border-slate-200/80 p-5 rounded-xl flex flex-col justify-between gap-4 shadow-sm hover:border-slate-300 transition-all hover:scale-[1.005] duration-200">
+                  <div className="card-crema p-5 flex flex-col justify-between gap-4 transition-all hover:scale-[1.005] duration-200">
                     <div>
                       <h6 className="text-xs font-black text-slate-900 font-display uppercase tracking-wider flex items-center gap-1.5">
                         <AlertTriangle className="w-4 h-4 text-red-500" />
@@ -778,7 +770,7 @@ export default function SchoolYearManager() {
                   </div>
 
                   {/* Corregir Historial */}
-                  <div className="bg-white border border-slate-200/80 p-5 rounded-xl flex flex-col justify-between gap-4 shadow-sm hover:border-slate-300 transition-all hover:scale-[1.005] duration-200">
+                  <div className="card-crema p-5 flex flex-col justify-between gap-4 transition-all hover:scale-[1.005] duration-200">
                     <div>
                       <h6 className="text-xs font-black text-slate-900 font-display uppercase tracking-wider">
                         Reconstrucción Académica de Historiales
@@ -798,10 +790,9 @@ export default function SchoolYearManager() {
                 </div>
 
                 {/* Sincronizador Interactivo de Firebase */}
-                <div className="bg-white border border-slate-200/80 p-6 rounded-2xl space-y-4 shadow-sm hover:border-slate-300 transition-all">
+                <div className="card-crema p-6 space-y-4 transition-all">
                   <div>
                     <h6 className="text-xs font-black text-slate-900 font-display uppercase tracking-wider flex items-center gap-2">
-                      <Sparkles className="w-4.5 h-4.5 text-primary" />
                       Migrador Interactivo y Sincronización de Alumnos (Multi-Firebase SDK)
                     </h6>
                     <p className="text-[11px] text-secondary mt-1.5 leading-relaxed">
@@ -819,7 +810,7 @@ export default function SchoolYearManager() {
                         value={migrationSdk}
                         onChange={e => setMigrationSdk(e.target.value)}
                         placeholder={`{\n  "apiKey": "AIzaSy...",\n  "authDomain": "...",\n  "projectId": "...",\n  "storageBucket": "...",\n  "messagingSenderId": "...",\n  "appId": "..."\n}`}
-                        className="w-full text-xs font-mono p-4 border border-slate-200 rounded-2xl bg-slate-50/80 focus:ring-4 focus:ring-primary/15 focus:border-primary focus:outline-none transition-all shadow-sm"
+                        className="w-full text-xs font-mono p-4 input-crema"
                       />
                     </div>
 
@@ -847,7 +838,6 @@ export default function SchoolYearManager() {
                         </>
                       ) : (
                         <>
-                          <Sparkles className="w-3.5 h-3.5" />
                           <span>Iniciar Sincronización y Limpieza Completa</span>
                         </>
                       )}

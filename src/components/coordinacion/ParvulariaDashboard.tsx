@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { Baby, Puzzle, Music, Palette, Users, Sun } from 'lucide-react';
 import ProjectsModule from '../proyectos/ProjectsModule';
 
@@ -38,8 +39,7 @@ export default function ParvulariaDashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.06, type: 'spring', bounce: 0.1 }}
-              className="module-card-accent group"
-              style={{ borderLeftColor: `var(--color-${mod.id === 'formacion' ? 'primary' : mod.id === 'actividades' ? 'purple-500' : 'emerald-500'})` }}
+              className="card-crema group card-interactive"
             >
               <div className="flex items-center gap-3 mb-3">
                 <div className={`w-10 h-10 rounded-xl ${mod.color} flex items-center justify-center`}>
@@ -59,14 +59,14 @@ export default function ParvulariaDashboard() {
         })}
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-6">
+      <div className="card-crema p-6">
         <div className="flex items-center gap-3 mb-4">
           <Sun className="w-5 h-5 text-secondary" />
           <h3 className="text-sm font-bold text-slate-900">Resumen por Nivel</h3>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {levelStats.map((stat) => (
-            <div key={stat.level} className="bg-secondary/5 rounded-xl p-4 border border-secondary/10">
+            <div key={stat.level} className="card-crema p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-2xl font-bold text-secondary">{stat.level}</span>
                 <span className="text-xs font-semibold text-secondary/70 bg-secondary/10 px-2 py-0.5 rounded-full">{stat.age}</span>

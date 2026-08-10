@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, FileSpreadsheet, FileJson, CheckCircle2, RefreshCw, Check, CloudLightning, Loader2, Database, Printer } from 'lucide-react';
-import { Student, Teacher, Grade, StudentSessionState } from '../../types';
-import { saveAttendanceReport, type AttendanceReportData } from '../../firebase';
+import { Student, Teacher, Grade, StudentSessionState, AttendanceReportData } from '../../types';
+import { saveAttendanceReport } from '../../firebase';
 import { toast } from 'sonner';
 
 interface SummaryModalProps {

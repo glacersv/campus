@@ -11,10 +11,61 @@ import {
   orderBy,
   serverTimestamp,
   Timestamp,
-  addDoc
+  addDoc,
+  arrayUnion
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { User, Grade, Section, Subject, Teacher, Student, BaccalaureateTypeDoc, Building, ComputerLab, RoleConfig, UserRole, UserStatus, ApprovalRequest, NewUserNotification } from '../types';
+
+const FIREBASE_API_KEY = 'AIzaSyATVsRNPWADga7le5h8bxogza_HVmQr_Z8';
+
+async function createAuthAccount(email: string, password: string, displayName: string): Promise<{ uid: string; email: string }> {
+  const response = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FIREBASE_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        password,
+        displayName,
+        returnSecureToken: true,
+      }),
+    }
+  );
+  const data = await response.json();
+  if (data.error) {
+    if (data.error.message === 'EMAIL_EXISTS') {
+      throw new Error('EMAIL_EXISTS');
+    }
+    throw new Error(data.error.message);
+  }
+  return { uid: data.localId, email: data.email };
+}
+
+export async function ensureAdminAccount(): Promise<void> {
+  const adminEmail = 'admin@salesianosanjose.edu.sv';
+  
+  // Check if admin already exists in Firestore
+  try {
+    const users = await getAllUsers();
+    if (users.some(u => u.email === adminEmail && u.role === 'admin')) return;
+  } catch { return; }
+  
+  // Only create if missing
+  try {
+    const result = await createAuthAccount(adminEmail, '123456', 'Administrador');
+    if (result.uid) {
+      await createUser({
+        uid: result.uid,
+        email: adminEmail,
+        displayName: 'Administrador',
+        role: 'admin',
+        status: 'approved',
+      });
+    }
+  } catch { /* Auth account already exists or will be created manually */ }
+}
+import { User, Grade, Section, Subject, Teacher, Student, BaccalaureateTypeDoc, Building, ComputerLab, RoleConfig, UserRole, UserStatus, ApprovalRequest, NewUserNotification, Proyecto, ActividadEvaluada, EvaluacionProyecto } from '../types';
 import {
   validateUser,
   validateGrade,
@@ -93,6 +144,14 @@ export async function getAllUsers(): Promise<User[]> {
   return snapshot.docs.map(d => ({ uid: d.id, ...d.data() } as User));
 }
 
+export async function getUserByStudentId(studentId: string): Promise<User | null> {
+  const q = query(collection(db, USERS_COLLECTION), where('studentId', '==', studentId));
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return null;
+  const d = snapshot.docs[0];
+  return { uid: d.id, ...d.data() } as User;
+}
+
 // ==================== ROLES & PERMISSIONS ====================
 
 export async function createRole(data: Omit<RoleConfig, 'createdAt'>): Promise<void> {
@@ -101,6 +160,35 @@ export async function createRole(data: Omit<RoleConfig, 'createdAt'>): Promise<v
   
   const ref = doc(db, ROLES_COLLECTION, data.id);
   await setDoc(ref, { ...data, createdAt: serverTimestamp() });
+}
+
+// Correct module IDs in existing roles to match the code
+const CORRECT_ROLE_PERMISSIONS: Record<string, string[]> = {
+  admin: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'],
+  docente: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'],
+  alumno: ['formacion', 'proyectos'],
+  coordinacion: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'],
+  coordinacion_academica: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'],
+  coordinacion_convivencia: ['formacion', 'avisos'],
+  coordinacion_primaria: ['formacion', 'notas', 'clase', 'horario'],
+  coordinacion_parvularia: ['formacion', 'notas', 'clase', 'horario'],
+  registro_academico: ['notas', 'horario'],
+  enfermeria: ['formacion', 'avisos'],
+  psicopedagogico: ['formacion', 'notas', 'avisos'],
+};
+
+export async function fixRolesPermissions(): Promise<void> {
+  const snapshot = await getDocs(collection(db, ROLES_COLLECTION));
+  for (const d of snapshot.docs) {
+    const correct = CORRECT_ROLE_PERMISSIONS[d.id];
+    if (correct) {
+      const current = d.data().permissions || [];
+      const needsFix = correct.length !== current.length || correct.some((m, i) => m !== current[i]);
+      if (needsFix) {
+        await updateDoc(doc(db, ROLES_COLLECTION, d.id), { permissions: correct });
+      }
+    }
+  }
 }
 
 export async function getRole(id: string): Promise<RoleConfig | null> {
@@ -430,10 +518,106 @@ export async function deleteStudent(id: string): Promise<void> {
   await deleteDoc(ref);
 }
 
+export async function deleteUser(uid: string): Promise<void> {
+  const ref = doc(db, USERS_COLLECTION, uid);
+  await deleteDoc(ref);
+}
+
 export async function getAllStudents(): Promise<Student[]> {
   const q = query(collection(db, STUDENTS_COLLECTION), orderBy('name', 'asc'));
   const snapshot = await getDocs(q);
   return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Student));
+}
+
+export async function getAvailableStudentsBySection(
+  grade: string,
+  section: string,
+  excludeProjectId?: string
+): Promise<Student[]> {
+  // Get all students and filter by grade/section
+  // The grade format from the form is "11°" but student gradeId is "11t" or "11"
+  // The section format from the form is "A" but student sectionId is "11ta" (ends with letter)
+  const allStudents = await getAllStudents();
+  
+  const cleanGrade = grade.replace('°', '');
+  
+  const students = allStudents.filter(s => {
+    // Match grade: student gradeId should contain the grade number
+    const studentGradeNum = s.gradeId.replace(/[^0-9]/g, '');
+    if (studentGradeNum !== cleanGrade) return false;
+    
+    // Match section: student sectionId should end with the section letter
+    const studentSectionLetter = s.sectionId?.slice(-1)?.toUpperCase();
+    if (studentSectionLetter !== section.toUpperCase()) return false;
+    
+    return true;
+  });
+
+  // Get all active projects to exclude students already in a project
+  const proyectosRef = collection(db, 'proyectos');
+  const proyectosSnap = await getDocs(proyectosRef);
+  const activeStudentUids = new Set<string>();
+  
+  for (const doc of proyectosSnap.docs) {
+    const proyecto = doc.data();
+    // Only exclude students from active projects (not rejected ones)
+    if (!proyecto.estado?.startsWith('rechazado') && doc.id !== excludeProjectId) {
+      const integrantes = proyecto.integrantes || [];
+      integrantes.forEach((uid: string) => activeStudentUids.add(uid));
+    }
+  }
+
+  // Filter out students who are already in active projects
+  return students.filter(s => !activeStudentUids.has(s.id));
+}
+
+export async function getStudentsWithoutAccounts(): Promise<Student[]> {
+  const [students, users] = await Promise.all([getAllStudents(), getAllUsers()]);
+  const userIds = new Set(users.map(u => u.studentId).filter(Boolean));
+  return students.filter(s => !userIds.has(s.id));
+}
+
+export async function activateStudent(student: Student, password: string): Promise<{ email: string; password: string }> {
+  const carnet = student.carnet || student.id;
+  const email = carnet.includes('@') ? carnet : `${carnet.toLowerCase()}@salesianosanjose.edu.sv`;
+  
+  // Crear cuenta de Firebase Auth via REST API
+  let authUid: string;
+  try {
+    const authResult = await createAuthAccount(email, password, student.name);
+    authUid = authResult.uid;
+  } catch (err) {
+    if (err instanceof Error && err.message === 'EMAIL_EXISTS') {
+      throw new Error(`El email ${email} ya tiene una cuenta activa. El alumno puede iniciar sesión directamente.`);
+    }
+    throw err;
+  }
+
+  // Crear documento de usuario en Firestore con el UID de Auth
+  await createUser({
+    uid: authUid,
+    email,
+    displayName: student.name,
+    role: 'alumno',
+    status: 'approved',
+    studentId: student.id,
+  });
+
+  // Crear approval request
+  await createApprovalRequest({
+    id: authUid,
+    userId: authUid,
+    email,
+    displayName: student.name,
+    requestedRole: 'alumno',
+    status: 'approved',
+    studentId: student.id,
+    studentName: student.name,
+    gradeId: student.gradeId,
+    sectionId: student.sectionId,
+  });
+
+  return { email, password };
 }
 
 export async function getStudentsByGrade(gradeId: string): Promise<Student[]> {
@@ -776,15 +960,52 @@ export async function startSchoolYear(year: number, sectionConfig?: YearSectionC
 
 // ==================== SEED DATA ====================
 
+export async function migrateRolesToLowerCase(): Promise<void> {
+  const roles = await getAllRoles();
+  const users = await getAllUsers();
+  
+  for (const role of roles) {
+    if (role.id !== role.id.toLowerCase()) {
+      const lowerId = role.id.toLowerCase();
+      console.log(`[Migration] Migrando rol "${role.id}" → "${lowerId}"`);
+      
+      // Crear nuevo rol con ID minúscula
+      await createRole({
+        id: lowerId,
+        name: role.name,
+        description: role.description,
+        permissions: role.permissions,
+        isSystem: role.isSystem,
+      });
+      
+      // Actualizar usuarios con este rol
+      const affectedUsers = users.filter(u => u.role === role.id);
+      for (const user of affectedUsers) {
+        await updateUserRole(user.uid, lowerId);
+        console.log(`[Migration] Usuario ${user.email}: rol "${role.id}" → "${lowerId}"`);
+      }
+      
+      // Eliminar rol con ID en mayúsculas
+      await deleteRole(role.id);
+    }
+  }
+}
+
 export async function seedInitialData(): Promise<void> {
   const grades = await getAllGrades();
-  if (grades.length > 0) return;
-
-  // Roles
-  const rolesData: Omit<RoleConfig, 'createdAt'>[] = [
-    { id: 'admin', name: 'Administrador', description: 'Control total del sistema', permissions: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'], isSystem: true },
-  ];
-  for (const r of rolesData) await createRole(r);
+  if (grades.length === 0) {
+    // Roles
+    const rolesData: Omit<RoleConfig, 'createdAt'>[] = [
+      { id: 'admin', name: 'Administrador', description: 'Control total del sistema', permissions: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'], isSystem: true },
+      { id: 'docente', name: 'Docente', description: 'Profesor del colegio', permissions: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'], isSystem: true },
+      { id: 'alumno', name: 'Alumno', description: 'Estudiante del colegio', permissions: ['formacion', 'proyectos'], isSystem: true },
+      { id: 'coordinacion', name: 'Coordinación', description: 'Coordinación académica', permissions: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'], isSystem: true },
+      { id: 'coordinacion_academica', name: 'Coordinación Académica', description: 'Coordinación académica', permissions: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'], isSystem: true },
+      { id: 'registro_academico', name: 'Registro Académico', description: 'Registro académico', permissions: ['notas', 'horario'], isSystem: true },
+      { id: 'enfermeria', name: 'Enfermería', description: 'Enfermería del colegio', permissions: ['formacion', 'avisos'], isSystem: true },
+      { id: 'psicopedagogico', name: 'Psicopedagogía', description: 'Psicopedagogía del colegio', permissions: ['formacion', 'notas', 'avisos'], isSystem: true },
+    ];
+    for (const r of rolesData) await createRole(r);
 
   // Buildings
   const buildingsData = [
@@ -947,6 +1168,10 @@ export async function seedInitialData(): Promise<void> {
   for (const s of studentsData) await createStudent(s);
 
   console.log('Seed completed: 7 roles, 14 grades, 25 sections, 16 subjects, 10 teachers, 36 students');
+  }
+  
+  // Migrar roles existentes a minúsculas
+  await migrateRolesToLowerCase();
 }
 
 // ==================== SECURITY & AUDIT LOGS ====================
@@ -1012,7 +1237,11 @@ export async function logActivity(action: string, details: Record<string, any>):
 
 export async function createApprovalRequest(data: Omit<ApprovalRequest, 'createdAt'>): Promise<void> {
   const ref = doc(db, APPROVAL_REQUESTS_COLLECTION, data.id);
-  await setDoc(ref, { ...data, createdAt: serverTimestamp() });
+  const cleanData: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== undefined) cleanData[key] = value;
+  }
+  await setDoc(ref, { ...cleanData, createdAt: serverTimestamp() });
 }
 
 export async function getPendingApprovalRequests(): Promise<ApprovalRequest[]> {
@@ -1050,6 +1279,22 @@ export async function updateApprovalRequestByUserId(userId: string, data: Partia
   }
   const ref = doc(db, APPROVAL_REQUESTS_COLLECTION, snapshot.docs[0].id);
   await updateDoc(ref, data);
+}
+
+export async function deleteApprovalRequest(id: string): Promise<void> {
+  const ref = doc(db, APPROVAL_REQUESTS_COLLECTION, id);
+  await deleteDoc(ref);
+}
+
+export async function deleteAllPendingApprovalRequests(): Promise<number> {
+  const q = query(collection(db, APPROVAL_REQUESTS_COLLECTION), where('status', '==', 'pending'));
+  const snapshot = await getDocs(q);
+  let count = 0;
+  for (const d of snapshot.docs) {
+    await deleteDoc(d.ref);
+    count++;
+  }
+  return count;
 }
 
 // ==================== NEW USER NOTIFICATIONS ====================
@@ -1124,6 +1369,45 @@ export async function createUserForStudent(uid: string, email: string, displayNa
 
   // Actualizar el usuario con el studentId
   await updateUser(uid, { studentId });
+}
+
+// ==================== USER REACTIVATION ====================
+
+export async function detectUserRole(email: string): Promise<{ role: UserRole | null; teacherId?: string; teacherName?: string; studentId?: string; studentName?: string; gradeId?: string; sectionId?: string }> {
+  const lowerEmail = email.toLowerCase();
+
+  // Check super admin
+  if (lowerEmail === 'admin@salesianosanjose.edu.sv' || lowerEmail === 'jose.marquez@salesianosanjose.edu.sv') {
+    return { role: 'admin' };
+  }
+
+  // Check teacher
+  const teacher = await getTeacherByEmail(lowerEmail);
+  if (teacher) {
+    return { role: 'docente', teacherId: teacher.id, teacherName: teacher.name };
+  }
+
+  // Check student by carnet
+  const carnet = lowerEmail.split('@')[0];
+  const student = await getStudentByCarnet(carnet);
+  if (student) {
+    return { role: 'alumno', studentId: student.id, studentName: student.name, gradeId: student.gradeId, sectionId: student.sectionId };
+  }
+
+  return { role: null };
+}
+
+export async function reactivateUser(email: string, role: UserRole, extra?: { teacherId?: string; studentId?: string }): Promise<User> {
+  const existing = await getUserByEmail(email);
+  if (existing) {
+    // User exists in Firestore — just update status to approved
+    await updateUser(existing.uid, { status: 'approved', role, updatedAt: new Date() as any });
+    return { ...existing, status: 'approved', role };
+  }
+
+  // User doesn't exist in Firestore — we can't know the Auth UID from client
+  // Throw an error with instructions
+  throw new Error('NO_AUTH_UID');
 }
 
 // ==================== USER HELPERS ====================
@@ -1255,3 +1539,343 @@ export async function rejectUser(uid: string, reason?: string): Promise<void> {
     rejectionReason: reason,
   });
 }
+
+// ==================== ADMIN SEED: PROYECTO CULTIVO BACTERIAS ====================
+
+export async function seedProyectoCultivoBacterias(): Promise<void> {
+  const studentsSnap = await getDocs(query(collection(db, STUDENTS_COLLECTION), orderBy('name', 'asc')));
+
+  // Buscar a Fátima
+  const fatimaDoc = studentsSnap.docs.find(d => {
+    const name = (d.data().name || '').toLowerCase();
+    return name.includes('zavaleta');
+  });
+
+  if (!fatimaDoc) {
+    console.error('❌ No se encontró a Fátima Zavaleta en students');
+    return;
+  }
+
+  const fatima = fatimaDoc.data();
+  console.log('✅ Fátima encontrada:', fatimaDoc.id, fatima.name, fatima.gradeId, fatima.sectionId);
+
+  // Activar cuenta de usuario
+  const usersSnap = await getDocs(query(collection(db, USERS_COLLECTION), where('studentId', '==', fatimaDoc.id)));
+  if (!usersSnap.empty) {
+    const userDoc = usersSnap.docs[0];
+    const ud = userDoc.data();
+    if (ud.status !== 'approved' || ud.role !== 'alumno') {
+      await updateDoc(doc(db, USERS_COLLECTION, userDoc.id), {
+        role: 'alumno',
+        status: 'approved',
+        updatedAt: new Date(),
+      });
+      console.log('✅ Cuenta de Fátima activada');
+    } else {
+      console.log('✅ Cuenta de Fátima ya está activa');
+    }
+  } else {
+    console.log('⚠️ No se encontró cuenta de usuario para Fátima. Créala desde el admin.');
+  }
+
+  // Crear proyecto
+  const integrantes = [
+    { nombre: 'Eswin Alejandro Ramírez', numero_lista: 1, es_rep: false, uid: '' },
+    { nombre: 'Ernesto Josué Reina Salazar', numero_lista: 2, es_rep: false, uid: '' },
+    { nombre: 'Fátima Daniela Zavaleta González', numero_lista: 3, es_rep: true, uid: fatimaDoc.id },
+    { nombre: 'Kevin Alexander Rivera Guevara', numero_lista: 4, es_rep: false, uid: '' },
+    { nombre: 'Nataly Stephany Cea Rivas', numero_lista: 5, es_rep: false, uid: '' },
+    { nombre: 'Wilfredo José Carrillo Zaldaña', numero_lista: 6, es_rep: false, uid: '' },
+  ];
+
+  const hoy = new Date().toISOString().slice(0, 10);
+
+  const docRef = await addDoc(collection(db, 'proyectos'), {
+    titulo: 'Cultivo de bacterias y efectos antibacteriales',
+    descripcion: 'Con este experimento analizaremos el crecimiento de bacterias en superficies del uso cotidiano, como celulares, manos y fruta. Además evaluar el efecto de diferentes sustancias antibacteriales para determinar cuáles son más eficientes para visualizar el efecto bacteriano.',
+    grado: '11°',
+    seccion: 'A',
+    materia_id: 'ciencia',
+    materia_nombre: 'Ciencia y Tecnología',
+    materias_secundarias: [],
+    representante_id: fatimaDoc.id,
+    representante_nombre: fatima.name,
+    integrantes: integrantes.map(i => i.uid || i.nombre),
+    integrantes_detalle: integrantes,
+    estado: 'borrador',
+    intentos_envio: 0,
+    observaciones: null,
+    fecha_registro: hoy,
+    fecha_envio: null,
+    fecha_aprobacion: null,
+  });
+
+  console.log('✅ Proyecto creado:', docRef.id);
+
+  await addDoc(collection(db, 'historial'), {
+    proyecto_id: docRef.id,
+    actor_id: fatimaDoc.id,
+    actor_nombre: fatima.name,
+    rol_actor: 'alumno',
+    accion: 'registro',
+    valor_anterior: null,
+    valor_nuevo: { estado: 'borrador' },
+    comentario: null,
+    fecha: new Date().toISOString(),
+  });
+
+  console.log('🎉 ¡Listo! Proyecto "Cultivo de bacterias y efectos antibacteriales" creado en estado borrador');
+}
+
+// ==================== EVALUACIÓN DE PROYECTOS ====================
+
+export async function getProyectosAprobados(materiaId?: string): Promise<Proyecto[]> {
+  let q;
+  if (materiaId) {
+    q = query(
+      collection(db, 'proyectos'),
+      where('estado', '==', 'aprobado_oficial'),
+      where('materia_id', '==', materiaId),
+      orderBy('fecha_registro', 'desc')
+    );
+  } else {
+    q = query(
+      collection(db, 'proyectos'),
+      where('estado', '==', 'aprobado_oficial'),
+      orderBy('fecha_registro', 'desc')
+    );
+  }
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => {
+    const data = d.data() as Record<string, unknown>;
+    return { id: d.id, ...data } as Proyecto;
+  });
+}
+
+export async function getProyectosAprobadosByDocente(docenteId: string): Promise<Proyecto[]> {
+  const q = query(
+    collection(db, 'proyectos'),
+    where('estado', '==', 'aprobado_oficial'),
+    orderBy('fecha_registro', 'desc')
+  );
+  const snapshot = await getDocs(q);
+  const proyectos = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Proyecto));
+  
+  // Filtrar proyectos donde el docente tiene materias asignadas
+  const teacher = await getTeacher(docenteId);
+  if (!teacher?.subjects || teacher.subjects.length === 0) {
+    return proyectos;
+  }
+  
+  return proyectos.filter(p => 
+    teacher.subjects.includes(p.materia_id) ||
+    p.materias_secundarias?.some(m => teacher.subjects.includes(m))
+  );
+}
+
+export async function createActividadEvaluada(
+  proyectoId: string,
+  actividad: Omit<ActividadEvaluada, 'id' | 'created_at' | 'updated_at'>
+): Promise<string> {
+  const now = new Date().toISOString();
+  
+  // Filtrar valores undefined/undefined para Firestore
+  const filterUndefined = (obj: Record<string, any>): Record<string, any> => {
+    const filtered: Record<string, any> = {};
+    Object.entries(obj).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        filtered[key] = value;
+      }
+    });
+    return filtered;
+  };
+
+  const actividadData = filterUndefined({
+    proyecto_id: actividad.proyecto_id,
+    materia_id: actividad.materia_id,
+    materia_nombre: actividad.materia_nombre,
+    docente_id: actividad.docente_id,
+    docente_nombre: actividad.docente_nombre,
+    tipo_actividad: actividad.tipo_actividad,
+    titulo: actividad.titulo,
+    descripcion: actividad.descripcion,
+    instrucciones: actividad.instrucciones,
+    herramientas_requeridas: actividad.herramientas_requeridas,
+    rubrica: actividad.rubrica,
+    url_entrega: actividad.url_entrega,
+    fecha_asignacion: actividad.fecha_asignacion,
+    fecha_limite: actividad.fecha_limite,
+    estado: actividad.estado,
+    calificacion_total: actividad.calificacion_total,
+    calificacion_nota: actividad.calificacion_nota,
+    observaciones_calificacion: actividad.observaciones_calificacion,
+    fecha_calificacion: actividad.fecha_calificacion,
+    herramientas_sugeridas_ia: actividad.herramientas_sugeridas_ia,
+  });
+
+  const docRef = await addDoc(collection(db, 'actividades_evaluadas'), {
+    ...actividadData,
+    created_at: now,
+    updated_at: now,
+  });
+
+  // Actualizar el proyecto con la referencia a la actividad
+  await updateDoc(doc(db, 'proyectos', proyectoId), {
+    actividades_evaluadas: arrayUnion({ ...actividadData, id: docRef.id, created_at: now, updated_at: now }),
+  });
+
+  return docRef.id;
+}
+
+export async function getActividadesByProyecto(proyectoId: string): Promise<ActividadEvaluada[]> {
+  const q = query(
+    collection(db, 'actividades_evaluadas'),
+    where('proyecto_id', '==', proyectoId)
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ActividadEvaluada));
+}
+
+export async function getActividadesByDocente(docenteId: string): Promise<ActividadEvaluada[]> {
+  const q = query(
+    collection(db, 'actividades_evaluadas'),
+    where('docente_id', '==', docenteId)
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs
+    .map(d => ({ id: d.id, ...d.data() } as ActividadEvaluada))
+    .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''));
+}
+
+export async function updateActividadEvaluada(
+  actividadId: string,
+  proyectoId: string,
+  updates: Partial<ActividadEvaluada>
+): Promise<void> {
+  const now = new Date().toISOString();
+  
+  // Filtrar valores undefined/undefined para Firestore
+  const filteredUpdates: Record<string, any> = {};
+  Object.entries(updates).forEach(([key, value]) => {
+    if (value !== undefined) {
+      filteredUpdates[key] = value;
+    }
+  });
+
+  await updateDoc(doc(db, 'actividades_evaluadas', actividadId), {
+    ...filteredUpdates,
+    updated_at: now,
+  });
+
+  // Actualizar en el array del proyecto
+  const proyectoDoc = await getDoc(doc(db, 'proyectos', proyectoId));
+  if (proyectoDoc.exists()) {
+    const proyecto = proyectoDoc.data() as Proyecto;
+    const actividades = proyecto.actividades_evaluadas ?? [];
+    const idx = actividades.findIndex(a => a.id === actividadId);
+    if (idx >= 0) {
+      actividades[idx] = { ...actividades[idx], ...updates, updated_at: now };
+      await updateDoc(doc(db, 'proyectos', proyectoId), {
+        actividades_evaluadas: actividades,
+      });
+    }
+  }
+}
+
+export async function calificarActividad(
+  actividadId: string,
+  proyectoId: string,
+  calificacionTotal: number,
+  calificacionNota: number,
+  observaciones?: string,
+  calificacionesCriterios?: { criterio_id: string; puntuacion: number }[]
+): Promise<void> {
+  const hoy = new Date().toISOString().slice(0, 10);
+
+  await updateDoc(doc(db, 'actividades_evaluadas', actividadId), {
+    estado: 'calificada',
+    calificacion_total: calificacionTotal,
+    calificacion_nota: calificacionNota,
+    calificaciones_criterios: calificacionesCriterios ?? null,
+    observaciones_calificacion: observaciones ?? null,
+    fecha_calificacion: hoy,
+    updated_at: new Date().toISOString(),
+  });
+
+  // Actualizar en el array del proyecto
+  const proyectoDoc = await getDoc(doc(db, 'proyectos', proyectoId));
+  if (proyectoDoc.exists()) {
+    const proyecto = proyectoDoc.data() as Proyecto;
+    const actividades = proyecto.actividades_evaluadas ?? [];
+    const idx = actividades.findIndex(a => a.id === actividadId);
+    if (idx >= 0) {
+      actividades[idx] = {
+        ...actividades[idx],
+        estado: 'calificada',
+        calificacion_total: calificacionTotal,
+        calificacion_nota: calificacionNota,
+        calificaciones_criterios: calificacionesCriterios ?? null,
+        observaciones_calificacion: observaciones ?? null,
+        fecha_calificacion: hoy,
+      };
+      await updateDoc(doc(db, 'proyectos', proyectoId), {
+        actividades_evaluadas: actividades,
+      });
+    }
+  }
+}
+
+// Función simple para que el alumno guarde solo la URL (sin sync al proyecto)
+export async function updateUrlEntrega(
+  actividadId: string,
+  urlEntrega: string
+): Promise<void> {
+  const now = new Date().toISOString();
+  await updateDoc(doc(db, 'actividades_evaluadas', actividadId), {
+    url_entrega: urlEntrega,
+    updated_at: now,
+  });
+}
+
+export async function resetCalificacion(
+  actividadId: string,
+  proyectoId: string
+): Promise<void> {
+  const hoy = new Date().toISOString().slice(0, 10);
+
+  await updateDoc(doc(db, 'actividades_evaluadas', actividadId), {
+    estado: 'publicada',
+    calificacion_total: null,
+    calificacion_nota: null,
+    calificaciones_criterios: null,
+    observaciones_calificacion: null,
+    fecha_calificacion: null,
+    updated_at: hoy,
+  });
+
+  const proyectoDoc = await getDoc(doc(db, 'proyectos', proyectoId));
+  if (proyectoDoc.exists()) {
+    const proyecto = proyectoDoc.data() as Proyecto;
+    const actividades = proyecto.actividades_evaluadas ?? [];
+    const idx = actividades.findIndex(a => a.id === actividadId);
+    if (idx >= 0) {
+      actividades[idx] = {
+        ...actividades[idx],
+        estado: 'publicada',
+        calificacion_total: null,
+        calificacion_nota: null,
+        calificaciones_criterios: null,
+        observaciones_calificacion: null,
+        fecha_calificacion: null,
+      };
+      await updateDoc(doc(db, 'proyectos', proyectoId), {
+        actividades_evaluadas: actividades,
+      });
+    }
+  }
+}
+
+// Mantener compatibilidad con funciones anteriores
+export const createEvaluacion = createActividadEvaluada;
+export const getEvaluacionesByProyecto = getActividadesByProyecto;
+export const calificarEvaluacion = calificarActividad;

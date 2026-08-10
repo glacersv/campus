@@ -269,12 +269,12 @@ export default function ComputerLabsManager() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03 }}
                 className={`card card-hover p-3 group relative cursor-pointer transition-all ${selected.has(l.id) ? 'ring-2 ring-primary border-primary' : ''} ${isSelected ? 'ring-2 ring-offset-2' : 'hover:ring-1 hover:ring-offset-1'}`}
-                style={{ '--tw-ring-color': isSelected ? '#6366F1' : 'transparent' } as React.CSSProperties}
+                style={{ '--tw-ring-color': isSelected ? 'var(--color-primary)' : 'transparent' } as React.CSSProperties}
                 onClick={() => setSelectedLabId(isSelected ? null : l.id)}
               >
                 <div className="absolute top-2.5 left-2.5">
                   <button onClick={(e) => { e.stopPropagation(); toggleSelect(l.id); }}
-                    className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.has(l.id) ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'}`}>
+                    className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.has(l.id) ? 'bg-primary border-primary text-white' : 'border-slate-300 hover:border-primary'}`}>
                     {selected.has(l.id) && <Check className="w-2.5 h-2.5" />}
                   </button>
                 </div>
@@ -305,13 +305,13 @@ export default function ComputerLabsManager() {
                       <span className="w-14 shrink-0">Uso:</span>
                       <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                         <motion.div initial={{ width: 0 }} animate={{ width: `${stats.usagePct}%` }}
-                          className="h-full rounded-full" style={{ backgroundColor: '#6366F1' }} />
+                          className="h-full rounded-full bg-primary" />
                       </div>
                       <span className="w-8 text-right font-mono">{stats.usagePct}%</span>
                     </div>
                   )}
                 </div>
-                <div className="flex justify-end gap-1 mt-2 pt-2 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex justify-end gap-1 mt-2 pt-2 border-t border-slate-100 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button onClick={(e) => { e.stopPropagation(); handleEdit(l); }} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-slate-100 rounded-lg text-xs font-medium text-primary"><Edit2 className="w-3.5 h-3.5" /> Editar</button>
                   <button onClick={(e) => { e.stopPropagation(); handleDelete(l.id); }} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-red-50 rounded-lg text-xs font-medium text-red-600"><Trash2 className="w-3.5 h-3.5" /> Eliminar</button>
                 </div>
@@ -329,7 +329,7 @@ export default function ComputerLabsManager() {
               <tr>
                 <th className="w-8 px-3 py-2">
                   <button onClick={toggleSelectAll}
-                    className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.size === labs.length && labs.length > 0 ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'}`}>
+                    className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.size === labs.length && labs.length > 0 ? 'bg-primary border-primary text-white' : 'border-slate-300 hover:border-primary'}`}>
                     {selected.size === labs.length && labs.length > 0 && <Check className="w-2.5 h-2.5" />}
                   </button>
                 </th>
@@ -343,11 +343,11 @@ export default function ComputerLabsManager() {
             <tbody>
               {labs.map((l, i) => (
                 <motion.tr key={l.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}
-                  className={`table-row cursor-pointer ${selected.has(l.id) ? 'bg-primary/5' : ''} ${selectedLabId === l.id ? 'bg-indigo-50' : ''}`}
+                  className={`table-row cursor-pointer ${selected.has(l.id) ? 'bg-primary/5' : ''} ${selectedLabId === l.id ? 'bg-primary/5' : ''}`}
                   onClick={() => setSelectedLabId(selectedLabId === l.id ? null : l.id)}>
                   <td className="px-3 py-2">
                     <button onClick={(e) => { e.stopPropagation(); toggleSelect(l.id); }}
-                      className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.has(l.id) ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'}`}>
+                      className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.has(l.id) ? 'bg-primary border-primary text-white' : 'border-slate-300 hover:border-primary'}`}>
                       {selected.has(l.id) && <Check className="w-2.5 h-2.5" />}
                     </button>
                   </td>
@@ -390,8 +390,8 @@ export default function ComputerLabsManager() {
           <div className="mt-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
-                  <Monitor className="w-5 h-5 text-indigo-600" />
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Monitor className="w-5 h-5 text-primary" />
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-slate-900">{l.name}</h3>
@@ -416,15 +416,15 @@ export default function ComputerLabsManager() {
                  { icon: GraduationCap, label: 'Alumnos Matriculados', value: stats.totalEnrolled, sub: `de ${stats.totalCapacity} cupos`, color: 'bg-accent/10 text-accent' },
                  { icon: Cpu, label: 'Dispositivos', value: l.devices || 0, sub: 'equipos disponibles', color: 'bg-primary/10 text-primary' }
                ].map(({ icon: Icon, label, value, sub, color }) => (
-                 <div key={label} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-                   <div className="flex items-center gap-3 mb-3">
-                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${color}`}>
+                 <div key={label} className="stat-card flex-col items-start gap-3">
+                   <div className="flex items-center gap-3">
+                     <div className={`stat-card-icon ${color}`}>
                        <Icon className="w-5 h-5" />
                      </div>
-                     <span className="text-xs font-semibold text-secondary uppercase tracking-wider">{label}</span>
+                     <span className="stat-card-label">{label}</span>
                    </div>
-                   <p className="text-4xl font-black text-slate-900 font-mono">{value}</p>
-                   <p className="text-sm text-tertiary mt-1">{sub}</p>
+                   <p className="stat-card-value">{value}</p>
+                   <p className="text-xs text-slate-400 mt-1">{sub}</p>
                  </div>
                ))}
             </div>
@@ -442,7 +442,7 @@ export default function ComputerLabsManager() {
                   {stats.sectionsByGrade.map(sg => {
                     const pct = sg.capacity > 0 ? Math.round((sg.enrolled / sg.capacity) * 100) : 0;
                     return (
-                      <div key={sg.gradeName} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+                      <div key={sg.gradeName} className="card-crema p-5">
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-bold text-slate-900">{sg.gradeName}</span>
@@ -458,7 +458,7 @@ export default function ComputerLabsManager() {
                             initial={{ width: 0 }}
                             animate={{ width: `${pct}%` }}
                             transition={{ duration: 0.8, ease: 'easeOut' }}
-                            className="absolute inset-y-0 left-0 rounded-full bg-indigo-500"
+                            className="absolute inset-y-0 left-0 rounded-full bg-primary"
                           />
                         </div>
                         <div className="flex flex-wrap gap-1.5">
@@ -484,7 +484,7 @@ export default function ComputerLabsManager() {
             )}
 
             {stats.assignedSections.length === 0 && (
-              <div className="text-center py-16 text-tertiary bg-white border border-slate-200 rounded-xl">
+              <div className="text-center py-16 text-slate-400 card-crema p-8">
                 <Monitor className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p className="text-base font-medium">No hay secciones asignadas a este laboratorio</p>
                 <p className="text-sm mt-1">Asigna este laboratorio desde el módulo de Secciones</p>
@@ -495,7 +495,7 @@ export default function ComputerLabsManager() {
       })()}
 
       {!selectedLabId && labs.length > 0 && (
-        <div className="mt-6 text-center py-12 text-tertiary bg-white border border-dashed border-slate-200 rounded-xl">
+        <div className="mt-6 text-center py-12 text-slate-400 card-crema p-8 border-dashed">
           <BarChart3 className="w-10 h-10 mx-auto mb-2 opacity-40" />
           <p className="text-sm font-medium">Selecciona un laboratorio para ver sus estadísticas</p>
           <p className="text-xs mt-1">Haz clic en cualquier laboratorio de arriba</p>

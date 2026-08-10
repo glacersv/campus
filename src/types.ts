@@ -14,6 +14,9 @@ export interface User {
   status: UserStatus;
   teacherId?: string;
   studentId?: string;
+  studentName?: string;
+  gradeId?: string;
+  sectionId?: string;
   requestedRole?: UserRole;
   rejectionReason?: string;
   createdAt?: Timestamp;
@@ -75,7 +78,9 @@ export type SystemModuleId =
   | 'horario'
   | 'eventos'
   | 'avisos'
-  | 'proyectos';
+  | 'proyectos'
+  | 'semana-juventud'
+  | 'semana-juventud-admin';
 
 export const SYSTEM_MODULES: { id: SystemModuleId; label: string; desc: string }[] = [
   { id: 'formacion', label: 'Formación Buenos Días', desc: 'Registro de asistencia y disciplina' },
@@ -85,6 +90,8 @@ export const SYSTEM_MODULES: { id: SystemModuleId; label: string; desc: string }
   { id: 'eventos', label: 'Eventos', desc: 'Eventos del colegio' },
   { id: 'avisos', label: 'Avisos', desc: 'Comunicados y anuncios' },
   { id: 'proyectos', label: 'Semana de la Juventud', desc: 'Gestión de proyectos estudiantiles' },
+  { id: 'semana-juventud', label: 'Mi Proyecto', desc: 'Ver estado de mi proyecto' },
+  { id: 'semana-juventud-admin', label: 'Semana de la Juventud', desc: 'Administrar proyectos estudiantiles' },
 ];
 
 export interface RoleConfig {
@@ -260,6 +267,46 @@ export interface AttendanceSession {
   records: Record<string, StudentSessionState>;
 }
 
+// ==================== ATTENDANCE REPORTS (HISTORIAL) ====================
+
+export interface AttendanceReportData {
+  colegio: string;
+  fecha: string;
+  grado: string;
+  gradoId: string;
+  tutor: string;
+  tutorId: string;
+  modalidad: string;
+  estadisticas: {
+    totalEstudiantes: number;
+    presentes: number;
+    llegadasTarde: number;
+    ausentes: number;
+    disciplina: {
+      cabelloLargo: number;
+      unasPintadas: number;
+      uniformeIncorrecto: number;
+    };
+  };
+  detalles: Array<{
+    id: string;
+    nombre: string;
+    genero: 'M' | 'F';
+    asistencia: string;
+    horaLlegada: string | null;
+    disciplina: {
+      cabelloLargo: boolean;
+      unasPintadas: boolean;
+      uniformeIncorrecto: boolean;
+    };
+  }>;
+}
+
+export interface AttendanceReport extends AttendanceReportData {
+  id: string;
+  createdAt: Timestamp;
+}
+
 // ==================== SEMANA DE LA JUVENTUD ====================
 
 export type EstadoProyecto =
@@ -302,6 +349,79 @@ export interface ComplementoInformatica {
   fecha_asignacion?: string;
 }
 
+// ==================== EVALUACIÓN DE PROYECTOS ====================
+
+export type TipoActividad = 'investigacion' | 'experimento' | 'presentacion' | 'codigo' | 'sitio_web' | 'excel' | 'escrito' | 'expo_feria' | 'arduino' | 'otro';
+
+export const TIPOS_ACTIVIDAD: Record<TipoActividad, { label: string; icon: string; materias: string[] }> = {
+  investigacion: { label: 'Investigación',   icon: '🔬', materias: ['ciencia', 'ciudadania', 'lenguaje'] },
+  experimento:   { label: 'Experimento',     icon: '🧪', materias: ['ciencia', 'matematicas'] },
+  presentacion:  { label: 'Presentación',    icon: '📽️', materias: ['todas'] },
+  codigo:        { label: 'Código',          icon: '💻', materias: ['matematicas', 'ciencia'] },
+  sitio_web:     { label: 'Sitio Web',       icon: '🌐', materias: ['todas'] },
+  excel:         { label: 'Excel/Datos',     icon: '📊', materias: ['matematicas', 'ciencia'] },
+  escrito:       { label: 'Reporte Escrito', icon: '📝', materias: ['lenguaje', 'ciudadania'] },
+  expo_feria:    { label: 'Exposición Feria', icon: '🎤', materias: ['todas'] },
+  arduino:       { label: 'Arduino/Robótica', icon: '🔧', materias: ['ciencia', 'matematicas', 'todas'] },
+  otro:          { label: 'Otro',            icon: '📋', materias: ['todas'] },
+};
+
+export interface CriterioRubrica {
+  id: string;
+  descripcion: string;
+  peso: number; // Puntos que vale este criterio (deben sumar 100)
+  descripcion_nivel1?: string; // Qué significa获得1 punto
+  descripcion_nivel2?: string; // Qué significa获得2 puntos
+  descripcion_nivel3?: string; // Qué significa获得3 puntos
+  descripcion_nivel4?: string; // Qué significa获得4 puntos
+  descripcion_nivel5?: string; // Qué significa获得5 puntos
+}
+
+export interface CalificacionCriterio {
+  criterio_id: string;
+  puntuacion: number; // 1-5
+}
+
+export const ESCALA_CALIFICACION: Record<number, { label: string; color: string }> = {
+  1: { label: 'Deficiente', color: 'text-red-600 bg-red-50' },
+  2: { label: 'En desarrollo', color: 'text-orange-600 bg-orange-50' },
+  3: { label: 'Cumple parcialmente', color: 'text-amber-600 bg-amber-50' },
+  4: { label: 'Cumple', color: 'text-emerald-600 bg-emerald-50' },
+  5: { label: 'Superó expectativas', color: 'text-green-600 bg-green-50' },
+};
+
+export interface ActividadEvaluada {
+  id: string;
+  proyecto_id: string;
+  materia_id: string;
+  materia_nombre: string;
+  docente_id: string;
+  docente_nombre: string;
+  tipo_actividad: TipoActividad;
+  titulo: string;
+  descripcion: string;
+  instrucciones?: string;
+  herramientas_requeridas: string[];
+  rubrica: CriterioRubrica[];
+  herramientas_sugeridas_ia?: string[]; // Herramientas sugeridas por IA
+  url_entrega?: string; // URL del trabajo del alumno
+  fecha_asignacion: string;
+  fecha_limite?: string;
+  estado: 'borrador' | 'publicada' | 'entregada' | 'calificada';
+  calificaciones_criterios?: CalificacionCriterio[]; // Puntuaciones por criterio (1-5)
+  calificacion_total?: number; // Suma ponderada (0-100)
+  calificacion_nota?: number; // Nota final (0-10)
+  observaciones_calificacion?: string;
+  fecha_calificacion?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Mantener compatibilidad con nombre anterior
+export type TipoEvaluacionInformatica = TipoActividad;
+export const TIPOS_EVALUACION_INFO = TIPOS_ACTIVIDAD;
+export type EvaluacionProyecto = ActividadEvaluada;
+
 export interface Integrante {
   uid: string;
   nombre: string;
@@ -318,6 +438,7 @@ export interface Proyecto {
   materia_id: string;
   materia_nombre: string;
   materia_validada_id?: string;
+  materias_secundarias?: string[];
   representante_id: string;
   representante_nombre: string;
   integrantes: string[];
@@ -331,6 +452,8 @@ export interface Proyecto {
   sugerencias_informatica?: SugerenciaOpcion[];
   sugerencias_generadas_en?: string;
   complemento_informatica?: ComplementoInformatica;
+  evaluacion_informatica?: EvaluacionProyecto;
+  actividades_evaluadas?: ActividadEvaluada[];
 }
 
 export interface HistorialItem {

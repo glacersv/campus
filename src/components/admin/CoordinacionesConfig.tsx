@@ -113,7 +113,7 @@ export default function CoordinacionesConfig() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
-              className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden"
+              className="card-crema overflow-hidden"
             >
               {/* Header with color */}
               <div className="p-4 border-b border-slate-100" style={{ borderLeftColor: area.color, borderLeftWidth: '4px' }}>

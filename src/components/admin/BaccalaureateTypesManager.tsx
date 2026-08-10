@@ -23,7 +23,6 @@ export default function BaccalaureateTypesManager() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', maxGrade: '11' });
-  const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -97,7 +96,7 @@ export default function BaccalaureateTypesManager() {
     else setSelected(new Set(filtered.map(t => t.id)));
   };
 
-  const filtered = types.filter(t => t.name.toLowerCase().includes(search.toLowerCase()));
+  const filtered = types;
 
   if (loading) return (
     <div className="flex justify-center py-12">
@@ -138,17 +137,6 @@ export default function BaccalaureateTypesManager() {
 
       {/* Toolbar */}
       <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-tertiary" />
-          <input
-            type="text"
-            placeholder="Buscar tipo..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="input pl-9"
-          />
-        </div>
-
         {/* Bulk actions */}
         {selected.size > 0 && (
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
@@ -187,7 +175,7 @@ export default function BaccalaureateTypesManager() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="card p-5"
+            className="card-crema p-5"
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-slate-900">
@@ -208,7 +196,7 @@ export default function BaccalaureateTypesManager() {
                   value={form.name}
                   onChange={e => setForm({ ...form, name: e.target.value })}
                   placeholder="Ej: Bachillerato General"
-                  className="input"
+                  className="input-crema"
                   autoFocus
                   required
                 />
@@ -218,7 +206,7 @@ export default function BaccalaureateTypesManager() {
                 <select
                   value={form.maxGrade}
                   onChange={e => setForm({ ...form, maxGrade: e.target.value })}
-                  className="input"
+                  className="input-crema"
                   required
                 >
                   <option value="10">10°</option>
@@ -248,7 +236,7 @@ export default function BaccalaureateTypesManager() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.03 }}
-              className={`card card-hover p-3 group relative ${selected.has(t.id) ? 'ring-2 ring-primary border-primary' : ''}`}
+              className={`card-crema p-3 group relative ${selected.has(t.id) ? 'ring-2 ring-primary border-primary' : ''}`}
             >
               {/* Checkbox */}
               <div className="absolute top-2.5 left-2.5">
@@ -295,9 +283,9 @@ export default function BaccalaureateTypesManager() {
 
       {/* List View */}
       {viewMode === 'list' && (
-        <div className="card overflow-hidden">
-          <table className="w-full">
-            <thead className="table-header">
+        <div className="card-crema overflow-hidden">
+          <table className="w-full table-crema">
+            <thead>
               <tr>
                 <th className="w-8 px-3 py-2">
                   <button
@@ -324,7 +312,7 @@ export default function BaccalaureateTypesManager() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: i * 0.02 }}
-                  className={`table-row ${selected.has(t.id) ? 'bg-primary/5' : ''}`}
+                  className={`${selected.has(t.id) ? 'bg-primary/5' : ''}`}
                 >
                   <td className="px-3 py-2">
                     <button

@@ -3,9 +3,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useProyectos } from '../../hooks/useProyectos';
 import {
   Proyecto, Integrante, GRADOS_PROYECTO, SECCIONES_POR_GRADO_PROYECTO,
-  MATERIAS_PROYECTO, FECHA_LIMITE_REGISTRO
+  Student, Subject
 } from '../../types';
-import { FileText, Users, AlertCircle } from 'lucide-react';
+import { FileText, Users, AlertCircle, Search, ChevronDown, X, Check, Plus } from 'lucide-react';
+import { getAvailableStudentsBySection, getStudent, getAllSubjects } from '../../lib/firestore';
 
 interface Props {
   proyectoInicial: Proyecto | null;
@@ -25,67 +26,201 @@ export default function FormularioProyecto({ proyectoInicial, onCancel, onSucces
   const { crearProyecto, guardarBorrador, enviarAValidacion } = useProyectos();
   const esEdicion = !!proyectoInicial;
 
+  // Compute initial grade and section before state
+  const getInitialGrado = () => {
+    if (proyectoInicial?.grado) return proyectoInicial.grado;
+    if (userProfile?.gradeId) {
+      const cleanId = userProfile.gradeId.replace('°', '');
+      return GRADOS_PROYECTO.find(g => g.replace('°', '') === cleanId) || '';
+    }
+    return '';
+  };
+
+  const initialGrado = getInitialGrado();
+  const initialSecciones = SECCIONES_POR_GRADO_PROYECTO[initialGrado] ?? [];
+
+  const getInitialSeccion = () => {
+    if (proyectoInicial?.seccion) return proyectoInicial.seccion;
+    if (userProfile?.sectionId) {
+      const sectionLetter = userProfile.sectionId.slice(-1).toUpperCase();
+      if (initialSecciones.includes(sectionLetter)) {
+        return sectionLetter;
+      }
+    }
+    return '';
+  };
+
   const [titulo, setTitulo] = useState(proyectoInicial?.titulo ?? '');
   const [descripcion, setDescripcion] = useState(proyectoInicial?.descripcion ?? '');
-  const [grado, setGrado] = useState(proyectoInicial?.grado ?? '');
-  const [seccion, setSeccion] = useState(proyectoInicial?.seccion ?? '');
+  const [grado, setGrado] = useState(initialGrado);
+  const [seccion, setSeccion] = useState(getInitialSeccion());
   const [materiaId, setMateriaId] = useState(proyectoInicial?.materia_id ?? '');
+  const [materiasSecundarias, setMateriasSecundarias] = useState<string[]>(proyectoInicial?.materias_secundarias ?? []);
 
   const [integrantes, setIntegrantes] = useState<IntegranteForm[]>(
     proyectoInicial?.integrantes_detalle?.map(i => ({
       nombre: i.nombre, numero_lista: String(i.numero_lista), es_rep: i.es_rep, uid: i.uid
     })) ??
-    Array.from({ length: 5 }, (_, idx) => ({
-      nombre: '', numero_lista: '', es_rep: idx === 0, uid: ''
-    }))
+    [{ nombre: '', numero_lista: '', es_rep: true, uid: '' }]
   );
+
+  const [availableStudents, setAvailableStudents] = useState<Student[]>([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeSelector, setActiveSelector] = useState<number | null>(null);
 
   const [errores, setErrores] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+  const [materias, setMaterias] = useState<Subject[]>([]);
+  const [teacherSubjects, setTeacherSubjects] = useState<string[]>([]);
+
+  useEffect(() => {
+    const loadSubjects = async () => {
+      try {
+        const allSubjects = await getAllSubjects();
+        
+        // If docente, filter by their registered subjects
+        if (userProfile?.role === 'docente' && userProfile.teacherId) {
+          const { getTeacher } = await import('../../lib/firestore');
+          const teacher = await getTeacher(userProfile.teacherId);
+          if (teacher?.subjects && teacher.subjects.length > 0) {
+            setTeacherSubjects(teacher.subjects);
+            setMaterias(allSubjects.filter(s => teacher.subjects.includes(s.id)));
+          } else {
+            // Teacher has no subjects assigned, show all
+            setMaterias(allSubjects);
+          }
+        } else {
+          // For alumnos and others, show all subjects
+          setMaterias(allSubjects);
+        }
+      } catch (err) {
+        console.error('Error loading subjects:', err);
+      }
+    };
+    loadSubjects();
+  }, [userProfile]);
 
   const secciones = SECCIONES_POR_GRADO_PROYECTO[grado] ?? [];
 
+  // Auto-load grade and section for students on mount
   useEffect(() => {
+    const loadStudentData = async () => {
+      if (userProfile?.role === 'alumno' && !proyectoInicial) {
+        // If user profile has gradeId/sectionId, use them directly
+        if (userProfile.gradeId && userProfile.sectionId) {
+          const newGrado = getInitialGrado();
+          const newSeccion = getInitialSeccion();
+          if (newGrado) setGrado(newGrado);
+          if (newSeccion) setSeccion(newSeccion);
+        } 
+        // Otherwise, fetch student data by studentId
+        else if (userProfile.studentId) {
+          setLoadingProfile(true);
+          try {
+            const student = await getStudent(userProfile.studentId);
+            if (student) {
+              // Handle different gradeId formats (e.g., "11", "11°", "11t", "11ta")
+              const cleanGradeId = student.gradeId.replace(/[^0-9]/g, '');
+              const gradeMatch = GRADOS_PROYECTO.find(g => g.replace(/[^0-9]/g, '') === cleanGradeId);
+              if (gradeMatch) setGrado(gradeMatch);
+              
+              // Extract section letter from sectionId (e.g., "11ta" → "A")
+              if (student.sectionId) {
+                const sectionLetter = student.sectionId.slice(-1).toUpperCase();
+                setSeccion(sectionLetter);
+              }
+            }
+          } catch (err) {
+            console.error('Error loading student data:', err);
+          } finally {
+            setLoadingProfile(false);
+          }
+        }
+      }
+    };
+    
+    loadStudentData();
+  }, [userProfile]);
+
+  useEffect(() => {
+    // Skip reset for students since their section is auto-populated
+    if (userProfile?.role === 'alumno') return;
     if (grado && !secciones.includes(seccion)) setSeccion('');
   }, [grado]);
+
+  useEffect(() => {
+    if (grado && seccion) {
+      loadAvailableStudents();
+    } else {
+      setAvailableStudents([]);
+    }
+  }, [grado, seccion]);
+
+  const loadAvailableStudents = async () => {
+    setLoadingStudents(true);
+    try {
+      const students = await getAvailableStudentsBySection(
+        grado,
+        seccion,
+        proyectoInicial?.id
+      );
+      setAvailableStudents(students);
+    } catch (err) {
+      console.error('Error loading students:', err);
+    } finally {
+      setLoadingStudents(false);
+    }
+  };
+
+  const filteredStudents = availableStudents.filter(s =>
+    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    s.carnet?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   function updateIntegrante(idx: number, field: keyof IntegranteForm, value: string | boolean) {
     setIntegrantes(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
   }
 
-  function setRepresentante(idx: number) {
-    setIntegrantes(prev => prev.map((it, i) => ({ ...it, es_rep: i === idx })));
+  function selectStudent(idx: number, student: Student) {
+    setIntegrantes(prev => prev.map((it, i) => i === idx ? {
+      ...it,
+      nombre: student.name,
+      uid: student.id,
+      numero_lista: it.numero_lista || '1'
+    } : it));
+    setActiveSelector(null);
+    setSearchTerm('');
+  }
+
+  function removeStudent(idx: number) {
+    setIntegrantes(prev => prev.map((it, i) => i === idx ? {
+      ...it,
+      nombre: '',
+      uid: '',
+      numero_lista: ''
+    } : it));
   }
 
   function agregarIntegrante() {
     if (integrantes.length >= 6) return;
-    setIntegrantes(prev => [...prev, { nombre: '', numero_lista: '', es_rep: false, uid: `pendiente-${Date.now()}` }]);
-  }
-
-  function quitarIntegrante(idx: number) {
-    if (integrantes.length <= 5) return;
-    setIntegrantes(prev => prev.filter((_, i) => i !== idx));
+    setIntegrantes(prev => [...prev, { nombre: '', numero_lista: '', es_rep: false, uid: '' }]);
   }
 
   function validar(): boolean {
     const errs: Record<string, string> = {};
-    const hoy = new Date().toISOString().slice(0, 10);
 
-    if (hoy > FECHA_LIMITE_REGISTRO) errs.global = 'La fecha límite de registro (17 de junio) ya pasó.';
-    if (!grado) errs.grado = 'Selecciona el grado.';
-    if (!seccion) errs.seccion = 'Selecciona la sección.';
+    if (loadingProfile) errs.global = 'Espera a que se carguen tus datos de perfil.';
+    if (!grado) errs.grado = userProfile?.role === 'alumno' ? 'No se pudo detectar tu grado.' : 'Selecciona el grado.';
+    if (!seccion) errs.seccion = userProfile?.role === 'alumno' ? 'No se pudo detectar tu sección.' : 'Selecciona la sección.';
     if (!materiaId) errs.materia = 'Selecciona la materia base.';
     if (titulo.length < 5 || titulo.length > 100) errs.titulo = 'El título debe tener entre 5 y 100 caracteres.';
     if (!descripcion.trim() || descripcion.length > 300) errs.descripcion = 'Descripción requerida (máx 300 caracteres).';
 
-    const llenadosOk = integrantes.every(i => i.nombre.trim() && i.numero_lista);
-    if (!llenadosOk) errs.integrantes = 'Completa nombre y número de lista de todos los integrantes.';
-
-    const listas = integrantes.map(i => i.numero_lista);
-    if (new Set(listas).size !== listas.length) errs.integrantes = 'Los números de lista deben ser únicos.';
-
-    if (!integrantes.some(i => i.es_rep)) errs.representante = 'Debes marcar un representante del equipo.';
+    const lider = integrantes[0];
+    if (!lider?.nombre.trim()) errs.integrantes = 'Selecciona el líder del proyecto.';
 
     setErrores(errs);
     return Object.keys(errs).length === 0;
@@ -101,104 +236,218 @@ export default function FormularioProyecto({ proyectoInicial, onCancel, onSucces
   }
 
   async function handleBorrador() {
-    if (!grado || !materiaId || !titulo) {
-      setFeedback({ tipo: 'error', texto: 'Completa al menos: grado, materia y título.' });
-      return;
-    }
+    if (!validar()) return;
     setLoading(true);
-    if (esEdicion && proyectoInicial) {
-      const res = await guardarBorrador(proyectoInicial.id, {
-        titulo, descripcion, grado, seccion, materia_id: materiaId,
-        integrantes_detalle: buildIntegrantesDetalle(),
-        integrantes: buildIntegrantesDetalle().map(i => i.uid),
-      });
-      setFeedback(res.error ? { tipo: 'error', texto: res.error } : { tipo: 'ok', texto: 'Borrador guardado.' });
-    } else {
-      const detalle = buildIntegrantesDetalle();
-      const res = await crearProyecto({ titulo, descripcion, grado, seccion, materia_id: materiaId, integrantes: detalle });
-      setFeedback(res.error ? { tipo: 'error', texto: res.error } : { tipo: 'ok', texto: 'Borrador guardado.' });
+    try {
+      const materia = materias.find(m => m.id === materiaId);
+      const data = {
+        titulo: titulo.trim(),
+        descripcion: descripcion.trim(),
+        grado,
+        seccion,
+        materia_id: materiaId,
+        materia_nombre: materia?.name || '',
+        materias_secundarias: materiasSecundarias,
+      };
+      if (esEdicion && proyectoInicial) {
+        await guardarBorrador(proyectoInicial.id, data);
+      } else {
+        await crearProyecto({
+          ...data,
+          integrantes: buildIntegrantesDetalle(),
+        });
+      }
+      onSuccess();
+    } catch (err) {
+      setFeedback({ tipo: 'error', texto: err instanceof Error ? err.message : 'Error al guardar' });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   async function handleEnviar() {
     if (!validar()) return;
     setLoading(true);
-
-    if (esEdicion && proyectoInicial) {
-      await guardarBorrador(proyectoInicial.id, {
-        titulo, descripcion, grado, seccion, materia_id: materiaId,
-        integrantes_detalle: buildIntegrantesDetalle(),
-        integrantes: buildIntegrantesDetalle().map(i => i.uid),
-      });
-      const res = await enviarAValidacion(proyectoInicial.id);
-      if (res.error) { setFeedback({ tipo: 'error', texto: res.error }); setLoading(false); return; }
-    } else {
-      const detalle = buildIntegrantesDetalle();
-      const res = await crearProyecto({ titulo, descripcion, grado, seccion, materia_id: materiaId, integrantes: detalle });
-      if (res.error || !res.id) { setFeedback({ tipo: 'error', texto: res.error ?? 'Error al crear proyecto.' }); setLoading(false); return; }
-      await enviarAValidacion(res.id);
+    try {
+      const materia = materias.find(m => m.id === materiaId);
+      const data = {
+        titulo: titulo.trim(),
+        descripcion: descripcion.trim(),
+        grado,
+        seccion,
+        materia_id: materiaId,
+        materia_nombre: materia?.name || '',
+        materias_secundarias: materiasSecundarias,
+        integrantes: buildIntegrantesDetalle(),
+      };
+      if (esEdicion && proyectoInicial) {
+        await enviarAValidacion(proyectoInicial.id);
+      } else {
+        const result = await crearProyecto(data);
+        if (result.id) await enviarAValidacion(result.id);
+      }
+      onSuccess();
+    } catch (err) {
+      setFeedback({ tipo: 'error', texto: err instanceof Error ? err.message : 'Error al enviar' });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-    onSuccess();
   }
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-base font-bold text-slate-900">
-          {esEdicion ? 'Editar proyecto' : 'Registrar nuevo proyecto'}
-        </h2>
-        <button className="form-input !w-auto" onClick={onCancel}>← Cancelar</button>
-      </div>
-
-      <div className="bg-blue-50 text-blue-800 border border-blue-200 rounded-xl px-4 py-3 text-sm mb-4">
-        <AlertCircle className="w-4 h-4 inline mr-1.5" />
-        El equipo debe tener entre 5 y 6 integrantes. Fecha límite de registro: <strong>17 de junio de 2026</strong>.
-      </div>
-
+    <div className="space-y-4">
       {feedback && (
-        <div className={`rounded-xl px-4 py-3 text-sm font-medium mb-3 ${
-          feedback.tipo === 'ok'
-            ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-            : 'bg-red-50 text-red-800 border border-red-200'
-        }`}>
-          {feedback.tipo === 'ok' ? '✓' : '✕'} {feedback.texto}
+        <div className={`p-3 rounded-xl text-xs font-semibold ${feedback.tipo === 'ok' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+          {feedback.texto}
         </div>
       )}
 
       {errores.global && (
-        <div className="bg-red-50 text-red-800 border border-red-200 rounded-xl px-4 py-3 text-sm mb-3">
+        <div className="p-3 rounded-xl text-xs font-semibold bg-amber-50 text-amber-700 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4" />
           {errores.global}
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-5 mb-3">
-        <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-          <FileText className="w-4 h-4 text-indigo-500" /> Datos del proyecto
-        </h3>
+      {loadingProfile && (
+        <div className="p-3 rounded-xl text-xs font-semibold bg-blue-50 text-blue-700 flex items-center gap-2">
+          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          Cargando datos de tu perfil...
+        </div>
+      )}
 
-        <div className="grid grid-cols-2 gap-3 mb-3">
+      <div className="p-5">
+        <div className="grid grid-cols-[auto_1fr] gap-4 items-start">
           <FormField label="Grado *" error={errores.grado}>
-            <select className="form-input" value={grado} onChange={e => setGrado(e.target.value)}>
-              <option value="">Seleccionar...</option>
-              {GRADOS_PROYECTO.map(g => <option key={g} value={g}>{g}</option>)}
-            </select>
+            {loadingProfile ? (
+              <div className="flex items-center gap-2 py-2">
+                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <span className="text-slate-400 text-xs">Cargando...</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200">
+                {GRADOS_PROYECTO.map(g => (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => { if (userProfile?.role !== 'alumno') setGrado(g); }}
+                    disabled={userProfile?.role === 'alumno'}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      grado === g
+                        ? 'bg-primary text-white shadow-xs'
+                        : 'text-slate-600 hover:bg-slate-200/50'
+                    } ${userProfile?.role === 'alumno' ? 'opacity-70 cursor-not-allowed' : ''}`}
+                  >
+                    {g}
+                  </button>
+                ))}
+              </div>
+            )}
+            {userProfile?.role === 'alumno' && !loadingProfile && grado && (
+              <span className="text-[10px] text-emerald-600 mt-1 block">✓ Auto-detectado de tu perfil</span>
+            )}
           </FormField>
+
           <FormField label="Sección *" error={errores.seccion}>
-            <select className="form-input" value={seccion} onChange={e => setSeccion(e.target.value)} disabled={!grado}>
-              <option value="">{grado ? 'Seleccionar...' : 'Primero elige grado'}</option>
-              {secciones.map(sc => <option key={sc} value={sc}>{sc}</option>)}
-            </select>
+            {loadingProfile ? (
+              <div className="flex items-center gap-2 py-2">
+                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <span className="text-slate-400 text-xs">Cargando...</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200">
+                {secciones.map(s => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => { if (userProfile?.role !== 'alumno' && grado) setSeccion(s); }}
+                    disabled={!grado || userProfile?.role === 'alumno'}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      seccion === s
+                        ? 'bg-primary text-white shadow-xs'
+                        : 'text-slate-600 hover:bg-slate-200/50'
+                    } ${(!grado || userProfile?.role === 'alumno') ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
+            {userProfile?.role === 'alumno' && !loadingProfile && seccion && (
+              <span className="text-[10px] text-emerald-600 mt-1 block">✓ Auto-detectado de tu perfil</span>
+            )}
           </FormField>
         </div>
 
         <FormField label="Materia base *" error={errores.materia}>
-          <select className="form-input" value={materiaId} onChange={e => setMateriaId(e.target.value)}>
-            <option value="">Seleccionar materia...</option>
-            {MATERIAS_PROYECTO.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
-          </select>
+          {esEdicion ? (
+            <div className="form-input font-semibold bg-primary/5 border-primary/30 text-primary cursor-not-allowed">
+              {materias.find(m => m.id === materiaId)?.name || 'Sin materia'}
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {materias.map(m => {
+                const isSelected = materiaId === m.id;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setMateriaId(isSelected ? '' : m.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                      isSelected
+                        ? 'bg-primary border-primary text-white shadow-sm'
+                        : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-600'
+                    }`}
+                  >
+                    {isSelected && <Check className="w-3 h-3 inline mr-1" />}
+                    {m.name}
+                  </button>
+                );
+              })}
+              {materias.length === 0 && (
+                <span className="text-xs text-slate-400 italic">No hay materias disponibles</span>
+              )}
+            </div>
+          )}
+          {esEdicion && (
+            <span className="text-[10px] text-slate-400 mt-1 block">La materia base no se puede cambiar después de crear el proyecto</span>
+          )}
         </FormField>
+
+        {/* Materias secundarias */}
+        <div className="mt-3">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
+            Materias adicionales
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {materias
+              .filter(m => m.id !== materiaId)
+              .map(m => {
+                const isSelected = materiasSecundarias.includes(m.id);
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => {
+                      if (isSelected) {
+                        setMateriasSecundarias(prev => prev.filter(id => id !== m.id));
+                      } else {
+                        setMateriasSecundarias(prev => [...prev, m.id]);
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                      isSelected
+                        ? 'bg-slate-800 border-slate-800 text-white shadow-sm'
+                        : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-600'
+                    }`}
+                  >
+                    {isSelected && <Check className="w-3 h-3 inline mr-1" />}
+                    {m.name}
+                  </button>
+                );
+              })}
+          </div>
+        </div>
 
         <FormField label={`Título del proyecto * (${titulo.length}/100)`} error={errores.titulo}>
           <input className="form-input" type="text" value={titulo} maxLength={100}
@@ -211,54 +460,116 @@ export default function FormularioProyecto({ proyectoInicial, onCancel, onSucces
         </FormField>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-5 mb-3">
+      <div className="p-5">
         <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-          <Users className="w-4 h-4 text-indigo-500" /> Integrantes del equipo
-          <span className="text-xs font-normal text-slate-400 ml-1">
-            ({integrantes.length}/6) — mínimo 5, máximo 6
-          </span>
+          <Users className="w-4 h-4 text-indigo-500" /> Líder del proyecto
         </h3>
 
         {errores.integrantes && <ErrMsg msg={errores.integrantes} />}
-        {errores.representante && <ErrMsg msg={errores.representante} />}
 
-        <div className="grid grid-cols-[1fr_80px_60px_32px] gap-2 mb-2 text-[10px] text-slate-400 font-medium">
-          <span>Nombre completo</span><span className="text-center">N° lista</span><span className="text-center">Rep.</span><span></span>
-        </div>
-
-        {integrantes.map((int, idx) => (
-          <div key={idx} className="grid grid-cols-[1fr_80px_60px_32px] gap-2 mb-2 items-center">
-            <input className="form-input text-sm" type="text" placeholder={`Integrante ${idx + 1}`}
-              value={int.nombre} onChange={e => updateIntegrante(idx, 'nombre', e.target.value)} />
-            <input className="form-input text-sm text-center" type="number" min={1} max={40} placeholder="00"
-              value={int.numero_lista} onChange={e => updateIntegrante(idx, 'numero_lista', e.target.value)} />
-            <div className="flex justify-center">
-              <input type="radio" name="representante" checked={int.es_rep}
-                onChange={() => setRepresentante(idx)} className="w-4 h-4 cursor-pointer accent-indigo-600" />
-            </div>
-            <button className="text-slate-300 hover:text-red-500 text-lg p-1"
-              onClick={() => quitarIntegrante(idx)}
-              disabled={integrantes.length <= 5} title="Quitar">×</button>
+        {!grado || !seccion ? (
+          <div className="text-center py-6 text-slate-400 text-xs">
+            Selecciona grado y sección para ver los estudiantes disponibles
           </div>
-        ))}
+        ) : loadingStudents ? (
+          <div className="text-center py-6 text-slate-400 text-xs">
+            Cargando estudiantes...
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-[1fr_80px] gap-2 mb-2 text-[10px] text-slate-400 font-medium">
+              <span>Nombre completo</span><span className="text-center">N° lista</span>
+            </div>
 
-        {integrantes.length < 6 && (
-          <button className="w-full py-2 border border-dashed border-indigo-300 text-indigo-600 rounded-lg text-sm hover:bg-indigo-50 transition-colors mt-2"
-            onClick={agregarIntegrante}>+ Agregar integrante</button>
+            {integrantes.map((int, idx) => (
+              <div key={idx} className="mb-2">
+                <div className="grid grid-cols-[1fr_80px] gap-2 items-center">
+                  <div className="relative">
+                    {int.uid ? (
+                      <div className="form-input text-sm flex items-center justify-between bg-slate-50">
+                        <span className="truncate">{int.nombre}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeStudent(idx)}
+                          className="text-slate-400 hover:text-red-500 ml-1"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setActiveSelector(activeSelector === idx ? null : idx)}
+                        className="form-input text-sm text-left text-slate-400 flex items-center justify-between w-full"
+                      >
+                        <span>{idx === 0 ? 'Seleccionar líder' : `Integrante ${idx + 1}`}</span>
+                        <ChevronDown className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                  <input className="form-input text-sm text-center" type="number" min={1} max={40} placeholder="00"
+                    value={int.numero_lista || ''} onChange={e => updateIntegrante(idx, 'numero_lista', e.target.value)} />
+                </div>
+
+                {activeSelector === idx && (
+                  <div className="mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+                    <div className="p-2 border-b border-slate-100">
+                      <div className="relative">
+                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
+                        <input
+                          type="text"
+                          placeholder="Buscar por nombre o carnet..."
+                          value={searchTerm}
+                          onChange={e => setSearchTerm(e.target.value)}
+                          className="w-full pl-7 pr-2 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/20"
+                          autoFocus
+                        />
+                      </div>
+                    </div>
+                    <div className="max-h-[200px] overflow-y-auto">
+                      {filteredStudents.length === 0 ? (
+                        <div className="p-3 text-center text-xs text-slate-400">
+                          No hay estudiantes disponibles
+                        </div>
+                      ) : (
+                        filteredStudents.map(student => (
+                          <button
+                            key={student.id}
+                            type="button"
+                            onClick={() => selectStudent(idx, student)}
+                            className="w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 cursor-pointer"
+                          >
+                            <div>
+                              <p className="font-semibold text-slate-700">{student.name}</p>
+                              <p className="text-[10px] text-slate-400">Carnet: {student.carnet || 'N/A'}</p>
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {integrantes.length < 6 && (
+              <button
+                type="button"
+                onClick={agregarIntegrante}
+                className="mt-2 flex items-center gap-1.5 text-xs text-primary font-bold hover:text-primary-dark transition-colors"
+              >
+                <Plus className="w-3 h-3" /> Agregar integrante
+              </button>
+            )}
+          </>
         )}
-
-        <p className="text-[10px] text-slate-300 mt-3">
-          Marca el círculo "Rep." para indicar el representante del grupo. El representante
-          debe ser quien está llenando este formulario (su cuenta). Los demás integrantes solo
-          se registran por nombre y número de lista — no necesitan tener cuenta propia en el sistema.
-        </p>
       </div>
 
       <div className="flex gap-3 mt-4">
-        <button className="form-input !w-auto flex-1" onClick={handleBorrador} disabled={loading}>
+        <button className="btn-secondary flex-1" onClick={handleBorrador} disabled={loading}>
           {loading ? 'Guardando...' : 'Guardar borrador'}
         </button>
-        <button className="form-input !w-auto flex-1 bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700"
+        <button className="btn-primary flex-1"
           onClick={handleEnviar} disabled={loading}>
           {loading ? 'Enviando...' : 'Enviar a validación'}
         </button>

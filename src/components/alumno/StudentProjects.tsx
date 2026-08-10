@@ -117,8 +117,8 @@ export default function StudentProjects() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB]">
-      <header className="bg-white border-b border-gray-200 px-6 py-4">
+    <div className="min-h-screen" style={{ background: 'var(--bg-main)' }}>
+      <header className="bg-white border-b border-slate-200/80 px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <InstitutionLogo className="w-10 h-10" />
@@ -141,43 +141,43 @@ export default function StudentProjects() {
           </div>
           <button
             onClick={() => setShowForm(!showForm)}
-            className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90"
+            className="btn-primary"
           >
             {showForm ? 'Cancelar' : '+ Nuevo Proyecto'}
           </button>
         </div>
 
         {showForm && (
-          <form onSubmit={crearProyecto} className="mb-8 p-6 bg-white rounded-xl border border-gray-200 space-y-4">
+          <form onSubmit={crearProyecto} className="mb-8 p-6 card-crema space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Título</label>
-              <input type="text" value={nuevoProyecto.titulo} onChange={e => setNuevoProyecto({...nuevoProyecto, titulo: e.target.value})} required className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+              <label className="form-label">Título</label>
+              <input type="text" value={nuevoProyecto.titulo} onChange={e => setNuevoProyecto({...nuevoProyecto, titulo: e.target.value})} required className="input-crema" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Descripción</label>
-              <textarea value={nuevoProyecto.descripcion} onChange={e => setNuevoProyecto({...nuevoProyecto, descripcion: e.target.value})} required rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+              <label className="form-label">Descripción</label>
+              <textarea value={nuevoProyecto.descripcion} onChange={e => setNuevoProyecto({...nuevoProyecto, descripcion: e.target.value})} required rows={3} className="input-crema min-h-[80px] resize-y" />
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Grado</label>
-                <input type="text" value={nuevoProyecto.grado} onChange={e => setNuevoProyecto({...nuevoProyecto, grado: e.target.value})} required className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                <label className="form-label">Grado</label>
+                <input type="text" value={nuevoProyecto.grado} onChange={e => setNuevoProyecto({...nuevoProyecto, grado: e.target.value})} required className="input-crema" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Sección</label>
-                <input type="text" value={nuevoProyecto.seccion} onChange={e => setNuevoProyecto({...nuevoProyecto, seccion: e.target.value})} required className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                <label className="form-label">Sección</label>
+                <input type="text" value={nuevoProyecto.seccion} onChange={e => setNuevoProyecto({...nuevoProyecto, seccion: e.target.value})} required className="input-crema" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Materia</label>
-                <input type="text" value={nuevoProyecto.materia_id} onChange={e => setNuevoProyecto({...nuevoProyecto, materia_id: e.target.value})} required className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                <label className="form-label">Materia</label>
+                <input type="text" value={nuevoProyecto.materia_id} onChange={e => setNuevoProyecto({...nuevoProyecto, materia_id: e.target.value})} required className="input-crema" />
               </div>
             </div>
-            <button type="submit" className="px-6 py-2 bg-primary text-white rounded-lg text-sm font-medium">Crear Proyecto</button>
+            <button type="submit" className="btn-primary">Crear Proyecto</button>
           </form>
         )}
 
         <div className="space-y-4">
           {proyectos.map(proyecto => (
-            <div key={proyecto.id} className="bg-white rounded-xl p-5 border border-gray-200">
+            <div key={proyecto.id} className="card-crema p-5">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <h3 className="text-base font-semibold text-slate-900">{proyecto.titulo}</h3>
@@ -192,7 +192,7 @@ export default function StudentProjects() {
               {proyecto.estado === 'borrador' && (
                 <button
                   onClick={() => enviarProyecto(proyecto.id!)}
-                  className="mt-3 px-4 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-medium hover:bg-orange-600"
+                  className="mt-3 btn-primary text-xs py-1.5 px-4"
                 >
                   Enviar para Validación
                 </button>

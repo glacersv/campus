@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useValidadores } from '../../hooks/useCatalogos';
-import { Proyecto, GRADOS_PROYECTO, MATERIAS_PROYECTO, ESTADOS_PROYECTO, EstadoProyecto } from '../../types';
+import { Proyecto, GRADOS_PROYECTO, ESTADOS_PROYECTO, EstadoProyecto, Subject } from '../../types';
+import { getAllSubjects } from '../../lib/firestore';
 import { Settings, Shield, BarChart3, Search } from 'lucide-react';
 
 export default function AdminPanel({ proyectos }: { proyectos: Proyecto[] }) {
@@ -11,6 +12,11 @@ export default function AdminPanel({ proyectos }: { proyectos: Proyecto[] }) {
   const [feedback, setFeedback] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
+  const [materias, setMaterias] = useState<Subject[]>([]);
+
+  useEffect(() => {
+    getAllSubjects().then(setMaterias).catch(console.error);
+  }, []);
 
   async function handleAsignar(e: React.FormEvent) {
     e.preventDefault();
@@ -19,11 +25,11 @@ export default function AdminPanel({ proyectos }: { proyectos: Proyecto[] }) {
       return;
     }
     const docente = docentes.find(d => d.uid === form.docente_id);
-    const materia = MATERIAS_PROYECTO.find(m => m.id === form.materia_id);
+    const materia = materias.find(m => m.id === form.materia_id);
     const res = await asignarValidador({
       grado: form.grado,
       materia_id: form.materia_id,
-      materia_nombre: materia?.nombre ?? '',
+      materia_nombre: materia?.name ?? '',
       docente_id: form.docente_id,
       docente_nombre: docente?.displayName ?? '',
     });
@@ -88,7 +94,7 @@ export default function AdminPanel({ proyectos }: { proyectos: Proyecto[] }) {
               <FormField label="Materia">
                 <select className="form-input text-sm" value={form.materia_id} onChange={e => setForm(f => ({ ...f, materia_id: e.target.value }))}>
                   <option value="">Seleccionar...</option>
-                  {MATERIAS_PROYECTO.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+                  {materias.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                 </select>
               </FormField>
               <FormField label="Docente">
@@ -159,7 +165,7 @@ export default function AdminPanel({ proyectos }: { proyectos: Proyecto[] }) {
           {proyectosFiltrados.map(p => {
             const est = ESTADOS_PROYECTO[p.estado];
             return (
-              <div key={p.id} className="bg-white rounded-xl border border-slate-200/80 p-3 mb-2">
+              <div key={p.id} className="card-crema p-3 mb-2">
                 <div className="flex justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-sm text-slate-900 truncate">{p.titulo}</div>
@@ -189,7 +195,7 @@ export default function AdminPanel({ proyectos }: { proyectos: Proyecto[] }) {
               { num: conteo.en_coordinacion ?? 0, label: 'En coordinación', color: 'text-purple-600' },
               { num: (conteo.rechazado_materia ?? 0) + (conteo.rechazado_oficial ?? 0), label: 'Rechazados', color: 'text-red-600' },
             ].map(({ num, label, color }) => (
-              <div key={label} className="bg-white rounded-xl border border-slate-200/80 p-3 text-center">
+              <div key={label} className="card-crema p-3 text-center">
                 <div className={`text-2xl font-bold ${color}`}>{num}</div>
                 <div className="text-[10px] text-slate-400 font-medium">{label}</div>
               </div>

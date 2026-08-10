@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../firebase';
 import { Proyecto, SugerenciaOpcion, ComplementoInformatica } from '../../types';
-import { Computer, Sparkles, PenLine, CheckCircle2 } from 'lucide-react';
+import { Computer, PenLine, CheckCircle2 } from 'lucide-react';
 
 interface Props {
   proyecto: Proyecto;
@@ -105,7 +105,6 @@ export default function SugerenciaInformatica({ proyecto, onAsignado }: Props) {
         <div className="flex gap-2">
           <button className="form-input !w-auto bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 flex items-center gap-1.5"
             onClick={generarSugerencias} disabled={loading}>
-            <Sparkles className="w-3.5 h-3.5" />
             {loading ? 'Generando...' : 'Generar sugerencias con IA'}
           </button>
           <button className="form-input !w-auto flex items-center gap-1.5"

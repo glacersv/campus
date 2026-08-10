@@ -1,13 +1,17 @@
 import React from 'react';
-import { BookOpen, Calendar, ClipboardCheck, Users, BarChart3, FileText } from 'lucide-react';
-import ProjectsModule from '../proyectos/ProjectsModule';
+import { motion } from 'motion/react';
+import { BookOpen, Calendar, ClipboardCheck, Users, BarChart3, FileText, Medal } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function AcademicaDashboard() {
+  const navigate = useNavigate();
+  
   const modules = [
     { id: 'notas', label: 'Calificaciones', icon: BookOpen, color: 'bg-accent', desc: 'Gestión de notas y evaluaciones', count: '—' },
     { id: 'horario', label: 'Horarios', icon: Calendar, color: 'bg-purple-500', desc: 'Horarios de clases', count: '—' },
     { id: 'carga-docente', label: 'Carga Docente', icon: Users, color: 'bg-emerald-500', desc: 'Asignación de materias', count: '—' },
     { id: 'reportes', label: 'Reportes', icon: BarChart3, color: 'bg-blue-500', desc: 'Estadísticas académicas', count: '—' },
+    { id: 'semana-juventud-admin', label: 'Semana de la Juventud', icon: Medal, color: 'bg-indigo-500', desc: 'Administrar proyectos estudiantiles', count: '—', action: () => navigate('/coordinacion-academica/semana-juventud-admin') },
   ];
 
   return (
@@ -33,8 +37,8 @@ export default function AcademicaDashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.06, type: 'spring', bounce: 0.1 }}
-              className="module-card-accent group"
-              style={{ borderLeftColor: `var(--color-${mod.id === 'notas' ? 'accent' : mod.id === 'horario' ? 'purple-500' : mod.id === 'carga-docente' ? 'emerald-500' : 'blue-500'})` }}
+              className="card-crema group card-interactive cursor-pointer"
+              onClick={mod.action}
             >
               <div className="flex items-center gap-3 mb-3">
                 <div className={`w-10 h-10 rounded-xl ${mod.color} flex items-center justify-center`}>
@@ -54,15 +58,13 @@ export default function AcademicaDashboard() {
         })}
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-6">
+      <div className="card-crema p-6">
         <div className="flex items-center gap-3 mb-4">
           <FileText className="w-5 h-5 text-slate-400" />
           <h3 className="text-sm font-bold text-slate-900">Actividad Reciente</h3>
         </div>
         <p className="text-sm text-slate-400 text-center py-8">No hay actividad reciente</p>
       </div>
-
-      <ProjectsModule view="coordinacion" />
     </div>
   );
 }
