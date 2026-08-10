@@ -6,7 +6,7 @@ import {
   Student, Subject
 } from '../../types';
 import { FileText, Users, AlertCircle, Search, ChevronDown, X, Check, Plus } from 'lucide-react';
-import { getAvailableStudentsBySection, getStudent, getAllSubjects, getSectionsByGrade } from '../../lib/firestore';
+import { getAvailableStudentsBySection, getStudent, getAllSubjects, getAllSections } from '../../lib/firestore';
 
 interface Props {
   proyectoInicial: Proyecto | null;
@@ -104,9 +104,13 @@ export default function FormularioProyecto({ proyectoInicial, onCancel, onSucces
   useEffect(() => {
     if (!grado) { setSecciones([]); return; }
     const cleanGrade = grado.replace('°', '');
-    getSectionsByGrade(cleanGrade)
+    getAllSections()
       .then(sections => {
-        const letters = sections.map(s => s.name?.slice(-1)?.toUpperCase()).filter(Boolean);
+        const matching = sections.filter(s => {
+          const gradeNum = s.gradeId?.replace(/[^0-9]/g, '');
+          return gradeNum === cleanGrade;
+        });
+        const letters = matching.map(s => s.name?.slice(-1)?.toUpperCase()).filter(Boolean);
         const unique = [...new Set(letters)].sort();
         setSecciones(unique);
       })
