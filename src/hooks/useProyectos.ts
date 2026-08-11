@@ -105,7 +105,7 @@ export function useProyectos() {
 
     const materias = await getAllSubjects();
     const materia = materias.find(m => m.id === data.materia_id);
-    const rep = data.integrantes.find(i => i.es_rep);
+    const rep = data.integrantes.find(i => i.es_rep) || data.integrantes[0];
 
     try {
       const ref = await addDoc(collection(db, 'proyectos'), {
@@ -116,8 +116,8 @@ export function useProyectos() {
         materia_id: data.materia_id,
         materia_nombre: materia?.name ?? '',
         materias_secundarias: data.materias_secundarias ?? [],
-        representante_id: userProfile.uid,
-        representante_nombre: userProfile.displayName,
+        representante_id: rep?.uid || userProfile.uid,
+        representante_nombre: rep?.nombre || userProfile.displayName,
         integrantes: data.integrantes.map(i => i.uid),
         integrantes_detalle: data.integrantes,
         estado: 'borrador' as EstadoProyecto,

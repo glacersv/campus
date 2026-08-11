@@ -331,6 +331,7 @@ function ProyectoRow({ proyecto: p, rol, view, materias, onRevisar, onVerDetalle
         <div className="text-sm text-slate-500 mt-1">
           {p.grado} {p.seccion}
           {p.integrantes_detalle && ` · ${p.integrantes_detalle.length} integrantes`}
+          {p.representante_nombre && ` · Líder: ${p.representante_nombre}`}
         </div>
         <div className="flex flex-wrap gap-1.5 mt-2">
           <span className="inline-flex items-center px-2.5 py-1 bg-primary/10 text-primary border border-primary/20 rounded-full text-xs font-bold">
