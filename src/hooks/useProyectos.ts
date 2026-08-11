@@ -41,11 +41,9 @@ export function useProyectos() {
     let q;
 
     if (userProfile.role === 'alumno') {
-      // Buscar proyectos donde el alumno es integrante usando uid
-      q = query(col,
-        where('integrantes', 'array-contains', userProfile.uid),
-        orderBy('fecha_registro', 'desc')
-      );
+      // Alumnos ven solo proyectos donde son integrantes
+      // Fetch all y filtrar en cliente para soportar Auth UID y studentId (compatibilidad)
+      q = query(col);
     } else if (userProfile.role === 'docente') {
       // Docentes ven todos los proyectos
       q = query(col,
@@ -56,7 +54,21 @@ export function useProyectos() {
     }
 
     const unsub = onSnapshot(q, (snap) => {
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Proyecto));
+      let data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Proyecto));
+
+      if (userProfile.role === 'alumno') {
+        // Filtrar proyectos donde el alumno es integrante
+        data = data.filter(p => {
+          const inArray = p.integrantes?.includes(userProfile.uid);
+          const inDetalle = p.integrantes_detalle?.some(
+            i => i.uid === userProfile.uid || i.uid === userProfile.studentId
+          );
+          return inArray || inDetalle;
+        });
+      }
+
+      // Ordenar por fecha_registro descendente en cliente
+      data.sort((a, b) => (b.fecha_registro || '').localeCompare(a.fecha_registro || ''));
       setProyectos(data);
       setLoading(false);
     }, (err) => {

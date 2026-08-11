@@ -6,7 +6,7 @@ import {
   Student, Subject
 } from '../../types';
 import { FileText, Users, AlertCircle, Search, ChevronDown, X, Check, Plus } from 'lucide-react';
-import { getAvailableStudentsBySection, getStudent, getAllSubjects, getAllSections } from '../../lib/firestore';
+import { getAvailableStudentsBySection, getStudent, getAllSubjects, getAllSections, getUserByStudentId } from '../../lib/firestore';
 
 interface Props {
   proyectoInicial: Proyecto | null;
@@ -196,11 +196,13 @@ export default function FormularioProyecto({ proyectoInicial, onCancel, onSucces
     setIntegrantes(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
   }
 
-  function selectStudent(idx: number, student: Student) {
+  async function selectStudent(idx: number, student: Student) {
+    const user = await getUserByStudentId(student.id);
+    const authUid = user?.uid || student.id;
     setIntegrantes(prev => prev.map((it, i) => i === idx ? {
       ...it,
       nombre: student.name,
-      uid: student.id,
+      uid: authUid,
       numero_lista: it.numero_lista || '1'
     } : it));
     setActiveSelector(null);
