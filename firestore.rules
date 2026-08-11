@@ -102,7 +102,7 @@ service cloud.firestore {
 
     // Sections Collection
     match /sections/{sectionId} {
-      allow read: if isStaff();
+      allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 

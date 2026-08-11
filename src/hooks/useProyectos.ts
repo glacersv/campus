@@ -194,11 +194,12 @@ export function useProyectos() {
   ): Promise<{ ok?: boolean; error?: string }> {
     const materias = await getAllSubjects();
     const materia = materias.find(m => m.id === data.materia_id);
+    const proyecto = proyectos.find(p => p.id === proyectoId);
     try {
       await updateDoc(doc(db, 'proyectos', proyectoId), {
         estado: 'aprobado_oficial',
         materia_validada_id: data.materia_id,
-        materia_nombre: materia?.name ?? '',
+        materia_nombre: materia?.name ?? proyecto?.materia_nombre ?? '',
         observaciones: data.comentario ?? null,
         fecha_aprobacion: new Date().toISOString().slice(0, 10),
       });
@@ -217,11 +218,12 @@ export function useProyectos() {
     if (!data.comentario) return { error: 'Debes escribir un comentario para reclasificar.' };
     const materias = await getAllSubjects();
     const materia = materias.find(m => m.id === data.materia_id);
+    const proyecto = proyectos.find(p => p.id === proyectoId);
     try {
       await updateDoc(doc(db, 'proyectos', proyectoId), {
         estado: 'reclasificar',
         materia_id: data.materia_id,
-        materia_nombre: materia?.name ?? '',
+        materia_nombre: materia?.name ?? proyecto?.materia_nombre ?? '',
         observaciones: data.comentario,
       });
       await _registrarHistorial(proyectoId, 'reclasificacion',

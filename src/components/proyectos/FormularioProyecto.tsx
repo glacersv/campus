@@ -257,13 +257,14 @@ export default function FormularioProyecto({ proyectoInicial, onCancel, onSucces
     try {
       const materia = materias.find(m => m.id === materiaId);
       const integrantesData = buildIntegrantesDetalle();
+      const materiaNombre = materia?.name || proyectoInicial?.materia_nombre || '';
       const baseData = {
         titulo: titulo.trim(),
         descripcion: descripcion.trim(),
         grado,
         seccion,
         materia_id: materiaId,
-        materia_nombre: materia?.name || '',
+        materia_nombre: materiaNombre,
         materias_secundarias: materiasSecundarias,
       };
       if (esEdicion && proyectoInicial) {
@@ -291,13 +292,14 @@ export default function FormularioProyecto({ proyectoInicial, onCancel, onSucces
     setLoading(true);
     try {
       const materia = materias.find(m => m.id === materiaId);
+      const materiaNombre = materia?.name || proyectoInicial?.materia_nombre || '';
       const data = {
         titulo: titulo.trim(),
         descripcion: descripcion.trim(),
         grado,
         seccion,
         materia_id: materiaId,
-        materia_nombre: materia?.name || '',
+        materia_nombre: materiaNombre,
         materias_secundarias: materiasSecundarias,
         integrantes: buildIntegrantesDetalle(),
       };
@@ -400,7 +402,7 @@ export default function FormularioProyecto({ proyectoInicial, onCancel, onSucces
         <FormField label="Materia base *" error={errores.materia}>
           {esEdicion ? (
             <div className="form-input font-semibold bg-primary/5 border-primary/30 text-primary cursor-not-allowed">
-              {materias.find(m => m.id === materiaId)?.name || 'Sin materia'}
+              {materias.find(m => m.id === materiaId)?.name || proyectoInicial?.materia_nombre || 'Sin materia'}
             </div>
           ) : (
             <div className="flex flex-wrap gap-1.5">
