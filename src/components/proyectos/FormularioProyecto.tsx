@@ -78,21 +78,16 @@ export default function FormularioProyecto({ proyectoInicial, onCancel, onSucces
       try {
         const allSubjects = await getAllSubjects();
         
-        // If docente, filter by their registered subjects
+        // If docente, get their assigned subjects for materia base
         if (userProfile?.role === 'docente' && userProfile.teacherId) {
           const { getTeacher } = await import('../../lib/firestore');
           const teacher = await getTeacher(userProfile.teacherId);
           if (teacher?.subjects && teacher.subjects.length > 0) {
             setTeacherSubjects(teacher.subjects);
-            setMaterias(allSubjects.filter(s => teacher.subjects.includes(s.id)));
-          } else {
-            // Teacher has no subjects assigned, show all
-            setMaterias(allSubjects);
           }
-        } else {
-          // For alumnos and others, show all subjects
-          setMaterias(allSubjects);
         }
+        // Always show ALL subjects (materias adicionales are not limited by teacher)
+        setMaterias(allSubjects);
       } catch (err) {
         console.error('Error loading subjects:', err);
       }
