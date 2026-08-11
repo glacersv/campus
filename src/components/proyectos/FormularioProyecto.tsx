@@ -241,7 +241,7 @@ export default function FormularioProyecto({ proyectoInicial, onCancel, onSucces
 
   function buildIntegrantesDetalle(): Integrante[] {
     return integrantes.map((i, idx) => ({
-      uid: i.es_rep && userProfile ? userProfile.uid : (i.uid || `temp-${idx}-${Date.now()}`),
+      uid: i.uid || `temp-${idx}-${Date.now()}`,
       nombre: i.nombre.trim(),
       numero_lista: Number(i.numero_lista),
       es_rep: i.es_rep,
