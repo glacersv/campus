@@ -6,7 +6,7 @@ import {
   Student, Subject
 } from '../../types';
 import { FileText, Users, AlertCircle, Search, ChevronDown, X, Check, Plus } from 'lucide-react';
-import { getAvailableStudentsBySection, getStudent, getAllSubjects, getAllSections, getUserByStudentId } from '../../lib/firestore';
+import { getAvailableStudentsBySection, getStudent, getAllSubjects, getAllSections } from '../../lib/firestore';
 
 interface Props {
   proyectoInicial: Proyecto | null;
@@ -242,18 +242,13 @@ export default function FormularioProyecto({ proyectoInicial, onCancel, onSucces
     return Object.keys(errs).length === 0;
   }
 
-  async function buildIntegrantesDetalle(): Promise<Integrante[]> {
-    const resolved = await Promise.all(integrantes.map(async (i, idx) => {
-      if (i.es_rep && userProfile) {
-        return { uid: userProfile.uid, nombre: i.nombre.trim(), numero_lista: Number(i.numero_lista), es_rep: true };
-      }
-      if (i.uid && !i.uid.startsWith('temp-')) {
-        const user = await getUserByStudentId(i.uid);
-        return { uid: user?.uid || i.uid, nombre: i.nombre.trim(), numero_lista: Number(i.numero_lista), es_rep: false };
-      }
-      return { uid: `temp-${idx}-${Date.now()}`, nombre: i.nombre.trim(), numero_lista: Number(i.numero_lista), es_rep: false };
+  function buildIntegrantesDetalle(): Integrante[] {
+    return integrantes.map((i, idx) => ({
+      uid: i.es_rep && userProfile ? userProfile.uid : (i.uid || `temp-${idx}-${Date.now()}`),
+      nombre: i.nombre.trim(),
+      numero_lista: Number(i.numero_lista),
+      es_rep: i.es_rep,
     }));
-    return resolved;
   }
 
   async function handleBorrador() {
@@ -261,7 +256,7 @@ export default function FormularioProyecto({ proyectoInicial, onCancel, onSucces
     setLoading(true);
     try {
       const materia = materias.find(m => m.id === materiaId);
-      const integrantesData = await buildIntegrantesDetalle();
+      const integrantesData = buildIntegrantesDetalle();
       const materiaNombre = materia?.name || proyectoInicial?.materia_nombre || '';
       const baseData = {
         titulo: titulo.trim(),
@@ -306,7 +301,7 @@ export default function FormularioProyecto({ proyectoInicial, onCancel, onSucces
         materia_id: materiaId,
         materia_nombre: materiaNombre,
         materias_secundarias: materiasSecundarias,
-        integrantes: await buildIntegrantesDetalle(),
+        integrantes: buildIntegrantesDetalle(),
       };
       if (esEdicion && proyectoInicial) {
         await enviarAValidacion(proyectoInicial.id);
