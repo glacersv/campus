@@ -341,7 +341,7 @@ export default function FormularioProyecto({ proyectoInicial, onCancel, onSucces
 
       <div className="p-5">
         {/* Grado y Sección en una sola línea */}
-        <div className="flex items-center gap-4 mb-4">
+        <div className="flex items-start gap-3 mb-4">
           <FormField label="Grado *" error={errores.grado}>
             {loadingProfile ? (
               <div className="flex items-center gap-2 py-2">
