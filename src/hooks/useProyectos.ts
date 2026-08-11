@@ -57,13 +57,21 @@ export function useProyectos() {
       let data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Proyecto));
 
       if (userProfile.role === 'alumno') {
-        // Filtrar proyectos donde el alumno es integrante
+        // Filtrar proyectos donde el alumno es integrante o representante
         data = data.filter(p => {
-          const inArray = p.integrantes?.includes(userProfile.uid);
-          const inDetalle = p.integrantes_detalle?.some(
-            i => i.uid === userProfile.uid || i.uid === userProfile.studentId
-          );
-          return inArray || inDetalle;
+          const uid = userProfile.uid;
+          const sid = userProfile.studentId || '';
+          // 1. Auth UID en integrantes
+          if (p.integrantes?.includes(uid)) return true;
+          // 2. studentId en integrantes (compatibilidad con proyectos viejos)
+          if (sid && p.integrantes?.includes(sid)) return true;
+          // 3. Auth UID en integrantes_detalle
+          if (p.integrantes_detalle?.some(i => i.uid === uid)) return true;
+          // 4. studentId en integrantes_detalle
+          if (sid && p.integrantes_detalle?.some(i => i.uid === sid)) return true;
+          // 5. Es el representante/creador del proyecto
+          if (p.representante_id === uid) return true;
+          return false;
         });
       }
 
