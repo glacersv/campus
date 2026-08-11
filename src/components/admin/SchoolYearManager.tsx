@@ -362,6 +362,24 @@ export default function SchoolYearManager() {
     );
   }
 
+  // Group rows dynamically by educational cycle
+  const cycleOrder = ['parvularia', '1', '2', '3', '4'];
+  const groupedRows: Record<string, MigrationPlanRow[]> = {};
+  rows.forEach(r => {
+    const cy = r.cycle || 'unknown';
+    if (!groupedRows[cy]) {
+      groupedRows[cy] = [];
+    }
+    groupedRows[cy].push(r);
+  });
+
+  const activeCycles = cycleOrder.filter(c => groupedRows[c] && groupedRows[c].length > 0);
+  Object.keys(groupedRows).forEach(c => {
+    if (!activeCycles.includes(c)) {
+      activeCycles.push(c);
+    }
+  });
+
   return (
     <div className="space-y-8 fade-in max-w-7xl mx-auto pb-12">
       {/* Premium Header */}
@@ -487,188 +505,196 @@ export default function SchoolYearManager() {
             <p className="text-sm font-medium">No se encontraron grados activos configurados en el sistema.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {rows.map((r, rowIndex) => {
-              const dist = getDistribution(r);
-              const isReconfigured =
-                r.currentSectionNames.length !==
-                r.newSectionNames.filter(n => n.trim()).length;
+          <div className="space-y-8">
+            {activeCycles.map(cycleKey => {
+              const cycleRows = groupedRows[cycleKey];
               return (
-                <motion.div
-                  key={r.gradeId}
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: rowIndex * 0.02 }}
-                  className="card-crema p-5 flex flex-col justify-between transition-all duration-300 relative group/card overflow-hidden min-h-[360px]"
-                >
-                  {/* Decorative corner accent bar based on Cycle */}
-                  <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${
-                    r.cycle === 'parvularia' ? 'from-pink-400 to-pink-500' :
-                    r.cycle === '1' ? 'from-emerald-400 to-emerald-500' :
-                    r.cycle === '2' ? 'from-blue-400 to-blue-500' :
-                    r.cycle === '3' ? 'from-purple-400 to-purple-500' :
-                    'from-amber-400 to-amber-500'
-                  }`} />
-
-                  <div className="space-y-4">
-                    {/* Header: Grade & Cycle */}
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h4 className="text-base font-black text-slate-900 font-display group-hover/card:text-primary transition-colors">
-                          {r.gradeName}
-                        </h4>
-                        <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${
-                          r.cycle === 'parvularia' ? 'bg-pink-50 text-pink-700 border-pink-100' :
-                          r.cycle === '1' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                          r.cycle === '2' ? 'bg-sky-50 text-sky-700 border-sky-100' :
-                          r.cycle === '3' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
-                          'bg-orange-50 text-orange-700 border-orange-100'
-                        }`}>
-                          {CYCLE_LABEL[r.cycle] || r.cycle}
-                        </span>
-                      </div>
-
-                      {r.nextGradeId === null ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-black text-secondary bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-full uppercase tracking-wider">
-                          <GraduationCap className="w-3.5 h-3.5" />
-                          Egreso
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-tertiary font-bold uppercase tracking-wider bg-slate-100 px-2 py-1 rounded-md">
-                          {r.nextGradeName}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Flow / Matrícula Entrante */}
-                    <div className="bg-slate-50/70 rounded-xl p-3 border border-slate-100 space-y-2">
-                      <div className="text-[10px] font-black text-tertiary uppercase tracking-wider">
-                        Flujo de Matrícula
-                      </div>
-                      <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
-                        <span className="truncate max-w-[100px] bg-white border border-slate-200 px-2 py-0.5 rounded-md text-[10px] text-secondary">
-                          {r.sourceGradeName}
-                        </span>
-                        <div className="flex items-center gap-1 text-primary">
-                          <ArrowRight className="w-3.5 h-3.5" />
-                          <span className="font-bold text-[10px] font-mono bg-primary/10 px-1.5 py-0.5 rounded-md">
-                            +{r.incomingCount}
-                          </span>
-                        </div>
-                        <span className="truncate max-w-[100px] bg-primary/5 border border-primary/20 text-primary px-2 py-0.5 rounded-md text-[10px]">
-                          {r.gradeName}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-[11px] text-tertiary">
-                        <span>Padrón actual en grado:</span>
-                        <span className="font-bold text-slate-600">{r.outgoingCount} alumnos</span>
-                      </div>
-                    </div>
-
-                    {/* Aulas en Curso (Año actual) */}
-                    <div className="space-y-1.5">
-                      <div className="text-[10px] font-black text-tertiary uppercase tracking-wider">
-                        Aulas en Curso
-                      </div>
-                      {r.currentSectionNames.length > 0 ? (
-                        <div className="flex flex-wrap gap-1.5">
-                          {r.currentSectionNames.map(n => (
-                            <span
-                              key={n}
-                              className="px-2.5 py-0.5 bg-slate-100 border border-slate-200/80 rounded-md text-slate-600 font-black font-mono text-[11px] shadow-sm"
-                            >
-                              {n}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-[11px] text-tertiary font-medium italic">
-                          Sin aulas asignadas
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Nuevas Secciones (Planificadas) */}
-                    <div className="space-y-2.5 pt-3 border-t border-slate-100">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black text-secondary uppercase tracking-wider">
-                          Aulas Planificadas ({nextYear})
-                        </span>
-                        {isReconfigured && (
-                          <span className="text-[9px] font-black uppercase text-secondary bg-slate-50 border border-slate-200/60 px-1.5 py-0.5 rounded">
-                            Reconfigurado
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <div className="inline-flex items-center bg-slate-50 border border-slate-200 rounded-lg p-0.5 shadow-sm shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => updateCount(r.gradeId, r.newSectionNames.length - 1)}
-                            disabled={r.newSectionNames.length <= 1}
-                            className="w-6 h-6 rounded-md flex items-center justify-center text-secondary hover:bg-primary hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all font-bold cursor-pointer"
-                          >
-                            <Minus className="w-3 h-3" />
-                          </button>
-                          <span className="w-6 text-center text-xs font-black text-slate-800 font-mono">
-                            {r.newSectionNames.length}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => updateCount(r.gradeId, r.newSectionNames.length + 1)}
-                            disabled={r.newSectionNames.length >= 6}
-                            className="w-6 h-6 rounded-md flex items-center justify-center text-secondary hover:bg-primary hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all font-bold cursor-pointer"
-                          >
-                            <Plus className="w-3 h-3" />
-                          </button>
-                        </div>
-
-                        {/* Interactive inputs for section letters */}
-                        <div className="flex flex-wrap gap-1.5 items-center">
-                          {r.newSectionNames.map((n, i) => (
-                            <input
-                              key={i}
-                              value={n}
-                              onChange={e => updateName(r.gradeId, i, e.target.value)}
-                              maxLength={2}
-                              placeholder="A"
-                              title="Identificador de la sección"
-                              className="w-8 h-8 text-center text-xs font-black uppercase input-crema text-primary"
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* LIVE Distribution counts */}
-                    <div className="space-y-1.5 pt-3 border-t border-slate-100">
-                      <div className="text-[10px] font-black text-secondary uppercase tracking-wider">
-                        Distribución Proyectada
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {Object.entries(dist).map(([name, count]) => (
-                          <span
-                            key={name}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary/5 border border-primary/10 rounded-lg text-[11px] font-bold text-primary shadow-sm hover:scale-105 hover:bg-primary/10 transition-all duration-200 cursor-default"
-                          >
-                            <span className="text-[9px] text-primary/70 uppercase font-black tracking-wider">
-                              Secc. {name}
-                            </span>
-                            <span className="bg-white text-primary px-1.5 py-0.2 rounded font-black font-mono text-[10px] border border-primary/10 shadow-sm">
-                              {count}
-                            </span>
-                          </span>
-                        ))}
-                        {Object.keys(dist).length === 0 && (
-                          <span className="text-xs text-tertiary italic">
-                            Sin alumnos proyectados
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                <div key={cycleKey} className="space-y-4">
+                  {/* Elegant cycle header divider with count badge */}
+                  <div className="flex items-center gap-3 pt-2">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 font-display flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-primary" />
+                      {CYCLE_LABEL[cycleKey] || cycleKey}
+                    </h4>
+                    <span className="px-2.5 py-0.5 bg-slate-200/60 border border-slate-300/30 text-slate-700 text-[10px] font-black rounded-full font-mono">
+                      {cycleRows.length} {cycleRows.length === 1 ? 'Grado' : 'Grados'}
+                    </span>
+                    <div className="flex-1 h-px bg-slate-200" />
                   </div>
-                </motion.div>
+
+                  {/* Responsive grid of interactive cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                    {cycleRows.map((r, rowIndex) => {
+                      const dist = getDistribution(r);
+                      const isReconfigured =
+                        r.currentSectionNames.length !==
+                        r.newSectionNames.filter(n => n.trim()).length;
+                      return (
+                        <motion.div
+                          key={r.gradeId}
+                          initial={{ opacity: 0, y: 15 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: rowIndex * 0.02 }}
+                          className="card-crema p-5 flex flex-col justify-between transition-all duration-300 relative group/card overflow-hidden min-h-[380px]"
+                        >
+                          {/* Subtle top-border gradient gradient to allow natural expansion */}
+                          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/10 via-primary/30 to-primary/10" />
+
+                          <div className="space-y-4">
+                            {/* Header: Grade & Cycle */}
+                            <div className="flex items-start justify-between gap-2 min-w-0">
+                              <div className="min-w-0 flex-1">
+                                <h4 className="text-sm font-black text-slate-900 font-display group-hover/card:text-primary transition-colors leading-tight truncate" title={r.gradeName}>
+                                  {r.gradeName}
+                                </h4>
+                                <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-md text-[9px] font-bold border ${
+                                  r.cycle === 'parvularia' ? 'bg-pink-50 text-pink-700 border-pink-100' :
+                                  r.cycle === '1' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                                  r.cycle === '2' ? 'bg-sky-50 text-sky-700 border-sky-100' :
+                                  r.cycle === '3' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
+                                  'bg-orange-50 text-orange-700 border-orange-100'
+                                }`}>
+                                  {CYCLE_LABEL[r.cycle] || r.cycle}
+                                </span>
+                              </div>
+
+                              <div className="shrink-0">
+                                {r.nextGradeId === null ? (
+                                  <span className="inline-flex items-center gap-1 text-[9px] font-black text-secondary bg-slate-50 border border-slate-200 px-2 py-1 rounded-full uppercase tracking-wider">
+                                    <GraduationCap className="w-3 h-3" />
+                                    Egreso
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider bg-slate-100 px-2 py-1 rounded-md block max-w-[85px] truncate" title={r.nextGradeName}>
+                                    {r.nextGradeName}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Enrollment flow - styled as a visual 'Matrícula Entrante' vs 'Padrón Saliente' comparison */}
+                            <div className="space-y-1.5 bg-slate-50 border border-slate-100 rounded-xl p-2.5">
+                              <div className="flex justify-between items-center text-[10px] font-bold text-slate-400">
+                                <span className="uppercase tracking-wider">Flujo de Alumnos</span>
+                              </div>
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="text-slate-500 font-medium">Ingreso (+{r.incomingCount}):</span>
+                                <span className="font-bold text-primary truncate max-w-[85px]" title={r.sourceGradeName}>{r.sourceGradeName}</span>
+                              </div>
+                              <div className="flex justify-between items-center text-xs border-t border-slate-100/60 pt-1.5 mt-1">
+                                <span className="text-slate-500 font-medium">Egreso ({r.outgoingCount}):</span>
+                                <span className="font-bold text-slate-700 truncate max-w-[85px]" title={r.nextGradeName === 'Graduación' ? 'Egreso' : r.nextGradeName}>{r.nextGradeName === 'Graduación' ? 'Egreso' : r.nextGradeName}</span>
+                              </div>
+                            </div>
+
+                            {/* Aulas en Curso (Año actual) */}
+                            <div className="space-y-1.5">
+                              <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                                Aulas en Curso
+                              </div>
+                              {r.currentSectionNames.length > 0 ? (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {r.currentSectionNames.map(n => (
+                                    <span
+                                      key={n}
+                                      className="px-2.5 py-0.5 bg-slate-100 border border-slate-200/80 rounded-md text-slate-600 font-black font-mono text-[11px] shadow-sm"
+                                    >
+                                      {n}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-[11px] text-slate-400 font-medium italic">
+                                  Sin aulas asignadas
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Next-year planned section inputs grouped inside a cohesive bg-slate-50/50 block */}
+                            <div className="bg-slate-50/50 p-3 rounded-xl border border-slate-100 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                  Aulas Planificadas ({nextYear})
+                                </span>
+                                {isReconfigured && (
+                                  <span className="text-[9px] font-black uppercase text-accent bg-accent/10 border border-accent/20 px-1.5 py-0.5 rounded">
+                                    Modificado
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <div className="inline-flex items-center bg-white border border-slate-200 rounded-lg p-0.5 shadow-xs shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => updateCount(r.gradeId, r.newSectionNames.length - 1)}
+                                    disabled={r.newSectionNames.length <= 1}
+                                    className="w-5.5 h-5.5 rounded-md flex items-center justify-center text-slate-500 hover:bg-primary hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all font-bold cursor-pointer"
+                                  >
+                                    <Minus className="w-3 h-3" />
+                                  </button>
+                                  <span className="w-6 text-center text-xs font-black text-slate-800 font-mono">
+                                    {r.newSectionNames.length}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateCount(r.gradeId, r.newSectionNames.length + 1)}
+                                    disabled={r.newSectionNames.length >= 6}
+                                    className="w-5.5 h-5.5 rounded-md flex items-center justify-center text-slate-500 hover:bg-primary hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all font-bold cursor-pointer"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                  </button>
+                                </div>
+
+                                {/* Interactive inputs for section letters */}
+                                <div className="flex flex-wrap gap-1 items-center">
+                                  {r.newSectionNames.map((n, i) => (
+                                    <input
+                                      key={i}
+                                      value={n}
+                                      onChange={e => updateName(r.gradeId, i, e.target.value)}
+                                      maxLength={2}
+                                      placeholder="A"
+                                      title="Identificador de la sección"
+                                      className="w-8 h-8 text-center text-xs font-black uppercase input-crema bg-white text-primary p-0 rounded-lg border-slate-200"
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Live projections use neutral badges with primary-colored highlights to minimize visual noise */}
+                            <div className="space-y-1.5 pt-1">
+                              <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                Distribución Proyectada
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {Object.entries(dist).map(([name, count]) => (
+                                  <span
+                                    key={name}
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 shadow-xs hover:scale-105 hover:bg-slate-200/80 transition-all duration-200 cursor-default"
+                                  >
+                                    <span className="text-[9px] text-slate-400 uppercase font-black tracking-wider">
+                                      Secc. {name}
+                                    </span>
+                                    <span className="text-primary font-black font-mono text-[11px]">
+                                      {count}
+                                    </span>
+                                  </span>
+                                ))}
+                                {Object.keys(dist).length === 0 && (
+                                  <span className="text-[10px] text-slate-400 italic">
+                                    Sin alumnos proyectados
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </div>
               );
             })}
           </div>
