@@ -201,13 +201,13 @@ export default function ComputerLabsManager() {
         <div className="flex border border-slate-200 rounded-lg overflow-hidden ml-auto">
           <button
             onClick={() => setViewMode('card')}
-            className={`p-2 transition-colors ${viewMode === 'card' ? 'bg-primary text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+            className={`p-2 transition-colors ${viewMode === 'card' ? 'bg-primary text-white' : 'bg-white text-secondary hover:bg-slate-50'}`}
           >
             <LayoutGrid className="w-4 h-4" />
           </button>
           <button
             onClick={() => setViewMode('list')}
-            className={`p-2 transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+            className={`p-2 transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-white text-secondary hover:bg-slate-50'}`}
           >
             <List className="w-4 h-4" />
           </button>
@@ -269,12 +269,12 @@ export default function ComputerLabsManager() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03 }}
                 className={`card card-hover p-3 group relative cursor-pointer transition-all ${selected.has(l.id) ? 'ring-2 ring-primary border-primary' : ''} ${isSelected ? 'ring-2 ring-offset-2' : 'hover:ring-1 hover:ring-offset-1'}`}
-                style={{ '--tw-ring-color': isSelected ? '#6366F1' : 'transparent' } as React.CSSProperties}
+                style={{ '--tw-ring-color': isSelected ? 'var(--color-primary)' : 'transparent' } as React.CSSProperties}
                 onClick={() => setSelectedLabId(isSelected ? null : l.id)}
               >
                 <div className="absolute top-2.5 left-2.5">
                   <button onClick={(e) => { e.stopPropagation(); toggleSelect(l.id); }}
-                    className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.has(l.id) ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'}`}>
+                    className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.has(l.id) ? 'bg-primary border-primary text-white' : 'border-slate-300 hover:border-primary'}`}>
                     {selected.has(l.id) && <Check className="w-2.5 h-2.5" />}
                   </button>
                 </div>
@@ -292,27 +292,27 @@ export default function ComputerLabsManager() {
                         {getBuildingName(l.buildingId)}
                       </p>
                     )}
-                    {l.capacity && <p className="text-xs text-slate-500">Capacidad: {l.capacity}</p>}
-                    {l.devices && <p className="text-xs text-slate-500">Dispositivos: {l.devices}</p>}
+                    {l.capacity && <p className="text-xs text-secondary">Capacidad: {l.capacity}</p>}
+                    {l.devices && <p className="text-xs text-secondary">Dispositivos: {l.devices}</p>}
                     {stats.assignedSections.length > 0 && (
-                      <p className="text-[10px] text-slate-400 pt-1">
+                      <p className="text-[10px] text-tertiary pt-1">
                         {stats.assignedSections.length} sección(es) · {stats.totalEnrolled} alumno(s)
                       </p>
                     )}
                   </div>
                   {stats.assignedSections.length > 0 && (
-                    <div className="mt-2 flex items-center gap-2 text-[10px] text-slate-400">
+                    <div className="mt-2 flex items-center gap-2 text-[10px] text-tertiary">
                       <span className="w-14 shrink-0">Uso:</span>
                       <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                         <motion.div initial={{ width: 0 }} animate={{ width: `${stats.usagePct}%` }}
-                          className="h-full rounded-full" style={{ backgroundColor: '#6366F1' }} />
+                          className="h-full rounded-full bg-primary" />
                       </div>
                       <span className="w-8 text-right font-mono">{stats.usagePct}%</span>
                     </div>
                   )}
                 </div>
-                <div className="flex justify-end gap-1 mt-2 pt-2 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={(e) => { e.stopPropagation(); handleEdit(l); }} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-slate-100 rounded-lg text-xs font-medium text-slate-600"><Edit2 className="w-3.5 h-3.5" /> Editar</button>
+                <div className="flex justify-end gap-1 mt-2 pt-2 border-t border-slate-100 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={(e) => { e.stopPropagation(); handleEdit(l); }} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-slate-100 rounded-lg text-xs font-medium text-primary"><Edit2 className="w-3.5 h-3.5" /> Editar</button>
                   <button onClick={(e) => { e.stopPropagation(); handleDelete(l.id); }} className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-red-50 rounded-lg text-xs font-medium text-red-600"><Trash2 className="w-3.5 h-3.5" /> Eliminar</button>
                 </div>
               </motion.div>
@@ -329,25 +329,25 @@ export default function ComputerLabsManager() {
               <tr>
                 <th className="w-8 px-3 py-2">
                   <button onClick={toggleSelectAll}
-                    className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.size === labs.length && labs.length > 0 ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'}`}>
+                    className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.size === labs.length && labs.length > 0 ? 'bg-primary border-primary text-white' : 'border-slate-300 hover:border-primary'}`}>
                     {selected.size === labs.length && labs.length > 0 && <Check className="w-2.5 h-2.5" />}
                   </button>
                 </th>
-                <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Nombre</th>
-                <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Edificio</th>
-                <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Capacidad</th>
-                <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Dispositivos</th>
-                <th className="text-right px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Acciones</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-secondary uppercase">Nombre</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-secondary uppercase">Edificio</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-secondary uppercase">Capacidad</th>
+                <th className="text-left px-3 py-2 text-[11px] font-semibold text-secondary uppercase">Dispositivos</th>
+                <th className="text-right px-3 py-2 text-[11px] font-semibold text-secondary uppercase">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {labs.map((l, i) => (
                 <motion.tr key={l.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}
-                  className={`table-row cursor-pointer ${selected.has(l.id) ? 'bg-primary/5' : ''} ${selectedLabId === l.id ? 'bg-indigo-50' : ''}`}
+                  className={`table-row cursor-pointer ${selected.has(l.id) ? 'bg-primary/5' : ''} ${selectedLabId === l.id ? 'bg-primary/5' : ''}`}
                   onClick={() => setSelectedLabId(selectedLabId === l.id ? null : l.id)}>
                   <td className="px-3 py-2">
                     <button onClick={(e) => { e.stopPropagation(); toggleSelect(l.id); }}
-                      className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.has(l.id) ? 'bg-primary border-primary text-white' : 'border-gray-300 hover:border-primary'}`}>
+                      className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${selected.has(l.id) ? 'bg-primary border-primary text-white' : 'border-slate-300 hover:border-primary'}`}>
                       {selected.has(l.id) && <Check className="w-2.5 h-2.5" />}
                     </button>
                   </td>
@@ -358,11 +358,11 @@ export default function ComputerLabsManager() {
                       {getBuildingName(l.buildingId)}
                     </span>
                   ) : '—'}</td>
-                  <td className="px-3 py-2 text-sm text-slate-500">{l.capacity || '—'}</td>
-                  <td className="px-3 py-2 text-sm text-slate-500">{l.devices || '—'}</td>
+                  <td className="px-3 py-2 text-sm text-secondary">{l.capacity || '—'}</td>
+                  <td className="px-3 py-2 text-sm text-secondary">{l.devices || '—'}</td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex justify-end gap-1">
-                      <button onClick={(e) => { e.stopPropagation(); handleEdit(l); }} className="p-1.5 hover:bg-slate-100 rounded-lg"><Edit2 className="w-4 h-4 text-slate-500" /></button>
+                      <button onClick={(e) => { e.stopPropagation(); handleEdit(l); }} className="p-1.5 hover:bg-slate-100 rounded-lg"><Edit2 className="w-4 h-4 text-secondary" /></button>
                       <button onClick={(e) => { e.stopPropagation(); handleDelete(l.id); }} className="p-1.5 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4 text-red-500" /></button>
                     </div>
                   </td>
@@ -375,7 +375,7 @@ export default function ComputerLabsManager() {
 
       {/* Empty state */}
       {labs.length === 0 && (
-        <div className="text-center py-12 text-slate-400">
+        <div className="text-center py-12 text-tertiary">
           <Monitor className="w-10 h-10 mx-auto mb-2 opacity-50" />
           <p className="text-sm">No se encontraron laboratorios</p>
         </div>
@@ -390,12 +390,12 @@ export default function ComputerLabsManager() {
           <div className="mt-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
-                  <Monitor className="w-5 h-5 text-indigo-600" />
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Monitor className="w-5 h-5 text-primary" />
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-slate-900">{l.name}</h3>
-                  <p className="text-sm text-slate-500 flex items-center gap-1">
+                  <p className="text-sm text-secondary flex items-center gap-1">
                     {l.buildingId && (
                       <><MapPin className="w-3.5 h-3.5" /> {getBuildingName(l.buildingId)} · </>
                     )}
@@ -403,52 +403,54 @@ export default function ComputerLabsManager() {
                   </p>
                 </div>
               </div>
-              <button onClick={() => setSelectedLabId(null)} className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1">
+              <button onClick={() => setSelectedLabId(null)} className="text-xs text-tertiary hover:text-slate-600 flex items-center gap-1">
                 <X className="w-3.5 h-3.5" /> Cerrar
               </button>
             </div>
 
             {/* Summary cards */}
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
-              {[
-                { icon: Layers, label: 'Secciones Asignadas', value: stats.assignedSections.length, sub: stats.assignedSections.length === 1 ? 'asignada' : 'asignadas' },
-                { icon: Users, label: 'Capacidad Total Aulas', value: stats.totalCapacity, sub: 'cupos en secciones asignadas' },
-                { icon: GraduationCap, label: 'Alumnos Matriculados', value: stats.totalEnrolled, sub: `de ${stats.totalCapacity} cupos` },
-                { icon: Cpu, label: 'Dispositivos', value: l.devices || 0, sub: 'equipos disponibles' }
-              ].map(({ icon: Icon, label, value, sub }) => (
-                <div key={label} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-indigo-50">
-                      <Icon className="w-5 h-5 text-indigo-500" />
-                    </div>
-                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{label}</span>
-                  </div>
-                  <p className="text-4xl font-black text-slate-900 font-mono">{value}</p>
-                  <p className="text-sm text-slate-400 mt-1">{sub}</p>
-                </div>
-              ))}
+               {[
+                 { icon: Layers, label: 'Secciones Asignadas', value: stats.assignedSections.length, sub: stats.assignedSections.length === 1 ? 'asignada' : 'asignadas', color: 'bg-primary/10 text-primary' },
+                 { icon: Users, label: 'Capacidad Total Aulas', value: stats.totalCapacity, sub: 'cupos en secciones asignadas', color: 'bg-secondary/10 text-secondary' },
+                 { icon: GraduationCap, label: 'Alumnos Matriculados', value: stats.totalEnrolled, sub: `de ${stats.totalCapacity} cupos`, color: 'bg-accent/10 text-accent' },
+                 { icon: Cpu, label: 'Dispositivos', value: l.devices || 0, sub: 'equipos disponibles', color: 'bg-primary/10 text-primary' }
+               ].map(({ icon: Icon, label, value, sub, color }) => (
+                 <div key={label} className="stat-card flex-col items-start gap-3">
+                   <div className="flex items-center gap-3">
+                     <div className={`stat-card-icon ${color}`}>
+                       <Icon className="w-5 h-5" />
+                     </div>
+                     <span className="stat-card-label">{label}</span>
+                   </div>
+                   <p className="stat-card-value">{value}</p>
+                   <p className="text-xs text-slate-400 mt-1">{sub}</p>
+                 </div>
+               ))}
             </div>
 
             {/* Section breakdown */}
             {stats.assignedSections.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-4">
-                  <BarChart3 className="w-5 h-5 text-indigo-500" />
-                  <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Secciones Asignadas por Grado</h4>
+                  <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                    <BarChart3 className="w-4 h-4 text-accent" />
+                  </div>
+                  <h4 className="text-sm font-bold text-primary uppercase tracking-wider">Secciones Asignadas por Grado</h4>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {stats.sectionsByGrade.map(sg => {
                     const pct = sg.capacity > 0 ? Math.round((sg.enrolled / sg.capacity) * 100) : 0;
                     return (
-                      <div key={sg.gradeName} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+                      <div key={sg.gradeName} className="card-crema p-5">
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-bold text-slate-900">{sg.gradeName}</span>
-                            <span className="text-xs bg-indigo-50 text-indigo-600 font-medium px-2 py-0.5 rounded-full">{sg.sections.length} secc{(sg.sections.length > 1 ? 'iones' : 'ión')}</span>
+                            <span className="text-xs bg-primary/10 text-primary font-medium px-2 py-0.5 rounded-full">{sg.sections.length} secc{(sg.sections.length > 1 ? 'iones' : 'ión')}</span>
                           </div>
                           <div className="flex items-baseline gap-1.5 font-mono">
                             <span className="text-2xl font-black text-slate-900">{sg.enrolled}</span>
-                            <span className="text-sm text-slate-400">/ {sg.capacity}</span>
+                            <span className="text-sm text-tertiary">/ {sg.capacity}</span>
                           </div>
                         </div>
                         <div className="relative h-4 bg-slate-100 rounded-full overflow-hidden mb-3">
@@ -456,7 +458,7 @@ export default function ComputerLabsManager() {
                             initial={{ width: 0 }}
                             animate={{ width: `${pct}%` }}
                             transition={{ duration: 0.8, ease: 'easeOut' }}
-                            className="absolute inset-y-0 left-0 rounded-full bg-indigo-500"
+                            className="absolute inset-y-0 left-0 rounded-full bg-primary"
                           />
                         </div>
                         <div className="flex flex-wrap gap-1.5">
@@ -464,12 +466,12 @@ export default function ComputerLabsManager() {
                             const enrolled = students.filter(st => st.sectionId === sec.id && st.gradeId === sec.gradeId).length;
                             return (
                               <span key={sec.id} className={`inline-flex items-center gap-1.5 text-xs font-mono px-2.5 py-1 rounded-lg border ${
-                                enrolled > 0 ? 'bg-white border-slate-200 text-slate-700' : 'bg-slate-50 border-dashed border-slate-200 text-slate-400'
+                                enrolled > 0 ? 'bg-white border-slate-200 text-slate-700' : 'bg-slate-50 border-dashed border-slate-200 text-tertiary'
                               }`}>
                                 <span className="font-semibold">Sección {sec.name}</span>
-                                <span className="font-bold text-indigo-600">{enrolled}</span>
-                                <span className="text-slate-300">/</span>
-                                <span className="text-slate-400">{sec.capacity || '?'}</span>
+                            <span className="font-bold text-primary">{enrolled}</span>
+                            <span className="text-secondary">/</span>
+                            <span className="text-tertiary">{sec.capacity || '?'}</span>
                               </span>
                             );
                           })}
@@ -482,7 +484,7 @@ export default function ComputerLabsManager() {
             )}
 
             {stats.assignedSections.length === 0 && (
-              <div className="text-center py-16 text-slate-400 bg-white border border-slate-200 rounded-xl">
+              <div className="text-center py-16 text-slate-400 card-crema p-8">
                 <Monitor className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p className="text-base font-medium">No hay secciones asignadas a este laboratorio</p>
                 <p className="text-sm mt-1">Asigna este laboratorio desde el módulo de Secciones</p>
@@ -493,7 +495,7 @@ export default function ComputerLabsManager() {
       })()}
 
       {!selectedLabId && labs.length > 0 && (
-        <div className="mt-6 text-center py-12 text-slate-400 bg-white border border-dashed border-slate-200 rounded-xl">
+        <div className="mt-6 text-center py-12 text-slate-400 card-crema p-8 border-dashed">
           <BarChart3 className="w-10 h-10 mx-auto mb-2 opacity-40" />
           <p className="text-sm font-medium">Selecciona un laboratorio para ver sus estadísticas</p>
           <p className="text-xs mt-1">Haz clic en cualquier laboratorio de arriba</p>

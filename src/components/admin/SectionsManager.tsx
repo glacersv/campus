@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Layers, Plus, Edit2, Trash2, Save, X, Search, Users, Check } from 'lucide-react';
+import { Layers, Plus, Edit2, Trash2, Save, X, Search, Users, Check, Minus, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAllSections, createSection, updateSection, deleteSection, getAllGrades, getAllBuildings, getAllComputerLabs, toggleSectionStatus, getAllBaccalaureateTypes, getAllStudents, getCurrentSchoolYear } from '../../lib/firestore';
 import { Section, Grade, Building, ComputerLab, BaccalaureateTypeDoc, Student } from '../../types';
@@ -22,8 +22,7 @@ export default function SectionsManager() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabIds: [] as string[] });
-  const [search, setSearch] = useState('');
+  const [form, setForm] = useState({ name: '', gradeId: '', capacity: 35, buildingId: '', computerLabIds: [] as string[] });
   const [onlyActive, setOnlyActive] = useState(true);
   const [letterFilter, setLetterFilter] = useState<string>('all');
   const [selectedGroup, setSelectedGroup] = useState<{ letter: string; levels: { label: string; count: number }[]; totalGrades: number; totalStudents: number; totalCapacity: number; occupancyPercentage: number; gradeDetails: { sectionId: string; gradeId: string; gradeName: string; capacity: number; enrolled: number; percentage: number; rawSection: Section; sortWeight: number }[] } | null>(null);
@@ -79,9 +78,10 @@ export default function SectionsManager() {
         name: form.name.trim().toUpperCase(),
         gradeId: form.gradeId,
         buildingId: form.buildingId || null,
-        computerLabIds: form.computerLabIds.length > 0 ? form.computerLabIds : null
+        capacity: Number(form.capacity) || 35,
+        computerLabIds: form.computerLabIds,
       };
-      if (form.capacity) data.capacity = parseInt(form.capacity);
+      if (form.capacity) data.capacity = Number(form.capacity);
 
       if (editingId) {
         await updateSection(editingId, data);
@@ -98,7 +98,7 @@ export default function SectionsManager() {
         });
         toast.success('Sección creada');
       }
-      setShowForm(false); setEditingId(null); setForm({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabIds: [] });
+      setShowForm(false); setEditingId(null); setForm({ name: '', gradeId: '', capacity: 35, buildingId: '', computerLabIds: [] });
       loadData();
     } catch (err) {
       toast.error('Error al guardar sección');
@@ -111,7 +111,7 @@ export default function SectionsManager() {
     setForm({
       name: s.name,
       gradeId: s.gradeId,
-      capacity: s.capacity?.toString() || '',
+      capacity: s.capacity ?? 35,
       buildingId: s.buildingId || '',
       computerLabIds: s.computerLabIds || (s.computerLabId ? [s.computerLabId] : [])
     });
@@ -149,11 +149,9 @@ export default function SectionsManager() {
   ).sort((a, b) => a.localeCompare(b));
 
   const filteredActiveSections = activeSections.filter(s => {
-    const gradeName = getGradeName(s.gradeId);
-    const matchesSearch = s.name.toLowerCase().includes(search.toLowerCase()) || gradeName.toLowerCase().includes(search.toLowerCase());
     const matchesActive = !onlyActive || activeGradeIds.has(s.gradeId);
     const matchesLetter = letterFilter === 'all' || getSectionLetter(s.name) === letterFilter;
-    return matchesSearch && matchesActive && matchesLetter;
+    return matchesActive && matchesLetter;
   });
 
   const totalCapacityFiltered = filteredActiveSections.reduce((acc, s) => acc + (s.capacity || 0), 0);
@@ -195,44 +193,37 @@ export default function SectionsManager() {
             <p className="module-subtitle">{sortedSections.length} sección(es) registrada(s)</p>
           </div>
         </div>
-        <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', gradeId: '', capacity: '', buildingId: '', computerLabIds: [] }); }} className="btn-primary">
+        <button onClick={() => { setShowForm(true); setEditingId(null); setForm({ name: '', gradeId: '', capacity: 35, buildingId: '', computerLabIds: [] }); }} className="btn-primary">
           <Plus className="w-4 h-4" /> Nueva Sección
         </button>
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input type="text" placeholder="Buscar sección..." value={search} onChange={e => setSearch(e.target.value)} className="input pl-9" />
-        </div>
-
-        {sectionLetters.length > 0 && (
-          <div className="flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-xl border border-slate-200">
+        <div className="flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-xl border border-slate-200">
+          <button
+            onClick={() => setLetterFilter('all')}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              letterFilter === 'all'
+                ? 'bg-primary text-white shadow-xs'
+                : 'text-slate-600 hover:bg-slate-200/50'
+            }`}
+          >
+            Todas
+          </button>
+          {sectionLetters.map(letter => (
             <button
-              onClick={() => setLetterFilter('all')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                letterFilter === 'all'
+              key={letter}
+              onClick={() => setLetterFilter(letter)}
+              className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                letterFilter === letter
                   ? 'bg-primary text-white shadow-xs'
                   : 'text-slate-600 hover:bg-slate-200/50'
               }`}
             >
-              Todas
+              {letter}
             </button>
-            {sectionLetters.map(letter => (
-              <button
-                key={letter}
-                onClick={() => setLetterFilter(letter)}
-                className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  letterFilter === letter
-                    ? 'bg-primary text-white shadow-xs'
-                    : 'text-slate-600 hover:bg-slate-200/50'
-                }`}
-              >
-                {letter}
-              </button>
-            ))}
-          </div>
-        )}
+          ))}
+        </div>
 
         <div className="flex items-center gap-2 bg-white px-3.5 py-1.5 rounded-xl border border-slate-200 shadow-3xs cursor-pointer select-none hover:bg-slate-50 transition-colors" onClick={() => setOnlyActive(!onlyActive)}>
           <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors ${onlyActive ? 'bg-primary border-primary text-white' : 'border-slate-300'}`}>
@@ -242,39 +233,41 @@ export default function SectionsManager() {
         </div>
       </div>
 
-      {/* Premium Statistics Banner */}
+      {/* Premium Statistics Banner - Unified Single Bar */}
       {filteredActiveSections.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50/50 border border-slate-200/80 rounded-2xl p-4 shadow-3xs">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-              <Users className="w-5 h-5 text-slate-500" />
-            </div>
-            <div>
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Matrícula Filtrada</span>
-              <span className="text-base font-extrabold text-slate-800 font-display">{totalStudentsFiltered} alumnos</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-              <Layers className="w-5 h-5 text-slate-500" />
-            </div>
-            <div>
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Capacidad Total</span>
-              <span className="text-base font-extrabold text-slate-800 font-display">{totalCapacityFiltered} espacios</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-              <div className="relative w-7 h-7">
-                <svg viewBox="0 0 36 36" className="w-full h-full text-slate-500">
-                  <path className="text-slate-200" strokeWidth="4" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                  <path className="text-slate-500" strokeDasharray={`${occupancyPercentageFiltered}, 100`} strokeWidth="4" strokeLinecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                </svg>
+        <div className="card-crema p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center shrink-0">
+                <Users className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Matrícula Filtrada</span>
+                <span className="text-base font-extrabold text-slate-800 font-display">{totalStudentsFiltered} alumnos</span>
               </div>
             </div>
-            <div>
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Promedio de Ocupación</span>
-              <span className="text-base font-extrabold text-slate-800 font-display">{occupancyPercentageFiltered}% ocupado</span>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center shrink-0">
+                <Layers className="w-5 h-5 text-accent" />
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Capacidad Total</span>
+                <span className="text-base font-extrabold text-slate-800 font-display">{totalCapacityFiltered} espacios</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center shrink-0">
+                <div className="relative w-6 h-6">
+                  <svg viewBox="0 0 36 36" className="w-full h-full text-secondary">
+                    <path className="text-secondary/20" strokeWidth="4" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                    <path className="text-secondary" strokeDasharray={`${occupancyPercentageFiltered}, 100`} strokeWidth="4" strokeLinecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                  </svg>
+                </div>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Promedio de Ocupación</span>
+                <span className="text-base font-extrabold text-slate-800 font-display">{occupancyPercentageFiltered}% ocupado</span>
+              </div>
             </div>
           </div>
         </div>
@@ -283,83 +276,118 @@ export default function SectionsManager() {
       {/* Formulario Modal */}
       <AnimatePresence>
         {showForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="modal-backdrop">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden flex flex-col"
+              className="modal-container max-w-3xl"
             >
-              <div className="bg-slate-50 border-b border-slate-100 p-5 flex justify-between items-center shrink-0">
-                <h3 className="font-bold text-slate-900 text-base">{editingId ? 'Editar Sección' : 'Nueva Sección'}</h3>
-                <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1.5 hover:bg-slate-200 rounded-lg transition-colors"><X className="w-4 h-4 text-slate-500" /></button>
+              <div className="modal-header">
+                <div>
+                  <h3 className="modal-title">{editingId ? 'Editar Sección' : 'Nueva Sección'}</h3>
+                  <p className="text-xs text-secondary mt-0.5">Selecciona el grado y configura la sección</p>
+                </div>
+                <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="modal-close-btn"><X className="w-4 h-4 text-secondary" /></button>
               </div>
-              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+
+              <form onSubmit={handleSubmit} className="modal-body space-y-5">
+                {/* Grado - Visual selector */}
+                <div className="space-y-2">
+                  <label className="form-label text-slate-700">Grado *</label>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-1.5">
+                    {grades.map(g => {
+                      const isSelected = form.gradeId === g.id;
+                      return (
+                        <button
+                          key={g.id}
+                          type="button"
+                          onClick={() => setForm({ ...form, gradeId: g.id })}
+                          className={`py-2 px-2.5 rounded-lg border text-left transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-primary/5 border-primary shadow-sm'
+                              : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                          }`}
+                        >
+                          <span className={`text-[11px] font-bold block leading-tight ${isSelected ? 'text-primary' : 'text-slate-700'}`}>{g.name}</span>
+                          <span className="text-[9px] text-slate-400">{g.cycle === 'parvularia' ? 'Parvularia' : g.cycle === '1' ? 'Ciclo 1' : g.cycle === '2' ? 'Ciclo 2' : g.cycle === '3' ? 'Ciclo 3' : 'Bachillerato'}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {!form.gradeId && (
+                    <p className="text-[11px] text-red-500 font-medium">Selecciona un grado para continuar</p>
+                  )}
+                </div>
+
+                {/* Nombre y Capacidad */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="form-label">Grado *</label>
-                    <select required value={form.gradeId} onChange={e => setForm({ ...form, gradeId: e.target.value })} className="input">
-                      <option value="">Seleccionar grado</option>
-                      {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                    </select>
+                  <div className="space-y-1">
+                    <label className="form-label text-slate-700">Nombre *</label>
+                    <input type="text" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ej: A" className="input-crema" maxLength={3} />
                   </div>
-                  <div>
-                    <label className="form-label">Nombre *</label>
-                    <input type="text" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ej: A" className="input" maxLength={3} />
-                  </div>
-                  <div>
-                    <label className="form-label">Capacidad</label>
-                    <input type="number" min="1" value={form.capacity} onChange={e => setForm({ ...form, capacity: e.target.value })} placeholder="Ej: 40" className="input" />
-                  </div>
-                  <div>
-                    <label className="form-label">Edificio</label>
-                    <select value={form.buildingId} onChange={e => setForm({ ...form, buildingId: e.target.value })} className="input">
-                      <option value="">Sin edificio</option>
-                      {buildings.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                    </select>
-                  </div>
-                  <div className="col-span-2">
-                    <label className="form-label mb-2.5 block text-slate-500 font-bold uppercase tracking-wider text-[10px]">
-                      LABORATORIOS / CC / SALONES ESPECIALIZADOS
-                    </label>
-                    <div className="flex flex-wrap gap-2 max-h-[150px] overflow-y-auto pr-1">
-                      {computerLabs.map(cl => {
-                        const isChecked = form.computerLabIds.includes(cl.id);
-                        return (
-                          <button
-                            type="button"
-                            key={cl.id}
-                            onClick={() => {
-                              setForm(prev => {
-                                const isIncluded = prev.computerLabIds.includes(cl.id);
-                                const nextIds = isIncluded
-                                  ? prev.computerLabIds.filter(id => id !== cl.id)
-                                  : [...prev.computerLabIds, cl.id];
-                                return { ...prev, computerLabIds: nextIds };
-                              });
-                            }}
-                            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer select-none ${
-                              isChecked
-                                ? 'bg-primary text-white border-primary shadow-sm hover:bg-primary/95'
-                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-100/50'
-                            }`}
-                          >
-                            <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors ${isChecked ? 'bg-white border-white text-primary' : 'border-slate-400 bg-white'}`}>
-                              {isChecked && <Check className="w-2.5 h-2.5 stroke-[3px]" />}
-                            </div>
-                            <span>{cl.name}</span>
-                          </button>
-                        );
-                      })}
-                      {computerLabs.length === 0 && (
-                        <p className="text-[11px] text-slate-400 w-full text-center py-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl">
-                          No hay aulas especializadas creadas.
-                        </p>
-                      )}
+                  <div className="space-y-1">
+                    <label className="form-label text-slate-700">Capacidad</label>
+                    <div className="flex items-center gap-2">
+                      <button type="button" onClick={() => setForm({ ...form, capacity: Math.max(1, (Number(form.capacity) || 35) - 1) })} className="w-9 h-9 flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors"><Minus className="w-4 h-4" /></button>
+                      <input type="number" readOnly value={form.capacity} className="input-crema text-center font-mono font-bold" />
+                      <button type="button" onClick={() => setForm({ ...form, capacity: (Number(form.capacity) || 35) + 1 })} className="w-9 h-9 flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors"><Plus className="w-4 h-4" /></button>
                     </div>
                   </div>
                 </div>
-                <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 shrink-0">
+
+                {/* Edificio */}
+                <div className="space-y-2">
+                  <label className="form-label text-slate-700">Edificio</label>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={() => setForm({ ...form, buildingId: '' })} className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${!form.buildingId ? 'bg-primary text-white border-primary shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}>Sin edificio</button>
+                    {buildings.map(b => (
+                      <button key={b.id} type="button" onClick={() => setForm({ ...form, buildingId: b.id })} className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${form.buildingId === b.id ? 'bg-primary text-white border-primary shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}>{b.name}</button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Laboratorios / CC / Salones Especializados */}
+                <div className="space-y-2">
+                  <label className="form-label text-slate-700">Laboratorios / CC / Salones Especializados</label>
+                  <div className="flex flex-wrap gap-2 max-h-[150px] overflow-y-auto pr-1">
+                    {computerLabs.map(cl => {
+                      const isChecked = form.computerLabIds.includes(cl.id);
+                      return (
+                        <button
+                          type="button"
+                          key={cl.id}
+                          onClick={() => {
+                            setForm(prev => {
+                              const isIncluded = prev.computerLabIds.includes(cl.id);
+                              const nextIds = isIncluded
+                                ? prev.computerLabIds.filter(id => id !== cl.id)
+                                : [...prev.computerLabIds, cl.id];
+                              return { ...prev, computerLabIds: nextIds };
+                            });
+                          }}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer select-none ${
+                            isChecked
+                              ? 'bg-primary text-white border-primary shadow-sm'
+                              : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors ${isChecked ? 'bg-white border-white text-primary' : 'border-slate-400 bg-white'}`}>
+                            {isChecked && <Check className="w-2.5 h-2.5 stroke-[3px]" />}
+                          </div>
+                          <span>{cl.name}</span>
+                        </button>
+                      );
+                    })}
+                    {computerLabs.length === 0 && (
+                      <p className="text-[11px] text-secondary w-full text-center py-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl">
+                        No hay aulas especializadas creadas.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="modal-footer">
                   <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="btn-secondary">Cancelar</button>
                   <button type="submit" className="btn-primary"><Save className="w-4 h-4" /> {editingId ? 'Actualizar' : 'Crear'}</button>
                 </div>
@@ -374,7 +402,7 @@ export default function SectionsManager() {
           <p className="text-sm">No hay secciones creadas</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {sortedSections.map((s, i) => {
             const enrolled = students.filter(st => st.sectionId === s.id).length;
             const capacity = s.capacity || 0;
@@ -383,7 +411,14 @@ export default function SectionsManager() {
             const buildingName = getBuildingName(s.buildingId);
             const computerLabName = s.computerLabId ? getComputerLabName(s.computerLabId) : null;
 
-            const strokeColor = '#64748b'; // slate-500 neutral monochrome
+            // Color based on occupancy percentage
+            const getStrokeColor = (pct: number) => {
+              if (pct >= 90) return '#059669'; // emerald-600
+              if (pct >= 75) return '#10B981'; // emerald-500
+              if (pct >= 50) return '#F59E0B'; // amber-500
+              return '#EF4444'; // red-500
+            };
+            const strokeColor = getStrokeColor(percentage);
             const strokeBg = '#e2e8f0';
             const circumference = 2 * Math.PI * 35;
             const strokeDashoffset = circumference - (percentage / 100) * circumference;
@@ -394,77 +429,84 @@ export default function SectionsManager() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03 }}
-                className="bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col justify-between hover:shadow-md transition-all min-h-[290px]"
+                className="card-crema p-5 flex flex-col justify-between"
               >
                 <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-200/60 text-slate-500">
-                        <Layers className="w-4.5 h-4.5" />
+                  {/* Header with icon and title */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center shrink-0">
+                        <Layers className="w-5 h-5 text-slate-600" />
                       </div>
                       <div>
-                        <h3 className="text-xs font-black text-slate-900 leading-tight uppercase tracking-wider">{gradeName}</h3>
-                        <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Sección "{s.name}"</p>
+                        <h3 className="text-sm font-bold text-slate-900 leading-tight">{gradeName}</h3>
+                        <p className="text-[10px] text-slate-400 font-medium mt-0.5">Sección "{s.name}"</p>
                       </div>
                     </div>
-
                     {/* Radial Progress Gauge */}
-                    <div className="relative w-16 h-16 shrink-0">
+                    <div className="relative w-14 h-14 shrink-0">
                       <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
                         <circle cx="50" cy="50" r="35" fill="none" stroke={strokeBg} strokeWidth="10" strokeLinecap="round" />
                         <circle cx="50" cy="50" r="35" fill="none" stroke={strokeColor} strokeWidth="10" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} />
                       </svg>
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-xs font-black text-slate-900">{percentage}%</span>
+                        <span className="text-[11px] font-black text-slate-900">{percentage}%</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Capacity and Enrolled metrics */}
-                  <div className="grid grid-cols-2 gap-3 my-3">
-                    <div className="bg-slate-50/50 p-2 rounded-xl border border-slate-100 flex flex-col">
-                      <span className="text-[9px] text-slate-400 uppercase font-black tracking-wider">Capacidad</span>
-                      <span className="text-sm font-bold text-slate-800 font-mono mt-0.5">{capacity || '—'}</span>
-                    </div>
-                    <div className="bg-slate-50/50 p-2 rounded-xl border border-slate-100 flex flex-col">
-                      <span className="text-[9px] text-slate-400 uppercase font-black tracking-wider">Alumnos</span>
-                      <span className="text-sm font-bold text-slate-800 font-mono mt-0.5">{enrolled}</span>
-                    </div>
-                  </div>
-
                   {/* Location details */}
-                  <div className="space-y-1.5 mt-2">
-                    <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium">
-                      <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-slate-400" />
+                  <div className="space-y-1.5 mb-4">
+                    <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+                      <Building2 className="w-3.5 h-3.5 text-slate-400" />
                       <span className="truncate">Edificio: <strong className="text-slate-700">{buildingName}</strong></span>
                     </div>
                     {(() => {
                       const assignedIds = s.computerLabIds || (s.computerLabId ? [s.computerLabId] : []);
                       if (assignedIds.length === 0) return null;
                       return (
-                        <div className="flex flex-col gap-1 mt-1.5">
-                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Aulas / laboratorios:</span>
-                          <div className="flex flex-wrap gap-1 pr-1">
-                            {assignedIds.map(id => {
-                              const name = getComputerLabName(id);
-                              return (
-                                <span key={id} className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 text-slate-600 text-[9px] font-black uppercase px-2 py-0.5 rounded-md" title={name}>
-                                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
-                                  <span className="truncate max-w-[80px]">{name}</span>
-                                </span>
-                              );
-                            })}
-                          </div>
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {assignedIds.map(id => {
+                            const name = getComputerLabName(id);
+                            return (
+                              <span key={id} className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 text-slate-600 text-[10px] font-bold uppercase px-2 py-0.5 rounded-md" title={name}>
+                                <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
+                                <span className="truncate max-w-[80px]">{name}</span>
+                              </span>
+                            );
+                          })}
                         </div>
                       );
                     })()}
                   </div>
                 </div>
 
-                {/* Unified footer actions always visible */}
-                <div className="flex justify-end gap-1.5 pt-3 border-t border-slate-100 shrink-0 mt-3">
-                  <button onClick={() => handleEdit(s)} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer" title="Editar"><Edit2 className="w-4 h-4 text-slate-500" /></button>
-                  <button onClick={() => handleDelete(s.id)} className="p-1.5 hover:bg-red-50 rounded-lg transition-colors cursor-pointer" title="Eliminar"><Trash2 className="w-4 h-4 text-red-500" /></button>
+                {/* Stats row at bottom */}
+                <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-100">
+                  <div className="text-center">
+                    <span className="text-2xl font-black text-blue-600 font-display">{capacity || '—'}</span>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">Capacidad</p>
+                  </div>
+                  <div className="text-center">
+                    <span className="text-2xl font-black text-emerald-600 font-display">{enrolled}</span>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">Alumnos</p>
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-100">
+                  <button
+                    onClick={() => handleEdit(s)}
+                    className="flex-1 py-2 px-3 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-xs transition-colors"
+                  >
+                    Gestionar Sección
+                  </button>
+                  <button onClick={() => handleEdit(s)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer" title="Editar">
+                    <Edit2 className="w-4 h-4 text-slate-500" />
+                  </button>
+                  <button onClick={() => handleDelete(s.id)} className="p-2 hover:bg-red-50 rounded-xl transition-colors cursor-pointer" title="Eliminar">
+                    <Trash2 className="w-4 h-4 text-red-500" />
+                  </button>
                 </div>
               </motion.div>
             );

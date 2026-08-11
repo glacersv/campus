@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateUserCreation = exports.geminiProxy = exports.assignUserRole = void 0;
+exports.createStudentAuth = exports.validateUserCreation = exports.geminiProxy = exports.assignUserRole = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const auth_1 = require("firebase-admin/auth");
 const firestore_1 = require("firebase-admin/firestore");
@@ -131,5 +131,53 @@ exports.validateUserCreation = (0, https_1.onCall)(async (request) => {
         callerRole: callerData.role,
         targetRole: role
     };
+});
+// ==================== CREATE STUDENT AUTH ACCOUNT ====================
+exports.createStudentAuth = (0, https_1.onCall)(async (request) => {
+    if (!request.auth) {
+        throw new https_1.HttpsError("unauthenticated", "User must be authenticated");
+    }
+    // Verify caller is admin
+    const callerDoc = await (0, firestore_1.getFirestore)().collection("users").doc(request.auth.uid).get();
+    const callerData = callerDoc.data();
+    if (!callerData || callerData.role !== "admin") {
+        throw new https_1.HttpsError("permission-denied", "Only admins can create student accounts");
+    }
+    const { studentId, email, password, displayName } = request.data;
+    if (!studentId || !email || !password || !displayName) {
+        throw new https_1.HttpsError("invalid-argument", "studentId, email, password, and displayName are required");
+    }
+    if (password.length < 6) {
+        throw new https_1.HttpsError("invalid-argument", "Password must be at least 6 characters");
+    }
+    try {
+        // Check if Auth account already exists
+        try {
+            await (0, auth_1.getAuth)().getUserByEmail(email);
+            // If exists, update the password
+            const existingUser = await (0, auth_1.getAuth)().getUserByEmail(email);
+            await (0, auth_1.getAuth)().updateUser(existingUser.uid, { password });
+            return { success: true, uid: existingUser.uid, message: "Password updated" };
+        }
+        catch (e) {
+            if (e.code !== "auth/user-not-found") {
+                throw e;
+            }
+        }
+        // Create new Auth account
+        const userRecord = await (0, auth_1.getAuth)().createUser({
+            email,
+            password,
+            displayName,
+            emailVerified: true,
+        });
+        // Set custom claims
+        await (0, auth_1.getAuth)().setCustomUserClaims(userRecord.uid, { role: "alumno" });
+        return { success: true, uid: userRecord.uid, message: "Account created" };
+    }
+    catch (error) {
+        console.error("Error creating student auth:", error);
+        throw new https_1.HttpsError("internal", error.message || "Error creating auth account");
+    }
 });
 //# sourceMappingURL=index.js.map

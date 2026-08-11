@@ -11,7 +11,7 @@ interface AttendanceStatsProps {
 export default function AttendanceStats({ presentCount, tardyCount, absentCount, disciplineAlertsCount, totalStudents }: AttendanceStatsProps) {
   return (
     <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8 relative z-10">
-      <motion.div whileHover={{ y: -4 }} className="bg-white rounded-2xl p-5 border border-slate-200/80 flex flex-col justify-between">
+      <motion.div whileHover={{ y: -4 }} className="card-crema p-5 flex flex-col justify-between">
         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Presentes</span>
         <div className="flex items-baseline gap-1 mt-2">
           <span className="text-4xl font-bold text-slate-900 font-display tracking-tight">{presentCount}</span>
@@ -22,17 +22,17 @@ export default function AttendanceStats({ presentCount, tardyCount, absentCount,
         </span>
       </motion.div>
 
-      <motion.div whileHover={{ y: -4 }} className="bg-white rounded-2xl p-5 border border-slate-200/80 flex flex-col justify-between">
+      <motion.div whileHover={{ y: -4 }} className="card-crema p-5 flex flex-col justify-between">
         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Llegadas Tarde</span>
         <div className="flex items-baseline gap-1 mt-2">
-          <span className="text-4xl font-bold text-amber-600 font-display tracking-tight">{tardyCount}</span>
+          <span className="text-4xl font-bold text-slate-600 font-display tracking-tight">{tardyCount}</span>
         </div>
         <span className="text-[11px] text-slate-500 font-semibold mt-2 bg-slate-100 w-fit px-2 py-0.5 rounded-full">
           Con retardo
         </span>
       </motion.div>
 
-      <motion.div whileHover={{ y: -4 }} className="bg-white rounded-2xl p-5 border border-slate-200/80 flex flex-col justify-between">
+      <motion.div whileHover={{ y: -4 }} className="card-crema p-5 flex flex-col justify-between">
         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Ausentes</span>
         <div className="flex items-baseline gap-1 mt-2">
           <span className="text-4xl font-bold text-red-600 font-display tracking-tight">{absentCount}</span>
@@ -42,7 +42,7 @@ export default function AttendanceStats({ presentCount, tardyCount, absentCount,
         </span>
       </motion.div>
 
-      <motion.div whileHover={{ y: -4 }} className="bg-white rounded-2xl p-5 border border-slate-200/80 flex flex-col justify-between">
+      <motion.div whileHover={{ y: -4 }} className="card-crema p-5 flex flex-col justify-between">
         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Disciplina</span>
         <div className="flex items-baseline gap-1 mt-2">
           <span className="text-4xl font-bold text-indigo-600 font-display tracking-tight">{disciplineAlertsCount}</span>

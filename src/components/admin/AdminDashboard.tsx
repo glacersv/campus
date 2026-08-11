@@ -14,11 +14,13 @@ import {
   Lock,
   DoorOpen,
   TrendingUp,
-  ShieldAlert
+  ShieldAlert,
+  ArrowUpRight
 } from 'lucide-react';
 import { getAllTeachers, getAllGrades, getAllStudents, getAllSections, getAllSubjects } from '../../lib/firestore';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
 import ProjectsModule from '../proyectos/ProjectsModule';
+import { useAuth } from '../../contexts/AuthContext';
 
 const attendanceData = [
   { name: 'Parvularia', asistencia: 98.4, retardos: 1.2 },
@@ -30,9 +32,9 @@ const attendanceData = [
 ];
 
 const disciplineData = [
-  { name: 'Uniforme Incorrecto', value: 48, color: 'var(--color-primary)' },
-  { name: 'Cabello fuera de norma', value: 35, color: 'var(--color-secondary)' },
-  { name: 'Uñas Pintadas/Acrílicas', value: 17, color: 'var(--color-danger)' }
+  { name: 'Uniforme Incorrecto', value: 48, color: '#25855A' },
+  { name: 'Cabello fuera de norma', value: 35, color: '#FAB700' },
+  { name: 'Uñas Pintadas/Acrílicas', value: 17, color: '#D32F2F' }
 ];
 
 interface Stats {
@@ -43,16 +45,8 @@ interface Stats {
   subjects: number;
 }
 
-const modules = [
-  { id: 'formacion', label: 'Formación Buenos Días', icon: ClipboardCheck, color: 'bg-primary', active: true },
-  { id: 'notas', label: 'Notas', icon: BookOpen, color: 'bg-accent', active: false },
-  { id: 'clase', label: 'Clase', icon: School, color: 'bg-secondary', active: false },
-  { id: 'horario', label: 'Horario', icon: Calendar, color: 'bg-purple-500', active: false },
-  { id: 'eventos', label: 'Eventos', icon: CalendarDays, color: 'bg-emerald-500', active: false },
-  { id: 'avisos', label: 'Avisos', icon: Bell, color: 'bg-amber-500', active: false },
-];
-
 export default function AdminDashboard() {
+  const { userProfile } = useAuth();
   const [stats, setStats] = useState<Stats>({ teachers: 0, grades: 0, sections: 0, students: 0, subjects: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -68,91 +62,96 @@ export default function AdminDashboard() {
   }, []);
 
   const statCards = [
-    { label: 'Docentes', value: stats.teachers, icon: GraduationCap, color: 'text-white', bgDark: true, iconBg: 'bg-white/15 border border-white/20' },
-    { label: 'Grados', value: stats.grades, icon: DoorOpen, color: 'text-slate-500', bgDark: false, iconBg: 'bg-slate-100 border border-slate-200' },
-    { label: 'Secciones', value: stats.sections, icon: Users, color: 'text-slate-500', bgDark: false, iconBg: 'bg-slate-100 border border-slate-200' },
-    { label: 'Alumnos', value: stats.students, icon: UserCheck, color: 'text-slate-500', bgDark: false, iconBg: 'bg-slate-100 border border-slate-200' },
-    { label: 'Materias', value: stats.subjects, icon: BookMarked, color: 'text-slate-500', bgDark: false, iconBg: 'bg-slate-100 border border-slate-200' },
+    { label: 'Docentes', value: stats.teachers, icon: GraduationCap, accent: 'bg-emerald-50 text-emerald-600 border-emerald-200' },
+    { label: 'Grados', value: stats.grades, icon: DoorOpen, accent: 'bg-sky-50 text-sky-600 border-sky-200' },
+    { label: 'Secciones', value: stats.sections, icon: Users, accent: 'bg-amber-50 text-amber-600 border-amber-200' },
+    { label: 'Alumnos', value: stats.students, icon: UserCheck, accent: 'bg-teal-50 text-teal-600 border-teal-200' },
+    { label: 'Materias', value: stats.subjects, icon: BookMarked, accent: 'bg-purple-50 text-purple-600 border-purple-200' },
   ];
 
   if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
   return (
-    <div className="space-y-6">
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+    <div className="space-y-8 max-w-7xl mx-auto">
+      {/* Hero Showcase Banner */}
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+        className="relative rounded-3xl bg-gradient-to-r from-[#124D37] via-[#25855A] to-[#1D6F4B] text-white p-7 md:p-9 shadow-xl shadow-emerald-900/10 overflow-hidden"
+      >
+        <div className="absolute -right-10 -bottom-10 w-60 h-60 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="relative z-10 max-w-2xl space-y-3">
+          <h2 className="text-2xl md:text-3xl font-extrabold font-display leading-tight">
+            Bienvenido, {userProfile?.displayName || 'Administrador'}.
+          </h2>
+          <p className="text-sm text-emerald-100/90 leading-relaxed">
+            Resumen global de la institución: control de matriculados, docentes, horarios, secciones e incidencias en tiempo real.
+          </p>
+        </div>
+      </motion.div>
+
+      {/* Stats Cards Row */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5 md:gap-6">
         {statCards.map((card, i) => (
           <motion.div
             key={card.label}
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-            className={`rounded-2xl p-5 border transition-all ${
-              card.bgDark
-                ? 'bg-primary-dark text-white border-primary-dark'
-                : 'bg-white text-slate-900 border-slate-200/80 hover:border-slate-300'
-            }`}
+            transition={{ delay: i * 0.05, duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
+            className="stat-card"
           >
-            <div className={`flex items-center justify-between mb-3`}>
-              <span className={`text-xs font-semibold uppercase tracking-wider ${card.bgDark ? 'text-white/70' : 'text-slate-500'}`}>
-                {card.label}
-              </span>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${card.iconBg}`}>
-                <card.icon className={`w-4 h-4 ${card.color}`} />
-              </div>
+            <div className={`stat-card-icon ${card.accent}`}>
+              <card.icon className="w-5 h-5" />
             </div>
-            <div className={`text-4xl font-bold font-display tracking-tight mb-2 ${card.bgDark ? 'text-white' : 'text-slate-900'}`}>
-              {card.value}
+            <div>
+              <span className="stat-card-label">{card.label}</span>
+              <div className="stat-card-value">{card.value}</div>
             </div>
-            <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full ${
-              card.bgDark ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-600'
-            }`}>
-              Total registrados
-            </span>
           </motion.div>
         ))}
       </div>
 
-      {/* Analytics Charts (Premium Dashboard) */}
+      {/* Analytics Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Attendance Chart */}
-        <div className="lg:col-span-2 bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col h-[380px]">
+        <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col h-[380px]">
           <div className="flex items-center justify-between mb-4 shrink-0">
             <div>
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+              <h3 className="text-base font-bold text-slate-900 font-display flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-primary" />
                 Rendimiento de Asistencia Promedio por Nivel
               </h3>
-              <p className="text-[11px] text-slate-500">Porcentaje promedio de asistencia y llegadas tarde en la jornada</p>
+              <p className="text-xs text-slate-400 mt-0.5">Porcentaje promedio de asistencia y llegadas tarde en la jornada</p>
             </div>
-            <span className="text-[10px] font-bold text-primary bg-primary-light px-2 py-0.5 rounded-full font-mono">En Vivo</span>
+            <span className="text-[10px] font-bold text-primary bg-primary/10 px-3 py-1 rounded-full font-mono">En Vivo</span>
           </div>
           <div className="flex-1 min-h-0">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={attendanceData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} domain={[80, 100]} />
+                <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} domain={[80, 100]} />
                 <Tooltip
-                  contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '11px' }}
+                  contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '16px', fontSize: '11px' }}
                   cursor={{ fill: '#f8fafc' }}
                 />
                 <Legend iconSize={10} iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '5px' }} />
-                <Bar name="Asistencia %" dataKey="asistencia" fill="var(--color-primary)" radius={[12, 12, 0, 0]} barSize={25} />
-                <Bar name="Retardos %" dataKey="retardos" fill="var(--color-secondary)" radius={[12, 12, 0, 0]} barSize={25} />
+                <Bar name="Asistencia %" dataKey="asistencia" fill="#25855A" radius={[12, 12, 0, 0]} barSize={24} />
+                <Bar name="Retardos %" dataKey="retardos" fill="#FAB700" radius={[12, 12, 0, 0]} barSize={24} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Discipline Chart */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col h-[380px]">
+        <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col h-[380px]">
           <div className="mb-4 shrink-0">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+            <h3 className="text-base font-bold text-slate-900 font-display flex items-center gap-2">
               <ShieldAlert className="w-5 h-5 text-red-600" />
-              Distribución de Incidencias de Uniforme
+              Incidencias de Uniforme
             </h3>
-            <p className="text-[11px] text-slate-500">Frecuencia relativa de incidencias registradas en la semana</p>
+            <p className="text-xs text-slate-400 mt-0.5">Distribución semanal de registros</p>
           </div>
           <div className="flex-1 min-h-0 flex items-center justify-center relative">
             <ResponsiveContainer width="100%" height="100%">
@@ -170,16 +169,14 @@ export default function AdminDashboard() {
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={{ borderRadius: '12px', fontSize: '11px' }} />
+                <Tooltip contentStyle={{ borderRadius: '16px', fontSize: '11px' }} />
               </PieChart>
             </ResponsiveContainer>
-            {/* Center Summary */}
             <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-              <span className="block text-2xl font-black text-slate-800">100%</span>
-              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Incidencias</span>
+              <span className="block text-2xl font-black text-slate-900 font-display">100%</span>
+              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Total</span>
             </div>
           </div>
-          {/* Legend Footer */}
           <div className="grid grid-cols-1 gap-1.5 text-xs text-slate-600 shrink-0 border-t border-slate-100 pt-3">
             {disciplineData.map((item, idx) => (
               <div key={idx} className="flex items-center justify-between">
@@ -191,35 +188,6 @@ export default function AdminDashboard() {
               </div>
             ))}
           </div>
-        </div>
-      </div>
-
-      {/* Modules */}
-      <div>
-        <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Módulos del Sistema</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {modules.map((mod, i) => (
-            <motion.div
-              key={mod.id}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.3 + i * 0.05 }}
-              className={`bg-white rounded-2xl p-5 border border-slate-200/80 flex flex-col items-center text-center gap-3 transition-all ${
-                !mod.active ? 'opacity-50' : 'hover:shadow-md hover:-translate-y-0.5'
-              }`}
-            >
-              <div className={`${mod.color} w-12 h-12 rounded-xl flex items-center justify-center`}>
-                <mod.icon className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="text-sm font-semibold text-slate-900 leading-tight">{mod.label}</h3>
-              {!mod.active && (
-                <div className="flex items-center justify-center gap-1">
-                  <Lock className="w-3 h-3 text-slate-400" />
-                  <span className="text-[10px] text-slate-400 font-medium">Próximamente</span>
-                </div>
-              )}
-            </motion.div>
-          ))}
         </div>
       </div>
 

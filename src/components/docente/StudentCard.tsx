@@ -45,7 +45,7 @@ export default function StudentCard({
                 {student.gender === 'M' ? 'Varonil (V)' : 'Femenino (S)'}
               </span>
               {record.status === 'Tarde' && record.arrivalTime && (
-                <span className="text-[10px] bg-amber-50 text-amber-800 border border-amber-200 font-bold px-1.5 py-0.2 rounded font-mono">
+                <span className="text-[10px] bg-slate-50 text-slate-800 border border-slate-200 font-bold px-1.5 py-0.2 rounded font-mono">
                   Retardo {record.arrivalTime}
                 </span>
               )}
@@ -68,7 +68,7 @@ export default function StudentCard({
             onClick={() => onUpdateAttendance(student.id, 'Tarde')}
             className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${
               record.status === 'Tarde'
-                ? 'bg-amber-500 text-white shadow-sm'
+                ? 'bg-slate-500 text-white shadow-sm'
                 : 'text-slate-500 hover:bg-slate-200'
             }`}
           >
@@ -98,7 +98,7 @@ export default function StudentCard({
                 onClick={() => onToggleDiscipline(student.id, 'cabelloLargo')}
                 className={`px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all ${
                   record.discipline.cabelloLargo
-                    ? 'bg-amber-100 border-amber-400 text-amber-900 shadow-xs'
+                    ? 'bg-slate-100 border-slate-400 text-slate-900 shadow-xs'
                     : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'
                 }`}
               >

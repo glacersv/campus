@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { GraduationCap, Plus, Edit2, Trash2, Save, X, Search, Phone, Clock, Award, BookOpen, MapPin } from 'lucide-react';
+import { GraduationCap, Plus, Edit2, Trash2, Save, X, Phone, Clock, Award, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAllTeachers, createTeacher, updateTeacher, deleteTeacher, getAllGrades, getAllSections, getAllSubjects, getCurrentSchoolYear } from '../../lib/firestore';
 import { Teacher, Grade, Section, Subject } from '../../types';
@@ -19,7 +19,6 @@ export default function TeachersManager() {
     schedule: '', guideGradeId: '', guideSectionId: '', avatarUrl: '',
     status: 'ACTIVO' as 'ACTIVO' | 'INACTIVO'
   });
-  const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('');
 
   useEffect(() => { loadData(); }, []);
@@ -67,19 +66,17 @@ export default function TeachersManager() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || !form.email.trim()) { toast.error('Nombre y email son obligatorios'); return; }
-
     if (!checkEmailUnique(form.email, editingId || undefined)) {
       toast.error('Ya existe un docente con ese email');
       return;
     }
-
     try {
       const data: Partial<Teacher> = {
         name: form.name.trim(),
         email: form.email.trim(),
         subjects: form.subjects,
         status: form.status,
-        avatarUrl: form.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(form.name)}&background=12562E&color=fff`
+        avatarUrl: form.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(form.name)}&background=E8F5EE&color=25855A&bold=true`
       };
       if (form.phone.trim()) data.phone = form.phone.trim();
       if (form.specialty.trim()) data.specialty = form.specialty.trim();
@@ -116,27 +113,26 @@ export default function TeachersManager() {
   const handleDelete = async (id: string) => {
     if (confirm('¿Eliminar este docente?')) {
       try { await deleteTeacher(id); toast.success('Docente eliminado'); loadData(); }
-      catch (err) { toast.error('Error al eliminar docente'); }
+      catch { toast.error('Error al eliminar docente'); }
     }
   };
 
   const filtered = teachers.filter(t => {
-    const matchSearch = `${t.name} ${t.email} ${t.specialty || ''} ${(t.subjects || []).map(s => getSubjectName(s)).join(' ')}`.toLowerCase().includes(search.toLowerCase());
     const matchStatus = !filterStatus || (t.status || 'ACTIVO') === filterStatus;
-    return matchSearch && matchStatus;
+    return matchStatus;
   });
 
   const hasYearSections = sections.some(s => s.schoolYear === currentYear);
   const activeSections = sections.filter(s =>
     hasYearSections ? s.schoolYear === currentYear : !s.schoolYear
   );
-
   const filteredSections = activeSections.filter(s => s.gradeId === form.guideGradeId);
 
   if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="module-header">
         <div className="module-title-group">
           <div className="module-icon bg-primary/10">
@@ -152,102 +148,110 @@ export default function TeachersManager() {
         </button>
       </div>
 
+      {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input type="text" placeholder="Buscar docente..." value={search} onChange={e => setSearch(e.target.value)} className="input pl-9" />
+        <div className="flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-xl border border-slate-200">
+          <button onClick={() => setFilterStatus('')} className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${filterStatus === '' ? 'bg-primary text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200/50'}`}>Todos</button>
+          <button onClick={() => setFilterStatus('ACTIVO')} className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${filterStatus === 'ACTIVO' ? 'bg-primary text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200/50'}`}>Activos</button>
+          <button onClick={() => setFilterStatus('INACTIVO')} className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${filterStatus === 'INACTIVO' ? 'bg-primary text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200/50'}`}>Inactivos</button>
         </div>
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="input w-auto">
-          <option value="">Todos</option>
-          <option value="ACTIVO">Activos</option>
-          <option value="INACTIVO">Inactivos</option>
-        </select>
       </div>
 
-      {/* Formulario Modal */}
+      {/* CREMA Modal */}
       <AnimatePresence>
         {showForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="modal-backdrop">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              initial={{ opacity: 0, scale: 0.96, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden flex flex-col"
+              exit={{ opacity: 0, scale: 0.96, y: 20 }}
+              transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
+              className="modal-container max-w-4xl"
             >
-              <div className="bg-slate-50 border-b border-slate-100 p-5 flex justify-between items-center shrink-0">
-                <h3 className="font-bold text-slate-900 text-base">{editingId ? 'Editar Docente' : 'Nuevo Docente'}</h3>
-                <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="p-1.5 hover:bg-slate-200 rounded-lg transition-colors"><X className="w-4 h-4 text-slate-500" /></button>
+              <div className="modal-header">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-2xl bg-primary/10 flex items-center justify-center">
+                    <GraduationCap className="w-5 h-5 text-primary" />
+                  </div>
+                  <h3 className="modal-title">{editingId ? 'Editar Docente' : 'Nuevo Docente'}</h3>
+                </div>
+                <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="modal-close-btn">
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto max-h-[80vh]">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="form-label">Nombre *</label>
-                    <input type="text" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Prof. Nombre" className="input" />
-                  </div>
-                  <div>
-                    <label className="form-label">Email *</label>
-                    <input type="email" required value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="correo@..." className="input" />
-                  </div>
-                  <div>
-                    <label className="form-label">Teléfono</label>
-                    <input type="text" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="7012-3456" className="input" />
-                  </div>
-                  <div>
-                    <label className="form-label">Especialidad</label>
-                    <input type="text" value={form.specialty} onChange={e => setForm({ ...form, specialty: e.target.value })} placeholder="Ej: Ciencias Naturales" className="input" />
-                  </div>
-                  <div>
-                    <label className="form-label">Horario</label>
-                    <input type="text" value={form.schedule} onChange={e => setForm({ ...form, schedule: e.target.value })} placeholder="Ej: 06:40 - 12:00" className="input" />
-                  </div>
-                  <div>
-                    <label className="form-label">Estado</label>
-                    <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as 'ACTIVO' | 'INACTIVO' })} className="input">
-                      <option value="ACTIVO">Activo</option>
-                      <option value="INACTIVO">Inactivo</option>
-                    </select>
-                  </div>
-                  <div className="col-span-2">
-                    <label className="form-label">Foto URL</label>
-                    <input type="url" value={form.avatarUrl} onChange={e => setForm({ ...form, avatarUrl: e.target.value })} placeholder="https://..." className="input" />
-                  </div>
-                </div>
 
-                <div>
-                  <label className="form-label mb-2">Materias que Imparte</label>
-                  <div className="flex flex-wrap gap-2">
-                    {subjects.map(s => (
-                      <button key={s.id} type="button" onClick={() => toggleSubject(s.id)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${form.subjects.includes(s.id) ? 'bg-primary text-white border-primary shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:border-primary hover:text-primary'}`}>
-                        {s.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="border-t border-slate-100 pt-4">
-                  <p className="form-label mb-3">Asignación como Guía (Opcional)</p>
+              <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+                <div className="modal-body space-y-5">
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="form-label-normal">Grado Guía</label>
-                      <select value={form.guideGradeId} onChange={e => setForm({ ...form, guideGradeId: e.target.value, guideSectionId: '' })} className="input">
-                        <option value="">Sin grado</option>
-                        {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                    <div className="space-y-1.5">
+                      <label className="form-label">Nombre *</label>
+                      <input type="text" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Prof. Nombre" className="input-crema" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="form-label">Email *</label>
+                      <input type="email" required value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="correo@salesiano.edu.sv" className="input-crema" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="form-label">Teléfono</label>
+                      <input type="text" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="7012-3456" className="input-crema" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="form-label">Especialidad</label>
+                      <input type="text" value={form.specialty} onChange={e => setForm({ ...form, specialty: e.target.value })} placeholder="Ej: Ciencias Naturales" className="input-crema" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="form-label">Horario</label>
+                      <input type="text" value={form.schedule} onChange={e => setForm({ ...form, schedule: e.target.value })} placeholder="Ej: 06:40 - 12:00" className="input-crema" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="form-label">Estado</label>
+                      <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as 'ACTIVO' | 'INACTIVO' })} className="input-crema">
+                        <option value="ACTIVO">Activo</option>
+                        <option value="INACTIVO">Inactivo</option>
                       </select>
                     </div>
-                    <div>
-                      <label className="form-label-normal">Sección Guía</label>
-                      <select value={form.guideSectionId} onChange={e => setForm({ ...form, guideSectionId: e.target.value })} className="input" disabled={!form.guideGradeId}>
-                        <option value="">Sin sección</option>
-                        {filteredSections.map(s => <option key={s.id} value={s.id}>Sección {s.name}</option>)}
-                      </select>
+                    <div className="col-span-2 space-y-1.5">
+                      <label className="form-label">Foto URL</label>
+                      <input type="url" value={form.avatarUrl} onChange={e => setForm({ ...form, avatarUrl: e.target.value })} placeholder="https://..." className="input-crema" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="form-label">Materias que Imparte</label>
+                    <div className="flex flex-wrap gap-2">
+                      {subjects.map(s => (
+                        <button key={s.id} type="button" onClick={() => toggleSubject(s.id)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${form.subjects.includes(s.id) ? 'bg-primary text-white border-primary shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:border-primary hover:text-primary'}`}>
+                          {s.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50/80 rounded-2xl p-4 space-y-3">
+                    <p className="form-label">Asignación como Guía (Opcional)</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="form-label-normal">Grado Guía</label>
+                        <select value={form.guideGradeId} onChange={e => setForm({ ...form, guideGradeId: e.target.value, guideSectionId: '' })} className="input-crema">
+                          <option value="">Sin grado</option>
+                          {grades.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="form-label-normal">Sección Guía</label>
+                        <select value={form.guideSectionId} onChange={e => setForm({ ...form, guideSectionId: e.target.value })} className="input-crema" disabled={!form.guideGradeId}>
+                          <option value="">Sin sección</option>
+                          {filteredSections.map(s => <option key={s.id} value={s.id}>Sección {s.name}</option>)}
+                        </select>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 shrink-0">
+                <div className="modal-footer">
                   <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="btn-secondary">Cancelar</button>
-                  <button type="submit" className="btn-primary"><Save className="w-4 h-4" /> {editingId ? 'Actualizar' : 'Crear'}</button>
+                  <button type="submit" className="btn-primary"><Save className="w-4 h-4" /> {editingId ? 'Actualizar' : 'Crear Docente'}</button>
                 </div>
               </form>
             </motion.div>
@@ -255,43 +259,56 @@ export default function TeachersManager() {
         )}
       </AnimatePresence>
 
+      {/* CREMA Teacher Cards */}
       <div className="grid-cards">
         {filtered.map(t => (
-          <div key={t.id} className="card-hover bg-white rounded-2xl border border-slate-200/80 overflow-hidden group">
-            <div className="bg-gradient-to-r from-slate-800 to-slate-900 p-4">
-              <div className="flex items-center gap-3">
-                <img src={t.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(t.name)}&background=25855A&color=fff`} alt={t.name} className="w-11 h-11 rounded-full border-2 border-secondary object-cover" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-semibold text-white truncate">{t.name}</h3>
-                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${(t.status || 'ACTIVO') === 'INACTIVO' ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'}`}>
-                      {t.status || 'ACTIVO'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-400 truncate">{t.email}</p>
+          <motion.div
+            key={t.id}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="card-crema overflow-hidden group"
+          >
+            {/* Header: avatar + name + status */}
+            <div className="p-5 flex items-center gap-3 border-b border-slate-50">
+              <img
+                src={t.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(t.name)}&background=E8F5EE&color=25855A&bold=true`}
+                alt={t.name}
+                className="avatar-circle"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-sm font-bold text-slate-900 truncate font-display">{t.name}</h3>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${(t.status || 'ACTIVO') === 'INACTIVO' ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>
+                    {t.status || 'ACTIVO'}
+                  </span>
                 </div>
+                <p className="text-xs text-slate-400 truncate">{t.email}</p>
               </div>
             </div>
+
+            {/* Body: details */}
             <div className="p-4 space-y-2">
               {t.phone && <p className="text-xs text-slate-500 flex items-center gap-2"><Phone className="w-3.5 h-3.5 text-slate-400" /> {t.phone}</p>}
               {t.specialty && <p className="text-xs text-slate-500 flex items-center gap-2"><Award className="w-3.5 h-3.5 text-slate-400" /> {t.specialty}</p>}
               {t.schedule && <p className="text-xs text-slate-500 flex items-center gap-2"><Clock className="w-3.5 h-3.5 text-slate-400" /> {t.schedule}</p>}
               {t.guideGradeId && (
                 <p className="text-xs text-primary font-semibold flex items-center gap-2">
-                  <MapPin className="w-3.5 h-3.5" /> Guía: {getGradeName(t.guideGradeId)} "{getSectionName(t.guideSectionId)}"
+                  <MapPin className="w-3.5 h-3.5" /> Guía: {getGradeName(t.guideGradeId)} &quot;{getSectionName(t.guideSectionId)}&quot;
                 </p>
               )}
-              <div className="flex flex-wrap gap-1.5 pt-2 border-t border-slate-100">
-                {(t.subjects || []).map(s => (
-                  <span key={s} className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-semibold rounded-md">{getSubjectName(s)}</span>
-                ))}
-              </div>
+              {(t.subjects || []).length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-2 border-t border-slate-50">
+                  {(t.subjects || []).map(s => (
+                    <span key={s} className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-semibold rounded-lg border border-emerald-100">{getSubjectName(s)}</span>
+                  ))}
+                </div>
+              )}
               <div className="flex justify-end gap-1 pt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                <button onClick={() => handleEdit(t)} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"><Edit2 className="w-4 h-4 text-slate-500" /></button>
-                <button onClick={() => handleDelete(t.id)} className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4 text-red-500" /></button>
+                <button onClick={() => handleEdit(t)} className="p-1.5 hover:bg-slate-100 rounded-xl transition-colors" title="Editar"><Edit2 className="w-4 h-4 text-slate-500" /></button>
+                <button onClick={() => handleDelete(t.id)} className="p-1.5 hover:bg-red-50 rounded-xl transition-colors" title="Eliminar"><Trash2 className="w-4 h-4 text-red-500" /></button>
               </div>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
 

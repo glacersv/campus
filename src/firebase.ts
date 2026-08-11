@@ -1,8 +1,9 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, serverTimestamp, getDocs, query, orderBy, limit, where, QueryConstraint, Timestamp, deleteDoc, doc } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
 import firebaseConfig from '../firebase-applet-config.json';
+import { AttendanceReport, AttendanceReportData } from './types';
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -43,39 +44,6 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   throw new Error(JSON.stringify(errInfo));
 }
 
-export interface AttendanceReportData {
-  colegio: string;
-  fecha: string;
-  grado: string;
-  gradoId: string;
-  tutor: string;
-  tutorId: string;
-  modalidad: string;
-  estadisticas: {
-    totalEstudiantes: number;
-    presentes: number;
-    llegadasTarde: number;
-    ausentes: number;
-    disciplina: {
-      cabelloLargo: number;
-      unasPintadas: number;
-      uniformeIncorrecto: number;
-    };
-  };
-  detalles: Array<{
-    id: string;
-    nombre: string;
-    genero: 'M' | 'F';
-    asistencia: string;
-    horaLlegada: string | null;
-    disciplina: {
-      cabelloLargo: boolean;
-      unasPintadas: boolean;
-      uniformeIncorrecto: boolean;
-    };
-  }>;
-}
-
 export async function saveAttendanceReport(reportData: AttendanceReportData): Promise<string | undefined> {
   const collectionPath = 'attendance_reports';
   try {
@@ -88,3 +56,20 @@ export async function saveAttendanceReport(reportData: AttendanceReportData): Pr
     handleFirestoreError(error, OperationType.WRITE, collectionPath);
   }
 }
+
+export async function getAttendanceReports(constraints: QueryConstraint[] = []): Promise<AttendanceReport[]> {
+  const collectionPath = 'attendance_reports';
+  try {
+    const q = query(collection(db, collectionPath), orderBy('createdAt', 'desc'), ...constraints);
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as AttendanceReport[];
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, collectionPath);
+    return [];
+  }
+}
+
+export { deleteDoc, doc };

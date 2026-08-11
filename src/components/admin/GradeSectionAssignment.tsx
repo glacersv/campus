@@ -10,6 +10,7 @@ import {
   X,
   DoorOpen,
   Edit2,
+  Trash2,
   Check,
   BookOpen,
   Layers,
@@ -21,6 +22,8 @@ import {
   getAllSections,
   getAllBuildings,
   updateSection,
+  deleteSection,
+  toggleGradeStatus,
   getCurrentSchoolYear,
   getAllStudents
 } from '../../lib/firestore';
@@ -68,6 +71,22 @@ export default function GradeSectionAssignment() {
   };
 
   const getGradeName = (id: string) => grades.find(g => g.id === id)?.name || id;
+
+  const handleDelete = async (sectionId: string) => {
+    try {
+      await deleteSection(sectionId);
+      setSections(prev => prev.filter(s => s.id !== sectionId));
+      toast.success('Sección eliminada');
+    } catch { toast.error('Error al eliminar sección'); }
+  };
+
+  const handleToggleGradeStatus = async (grade: Grade) => {
+    try {
+      await toggleGradeStatus(grade.id, grade.status);
+      setGrades(prev => prev.map(g => g.id === grade.id ? { ...g, status: g.status === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO' } : g));
+      toast.success(grade.status === 'ACTIVO' ? 'Grado desactivado' : 'Grado activado');
+    } catch { toast.error('Error al cambiar estado del grado'); }
+  };
 
   const selectBuildingForSection = (sectionId: string, buildingId: string) => {
     setAssignments(prev => ({
@@ -174,7 +193,7 @@ export default function GradeSectionAssignment() {
       {/* Filter and settings bar */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap bg-slate-100/80 p-1.5 rounded-xl border border-slate-200">
-          <Filter className="w-3.5 h-3.5 text-slate-400 ml-1" />
+          <Filter className="w-3.5 h-3.5 text-tertiary ml-1" />
           {buildings.map(b => {
             const count = Object.values(assignments).filter(v => v === b.id).length;
             const isActive = filterBuilding === b.id;
@@ -189,7 +208,7 @@ export default function GradeSectionAssignment() {
                 }`}
               >
                 {b.name}
-                <span className={`font-mono text-[10px] ${isActive ? 'text-white/80' : 'text-slate-400'}`}>{count}</span>
+                <span className={`font-mono text-[10px] ${isActive ? 'text-white/80' : 'text-tertiary'}`}>{count}</span>
               </button>
             );
           })}
@@ -198,24 +217,24 @@ export default function GradeSectionAssignment() {
             className={`flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
               filterBuilding === '__unassigned__'
                 ? 'bg-primary text-white shadow-xs'
-                : 'text-slate-500 hover:bg-slate-200/50'
+                : 'text-secondary hover:bg-slate-200/50'
             }`}
           >
             Sin asignar
-            <span className={`font-mono text-[10px] ${filterBuilding === '__unassigned__' ? 'text-white/80' : 'text-slate-400'}`}>
+            <span className={`font-mono text-[10px] ${filterBuilding === '__unassigned__' ? 'text-white/80' : 'text-tertiary'}`}>
               {totalSections - changedCount}
             </span>
           </button>
           {filterBuilding && (
             <button onClick={() => setFilterBuilding(null)}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-200/50 transition-all cursor-pointer border-0">
+              className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold text-secondary hover:bg-slate-200/50 transition-all cursor-pointer border-0">
               <X className="w-3 h-3" /> Limpiar
             </button>
           )}
         </div>
 
         {/* Toggle only active with students */}
-        <div className="flex items-center gap-2 bg-white px-3.5 py-1.5 rounded-xl border border-slate-200 shadow-3xs cursor-pointer select-none hover:bg-slate-50 transition-colors" onClick={() => setOnlyActive(!onlyActive)}>
+        <div className="flex items-center gap-2 bg-white px-3.5 py-1.5 rounded-xl border border-slate-200 shadow-sm cursor-pointer select-none hover:bg-slate-50 transition-colors" onClick={() => setOnlyActive(!onlyActive)}>
           <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors ${onlyActive ? 'bg-primary border-primary text-white' : 'border-slate-300'}`}>
             {onlyActive && <Check className="w-2.5 h-2.5 stroke-[3px]" />}
           </div>
@@ -223,34 +242,36 @@ export default function GradeSectionAssignment() {
         </div>
       </div>
 
-      {/* Premium Statistics Banner */}
+      {/* Premium Statistics Banner - Unified Single Bar */}
       {filteredGradesList.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50/50 border border-slate-200/80 rounded-2xl p-4 shadow-3xs">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-              <BookOpen className="w-5 h-5 text-slate-500" />
+        <div className="card-crema p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center shrink-0">
+                <BookOpen className="w-5 h-5 text-secondary" />
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Grados Activos</span>
+                <span className="text-base font-extrabold text-slate-800 font-display">{filteredGradesList.length} registrados</span>
+              </div>
             </div>
-            <div>
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Grados Visibles</span>
-              <span className="text-base font-extrabold text-slate-800 font-display">{filteredGradesList.length} registrados</span>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center shrink-0">
+                <Layers className="w-5 h-5 text-secondary" />
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Secciones Totales</span>
+                <span className="text-base font-extrabold text-slate-800 font-display">{filteredSections.length} secciones</span>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-              <Layers className="w-5 h-5 text-slate-500" />
-            </div>
-            <div>
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Secciones Visibles</span>
-              <span className="text-base font-extrabold text-slate-800 font-display">{filteredSections.length} secciones</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-              <Users className="w-5 h-5 text-slate-500" />
-            </div>
-            <div>
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Alumnos Matriculados</span>
-              <span className="text-base font-extrabold text-slate-800 font-display">{filteredStudentsCount} alumnos</span>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center shrink-0">
+                <Users className="w-5 h-5 text-secondary" />
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Alumnos Matriculados</span>
+                <span className="text-base font-extrabold text-slate-800 font-display">{filteredStudentsCount} alumnos</span>
+              </div>
             </div>
           </div>
         </div>
@@ -282,12 +303,12 @@ export default function GradeSectionAssignment() {
                 <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
                   {CYCLE_NAMES[cycle]}
                 </span>
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-tertiary">
                   ({filteredGrades.reduce((acc, g) => acc + getSectionsByGrade(g.id).length, 0)} secciones)
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {filteredGrades.map(grade => {
                   const gradeSections = getSectionsByGrade(grade.id).filter(s =>
                     filterBuilding
@@ -297,80 +318,98 @@ export default function GradeSectionAssignment() {
                       : true
                   );
                   const assignedCount = gradeSections.filter(s => assignments[s.id]).length;
+                  const buildingName = gradeSections.length > 0 && assignments[gradeSections[0].id]
+                    ? buildings.find(b => b.id === assignments[gradeSections[0].id])?.name || '—'
+                    : '—';
 
                   return (
                     <motion.div
                       key={grade.id}
                       initial={{ opacity: 0, y: 12 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="bg-white rounded-2xl p-5 border border-slate-200/80 transition-all hover:shadow-md flex flex-col justify-between"
+                      className="card-crema p-5 transition-all hover:shadow-md flex flex-col justify-between"
                     >
                       <div>
-                        {/* Header */}
-                        <div className="flex items-center justify-between mb-3">
+                        {/* Header with icon and title */}
+                        <div className="flex items-start justify-between mb-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl flex items-center justify-center border bg-slate-50 border-slate-200/60 text-slate-500">
-                              <DoorOpen className="w-5 h-5" />
+                            <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center shrink-0">
+                              <DoorOpen className="w-5 h-5 text-slate-600" />
                             </div>
                             <div>
                               <h3 className="text-sm font-bold text-slate-900 leading-tight">{grade.name}</h3>
+                              <p className="text-[10px] text-slate-400 font-medium mt-0.5">{CYCLE_NAMES[cycle]}</p>
                             </div>
                           </div>
-                          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border ${
-                            assignedCount === gradeSections.length && gradeSections.length > 0
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : 'bg-amber-50 text-amber-700 border-amber-200'
-                          }`}>
-                            {assignedCount}/{gradeSections.length}
-                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleGradeStatus(grade)}
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border transition-colors cursor-pointer ${
+                              grade.status === 'ACTIVO'
+                                ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100'
+                                : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
+                            }`}
+                          >
+                            {grade.status === 'ACTIVO' ? 'Activo' : 'Inactivo'}
+                          </button>
                         </div>
 
-                        {/* Secciones */}
-                        <div className="mb-3">
-                          <div className="flex items-baseline gap-1">
-                            <span className="text-2xl font-bold text-slate-900 font-display tracking-tight">{gradeSections.length}</span>
-                            <span className="text-xs text-slate-400 font-medium">secciones</span>
+                        {/* Info lines */}
+                        <div className="space-y-1.5 mb-4">
+                          <div className="flex items-center gap-2 text-xs text-slate-500">
+                            <Users className="w-3.5 h-3.5 text-slate-400" />
+                            <span>{gradeSections.length} Secciones activas</span>
                           </div>
-                        </div>
-
-                        {/* Edificios asignados (Botones Interactivos de Edición) */}
-                        <div className="mb-4">
-                          <div className="flex flex-col gap-1.5 pr-1">
-                            {gradeSections.map(sec => {
-                              const buildingId = assignments[sec.id];
-                              const building = buildings.find(b => b.id === buildingId);
-                              return (
-                                <button
-                                  type="button"
-                                  key={sec.id}
-                                  onClick={() => setEditingSection(sec)}
-                                  className="group flex items-center justify-between text-left text-xs font-mono px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:border-slate-300 text-slate-700 hover:shadow-3xs cursor-pointer transition-all"
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-bold">Sección {sec.name}</span>
-                                    {building ? (
-                                      <span className="font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md text-[10px]">
-                                        {building.name}
-                                      </span>
-                                    ) : (
-                                      <span className="text-[10px] italic bg-slate-50 px-1.5 py-0.5 rounded text-slate-400">Sin asignar</span>
-                                    )}
-                                  </div>
-                                  <Edit2 className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                </button>
-                              );
-                            })}
-                            {gradeSections.length === 0 && (
-                              <span className="text-xs text-slate-400 italic">Sin secciones</span>
-                            )}
+                          <div className="flex items-center gap-2 text-xs text-slate-500">
+                            <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                            <span>Edificio {buildingName}</span>
                           </div>
                         </div>
                       </div>
 
-                      {/* Footer */}
-                      <div className="flex items-center justify-between pt-3 border-t border-slate-100 shrink-0 mt-2">
-                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{CYCLE_NAMES[cycle]}</span>
-                        <span className="text-[10px] text-slate-400 font-medium">Presiona para asignar</span>
+                      {/* Stats row at bottom */}
+                      <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-100">
+                        <div className="text-center">
+                          <span className="text-2xl font-black text-emerald-600 font-display">{gradeSections.length}</span>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">Secciones</p>
+                        </div>
+                        <div className="text-center">
+                          <span className="text-2xl font-black text-blue-600 font-display">{assignedCount}</span>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">Asignados</p>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (gradeSections.length > 0) setEditingSection(gradeSections[0]);
+                          }}
+                          className="flex-1 py-2 px-3 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-xs transition-colors cursor-pointer"
+                        >
+                          Gestionar Grado
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (gradeSections.length > 0) setEditingSection(gradeSections[0]);
+                          }}
+                          className="p-2 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                          title="Editar"
+                        >
+                          <Edit2 className="w-4 h-4 text-slate-500" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            gradeSections.forEach(sec => handleDelete(sec.id));
+                          }}
+                          className="p-2 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </button>
                       </div>
                     </motion.div>
                   );
@@ -384,34 +423,21 @@ export default function GradeSectionAssignment() {
       {/* Modal interactivo Premium para editar la asignación de edificios */}
       <AnimatePresence>
         {editingSection && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="modal-backdrop">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden flex flex-col"
+              className="modal-container max-w-sm"
             >
-              {/* Header */}
-              <div className="bg-slate-50 border-b border-slate-100 p-5 flex justify-between items-center shrink-0">
-                <div>
-                  <h3 className="font-bold text-slate-900 text-base">Asignar Edificio</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    {getGradeName(editingSection.gradeId)} - Sección "{editingSection.name}"
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setEditingSection(null)}
-                  className="p-1.5 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
-                >
-                  <X className="w-4 h-4 text-slate-500" />
-                </button>
+              <div className="modal-header">
+                <h3 className="modal-title">Asignar Edificio</h3>
+                <button type="button" onClick={() => setEditingSection(null)} className="modal-close-btn"><X className="w-4 h-4 text-secondary" /></button>
               </div>
 
-              {/* Contenido */}
-              <div className="p-6 space-y-4 overflow-y-auto max-h-[400px]">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Selecciona un edificio disponible:</p>
-                <div className="grid grid-cols-1 gap-2.5">
+              <div className="modal-body">
+                <p className="text-[10px] font-semibold text-tertiary uppercase tracking-wider mb-3">Selecciona un edificio disponible:</p>
+                <div className="space-y-2">
                   {buildings.map(building => {
                     const isSelected = assignments[editingSection.id] === building.id;
                     return (
@@ -422,7 +448,7 @@ export default function GradeSectionAssignment() {
                           selectBuildingForSection(editingSection.id, building.id);
                           setEditingSection(null);
                         }}
-                        className={`w-full flex items-center justify-between p-4 rounded-xl border text-left transition-all cursor-pointer ${
+                        className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition-all cursor-pointer ${
                           isSelected
                             ? 'bg-slate-50 border-primary shadow-xs'
                             : 'bg-white hover:bg-slate-50 hover:border-slate-300'
@@ -432,13 +458,10 @@ export default function GradeSectionAssignment() {
                           <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-100">
                             <Building2 className="w-4 h-4 text-slate-600" />
                           </div>
-                          <div>
-                            <span className="font-bold text-slate-800 text-sm block">{building.name}</span>
-                            <span className="text-xs text-slate-400">Impartir clases en esta infraestructura</span>
-                          </div>
+                          <span className="font-bold text-slate-800 text-xs">{building.name}</span>
                         </div>
                         {isSelected && (
-                          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                         )}
                       </button>
                     );
@@ -446,7 +469,7 @@ export default function GradeSectionAssignment() {
 
                   {buildings.length === 0 && (
                     <div className="text-center py-4 border border-dashed border-slate-200 rounded-xl">
-                      <p className="text-xs text-slate-400">No hay edificios registrados en el sistema.</p>
+                      <p className="text-xs text-tertiary">No hay edificios registrados en el sistema.</p>
                     </div>
                   )}
                 </div>
@@ -468,7 +491,7 @@ export default function GradeSectionAssignment() {
               </div>
 
               {/* Footer */}
-              <div className="bg-slate-50 p-4 border-t border-slate-100 flex justify-end gap-2">
+              <div className="modal-footer">
                 <button
                   type="button"
                   onClick={() => setEditingSection(null)}
@@ -484,7 +507,7 @@ export default function GradeSectionAssignment() {
 
       {/* Empty state */}
       {grades.length === 0 && (
-        <div className="text-center py-12 text-slate-400">
+        <div className="text-center py-12 text-tertiary">
           <GitBranch className="w-10 h-10 mx-auto mb-2 opacity-50" />
           <p className="text-sm">No hay grados registrados</p>
         </div>

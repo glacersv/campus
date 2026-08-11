@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { User as FirebaseUser, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { auth, functions } from '../firebase';
-import { getUser, createUser, getRole, isEmailPreAuthorized, getStudentByCarnet, createApprovalRequest, createNewUserNotification, updateUser, getTeacherByEmail, getTeacher, createUserForTeacher, createUserForStudent, getStudent, updateApprovalRequest, getAllRoles, getUserByEmail } from '../lib/firestore';
+import { getUser, createUser, getRole, isEmailPreAuthorized, getStudentByCarnet, createApprovalRequest, createNewUserNotification, updateUser, getTeacherByEmail, getTeacher, createUserForTeacher, createUserForStudent, getStudent, updateApprovalRequest, getAllRoles, getUserByEmail, getUserByStudentId, deleteUser, fixRolesPermissions } from '../lib/firestore';
 import { User, UserRole, SystemModuleId, RoleConfig, ApprovalRequest } from '../types';
 import { updateRoleLabelsFromFirestore } from '../types';
 
@@ -50,8 +50,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           let teacherName: string | undefined;
 
           // Detectar rol y detalles
+          const isSuperAdmin = email === 'admin@salesianosanjose.edu.sv' || email === 'jose.marquez@salesianosanjose.edu.sv';
           const teacher = await getTeacherByEmail(email);
-          if (teacher) {
+          if (isSuperAdmin) {
+            detectedRole = 'admin';
+          } else if (teacher) {
             detectedRole = 'docente';
             teacherId = teacher.id;
             teacherName = teacher.name;
@@ -71,11 +74,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             uid: user.uid,
             email,
             displayName: user.displayName || email.split('@')[0],
-            role: null,
-            status: 'pending',
+            role: detectedRole,
+            status: detectedRole ? 'approved' : 'pending',
             requestedRole: detectedRole || null,
             ...(teacherId ? { teacherId } : {}),
             ...(studentId ? { studentId } : {}),
+            ...(studentName ? { studentName } : {}),
+            ...(gradeId ? { gradeId } : {}),
+            ...(sectionId ? { sectionId } : {}),
           };
 
           await createUser(userData);
@@ -106,6 +112,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Cargar roles dinámicos desde Firestore
           const allRoles = await getAllRoles();
           updateRoleLabelsFromFirestore(allRoles);
+          
+          // Fix incorrect module IDs in roles (fire-and-forget)
+          fixRolesPermissions().catch(console.error);
         } else {
           setRoleConfig(null);
         }
@@ -121,6 +130,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     await signInWithEmailAndPassword(auth, email, password);
+    
+    // Super admin bypass - siempre permitir acceso
+    if (email === 'admin@salesianosanjose.edu.sv' || email === 'jose.marquez@salesianosanjose.edu.sv') return;
     
     // Verificar estado del usuario después del login
     const profile = await getUser(auth.currentUser?.uid || '');
@@ -190,25 +202,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ...(studentId ? { studentId } : {}),
     };
     console.log('[signUp] Creando user en Firestore');
+    // Si ya existe un usuario aprobado para este alumno (ej: creado por admin), migrar al nuevo UID
+    let existingApprovedUser: User | null = null;
+    if (studentId) {
+      existingApprovedUser = await getUserByStudentId(studentId);
+    }
+    if (existingApprovedUser?.status === 'approved' && existingApprovedUser?.role) {
+      // Migrar: crear doc con nuevo UID de Auth, preservar datos aprobados
+      userData.role = existingApprovedUser.role;
+      userData.status = 'approved';
+      userData.requestedRole = undefined;
+      userData.studentId = studentId;
+      // Eliminar el doc viejo (con ID del alumno como key)
+      await deleteUser(existingApprovedUser.uid).catch(() => {});
+    }
     await createUser(userData);
     console.log('[signUp] User creado');
 
-    console.log('[signUp] Creando approval request');
-    await createApprovalRequest({
-      id: uid,
-      userId: uid,
-      email,
-      displayName,
-      requestedRole: detectedRole || null,
-      status: 'pending',
-      studentId,
-      studentName,
-      gradeId,
-      sectionId,
-      teacherId,
-      teacherName,
-    });
-    console.log('[signUp] Approval request creada');
+    // Si ya esta aprobado, no crear approval request
+    if (userData.status !== 'approved') {
+      console.log('[signUp] Creando approval request');
+      await createApprovalRequest({
+        id: uid,
+        userId: uid,
+        email,
+        displayName,
+        requestedRole: detectedRole || null,
+        status: 'pending',
+        studentId,
+        studentName,
+        gradeId,
+        sectionId,
+        teacherId,
+        teacherName,
+      });
+      console.log('[signUp] Approval request creada');
+    }
   };
 
   const signOut = async () => {

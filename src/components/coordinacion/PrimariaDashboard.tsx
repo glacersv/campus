@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { GraduationCap, BookOpen, Users, Calendar, ClipboardCheck, Award } from 'lucide-react';
 import ProjectsModule from '../proyectos/ProjectsModule';
 
@@ -37,33 +38,39 @@ export default function PrimariaDashboard() {
         {modules.map((mod, i) => {
           const Icon = mod.icon;
           return (
-            <div key={mod.id} className="bg-white rounded-2xl border border-slate-200/80 p-5 hover:shadow-md transition-all cursor-pointer">
+            <motion.div
+              key={mod.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.06, type: 'spring', bounce: 0.1 }}
+              className="card-crema group card-interactive"
+            >
               <div className="flex items-center gap-3 mb-3">
                 <div className={`w-10 h-10 rounded-xl ${mod.color} flex items-center justify-center`}>
                   <Icon className="w-5 h-5 text-white" />
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">{mod.label}</h3>
-                  <p className="text-[10px] text-slate-400">{mod.desc}</p>
+                  <p className="text-xs text-secondary">{mod.desc}</p>
                 </div>
               </div>
               <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                <span className="text-xs font-semibold text-slate-400">Grados</span>
+                <span className="text-xs font-semibold text-secondary">Grados</span>
                 <span className="text-xs font-bold text-primary">{mod.count}</span>
               </div>
-            </div>
+            </motion.div>
           );
         })}
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-6">
+      <div className="card-crema p-6">
         <div className="flex items-center gap-3 mb-4">
           <Award className="w-5 h-5 text-emerald-500" />
           <h3 className="text-sm font-bold text-slate-900">Resumen por Grado</h3>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {gradeStats.map((stat) => (
-            <div key={stat.grade} className="bg-emerald-50 rounded-xl p-3 text-center border border-emerald-100">
+            <div key={stat.grade} className="card-crema p-3 text-center">
               <p className="text-lg font-bold text-emerald-700">{stat.grade}</p>
               <p className="text-[10px] text-emerald-600">{stat.sections} secciones</p>
               <p className="text-[10px] text-emerald-500">{stat.students} alumnos</p>

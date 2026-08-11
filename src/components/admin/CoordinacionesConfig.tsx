@@ -44,7 +44,7 @@ const COORDINACION_AREAS: CoordinacionArea[] = [
     id: 'parvularia',
     name: 'Coordinación de Parvularia',
     icon: Baby,
-    color: '#FAB700',
+    color: '#475569',
     description: 'Módulos de formación para grados K4 - K6',
     modules: ['formacion', 'actividades'],
     gradeRange: 'K4 - K6',
@@ -91,13 +91,13 @@ export default function CoordinacionesConfig() {
       </div>
 
       {/* Info banner */}
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
         <div className="flex items-start gap-3">
-          <Shield className="w-5 h-5 text-amber-600 mt-0.5" />
+          <Shield className="w-5 h-5 text-secondary mt-0.5" />
           <div>
-            <h4 className="text-sm font-semibold text-amber-800">Configuración Solo Admin</h4>
-            <p className="text-xs text-amber-700 mt-1">
-              Estas configuraciones solo son visibles para el administrador. Las coordinaciones solo ven los módulos que les corresponden.
+            <h4 className="text-sm font-semibold text-slate-900">Configuración Solo Admin</h4>
+            <p className="text-xs text-secondary mt-1">
+              Esta sección está reservada para administradores. No compartas esta información con roles sin privilegios.
             </p>
           </div>
         </div>
@@ -113,7 +113,7 @@ export default function CoordinacionesConfig() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
-              className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden"
+              className="card-crema overflow-hidden"
             >
               {/* Header with color */}
               <div className="p-4 border-b border-slate-100" style={{ borderLeftColor: area.color, borderLeftWidth: '4px' }}>

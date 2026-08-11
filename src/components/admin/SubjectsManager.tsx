@@ -42,9 +42,9 @@ export default function SubjectsManager() {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   // Search & Filter States
-  const [search, setSearch] = useState('');
   const [selectedGradeId, setSelectedGradeId] = useState<string>('');
   const [selectedType, setSelectedType] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<'all' | 'mined' | 'institutional'>('all');
 
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -233,10 +233,10 @@ export default function SubjectsManager() {
 
   // Filter logic supporting multi-grade subjects
   const filtered = subjects.filter(s => {
-    const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) ||
-                        (s.description && s.description.toLowerCase().includes(search.toLowerCase()));
-
     const matchType = !selectedType || (s.type || 'MINED') === selectedType;
+    const matchTab = activeTab === 'all' || 
+      (activeTab === 'mined' && (s.type || 'MINED') === 'MINED') ||
+      (activeTab === 'institutional' && s.type === 'INSTITUCIONAL');
 
     // Direct check in s.gradeId or s.gradeIds list
     let matchGrade = true;
@@ -250,7 +250,7 @@ export default function SubjectsManager() {
       matchGrade = subjectGradeIds.includes(selectedGradeId) || subjectGradeIds.length === 0;
     }
 
-    return matchSearch && matchType && matchGrade;
+    return matchType && matchGrade && matchTab;
   });
 
   const getSubSubjects = (parentId: string) => {
@@ -269,7 +269,7 @@ export default function SubjectsManager() {
 
   if (loading) return (
     <div className="flex justify-center py-12">
-      <div className="w-8 h-8 border border-slate-300 border-t-slate-800 rounded-full animate-spin" />
+      <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
@@ -292,7 +292,41 @@ export default function SubjectsManager() {
       </div>
 
       {/* Button-Pills-Only Grayscale Filtering Dashboard (Ultra Clean) */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-3xs space-y-4">
+      <div className="card-crema p-5 space-y-4">
+
+        {/* Tabs Navigation */}
+        <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/60">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={`flex-1 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
+              activeTab === 'all'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Todas
+          </button>
+          <button
+            onClick={() => setActiveTab('mined')}
+            className={`flex-1 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
+              activeTab === 'mined'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Materias
+          </button>
+          <button
+            onClick={() => setActiveTab('institutional')}
+            className={`flex-1 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
+              activeTab === 'institutional'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Sub-materias
+          </button>
+        </div>
 
         {/* Search & Type Select */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -303,7 +337,7 @@ export default function SubjectsManager() {
               onClick={() => setSelectedType('')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
                 selectedType === ''
-                  ? 'bg-slate-800 text-white shadow-xs'
+                  ? 'bg-primary text-white shadow-xs'
                   : 'text-slate-600 hover:bg-slate-200/50'
               }`}
             >
@@ -313,7 +347,7 @@ export default function SubjectsManager() {
               onClick={() => setSelectedType('MINED')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
                 selectedType === 'MINED'
-                  ? 'bg-slate-800 text-white shadow-xs'
+                  ? 'bg-primary text-white shadow-xs'
                   : 'text-slate-600 hover:bg-slate-200/50'
               }`}
             >
@@ -323,7 +357,7 @@ export default function SubjectsManager() {
               onClick={() => setSelectedType('INSTITUCIONAL')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
                 selectedType === 'INSTITUCIONAL'
-                  ? 'bg-slate-800 text-white shadow-xs'
+                  ? 'bg-primary text-white shadow-xs'
                   : 'text-slate-600 hover:bg-slate-200/50'
               }`}
             >
@@ -331,27 +365,14 @@ export default function SubjectsManager() {
             </button>
           </div>
 
-          {/* Quick Search */}
-          <div className="relative w-full md:max-w-xs">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Buscar materia..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="input pl-10"
-            />
-          </div>
-        </div>
-
         {/* Grade Pills List - Elegantly Grouped Chronologically by Cycle (Compact & Clean) */}
         <div className="space-y-3 pt-3 border-t border-slate-100">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Filtrar por Grado / Nivel:</span>
+            <span className="text-[10px] font-bold text-tertiary uppercase tracking-wider block">Filtrar por Grado / Nivel:</span>
             {selectedGradeId && (
               <button
                 onClick={() => setSelectedGradeId('')}
-                className="text-[10px] font-bold text-slate-500 hover:text-slate-900 underline border-0 cursor-pointer bg-transparent"
+                className="text-[10px] font-bold text-secondary hover:text-slate-900 underline border-0 cursor-pointer bg-transparent"
               >
                 Limpiar filtro de grado
               </button>
@@ -379,8 +400,8 @@ export default function SubjectsManager() {
                 const cycleGrades = gradesByCycle[cycleKey] || [];
                 if (cycleGrades.length === 0) return null;
                 return (
-                  <div key={cycleKey} className="bg-slate-50/50 p-2.5 rounded-xl border border-slate-200/50 space-y-1.5">
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block border-b border-slate-200/60 pb-1">
+                  <div key={cycleKey} className="bg-white p-2.5 rounded-xl border border-slate-200/50 space-y-1.5">
+                    <span className="text-[9px] font-black text-tertiary uppercase tracking-wider block border-b border-slate-200/60 pb-1">
                       {CYCLE_NAMES[cycleKey]}
                     </span>
                     <div className="flex flex-wrap gap-1">
@@ -390,7 +411,7 @@ export default function SubjectsManager() {
                           onClick={() => setSelectedGradeId(g.id)}
                           className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer border ${
                             selectedGradeId === g.id
-                              ? 'bg-slate-800 text-white border-slate-800 shadow-3xs'
+                              ? 'bg-slate-800 text-white border-slate-800 shadow-sm'
                               : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-600'
                           }`}
                         >
@@ -430,7 +451,7 @@ export default function SubjectsManager() {
               <button
                 onClick={() => setViewMode('card')}
                 className={`p-2 transition-colors border-0 cursor-pointer ${
-                  viewMode === 'card' ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'
+                  viewMode === 'card' ? 'bg-slate-800 text-white' : 'bg-white text-secondary hover:bg-slate-50'
                 }`}
               >
                 <LayoutGrid className="w-4 h-4" />
@@ -438,7 +459,7 @@ export default function SubjectsManager() {
               <button
                 onClick={() => setViewMode('list')}
                 className={`p-2 transition-colors border-0 cursor-pointer ${
-                  viewMode === 'list' ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'
+                  viewMode === 'list' ? 'bg-slate-800 text-white' : 'bg-white text-secondary hover:bg-slate-50'
                 }`}
               >
                 <List className="w-4 h-4" />
@@ -447,10 +468,11 @@ export default function SubjectsManager() {
           </div>
         )}
       </div>
+      </div>
 
       {/* Hierarchy Info Box */}
-      <div className="flex items-start gap-3 bg-slate-50 border border-slate-200 p-4 rounded-xl text-xs text-slate-600 leading-relaxed shadow-3xs">
-        <HelpCircle className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
+      <div className="flex items-start gap-3 bg-slate-50 border border-slate-200 p-4 rounded-xl text-xs text-slate-600 leading-relaxed shadow-sm">
+        <HelpCircle className="w-5 h-5 text-tertiary shrink-0 mt-0.5" />
         <div>
           <span className="font-bold text-slate-700 block mb-0.5">Jerarquía Educativa: Materias MINED vs. Especialidades Institucionales</span>
           Para cumplir con las normas del MINED de El Salvador, las materias oficiales (como Ciencia y Tecnología) son evaluadas unitariamente.
@@ -461,27 +483,27 @@ export default function SubjectsManager() {
       {/* Add/Edit Modal (Grayscale & Multi-Grade Compatible Layout) */}
       <AnimatePresence>
         {showForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="modal-backdrop">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden flex flex-col"
+              className="modal-container max-w-lg"
             >
-              <div className="bg-slate-50 border-b border-slate-100 p-5 flex justify-between items-center shrink-0">
-                <h3 className="font-bold text-slate-900 text-base">
+              <div className="modal-header">
+                <h3 className="modal-title">
                   {editingId ? 'Editar Materia' : 'Nueva Materia o Sub-materia'}
                 </h3>
                 <button
                   type="button"
                   onClick={() => { setShowForm(false); resetForm(); }}
-                  className="p-1.5 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer border-0 bg-transparent"
+                  className="modal-close-btn"
                 >
-                  <X className="w-4 h-4 text-slate-500" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto max-h-[80vh]">
+              <form onSubmit={handleSubmit} className="modal-body space-y-4">
 
                 {/* Subject Name */}
                 <div className="space-y-1">
@@ -516,7 +538,7 @@ export default function SubjectsManager() {
                       onClick={() => setForm(p => ({ ...p, type: 'MINED', parentSubjectId: '' }))}
                       className={`py-2 px-3 rounded-xl border font-bold text-xs cursor-pointer transition-all ${
                         form.type === 'MINED'
-                          ? 'bg-slate-800 border-slate-800 text-white shadow-3xs'
+                          ? 'bg-primary border-primary text-white shadow-sm'
                           : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}
                     >
@@ -527,7 +549,7 @@ export default function SubjectsManager() {
                       onClick={() => setForm(p => ({ ...p, type: 'INSTITUCIONAL' }))}
                       className={`py-2 px-3 rounded-xl border font-bold text-xs cursor-pointer transition-all ${
                         form.type === 'INSTITUCIONAL'
-                          ? 'bg-slate-800 border-slate-800 text-white shadow-3xs'
+                          ? 'bg-primary border-primary text-white shadow-sm'
                           : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}
                     >
@@ -546,7 +568,7 @@ export default function SubjectsManager() {
                         onClick={() => setForm(p => ({ ...p, parentSubjectId: '' }))}
                         className={`p-2 rounded-lg border text-left text-xs font-semibold cursor-pointer transition-all ${
                           !form.parentSubjectId
-                            ? 'bg-slate-800 border-slate-800 text-white shadow-xs'
+                            ? 'bg-primary border-primary text-white shadow-xs'
                             : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
                         }`}
                       >
@@ -561,7 +583,7 @@ export default function SubjectsManager() {
                             onClick={() => setForm(p => ({ ...p, parentSubjectId: m.id }))}
                             className={`p-2 rounded-lg border text-left text-xs font-semibold cursor-pointer transition-all ${
                               isSelected
-                                ? 'bg-slate-800 border-slate-800 text-white shadow-xs'
+                                ? 'bg-primary border-primary text-white shadow-xs'
                                 : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
                             }`}
                           >
@@ -570,7 +592,7 @@ export default function SubjectsManager() {
                         );
                       })}
                       {minedSubjects.length === 0 && (
-                        <span className="text-xs text-slate-400 italic col-span-2">No hay materias oficiales creadas todavía.</span>
+                        <span className="text-xs text-tertiary italic col-span-2">No hay materias oficiales creadas todavía.</span>
                       )}
                     </div>
                   </div>
@@ -583,7 +605,7 @@ export default function SubjectsManager() {
                     <button
                       type="button"
                       onClick={() => setForm(p => ({ ...p, gradeIds: [] }))}
-                      className="text-[10px] font-bold text-slate-500 hover:text-slate-800 underline border-0 bg-transparent cursor-pointer"
+                      className="text-[10px] font-bold text-secondary hover:text-slate-800 underline border-0 bg-transparent cursor-pointer"
                     >
                       Limpiar selección (Materia General)
                     </button>
@@ -596,7 +618,7 @@ export default function SubjectsManager() {
                       if (cycleGrades.length === 0) return null;
                       return (
                         <div key={cycleKey} className="space-y-1">
-                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">
+                          <span className="text-[9px] font-black text-tertiary uppercase tracking-wider block">
                             {CYCLE_NAMES[cycleKey]}
                           </span>
                           <div className="flex flex-wrap gap-1">
@@ -616,7 +638,7 @@ export default function SubjectsManager() {
                                   }}
                                   className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all cursor-pointer border ${
                                     isSelected
-                                      ? 'bg-slate-800 border-slate-800 text-white shadow-3xs'
+                                      ? 'bg-primary border-primary text-white shadow-sm'
                                       : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-600'
                                   }`}
                                 >
@@ -630,7 +652,7 @@ export default function SubjectsManager() {
                     })}
                   </div>
                   {form.gradeIds.length === 0 && (
-                    <span className="text-[10px] text-slate-400 italic block mt-1">
+                    <span className="text-[10px] text-tertiary italic block mt-1">
                       * Al no seleccionar ningún grado, la materia será clasificada como "General" (Aplica para todo el colegio).
                     </span>
                   )}
@@ -661,7 +683,7 @@ export default function SubjectsManager() {
                       </button>
                     </div>
                     {form.type === 'MINED' && editingId && getSubSubjects(editingId).length > 0 && (
-                      <span className="text-[10px] font-bold text-slate-500 block mt-1">
+                      <span className="text-[10px] font-bold text-secondary block mt-1">
                         Suma de sub-materias: {getSubSubjects(editingId).reduce((sum, s) => sum + (s.weeklyHours || 0), 0)}h asignadas
                       </span>
                     )}
@@ -676,8 +698,8 @@ export default function SubjectsManager() {
                         onClick={() => setForm(p => ({ ...p, status: 'ACTIVO' }))}
                         className={`py-1.5 rounded-lg border-0 cursor-pointer transition-all ${
                           form.status === 'ACTIVO'
-                            ? 'bg-slate-800 text-white shadow-3xs font-extrabold'
-                            : 'text-slate-500 hover:bg-slate-200/30'
+                            ? 'bg-slate-800 text-white shadow-sm font-extrabold'
+                            : 'text-secondary hover:bg-slate-200/30'
                         }`}
                       >
                         Activo
@@ -687,8 +709,8 @@ export default function SubjectsManager() {
                         onClick={() => setForm(p => ({ ...p, status: 'INACTIVO' }))}
                         className={`py-1.5 rounded-lg border-0 cursor-pointer transition-all ${
                           form.status === 'INACTIVO'
-                            ? 'bg-slate-800 text-white shadow-3xs font-extrabold'
-                            : 'text-slate-500 hover:bg-slate-200/30'
+                            ? 'bg-slate-800 text-white shadow-sm font-extrabold'
+                            : 'text-secondary hover:bg-slate-200/30'
                         }`}
                       >
                         Inactivo
@@ -697,7 +719,7 @@ export default function SubjectsManager() {
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 shrink-0">
+                <div className="modal-footer">
                   <button
                     type="button"
                     onClick={() => { setShowForm(false); resetForm(); }}
@@ -705,7 +727,7 @@ export default function SubjectsManager() {
                   >
                     Cancelar
                   </button>
-                  <button type="submit" className="btn-primary bg-slate-800 hover:bg-slate-900 border-slate-800">
+                  <button type="submit" className="btn-primary">
                     <Save className="w-4 h-4" /> {editingId ? 'Actualizar' : 'Crear Materia'}
                   </button>
                 </div>
@@ -717,7 +739,7 @@ export default function SubjectsManager() {
 
       {/* Grid view */}
       {viewMode === 'card' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {filtered.map((s, i) => {
             const subSubjects = getSubSubjects(s.id);
             const parentSubject = s.parentSubjectId ? subjects.find(p => p.id === s.parentSubjectId) : null;
@@ -736,110 +758,112 @@ export default function SubjectsManager() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.02 }}
-                className={`bg-white rounded-2xl border p-5 flex flex-col justify-between hover:shadow-md transition-all min-h-[280px] relative ${
+                className={`card-crema p-5 flex flex-col justify-between relative ${
                   selected.has(s.id)
                     ? 'ring-2 ring-primary border-primary'
-                    : 'border-slate-200/80'
+                    : ''
                 }`}
               >
                 <div>
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => toggleSelect(s.id)}
-                        className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors cursor-pointer ${
-                          selected.has(s.id) ? 'bg-slate-800 border-slate-800 text-white' : 'border-slate-300 hover:border-slate-800'
-                        }`}
-                      >
-                        {selected.has(s.id) && <Check className="w-2.5 h-2.5" />}
-                      </button>
-                      <h3 className="font-bold text-slate-900 text-sm leading-snug line-clamp-1" title={s.name}>
-                        {s.name}
-                      </h3>
+                  {/* Header with icon and title */}
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center shrink-0">
+                        <BookMarked className="w-5 h-5 text-slate-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold text-slate-900 leading-tight line-clamp-1" title={s.name}>
+                          {s.name}
+                        </h3>
+                        <p className="text-[10px] text-slate-400 font-medium mt-0.5">{s.type || 'MINED'}</p>
+                      </div>
                     </div>
-
-                    <span className="text-[9px] font-black tracking-widest px-2 py-0.5 rounded-md shrink-0 uppercase bg-slate-100 text-slate-800 border border-slate-200">
-                      {s.type || 'MINED'}
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => toggleSelect(s.id)}
+                      className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                        selected.has(s.id) ? 'bg-primary border-primary text-white' : 'border-slate-300 hover:border-slate-800'
+                      }`}
+                    >
+                      {selected.has(s.id) && <Check className="w-3 h-3" />}
+                    </button>
                   </div>
 
+                  {/* Description */}
                   {s.description ? (
-                    <p className="text-xs text-slate-500 line-clamp-2 mt-1 leading-relaxed">{s.description}</p>
+                    <p className="text-xs text-slate-500 line-clamp-2 mb-4 leading-relaxed">{s.description}</p>
                   ) : (
-                    <p className="text-[11px] text-slate-400 italic mt-1">Sin descripción registrada.</p>
+                    <p className="text-[11px] text-slate-400 italic mb-4">Sin descripción registrada.</p>
                   )}
 
-                  <div className="mt-4 space-y-1.5">
-                    {isMined && subSubjects.length > 0 ? (
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Sub-materias ({subSubjects.length}):</span>
-                        <div className="flex flex-wrap gap-1">
-                          {subSubjects.map(sub => (
-                            <span key={sub.id} className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 text-slate-700 text-[10px] font-semibold px-2 py-0.5 rounded-md">
-                              {sub.name} ({sub.weeklyHours}h)
-                            </span>
-                          ))}
-                        </div>
+                  {/* Sub-materias or Parent info */}
+                  {isMined && subSubjects.length > 0 ? (
+                    <div className="mb-4">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Sub-materias ({subSubjects.length})</span>
+                      <div className="flex flex-wrap gap-1">
+                        {subSubjects.map(sub => (
+                          <span key={sub.id} className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 text-slate-600 text-[10px] font-semibold px-2 py-0.5 rounded-md">
+                            {sub.name} ({sub.weeklyHours}h)
+                          </span>
+                        ))}
                       </div>
-                    ) : parentSubject ? (
-                      <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Asociada a:</span>
-                        <span className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 text-slate-700 text-[10px] font-semibold px-2 py-0.5 rounded-md">
-                          {parentSubject.name}
-                        </span>
-                      </div>
-                    ) : isMined ? (
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Materia Única / Autónoma</span>
-                    ) : (
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Materia Institucional Independiente</span>
-                    )}
+                    </div>
+                  ) : parentSubject ? (
+                    <div className="mb-4">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Asociada a</span>
+                      <span className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 text-slate-600 text-[10px] font-semibold px-2 py-0.5 rounded-md">
+                        {parentSubject.name}
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+
+                {/* Stats row at bottom */}
+                <div className="grid grid-cols-3 gap-2 pt-4 border-t border-slate-100">
+                  <div className="text-center">
+                    <span className="text-xl font-black text-emerald-600 font-display">{s.weeklyHours || '—'}</span>
+                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">Horas/Sem</p>
+                  </div>
+                  <div className="text-center">
+                    <span className="text-xl font-black text-blue-600 font-display">{subjectGradeIds.length || '—'}</span>
+                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">Grados</p>
+                  </div>
+                  <div className="text-center">
+                    <span className="text-xl font-black text-purple-600 font-display">{isMined ? subSubjects.length : '—'}</span>
+                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">Sub-mat</p>
                   </div>
                 </div>
 
-                <div>
-                  <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-slate-100 pr-1">
-                    {subjectGradeIds.length > 0 ? (
-                      subjectGradeIds.map(gid => (
-                        <span key={gid} className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 text-slate-700 text-[9px] font-bold px-1.5 py-0.5 rounded">
-                          <GraduationCap className="w-2.5 h-2.5" />
-                          {getGradeName(gid)}
-                        </span>
-                      ))
-                    ) : s.cycle ? (
-                      <span className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 text-slate-600 text-[9px] font-bold px-1.5 py-0.5 rounded">
-                        {CYCLE_NAMES[s.cycle]}
+                {/* Grade pills */}
+                {subjectGradeIds.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-3 pt-3 border-t border-slate-100">
+                    {subjectGradeIds.slice(0, 4).map(gid => (
+                      <span key={gid} className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 text-slate-600 text-[9px] font-bold px-1.5 py-0.5 rounded">
+                        <GraduationCap className="w-2.5 h-2.5" />
+                        {getGradeName(gid)}
                       </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 text-slate-400 text-[9px] font-bold px-1.5 py-0.5 rounded">
-                        Cualquier Grado
-                      </span>
-                    )}
-
-                    {s.weeklyHours && (
-                      <span className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 text-slate-600 text-[9px] font-bold px-1.5 py-0.5 rounded">
-                        <Clock className="w-2.5 h-2.5 text-slate-400" />
-                        {s.weeklyHours}h/sem
-                      </span>
+                    ))}
+                    {subjectGradeIds.length > 4 && (
+                      <span className="text-[9px] text-slate-400 font-bold">+{subjectGradeIds.length - 4}</span>
                     )}
                   </div>
+                )}
 
-                  <div className="flex justify-end gap-1 mt-3">
-                    <button
-                      onClick={() => handleEdit(s)}
-                      className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer border-0 bg-transparent"
-                      title="Editar"
-                    >
-                      <Edit2 className="w-4 h-4 text-slate-500" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(s.id)}
-                      className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer border-0 bg-transparent"
-                      title="Eliminar"
-                    >
-                      <Trash2 className="w-4 h-4 text-slate-500" />
-                    </button>
-                  </div>
+                {/* Action buttons */}
+                <div className="flex items-center gap-2 mt-3">
+                  <button
+                    onClick={() => handleEdit(s)}
+                    className="flex-1 py-2 px-3 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-xs transition-colors"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => handleDelete(s.id)}
+                    className="p-2 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                    title="Eliminar"
+                  >
+                    <Trash2 className="w-4 h-4 text-red-500" />
+                  </button>
                 </div>
               </motion.div>
             );
@@ -847,26 +871,26 @@ export default function SubjectsManager() {
         </div>
       ) : (
         /* List Mode */
-        <div className="card overflow-hidden bg-white rounded-2xl border border-slate-200/80 shadow-3xs p-0">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-slate-50 border-b border-slate-100">
+        <div className="card-crema overflow-hidden p-0">
+          <table className="table-crema">
+            <thead>
               <tr>
                 <th className="w-10 px-4 py-3">
                   <button
                     onClick={toggleSelectAll}
                     className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors cursor-pointer border-slate-300 ${
-                      selected.size === filtered.length && filtered.length > 0 ? 'bg-slate-800 border-slate-800 text-white' : ''
+                      selected.size === filtered.length && filtered.length > 0 ? 'bg-primary border-primary text-white' : ''
                     }`}
                   >
                     {selected.size === filtered.length && filtered.length > 0 && <Check className="w-2.5 h-2.5" />}
                   </button>
                 </th>
-                <th className="px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Nombre Asignatura</th>
-                <th className="px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Clasificación</th>
-                <th className="px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Grado / Nivel</th>
-                <th className="px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Horas Semanales</th>
-                <th className="px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Estado</th>
-                <th className="px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">Acciones</th>
+                <th className="px-4 py-3 text-[11px] font-bold text-secondary uppercase tracking-wider">Nombre Asignatura</th>
+                <th className="px-4 py-3 text-[11px] font-bold text-secondary uppercase tracking-wider">Clasificación</th>
+                <th className="px-4 py-3 text-[11px] font-bold text-secondary uppercase tracking-wider">Grado / Nivel</th>
+                <th className="px-4 py-3 text-[11px] font-bold text-secondary uppercase tracking-wider">Horas Semanales</th>
+                <th className="px-4 py-3 text-[11px] font-bold text-secondary uppercase tracking-wider">Estado</th>
+                <th className="px-4 py-3 text-[11px] font-bold text-secondary uppercase tracking-wider text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -889,7 +913,7 @@ export default function SubjectsManager() {
                         <button
                           onClick={() => toggleSelect(s.id)}
                           className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors cursor-pointer ${
-                            selected.has(s.id) ? 'bg-slate-800 border-slate-800 text-white' : 'border-slate-300'
+                            selected.has(s.id) ? 'bg-primary border-primary text-white' : 'border-slate-300'
                           }`}
                         >
                           {selected.has(s.id) && <Check className="w-2.5 h-2.5" />}
@@ -908,7 +932,7 @@ export default function SubjectsManager() {
                             </span>
                           ) : null}
                         </div>
-                        {s.description && <div className="text-xs text-slate-400 mt-0.5 line-clamp-1">{s.description}</div>}
+                        {s.description && <div className="text-xs text-tertiary mt-0.5 line-clamp-1">{s.description}</div>}
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase bg-slate-50 text-slate-800 border border-slate-200">
@@ -935,27 +959,27 @@ export default function SubjectsManager() {
                       </td>
                       <td className="px-4 py-3">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          s.status === 'INACTIVO' ? 'bg-slate-100 text-slate-500' : 'bg-slate-100 text-slate-800'
+                          s.status === 'INACTIVO' ? 'bg-slate-100 text-secondary' : 'bg-slate-100 text-slate-800'
                         }`}>
                           {s.status || 'ACTIVO'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-1">
-                          <button
-                            onClick={() => handleEdit(s)}
-                            className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer border-0 bg-transparent"
-                          >
-                            <Edit2 className="w-4 h-4 text-slate-500" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(s.id)}
-                            className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer border-0 bg-transparent"
-                          >
-                            <Trash2 className="w-4 h-4 text-slate-500" />
-                          </button>
-                        </div>
-                      </td>
+                       <td className="px-4 py-3 text-right">
+                         <div className="flex justify-end gap-1">
+                           <button
+                             onClick={() => handleEdit(s)}
+                             className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer border-0 bg-transparent"
+                           >
+                             <Edit2 className="w-4 h-4 text-slate-500" />
+                           </button>
+                           <button
+                             onClick={() => handleDelete(s.id)}
+                             className="p-1.5 hover:bg-red-50 rounded-lg transition-colors cursor-pointer border-0 bg-transparent"
+                           >
+                             <Trash2 className="w-4 h-4 text-red-500" />
+                           </button>
+                         </div>
+                       </td>
                     </tr>
 
                     {/* Sub-row for Institutional components nested inside MINED bases */}
@@ -964,11 +988,11 @@ export default function SubjectsManager() {
                         <td />
                         <td colSpan={6} className="px-6 py-2.5">
                           <div className="flex flex-col gap-1.5 pl-4 border-l-2 border-slate-200">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                            <span className="text-[10px] font-bold text-tertiary uppercase tracking-wider block">
                               Especialidades Institucionales Vinculadas:
                             </span>
                             {subSubjects.map(sub => (
-                              <div key={sub.id} className="flex items-center justify-between text-xs bg-white p-2 rounded-lg border border-slate-200/80 max-w-2xl shadow-3xs">
+                              <div key={sub.id} className="flex items-center justify-between text-xs bg-white p-2 rounded-lg border border-slate-200/80 max-w-2xl shadow-sm">
                                 <div className="flex items-center gap-2">
                                   <span className="font-bold text-slate-700">{sub.name}</span>
                                   <span className="text-[10px] font-medium bg-slate-50 text-slate-700 px-2 py-0.2 rounded-md border border-slate-200/60">
@@ -987,7 +1011,7 @@ export default function SubjectsManager() {
                                     </button>
                                     <button
                                       onClick={() => handleDelete(sub.id)}
-                                      className="p-1 hover:bg-slate-100 rounded text-slate-500 cursor-pointer border-0 bg-transparent"
+                                      className="p-1 hover:bg-red-50 rounded text-red-500 cursor-pointer border-0 bg-transparent"
                                       title="Eliminar sub-materia"
                                     >
                                       <Trash2 className="w-3.5 h-3.5" />
@@ -1009,7 +1033,7 @@ export default function SubjectsManager() {
       )}
 
       {filtered.length === 0 && (
-        <div className="text-center py-12 text-slate-400">
+        <div className="text-center py-12 text-tertiary">
           <BookMarked className="w-10 h-10 mx-auto mb-2 opacity-50" />
           <p className="text-sm font-medium">No se encontraron materias en este nivel o grupo</p>
         </div>

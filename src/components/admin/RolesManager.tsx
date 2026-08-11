@@ -34,10 +34,11 @@ export default function RolesManager() {
 
   async function handleSave() {
     if (!editingRole?.id || !editingRole.name) return;
+    const roleId = editingRole.id.toLowerCase().trim();
     try {
       if (isCreating) {
         await createRole({
-          id: editingRole.id,
+          id: roleId,
           name: editingRole.name,
           description: editingRole.description || '',
           permissions: editingRole.permissions || [],
@@ -45,7 +46,7 @@ export default function RolesManager() {
         });
         toast.success('Rol creado');
       } else {
-        await updateRole(editingRole.id, {
+        await updateRole(roleId, {
           name: editingRole.name,
           description: editingRole.description,
           permissions: editingRole.permissions,
@@ -128,7 +129,7 @@ export default function RolesManager() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}
-            className="bg-white rounded-2xl p-5 border border-slate-200/80 hover:shadow-md transition-all"
+            className="card-crema p-5"
           >
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3">
@@ -137,7 +138,7 @@ export default function RolesManager() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">{role.name}</h3>
-                  <p className="text-[10px] text-slate-400 font-mono">{role.id}</p>
+                   <p className="text-[10px] text-tertiary font-mono">{role.id}</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
@@ -145,7 +146,7 @@ export default function RolesManager() {
                   onClick={() => { setEditingRole({ ...role }); setIsCreating(false); }}
                   className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
                 >
-                  <Pencil className="w-3.5 h-3.5 text-slate-500" />
+                   <Pencil className="w-3.5 h-3.5 text-secondary" />
                 </button>
                 {!role.isSystem && (
                   <button
@@ -159,19 +160,19 @@ export default function RolesManager() {
             </div>
 
             {role.description && (
-              <p className="text-xs text-slate-500 mb-3">{role.description}</p>
+               <p className="text-xs text-secondary mb-3">{role.description}</p>
             )}
 
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-[10px] font-semibold text-slate-400 uppercase">Usuarios:</span>
+              <span className="text-[10px] font-semibold text-tertiary uppercase">Usuarios:</span>
               <span className="text-xs font-bold text-slate-700">{userCount[role.id] || 0}</span>
               {role.isSystem && (
-                <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-semibold">Sistema</span>
+                <span className="text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded-full font-semibold">Sistema</span>
               )}
             </div>
 
             <div>
-              <p className="text-[10px] font-semibold text-slate-400 uppercase mb-2">Módulos habilitados</p>
+              <p className="text-[10px] font-semibold text-tertiary uppercase mb-2">Módulos habilitados</p>
               <div className="flex flex-wrap gap-1">
                 {role.permissions.map(p => (
                   <span key={p} className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-semibold">
@@ -179,7 +180,7 @@ export default function RolesManager() {
                   </span>
                 ))}
                 {role.permissions.length === 0 && (
-                  <span className="text-[10px] text-slate-400 italic">Sin módulos</span>
+                  <span className="text-[10px] text-tertiary italic">Sin módulos</span>
                 )}
               </div>
             </div>
@@ -194,22 +195,22 @@ export default function RolesManager() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            className="modal-backdrop"
           >
             <motion.div
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
-              className="bg-white rounded-xl p-6 w-full max-w-lg shadow-xl"
+              className="modal-container max-w-lg"
             >
-              <div className="flex items-center justify-between mb-5">
+              <div className="modal-header">
                 <h3 className="font-bold text-slate-900">{isCreating ? 'Crear Rol' : 'Editar Rol'}</h3>
-                <button onClick={() => { setEditingRole(null); setIsCreating(false); }} className="p-1 hover:bg-slate-100 rounded-lg">
-                  <X className="w-5 h-5 text-slate-400" />
+                <button onClick={() => { setEditingRole(null); setIsCreating(false); }} className="modal-close-btn">
+                  <X className="w-5 h-5 text-tertiary" />
                 </button>
               </div>
 
-              <div className="space-y-4">
+              <div className="modal-body space-y-4">
                 <div>
                   <label className="form-label">ID del Rol</label>
                   <input
@@ -217,7 +218,7 @@ export default function RolesManager() {
                     value={editingRole.id || ''}
                     onChange={e => setEditingRole({ ...editingRole, id: e.target.value })}
                     disabled={!isCreating}
-                    className={`w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono ${!isCreating ? 'bg-slate-50 text-slate-400' : ''}`}
+                    className={`input-crema font-mono ${!isCreating ? 'bg-slate-50 text-tertiary' : ''}`}
                     placeholder="ej: mi_rol"
                   />
                 </div>
@@ -227,7 +228,7 @@ export default function RolesManager() {
                     type="text"
                     value={editingRole.name || ''}
                     onChange={e => setEditingRole({ ...editingRole, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                    className="input-crema"
                     placeholder="Mi Nuevo Rol"
                   />
                 </div>
@@ -237,7 +238,7 @@ export default function RolesManager() {
                     type="text"
                     value={editingRole.description || ''}
                     onChange={e => setEditingRole({ ...editingRole, description: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                    className="input-crema"
                     placeholder="Describe las funciones de este rol"
                   />
                 </div>
@@ -253,7 +254,7 @@ export default function RolesManager() {
                           className={`p-3 rounded-xl border text-left text-xs transition-all ${
                             isActive
                               ? 'bg-primary/10 border-primary text-primary'
-                              : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
+                              : 'bg-white border-slate-200 text-secondary hover:border-slate-300'
                           }`}
                         >
                           <div className="flex items-center gap-2">
@@ -270,7 +271,7 @@ export default function RolesManager() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 mt-5">
+              <div className="modal-footer flex justify-end gap-2 mt-5">
                 <button onClick={() => { setEditingRole(null); setIsCreating(false); }} className="btn-secondary">Cancelar</button>
                 <button onClick={handleSave} className="btn-primary"><Check className="w-4 h-4" /> Guardar</button>
               </div>
