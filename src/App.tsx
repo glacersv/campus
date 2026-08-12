@@ -182,6 +182,21 @@ function AppContent() {
             <AcademicaDashboard />
           </RoleLayout>
         } />
+        <Route path="/coordinacion-academica/notas" element={
+          <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
+            {permissions.includes('notas') ? <NotasView /> : <Navigate to="/coordinacion-academica" replace />}
+          </RoleLayout>
+        } />
+        <Route path="/coordinacion-academica/horario" element={
+          <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
+            {permissions.includes('horario') ? <HorarioView /> : <Navigate to="/coordinacion-academica" replace />}
+          </RoleLayout>
+        } />
+        <Route path="/coordinacion-academica/clase" element={
+          <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
+            {permissions.includes('clase') ? <ClaseView /> : <Navigate to="/coordinacion-academica" replace />}
+          </RoleLayout>
+        } />
         <Route path="/coordinacion-academica/semana-juventud-admin" element={
           <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
             {permissions.includes('semana-juventud-admin') ? (

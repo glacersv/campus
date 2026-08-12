@@ -180,11 +180,12 @@ const CORRECT_ROLE_PERMISSIONS: Record<string, string[]> = {
 export async function fixRolesPermissions(): Promise<void> {
   const snapshot = await getDocs(collection(db, ROLES_COLLECTION));
   for (const d of snapshot.docs) {
-    const correct = CORRECT_ROLE_PERMISSIONS[d.id];
-    if (correct) {
-      const current = d.data().permissions || [];
-      const needsFix = correct.length !== current.length || correct.some((m, i) => m !== current[i]);
-      if (needsFix) {
+    const current = d.data().permissions || [];
+    // Solo arreglar roles que tengan permisos vacíos (nunca configurados)
+    // No sobrescribir permisos que el admin ya configuró manualmente
+    if (current.length === 0) {
+      const correct = CORRECT_ROLE_PERMISSIONS[d.id];
+      if (correct) {
         await updateDoc(doc(db, ROLES_COLLECTION, d.id), { permissions: correct });
       }
     }
