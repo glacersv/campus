@@ -1673,6 +1673,25 @@ export async function getProyectosAprobadosByDocente(docenteId: string): Promise
   );
 }
 
+export async function deleteProyecto(proyectoId: string): Promise<void> {
+  // 1. Eliminar actividades_evaluadas asociadas
+  const actQuery = query(collection(db, 'actividades_evaluadas'), where('proyecto_id', '==', proyectoId));
+  const actSnap = await getDocs(actQuery);
+  for (const d of actSnap.docs) {
+    await deleteDoc(d.ref);
+  }
+
+  // 2. Eliminar historial asociado
+  const histQuery = query(collection(db, 'historial'), where('proyecto_id', '==', proyectoId));
+  const histSnap = await getDocs(histQuery);
+  for (const d of histSnap.docs) {
+    await deleteDoc(d.ref);
+  }
+
+  // 3. Eliminar el proyecto
+  await deleteDoc(doc(db, 'proyectos', proyectoId));
+}
+
 export async function createActividadEvaluada(
   proyectoId: string,
   actividad: Omit<ActividadEvaluada, 'id' | 'created_at' | 'updated_at'>

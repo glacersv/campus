@@ -401,38 +401,29 @@ export default function FormularioProyecto({ proyectoInicial, onCancel, onSucces
         </div>
 
         <FormField label="Materia base *" error={errores.materia}>
-          {esEdicion ? (
-            <div className="form-input font-semibold bg-primary/5 border-primary/30 text-primary cursor-not-allowed">
-              {materias.find(m => m.id === materiaId)?.name || proyectoInicial?.materia_nombre || 'Sin materia'}
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {materias.map(m => {
-                const isSelected = materiaId === m.id;
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => setMateriaId(isSelected ? '' : m.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
-                      isSelected
-                        ? 'bg-primary border-primary text-white shadow-sm'
-                        : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-600'
-                    }`}
-                  >
-                    {isSelected && <Check className="w-3 h-3 inline mr-1" />}
-                    {m.name}
-                  </button>
-                );
-              })}
-              {materias.length === 0 && (
-                <span className="text-xs text-slate-400 italic">No hay materias disponibles</span>
-              )}
-            </div>
-          )}
-          {esEdicion && (
-            <span className="text-[10px] text-slate-400 mt-1 block">La materia base no se puede cambiar después de crear el proyecto</span>
-          )}
+          <div className="flex flex-wrap gap-1.5">
+            {materias.map(m => {
+              const isSelected = materiaId === m.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setMateriaId(isSelected ? '' : m.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                    isSelected
+                      ? 'bg-primary border-primary text-white shadow-sm'
+                      : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-600'
+                  }`}
+                >
+                  {isSelected && <Check className="w-3 h-3 inline mr-1" />}
+                  {m.name}
+                </button>
+              );
+            })}
+            {materias.length === 0 && (
+              <span className="text-xs text-slate-400 italic">No hay materias disponibles</span>
+            )}
+          </div>
         </FormField>
 
         {/* Materias secundarias */}

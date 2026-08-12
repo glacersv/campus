@@ -327,7 +327,8 @@ export type AccionHistorial =
   | 'reclasificacion'
   | 'rechazo_materia'
   | 'aprobacion_coordinacion'
-  | 'rechazo_coordinacion';
+  | 'rechazo_coordinacion'
+  | 'eliminado';
 
 export interface SugerenciaOpcion {
   tipo: 'presentacion' | 'dashboard' | 'app';
@@ -351,7 +352,7 @@ export interface ComplementoInformatica {
 
 // ==================== EVALUACIÓN DE PROYECTOS ====================
 
-export type TipoActividad = 'investigacion' | 'experimento' | 'presentacion' | 'codigo' | 'sitio_web' | 'excel' | 'escrito' | 'expo_feria' | 'arduino' | 'otro';
+export type TipoActividad = 'investigacion' | 'experimento' | 'presentacion' | 'codigo' | 'sitio_web' | 'excel' | 'escrito' | 'expo_feria' | 'arduino' | 'poo' | 'otro';
 
 export const TIPOS_ACTIVIDAD: Record<TipoActividad, { label: string; icon: string; materias: string[] }> = {
   investigacion: { label: 'Investigación',   icon: '🔬', materias: ['ciencia', 'ciudadania', 'lenguaje'] },
@@ -363,6 +364,7 @@ export const TIPOS_ACTIVIDAD: Record<TipoActividad, { label: string; icon: strin
   escrito:       { label: 'Reporte Escrito', icon: '📝', materias: ['lenguaje', 'ciudadania'] },
   expo_feria:    { label: 'Exposición Feria', icon: '🎤', materias: ['todas'] },
   arduino:       { label: 'Arduino/Robótica', icon: '🔧', materias: ['ciencia', 'matematicas', 'todas'] },
+  poo:           { label: 'Prog. Orientada a Objetos', icon: '🧊', materias: ['todas'] },
   otro:          { label: 'Otro',            icon: '📋', materias: ['todas'] },
 };
 

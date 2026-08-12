@@ -10,7 +10,7 @@ import {
   Proyecto, EstadoProyecto, Integrante,
   FECHA_LIMITE_REGISTRO, FECHA_LIMITE_APROBACION
 } from '../types';
-import { getAllSubjects, getTeacher } from '../lib/firestore';
+import { getAllSubjects, getTeacher, deleteProyecto as deleteProyectoFS } from '../lib/firestore';
 
 interface CrearProyectoData {
   titulo: string;
@@ -360,11 +360,37 @@ export function useProyectos() {
     }
   }
 
+  async function eliminarProyecto(proyectoId: string, motivo: string): Promise<{ ok?: boolean; error?: string }> {
+    if (!userProfile) return { error: 'No hay usuario autenticado' };
+    try {
+      const proyecto = proyectos.find(p => p.id === proyectoId);
+      if (!proyecto) return { error: 'Proyecto no encontrado' };
+
+      // Guardar historial ANTES de eliminar (con datos del proyecto)
+      await _registrarHistorial(proyectoId, 'eliminado', {
+        titulo: proyecto.titulo,
+        grado: proyecto.grado,
+        seccion: proyecto.seccion,
+        materia_nombre: proyecto.materia_nombre,
+        estado: proyecto.estado,
+        integrantes: proyecto.integrantes_detalle?.map(i => i.nombre) ?? [],
+      }, null, motivo);
+
+      // Eliminar proyecto y datos asociados
+      await deleteProyectoFS(proyectoId);
+
+      return { ok: true };
+    } catch (e: any) {
+      return { error: e.message };
+    }
+  }
+
   return {
     proyectos, loading, error,
     crearProyecto, guardarBorrador, enviarAValidacion,
     aprobarMateria, reclasificar, rechazarMateria,
     aprobarOficial, rechazarOficial,
     agregarMateriaSecundaria, removerMateriaSecundaria,
+    eliminarProyecto,
   };
 }

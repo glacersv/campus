@@ -9,6 +9,7 @@ const ACCION_INFO: Record<AccionHistorial, { label: string; icon: string; color:
   rechazo_materia:         { label: 'Rechazado por docente',        icon: '❌', color: 'bg-red-500' },
   aprobacion_coordinacion: { label: 'Aprobado oficialmente',        icon: '🏆', color: 'bg-emerald-500' },
   rechazo_coordinacion:    { label: 'Rechazado por coordinación',   icon: '🚫', color: 'bg-red-500' },
+  eliminado:               { label: 'Proyecto eliminado',           icon: '🗑️', color: 'bg-red-600' },
 };
 
 export default function Historial({ proyectoId }: { proyectoId: string }) {

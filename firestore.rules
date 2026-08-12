@@ -158,14 +158,14 @@ service cloud.firestore {
         'titulo', 'descripcion', 'grado', 'seccion', 'materia_id', 'materia_nombre',
         'materias_secundarias', 'integrantes', 'integrantes_detalle', 'actividades_evaluadas'
       ]);
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || isDocente();
     }
 
     // Historial Collection (Proyectos audit trail)
     match /historial/{entryId} {
       allow read: if isStaff() || isAlumno();
       allow create: if isAuthenticated();
-      allow update, delete: if isAdmin();
+      allow update, delete: if isAdmin() || isDocente();
     }
 
     // Actividades Evaluadas Collection
@@ -174,7 +174,7 @@ service cloud.firestore {
       allow create: if isDocente() || isAdmin();
       allow update: if isDocente() || isAdmin() || 
         (isAlumno() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['url_entrega']));
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || isDocente();
     }
 
     // Evaluaciones Informatica Collection (legacy)

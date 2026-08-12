@@ -13,7 +13,7 @@ import {
   Medal, Plus, ChevronDown, ChevronUp, Clock, CheckCircle2,
   XCircle, FlaskConical, Search, Eye, Award, ClipboardCheck,
   TrendingUp, Users, AlertTriangle, ChevronLeft, ChevronRight,
-  Calendar
+  Calendar, Trash2
 } from 'lucide-react';
 import { TIPOS_ACTIVIDAD } from '../../types';
 
@@ -37,7 +37,7 @@ export default function ProjectsModule({ view, compact = false }: Props) {
   const { userProfile } = useAuth();
   const {
     proyectos, loading, aprobarMateria, reclasificar,
-    rechazarMateria, aprobarOficial, rechazarOficial
+    rechazarMateria, aprobarOficial, rechazarOficial, eliminarProyecto
   } = useProyectos();
 
   const [materias, setMaterias] = useState<Subject[]>([]);
@@ -51,6 +51,7 @@ export default function ProjectsModule({ view, compact = false }: Props) {
   const [proyectoActivo, setProyectoActivo] = useState<Proyecto | null>(null);
   const [modal, setModal] = useState<{ tipo: string; proyectoId: string } | null>(null);
   const [formModal, setFormModal] = useState({ materia: '', comentario: '' });
+  const [deleteModal, setDeleteModal] = useState<{ proyecto: Proyecto; motivo: string } | null>(null);
   const [msg, setMsg] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
   const [filtroEstado, setFiltroEstado] = useState('');
   const [busqueda, setBusqueda] = useState('');
@@ -88,6 +89,18 @@ export default function ProjectsModule({ view, compact = false }: Props) {
     if (res.error) { setMsg({ tipo: 'error', texto: res.error }); return; }
     setModal(null);
     setMsg({ tipo: 'ok', texto: 'Acción registrada.' });
+    setTimeout(() => setMsg(null), 3000);
+  }
+
+  async function handleEliminar() {
+    if (!deleteModal || !deleteModal.motivo.trim()) return;
+    const res = await eliminarProyecto(deleteModal.proyecto.id, deleteModal.motivo.trim());
+    if (res.error) {
+      setMsg({ tipo: 'error', texto: res.error });
+    } else {
+      setDeleteModal(null);
+      setMsg({ tipo: 'ok', texto: 'Proyecto eliminado correctamente.' });
+    }
     setTimeout(() => setMsg(null), 3000);
   }
 
@@ -267,6 +280,7 @@ export default function ProjectsModule({ view, compact = false }: Props) {
                     setFormModal({ materia: p.materia_id, comentario: '' });
                   }}
                   onVerDetalle={() => { setProyectoActivo(p); setShowForm(true); }}
+                  onDelete={view === 'docente' ? () => setDeleteModal({ proyecto: p, motivo: '' }) : undefined}
                 />
               </motion.div>
             ))}
@@ -310,17 +324,70 @@ export default function ProjectsModule({ view, compact = false }: Props) {
           />
         </ModalOverlay>
       )}
+
+      {/* Modal eliminar proyecto */}
+      {deleteModal && (
+        <ModalOverlay onClose={() => setDeleteModal(null)}>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Eliminar Proyecto</h3>
+                <p className="text-sm text-slate-500">Esta acción no se puede deshacer</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 rounded-xl p-4">
+              <p className="text-sm font-medium text-slate-700">{deleteModal.proyecto.titulo}</p>
+              <p className="text-xs text-slate-500 mt-1">
+                {deleteModal.proyecto.grado} {deleteModal.proyecto.seccion} · {deleteModal.proyecto.materia_nombre}
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">
+                Motivo de eliminación *
+              </label>
+              <textarea
+                className="input min-h-[80px] resize-none"
+                placeholder="Describe el motivo por el cual se elimina este proyecto..."
+                value={deleteModal.motivo}
+                onChange={e => setDeleteModal({ ...deleteModal, motivo: e.target.value })}
+              />
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors"
+                onClick={() => setDeleteModal(null)}
+              >
+                Cancelar
+              </button>
+              <button
+                className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50"
+                disabled={!deleteModal.motivo.trim()}
+                onClick={handleEliminar}
+              >
+                Eliminar Proyecto
+              </button>
+            </div>
+          </div>
+        </ModalOverlay>
+      )}
     </div>
   );
 }
 
-function ProyectoRow({ proyecto: p, rol, view, materias, onRevisar, onVerDetalle }: {
+function ProyectoRow({ proyecto: p, rol, view, materias, onRevisar, onVerDetalle, onDelete }: {
   proyecto: Proyecto; rol?: string; view: string; materias: Subject[];
-  onRevisar: () => void; onVerDetalle: () => void;
+  onRevisar: () => void; onVerDetalle: () => void; onDelete?: () => void;
 }) {
   const canRevisar =
     (view === 'docente' && ['borrador', 'registrado', 'en_revision_materia'].includes(p.estado)) ||
     (view === 'coordinacion' && p.estado === 'en_coordinacion');
+  const canDelete = view === 'docente' && onDelete;
 
   const statusKey = ESTADOS_PROYECTO[p.estado]?.color ?? 'gray';
 
@@ -355,6 +422,12 @@ function ProyectoRow({ proyecto: p, rol, view, materias, onRevisar, onVerDetalle
           <button className="text-sm px-4 py-2 bg-orange-50 text-orange-700 border border-orange-200 rounded-xl hover:bg-orange-100 transition-colors font-medium"
             onClick={e => { e.stopPropagation(); onRevisar(); }}>
             Revisar
+          </button>
+        )}
+        {canDelete && (
+          <button className="text-sm px-3 py-2 bg-red-50 text-red-600 border border-red-200 rounded-xl hover:bg-red-100 transition-colors opacity-0 group-hover:opacity-100"
+            onClick={e => { e.stopPropagation(); onDelete!(); }}>
+            <Trash2 className="w-4 h-4 inline" />
           </button>
         )}
         <button className="text-sm px-3 py-2 bg-slate-50 text-slate-500 border border-slate-200 rounded-xl hover:bg-slate-100 transition-colors opacity-0 group-hover:opacity-100"
