@@ -2,6 +2,16 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 
 export type ThemePalette = 'salesiano' | 'oceano' | 'violeta' | 'noche' | 'donezo';
 
+export type FontScale = 90 | 100 | 110 | 125;
+
+export type FontFamilyId = 'campus' | 'sistema' | 'serif';
+
+export interface FontFamilyConfig {
+  label: string;
+  sans: string;
+  display: string;
+}
+
 interface ThemePaletteColors {
   primary: string;
   primaryDark: string;
@@ -42,11 +52,35 @@ const PALETTES: Record<ThemePalette, ThemePaletteColors> = {
   }
 };
 
+const FONT_FAMILIES: Record<FontFamilyId, FontFamilyConfig> = {
+  campus: {
+    label: 'Campus (Actual)',
+    sans: '"Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif',
+    display: '"Outfit", ui-sans-serif, system-ui, sans-serif',
+  },
+  sistema: {
+    label: 'Sistema (Moderno)',
+    sans: 'system-ui, -apple-system, "Segoe UI", sans-serif',
+    display: 'system-ui, -apple-system, "Segoe UI", sans-serif',
+  },
+  serif: {
+    label: 'Serif (Elegante)',
+    sans: 'Georgia, "Times New Roman", serif',
+    display: 'Georgia, "Times New Roman", serif',
+  },
+};
+
 interface ThemeContextType {
   palette: ThemePalette;
   colors: ThemePaletteColors;
   setPalette: (p: ThemePalette) => void;
   palettes: typeof PALETTES;
+  fontScale: FontScale;
+  setFontScale: (s: FontScale) => void;
+  fontFamily: FontFamilyId;
+  setFontFamily: (f: FontFamilyId) => void;
+  fontFamilies: typeof FONT_FAMILIES;
+  fontScales: FontScale[];
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -54,6 +88,13 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [palette, setPalette] = useState<ThemePalette>(() => {
     return (localStorage.getItem('theme-palette') as ThemePalette) || 'salesiano';
+  });
+  const [fontScale, setFontScale] = useState<FontScale>(() => {
+    const stored = Number(localStorage.getItem('theme-font-scale'));
+    return (stored === 90 || stored === 110 || stored === 125) ? stored as FontScale : 100;
+  });
+  const [fontFamily, setFontFamily] = useState<FontFamilyId>(() => {
+    return (localStorage.getItem('theme-font-family') as FontFamilyId) || 'campus';
   });
 
   const colors = PALETTES[palette];
@@ -71,8 +112,30 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.style.setProperty('--color-primary-rgb', hexToRgb(colors.primary));
   }, [palette, colors]);
 
+  useEffect(() => {
+    localStorage.setItem('theme-font-scale', String(fontScale));
+    const root = document.documentElement;
+    root.style.setProperty('--font-scale', String(fontScale / 100));
+  }, [fontScale]);
+
+  useEffect(() => {
+    localStorage.setItem('theme-font-family', fontFamily);
+    const cfg = FONT_FAMILIES[fontFamily];
+    const root = document.documentElement;
+    root.style.setProperty('--font-sans', cfg.sans);
+    root.style.setProperty('--font-display', cfg.display);
+  }, [fontFamily]);
+
   return (
-    <ThemeContext.Provider value={{ palette, colors, setPalette, palettes: PALETTES }}>
+    <ThemeContext.Provider
+      value={{
+        palette, colors, setPalette, palettes: PALETTES,
+        fontScale, setFontScale,
+        fontFamily, setFontFamily,
+        fontFamilies: FONT_FAMILIES,
+        fontScales: [90, 100, 110, 125],
+      }}
+    >
       {children}
     </ThemeContext.Provider>
   );

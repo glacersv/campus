@@ -24,6 +24,7 @@
   --radius-md: 16px;
   --radius-lg: 24px;
   --radius-xl: 32px;
+  --font-scale: 1;
 
   /* Motion tokens - Emil Kowalski & Apple Design */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
@@ -40,6 +41,10 @@
   --glass-border: rgba(255, 255, 255, 0.75);
   --glass-shadow: 0 12px 36px rgba(0, 0, 0, 0.05);
   --glass-blur: 20px;
+}
+
+html {
+  font-size: calc(16px * var(--font-scale));
 }
 
 body {

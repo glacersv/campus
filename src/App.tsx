@@ -27,6 +27,7 @@ import ClaseView from './components/clase/ClaseView';
 import EventosView from './components/eventos/EventosView';
 import AvisosView from './components/avisos/AvisosView';
 import RoleLayout from './components/shared/RoleLayout';
+import FloatingStyleWidget from './components/shared/FloatingStyleWidget';
 import CoordinacionDashboard from './components/coordinacion/CoordinacionDashboard';
 import AcademicaDashboard from './components/coordinacion/AcademicaDashboard';
 import ConvivenciaDashboard from './components/coordinacion/ConvivenciaDashboard';
@@ -128,10 +129,17 @@ function AppContent() {
     return roleConfig?.permissions || getDefaultModulesForRole(normalizedRole);
   };
 
+  const withStyleWidget = (content: React.ReactNode) => (
+    <>
+      {content}
+      <FloatingStyleWidget />
+    </>
+  );
+
   // Admin view
   const normalizedRoleForView = (userRole || '').toLowerCase();
   if (normalizedRoleForView === 'admin') {
-    return (
+    return withStyleWidget(
       <Routes>
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
@@ -159,7 +167,7 @@ function AppContent() {
 
   if (normalizedRoleForView === 'coordinacion') {
     const modules = getModules();
-    return (
+    return withStyleWidget(
       <Routes>
         <Route path="/coordinacion" element={
           <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
@@ -175,7 +183,7 @@ function AppContent() {
   if (normalizedRoleForView === 'coordinacion_academica') {
     const modules = getModules();
     const permissions = roleConfig?.permissions || [];
-    return (
+    return withStyleWidget(
       <Routes>
         <Route path="/coordinacion-academica" element={
           <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
@@ -212,7 +220,7 @@ function AppContent() {
   // Coordinacion Convivencia view
   if (normalizedRoleForView === 'coordinacion_convivencia') {
     const modules = getModules();
-    return (
+    return withStyleWidget(
       <Routes>
         <Route path="/coordinacion-convivencia" element={
           <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
@@ -227,7 +235,7 @@ function AppContent() {
   // Coordinacion Primaria view
   if (normalizedRoleForView === 'coordinacion_primaria') {
     const modules = getModules();
-    return (
+    return withStyleWidget(
       <Routes>
         <Route path="/coordinacion-primaria" element={
           <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
@@ -242,7 +250,7 @@ function AppContent() {
   // Coordinacion Parvularia view
   if (normalizedRoleForView === 'coordinacion_parvularia') {
     const modules = getModules();
-    return (
+    return withStyleWidget(
       <Routes>
         <Route path="/coordinacion-parvularia" element={
           <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
@@ -257,7 +265,7 @@ function AppContent() {
   // Registro academico view
   if (normalizedRoleForView === 'registro_academico') {
     const modules = getModules();
-    return (
+    return withStyleWidget(
       <Routes>
         <Route path="/registro" element={
           <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
@@ -272,7 +280,7 @@ function AppContent() {
   // Enfermeria view
   if (normalizedRoleForView === 'enfermeria') {
     const modules = getModules();
-    return (
+    return withStyleWidget(
       <Routes>
         <Route path="/enfermeria" element={
           <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
@@ -287,7 +295,7 @@ function AppContent() {
   // Psicopedagogia view
   if (normalizedRoleForView === 'psicopedagogico') {
     const modules = getModules();
-    return (
+    return withStyleWidget(
       <Routes>
         <Route path="/psicopedagogico" element={
           <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
@@ -304,7 +312,7 @@ function AppContent() {
   if (userRole === 'docente') {
     const permissions = roleConfig?.permissions || getDefaultModulesForRole('docente');
 
-    return (
+    return withStyleWidget(
       <Routes>
         <Route path="/docente" element={<TeacherLayout />}>
           <Route index element={<TeacherHome />} />
@@ -343,7 +351,7 @@ function AppContent() {
   if (normalizedRoleForView === 'alumno') {
     const modules = getModules();
     const permissions = roleConfig?.permissions || getDefaultModulesForRole('alumno');
-    return (
+    return withStyleWidget(
       <Routes>
         <Route path="/alumno" element={
           <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
@@ -378,7 +386,7 @@ function AppContent() {
     );
   }
 
-  return (
+  return withStyleWidget(
     <Routes>
       <Route path="/" element={
         <StudentDashboard
