@@ -1,6 +1,24 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "plugin": ["opencode-qwen-auth"],
   "provider": {
+    "qwen": {
+      "npm": "@ai-sdk/openai",
+      "name": "Qwen (OAuth)",
+      "options": {
+        "baseURL": "https://portal.qwen.ai/v1",
+        "compatibility": "strict"
+      },
+      "models": {
+        "qwen3-coder-plus": {
+          "name": "Qwen3 Coder Plus (1M contexto)"
+        },
+        "qwen3-vl-plus": {
+          "name": "Qwen3 VL Plus (visión)",
+          "attachment": true
+        }
+      }
+    },
     "ollama": {
       "npm": "@ai-sdk/openai-compatible",
       "name": "Ollama Local",
@@ -20,7 +38,7 @@
       "npm": "@ai-sdk/google",
       "name": "Gemini Cloud",
       "options": {
-        "apiKey": "${GEMINI_API_KEY}"
+        "apiKey": "{env:GEMINI_API_KEY}"
       },
       "models": {
         "gemini-2.0-flash": {

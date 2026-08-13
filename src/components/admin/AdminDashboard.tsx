@@ -19,7 +19,8 @@ import {
 } from 'lucide-react';
 import { getAllTeachers, getAllGrades, getAllStudents, getAllSections, getAllSubjects } from '../../lib/firestore';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
-import ProjectsModule from '../proyectos/ProjectsModule';
+import ProgressArcGauge from '../shared/ProgressArcGauge';
+import StatPillCards from '../shared/StatPillCards';
 import { useAuth } from '../../contexts/AuthContext';
 
 const attendanceData = [
@@ -32,9 +33,9 @@ const attendanceData = [
 ];
 
 const disciplineData = [
-  { name: 'Uniforme Incorrecto', value: 48, color: '#25855A' },
-  { name: 'Cabello fuera de norma', value: 35, color: '#FAB700' },
-  { name: 'Uñas Pintadas/Acrílicas', value: 17, color: '#D32F2F' }
+  { name: 'Uniforme Incorrecto', value: 48, color: 'var(--color-primary)' },
+  { name: 'Cabello fuera de norma', value: 35, color: 'var(--color-secondary)' },
+  { name: 'Uñas Pintadas/Acrílicas', value: 17, color: 'var(--color-danger)' }
 ];
 
 interface Stats {
@@ -114,7 +115,7 @@ export default function AdminDashboard() {
 
       {/* Analytics Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Attendance Chart */}
+        {/* Attendance Chart - barras redondeadas */}
         <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col h-[380px]">
           <div className="flex items-center justify-between mb-4 shrink-0">
             <div>
@@ -122,23 +123,39 @@ export default function AdminDashboard() {
                 <TrendingUp className="w-5 h-5 text-primary" />
                 Rendimiento de Asistencia Promedio por Nivel
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">Porcentaje promedio de asistencia y llegadas tarde en la jornada</p>
+              <p className="text-xs text-slate-400 mt-0.5">Porcentaje promedio de asistencia en la jornada</p>
             </div>
-            <span className="text-[10px] font-bold text-primary bg-primary/10 px-3 py-1 rounded-full font-mono">En Vivo</span>
+            <span className="text-[0.625rem] font-bold text-primary bg-primary/10 px-3 py-1 rounded-full font-mono">En Vivo</span>
           </div>
           <div className="flex-1 min-h-0">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={attendanceData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} domain={[80, 100]} />
+                <XAxis dataKey="name" stroke="#94a3b8" fontSize="0.6875rem" tickLine={false} axisLine={false} />
+                <YAxis stroke="#94a3b8" fontSize="0.6875rem" tickLine={false} axisLine={false} domain={[80, 100]} />
                 <Tooltip
-                  contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '16px', fontSize: '11px' }}
+                  contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: '16px', fontSize: '0.6875rem' }}
                   cursor={{ fill: '#f8fafc' }}
                 />
-                <Legend iconSize={10} iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '5px' }} />
-                <Bar name="Asistencia %" dataKey="asistencia" fill="#25855A" radius={[12, 12, 0, 0]} barSize={24} />
-                <Bar name="Retardos %" dataKey="retardos" fill="#FAB700" radius={[12, 12, 0, 0]} barSize={24} />
+                <Legend iconSize={10} iconType="circle" wrapperStyle={{ fontSize: '0.6875rem', paddingTop: '5px' }} />
+                <Bar
+                  dataKey="asistencia"
+                  name="Asistencia %"
+                  fill="var(--color-primary)"
+                  radius={[12, 12, 0, 0]}
+                  barSize={24}
+                  maxBarSize={24}
+                  background={{ fill: 'var(--color-primary-light)', opacity: 0.35 }}
+                />
+                <Bar
+                  dataKey="retardos"
+                  name="Retardos %"
+                  fill="var(--color-secondary)"
+                  radius={[12, 12, 0, 0]}
+                  barSize={24}
+                  maxBarSize={24}
+                  background={{ fill: 'var(--color-secondary)', opacity: 0.15 }}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -162,19 +179,20 @@ export default function AdminDashboard() {
                   cy="45%"
                   innerRadius={60}
                   outerRadius={80}
-                  paddingAngle={5}
+                  paddingAngle={4}
+                  cornerRadius={8}
                   dataKey="value"
                 >
                   {disciplineData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={{ borderRadius: '16px', fontSize: '11px' }} />
+                <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: '16px', fontSize: '0.6875rem' }} />
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
               <span className="block text-2xl font-black text-slate-900 font-display">100%</span>
-              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Total</span>
+              <span className="text-[0.5625rem] text-slate-400 font-bold uppercase tracking-wider">Total</span>
             </div>
           </div>
           <div className="grid grid-cols-1 gap-1.5 text-xs text-slate-600 shrink-0 border-t border-slate-100 pt-3">
@@ -191,8 +209,62 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Projects Module */}
-      <ProjectsModule view="admin" />
+      {/* Arc Gauge + StatPill Showcase */}
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+        className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 font-display">
+              Indicadores Clave de la Institución
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">Medidor de progreso y tarjetas de métrica</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="bg-slate-50 rounded-2xl border border-slate-100 p-4 flex items-center justify-center">
+            <ProgressArcGauge
+              value={stats.students > 0 ? Math.min(100, Math.round((stats.teachers / stats.students) * 100)) : 0}
+              title="Docentes vs Alumnos"
+              subtitle={`${stats.teachers} docentes para ${stats.students} alumnos`}
+              size={180}
+            />
+          </div>
+          <div className="lg:col-span-2">
+            <StatPillCards
+              items={[
+                {
+                  id: 'students',
+                  label: 'Alumnos Matriculados',
+                  value: String(stats.students),
+                  percentage: Math.min(100, Math.round((stats.students / 300) * 100)),
+                  trend: 12,
+                  hint: 'Matrícula activa en el ciclo actual',
+                },
+                {
+                  id: 'teachers',
+                  label: 'Docentes Activos',
+                  value: String(stats.teachers),
+                  percentage: stats.students > 0 ? Math.min(100, Math.round((stats.teachers / 20) * 100)) : 0,
+                  trend: 5,
+                  hint: 'Distribución por grado y materia',
+                },
+                {
+                  id: 'coverage',
+                  label: 'Cobertura de Grados',
+                  value: `${stats.grades}`,
+                  percentage: Math.min(100, Math.round((stats.grades / 6) * 100)),
+                  trend: -2,
+                  hint: `${stats.grades} grados con ${stats.sections} secciones asignadas`,
+                },
+              ]}
+            />
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 }

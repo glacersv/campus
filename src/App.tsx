@@ -159,6 +159,7 @@ function AppContent() {
           <Route path="attendance-reports" element={<AttendanceReportsHistory />} />
           <Route path="estadisticas" element={<EstadisticasDashboard />} />
           <Route path="school-year" element={<SchoolYearManager />} />
+          <Route path="proyectos" element={<ProjectsModule view="admin" />} />
         </Route>
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>

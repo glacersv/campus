@@ -13,7 +13,7 @@ import {
   Filter,
   AlertTriangle
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { getAllTeachers, getAllGrades, getAllStudents, getAllSections, getAllSubjects } from '../../lib/firestore';
 import { getAttendanceReports } from '../../firebase';
 import { AttendanceReport } from '../../types';
@@ -190,22 +190,60 @@ export default function EstadisticasDashboard() {
               {promedioAsistencia.toFixed(1)}% promedio
             </span>
           </div>
-          <div className="flex-1 min-h-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={attendanceByGrade} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                <Tooltip
-                  contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '11px' }}
-                  cursor={{ fill: '#f8fafc' }}
-                />
-                <Legend iconSize={10} iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '5px' }} />
-                <Bar name="Presentes" dataKey="presentes" fill="var(--color-primary)" radius={[12, 12, 0, 0]} barSize={25} />
-                <Bar name="Tardes" dataKey="tardes" fill="var(--color-secondary)" radius={[12, 12, 0, 0]} barSize={25} />
-                <Bar name="Ausentes" dataKey="ausentes" fill="var(--color-danger)" radius={[12, 12, 0, 0]} barSize={25} />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="flex-1 min-h-0 flex flex-col justify-center">
+            <div className="space-y-4">
+              {attendanceByGrade.map((item) => {
+                const total = item.total || 1;
+                const pPresentes = (item.presentes / total) * 100;
+                const pTardes = (item.tardes / total) * 100;
+                const pAusentes = (item.ausentes / total) * 100;
+                return (
+                  <div key={item.name} className="flex items-center gap-3">
+                    <span className="w-24 text-xs font-semibold text-slate-500 truncate text-right shrink-0">
+                      {item.name}
+                    </span>
+                    <div className="flex-1">
+                      <div className="w-full bg-slate-100 rounded-full h-7 flex items-center overflow-hidden p-1">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{ width: `${Math.max(0, pPresentes)}%`, background: 'linear-gradient(90deg, var(--color-primary-light), var(--color-primary))' }}
+                        />
+                        <div
+                          className="h-full transition-all duration-500"
+                          style={{ width: `${Math.max(0, pTardes)}%`, background: 'var(--color-secondary)' }}
+                        />
+                        <div
+                          className="h-full rounded-r-full transition-all duration-500"
+                          style={{ width: `${Math.max(0, pAusentes)}%`, background: 'var(--color-danger)' }}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 w-28 shrink-0">
+                      <span className="text-xs font-mono font-bold text-primary">
+                        {((item.presentes + item.tardes) / total * 100).toFixed(0)}%
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {item.total}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex items-center justify-center gap-4 mt-4 text-xs font-medium text-slate-500">
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full" style={{ background: 'var(--color-primary)' }} />
+                Presentes
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full" style={{ background: 'var(--color-secondary)' }} />
+                Tardes
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full" style={{ background: 'var(--color-danger)' }} />
+                Ausentes
+              </span>
+            </div>
           </div>
         </div>
 
@@ -235,7 +273,7 @@ export default function EstadisticasDashboard() {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip contentStyle={{ borderRadius: '12px', fontSize: '11px' }} />
+                  <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: '12px', fontSize: '0.6875rem' }} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -249,7 +287,7 @@ export default function EstadisticasDashboard() {
                 <span className="block text-2xl font-black text-slate-800">
                   {attendanceStats.cabelloLargo + attendanceStats.unasPintadas + attendanceStats.uniformeIncorrecto}
                 </span>
-                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Total</span>
+                <span className="text-[0.5625rem] text-slate-400 font-bold uppercase tracking-wider">Total</span>
               </div>
             )}
           </div>
@@ -295,13 +333,13 @@ export default function EstadisticasDashboard() {
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={attendanceTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis dataKey="fecha" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-              <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} domain={[80, 100]} />
+              <XAxis dataKey="fecha" stroke="#94a3b8" fontSize="0.625rem" tickLine={false} axisLine={false} />
+              <YAxis stroke="#94a3b8" fontSize="0.625rem" tickLine={false} axisLine={false} domain={[80, 100]} />
               <Tooltip
-                contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '11px' }}
+                contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: '12px', fontSize: '0.6875rem' }}
                 cursor={{ fill: '#f8fafc' }}
               />
-              <Legend iconSize={10} iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '5px' }} />
+              <Legend iconSize={10} iconType="circle" wrapperStyle={{ fontSize: '0.6875rem', paddingTop: '5px' }} />
               <Line type="monotone" dataKey="asistencia" name="% Asistencia" stroke="var(--color-primary)" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
               <Line type="monotone" dataKey="tardes" name="Tardes" stroke="var(--color-secondary)" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
             </LineChart>

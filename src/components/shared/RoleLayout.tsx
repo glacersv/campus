@@ -39,7 +39,7 @@ export default function RoleLayout({ modules, moduleIcons, moduleColors, childre
                 </div>
                 <div>
                   <h1 className="text-sm font-bold text-slate-900 font-display">Campus</h1>
-                  <p className="text-[10px] text-slate-500 font-medium truncate">Salesiano San José</p>
+                  <p className="text-[0.625rem] text-slate-500 font-medium truncate">Salesiano San José</p>
                 </div>
               </div>
             )}
@@ -104,8 +104,8 @@ export default function RoleLayout({ modules, moduleIcons, moduleColors, childre
           {!collapsed && (
             <div className="px-3 py-2 mb-2">
               <p className="text-xs font-semibold text-slate-900 truncate">{userProfile?.displayName}</p>
-              <p className="text-[10px] text-slate-400 truncate">{userProfile?.email}</p>
-              <span className="text-[10px] font-bold text-primary bg-primary-light px-2 py-0.5 rounded-full mt-1 inline-block capitalize">
+              <p className="text-[0.625rem] text-slate-400 truncate">{userProfile?.email}</p>
+              <span className="text-[0.625rem] font-bold text-primary bg-primary-light px-2 py-0.5 rounded-full mt-1 inline-block capitalize">
                 {roleLabel}
               </span>
             </div>

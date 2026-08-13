@@ -20,7 +20,8 @@ import {
   Calendar,
   FileText,
   BarChart3,
-  Search
+  Search,
+  Medal
 } from 'lucide-react';
 import { useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -62,6 +63,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     ]},
     { title: 'CONVIVENCIA', items: [
       { id: 'convivencia', label: 'Panel Convivencia', icon: Handshake },
+    ]},
+    { title: 'PROYECTOS', items: [
+      { id: 'proyectos', label: 'Proyectos', icon: Medal },
     ]},
     { title: 'INFRAESTRUCTURA', items: [
       { id: 'buildings', label: 'Edificios', icon: Building2 },

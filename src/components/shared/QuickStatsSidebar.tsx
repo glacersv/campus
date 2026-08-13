@@ -127,7 +127,7 @@ export default function QuickStatsSidebar() {
               </h4>
               <div className="flex items-center gap-1 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[9px] font-semibold text-emerald-700">En línea</span>
+                <span className="text-[0.5625rem] font-semibold text-emerald-700">En línea</span>
               </div>
             </div>
           </div>
@@ -140,7 +140,7 @@ export default function QuickStatsSidebar() {
             <button onClick={prevMonth} className="w-6 h-6 rounded-full hover:bg-slate-100 flex items-center justify-center transition-colors">
               <ChevronLeft className="w-3 h-3 text-slate-500" />
             </button>
-            <h4 className="text-[11px] font-bold text-slate-800 font-display">
+            <h4 className="text-[0.6875rem] font-bold text-slate-800 font-display">
               {MONTHS_ES[calMonth]} {calYear}
             </h4>
             <button onClick={nextMonth} className="w-6 h-6 rounded-full hover:bg-slate-100 flex items-center justify-center transition-colors">
@@ -151,7 +151,7 @@ export default function QuickStatsSidebar() {
           {/* Day headers */}
           <div className="grid grid-cols-7 gap-px">
             {DAYS_SHORT.map(d => (
-              <div key={d} className="text-center text-[8px] font-bold text-slate-400 uppercase py-0.5">{d}</div>
+              <div key={d} className="text-center text-[0.5rem] font-bold text-slate-400 uppercase py-0.5">{d}</div>
             ))}
           </div>
 
@@ -170,7 +170,7 @@ export default function QuickStatsSidebar() {
                   key={dateStr}
                   title={dayEvents.map(e => e.title).join(', ')}
                   className={`
-                    relative flex items-center justify-center w-full aspect-square rounded-lg text-[9px] font-semibold transition-all
+                    relative flex items-center justify-center w-full aspect-square rounded-lg text-[0.5625rem] font-semibold transition-all
                     ${isToday ? 'bg-primary text-white shadow-sm shadow-primary/30' : ''}
                     ${!isToday && hasAsueto ? 'bg-amber-100 text-amber-800' : ''}
                     ${!isToday && hasEvent && !hasAsueto ? 'bg-primary/8 text-primary' : ''}
@@ -194,15 +194,15 @@ export default function QuickStatsSidebar() {
           <div className="flex items-center gap-2 pt-1 border-t border-slate-50">
             <div className="flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
-              <span className="text-[8px] text-slate-400 font-medium">Asueto</span>
+              <span className="text-[0.5rem] text-slate-400 font-medium">Asueto</span>
             </div>
             <div className="flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-primary/60 inline-block" />
-              <span className="text-[8px] text-slate-400 font-medium">Evento</span>
+              <span className="text-[0.5rem] text-slate-400 font-medium">Evento</span>
             </div>
             <div className="flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
-              <span className="text-[8px] text-slate-400 font-medium">Hoy</span>
+              <span className="text-[0.5rem] text-slate-400 font-medium">Hoy</span>
             </div>
           </div>
         </div>
@@ -210,13 +210,13 @@ export default function QuickStatsSidebar() {
         {/* ── Próximos Eventos ── */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 space-y-2">
           <div className="flex items-center justify-between">
-            <h4 className="text-[10px] font-bold text-slate-800 uppercase tracking-wider font-display">
+            <h4 className="text-[0.625rem] font-bold text-slate-800 uppercase tracking-wider font-display">
               Próximos Eventos
             </h4>
           </div>
 
           {upcomingEvents.length === 0 ? (
-            <p className="text-[10px] text-slate-400 text-center py-2">
+            <p className="text-[0.625rem] text-slate-400 text-center py-2">
               Sin eventos próximos
             </p>
           ) : (
@@ -230,11 +230,11 @@ export default function QuickStatsSidebar() {
                       <Icon className={`w-3 h-3 ${cfg.text}`} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className={`text-[10px] font-bold ${cfg.text} leading-tight truncate`}>{event.title}</p>
-                      <p className="text-[9px] text-slate-400">{formatDate(event.date)}</p>
+                      <p className={`text-[0.625rem] font-bold ${cfg.text} leading-tight truncate`}>{event.title}</p>
+                      <p className="text-[0.5625rem] text-slate-400">{formatDate(event.date)}</p>
                     </div>
                     {event.affectsClasses && (
-                      <span className="text-[8px] font-bold text-red-500 shrink-0 bg-red-50 px-1 py-0.5 rounded-full">
+                      <span className="text-[0.5rem] font-bold text-red-500 shrink-0 bg-red-50 px-1 py-0.5 rounded-full">
                         Sin clases
                       </span>
                     )}
@@ -249,7 +249,7 @@ export default function QuickStatsSidebar() {
         {canManageCalendar && (
           <button
             onClick={() => setShowConfig(true)}
-            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed border-primary/30 text-primary text-[10px] font-bold hover:bg-primary/5 transition-colors"
+            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed border-primary/30 text-primary text-[0.625rem] font-bold hover:bg-primary/5 transition-colors"
           >
             <Settings2 className="w-3 h-3" />
             Gestionar Calendario
