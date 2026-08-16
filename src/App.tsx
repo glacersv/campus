@@ -43,11 +43,12 @@ import ModulePlaceholder from './components/docente/ModulePlaceholder';
 import StudentDashboard from './components/alumno/StudentDashboard';
 import ProjectsModule from './components/proyectos/ProjectsModule';
 import DocenteProyectosCRUD from './components/docente/DocenteProyectosCRUD';
+import EvaluacionProyecto from './components/proyectos/EvaluacionProyecto';
 import ProyectosAdmin from './components/coordinacion/ProyectosAdmin';
 import { SystemModuleId } from './types';
 import { seedInitialData, ensureAdminAccount, seedProyectoCultivoBacterias } from './lib/firestore';
 
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
 
 // Icons for role layouts
 import { ClipboardCheck, BookOpen, School, Calendar, CalendarDays, Bell, Medal } from 'lucide-react';
@@ -321,6 +322,12 @@ function AppContent() {
             ) : <Navigate to="/docente" replace />
           } />
 
+          <Route path="evaluar/:proyectoId" element={
+            permissions.includes('proyectos') ? (
+              <EvaluacionProyectoRoute />
+            ) : <Navigate to="/docente" replace />
+          } />
+
           {/* Placeholders for other modules */}
           <Route path="notas" element={permissions.includes('notas') ? <NotasView /> : <Navigate to="/docente" replace />} />
           <Route path="clase" element={permissions.includes('clase') ? <ClaseView /> : <Navigate to="/docente" replace />} />
@@ -383,6 +390,13 @@ function AppContent() {
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
+}
+
+function EvaluacionProyectoRoute() {
+  const { proyectoId } = useParams();
+  const navigate = useNavigate();
+  if (!proyectoId) return <Navigate to="/docente/proyectos" replace />;
+  return <EvaluacionProyecto proyectoId={proyectoId} onBack={() => navigate('/docente/proyectos')} />;
 }
 
 export default function App() {

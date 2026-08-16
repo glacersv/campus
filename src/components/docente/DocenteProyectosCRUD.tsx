@@ -2,8 +2,10 @@ import { useState, useMemo, useEffect, type ElementType } from 'react';
 import { useProyectos } from '../../hooks/useProyectos';
 import { Proyecto, ESTADOS_PROYECTO, EstadoProyecto } from '../../types';
 import FormularioProyecto from '../proyectos/FormularioProyecto';
-import ActividadEvaluada from '../proyectos/ActividadEvaluada';
 import { motion, AnimatePresence } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
+import { db } from '../../firebase';
+import { collection, getDocs, deleteDoc, writeBatch, query, limit as qLimit, startAfter, updateDoc, doc } from 'firebase/firestore';
 import { Search, Plus, Pencil, Trash2, Copy, X, AlertTriangle, SlidersHorizontal, ClipboardCheck, CheckCircle2, ArrowLeft, ListChecks, Medal, Atom, Dna, Monitor, Code2, Calculator, FlaskConical } from 'lucide-react';
 
 const BADGE: Record<string, string> = {
@@ -81,6 +83,7 @@ function extractGradeNumber(g: string) {
 
 export default function DocenteProyectosCRUD() {
   const { proyectos, loading, eliminarProyecto } = useProyectos();
+  const navigate = useNavigate();
 
   const [search, setSearch] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<EstadoProyecto | ''>('');
@@ -89,8 +92,38 @@ export default function DocenteProyectosCRUD() {
   const [filtroMateria, setFiltroMateria] = useState('');
 
   const [vista, setVista] = useState<'lista' | 'form' | 'actividades'>('lista');
+  const [limpiando, setLimpiando] = useState(false);
+  const [msgLimpieza, setMsgLimpieza] = useState<string | null>(null);
+
+  async function limpiarActividadesEvaluadas() {
+    if (!confirm('¿Borrar TODAS las actividades evaluadas (rúbricas y calificaciones) de TODOS los proyectos? Esta acción no se puede deshacer.')) return;
+    setLimpiando(true); setMsgLimpieza(null);
+    try {
+      let borradas = 0;
+      let last: any = null;
+      while (true) {
+        let q = query(collection(db, 'actividades_evaluadas'), qLimit(400));
+        if (last) q = query(collection(db, 'actividades_evaluadas'), qLimit(400), startAfter(last));
+        const snap = await getDocs(q);
+        if (snap.empty) break;
+        const batch = writeBatch(db);
+        snap.docs.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+        borradas += snap.size;
+        if (snap.size < 400) break;
+        last = snap.docs[snap.docs.length - 1];
+      }
+      const proySnap = await getDocs(collection(db, 'proyectos'));
+      const batch2 = writeBatch(db);
+      proySnap.docs.forEach(d => batch2.update(d.ref, { actividades_evaluadas: [] }));
+      await batch2.commit();
+      setMsgLimpieza(`✅ Se borraron ${borradas} actividades evaluadas y se limpiaron ${proySnap.size} proyectos.`);
+    } catch (e: any) {
+      setMsgLimpieza('❌ Error: ' + (e.message || ''));
+    }
+    setLimpiando(false);
+  }
   const [proyectoActivo, setProyectoActivo] = useState<Proyecto | null>(null);
-  const [proyectoParaActividades, setProyectoParaActividades] = useState<Proyecto | null>(null);
 
   const [modalEliminar, setModalEliminar] = useState<Proyecto | null>(null);
   const [motivoEliminar, setMotivoEliminar] = useState('');
@@ -191,17 +224,6 @@ export default function DocenteProyectosCRUD() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-main)' }}>
-      {vista === 'actividades' ? (
-        <div className="max-w-5xl mx-auto px-4 py-6 space-y-4">
-          <button
-            onClick={() => { setVista('lista'); setProyectoParaActividades(null); }}
-            className="btn-secondary rounded-xl px-3.5 py-1.5 text-xs font-bold dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 flex items-center gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" /> Volver a proyectos
-          </button>
-          <ActividadEvaluada proyectoInicial={proyectoParaActividades ?? undefined} />
-        </div>
-      ) : (
       <div className="max-w-5xl mx-auto px-4 py-6">
         <div className="module-header mb-4">
           <div className="module-title-group">
@@ -272,7 +294,20 @@ export default function DocenteProyectosCRUD() {
           >
             <Plus className="w-4 h-4" /> Nuevo proyecto
           </button>
+          <button
+            className="sm:w-auto flex items-center justify-center gap-2 shrink-0 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-600 transition-colors hover:bg-red-100 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300"
+            onClick={limpiarActividadesEvaluadas}
+            disabled={limpiando}
+          >
+            <Trash2 className="w-4 h-4" /> {limpiando ? 'Limpiando...' : 'Limpiar evaluaciones'}
+          </button>
         </div>
+
+        {msgLimpieza && (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+            {msgLimpieza}
+          </div>
+        )}
 
         {/* Filtro por materia (iconos) */}
         <div className="mb-3 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm fade-in-up dark:border-slate-700 dark:bg-slate-800">
@@ -446,8 +481,8 @@ export default function DocenteProyectosCRUD() {
                   <div className="flex shrink-0 gap-1">
                     <button
                       className="rounded-lg p-1.5 transition-colors hover:bg-indigo-50 dark:hover:bg-indigo-500/15"
-                      title="Actividades / Rúbrica"
-                      onClick={() => { setProyectoParaActividades(p); setVista('actividades'); }}
+                      title="Evaluar / Rúbrica"
+                      onClick={() => navigate(`/docente/evaluar/${p.id}`)}
                     >
                       <ListChecks className="h-4 w-4 text-indigo-500" />
                     </button>
@@ -498,7 +533,6 @@ export default function DocenteProyectosCRUD() {
            </div>
         )}
       </div>
-      )}
 
       {/* Modal: Nuevo / Editar proyecto (estilo admin) */}
       <AnimatePresence>

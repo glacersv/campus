@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { groqChat, isGroqAvailable } from '../../ai/providers/groq';
 import { geminiChat, isGeminiAvailable } from '../../ai/providers/gemini';
+import { mensajeIA } from '../../ai';
 import {
   Proyecto, ActividadEvaluada as ActividadEvaluadaType, TipoActividad,
   TIPOS_ACTIVIDAD, CriterioRubrica, Subject, ESCALA_CALIFICACION
@@ -15,6 +16,7 @@ import {
   ClipboardCheck, Plus, X, Search, ChevronDown, CheckCircle2,
   Edit3, Trash2, Eye, Calendar, Star, Sparkles, RotateCcw
 } from 'lucide-react';
+import WizardEvaluacion from './WizardEvaluacion';
 
 interface CriterioForm {
   descripcion: string;
@@ -42,7 +44,7 @@ export default function ActividadEvaluada({ proyectoInicial }: { proyectoInicial
   const [materias, setMaterias] = useState<Subject[]>([]);
   const [teacherSubjects, setTeacherSubjects] = useState<string[]>([]);
   const [tab, setTab] = useState<'proyectos' | 'actividades'>(proyectoInicial ? 'actividades' : 'proyectos');
-  const [actividadCalificar, setActividadCalificar] = useState<ActividadEvaluadaType | null>(null);
+  const [actividadWizard, setActividadWizard] = useState<ActividadEvaluadaType | null>(null);
 
   useEffect(() => {
     loadData();
@@ -262,7 +264,7 @@ export default function ActividadEvaluada({ proyectoInicial }: { proyectoInicial
                   key={a.id}
                   actividad={a}
                   onEditar={() => handleEditActividad(a)}
-                  onCalificar={() => setActividadCalificar(a)}
+                  onRubrica={() => setActividadWizard(a)}
                   onReset={async () => {
                     if (confirm('¿Restablecer esta calificación? Se eliminarán las notas.')) {
                       await resetCalificacion(a.id, a.proyecto_id);
@@ -286,11 +288,11 @@ export default function ActividadEvaluada({ proyectoInicial }: { proyectoInicial
         />
       )}
 
-      {/* Modal calificación */}
-      {actividadCalificar && (
-        <ModalCalificacion
-          actividad={actividadCalificar}
-          onClose={() => setActividadCalificar(null)}
+      {/* Asistente de evaluación (3 pasos) */}
+      {actividadWizard && (
+        <WizardEvaluacion
+          actividad={actividadWizard}
+          onClose={() => setActividadWizard(null)}
           onSaved={handleSaved}
         />
       )}
@@ -340,8 +342,8 @@ function ProyectoCard({ proyecto: p, materias, actividades, onCrearActividad }: 
   );
 }
 
-function ActividadCard({ actividad, onEditar, onCalificar, onReset }: {
-  actividad: ActividadEvaluadaType & { proyecto?: Proyecto }; onEditar: () => void; onCalificar: () => void; onReset: () => void;
+function ActividadCard({ actividad, onEditar, onRubrica, onReset }: {
+  actividad: ActividadEvaluadaType & { proyecto?: Proyecto }; onEditar: () => void; onRubrica: () => void; onReset: () => void;
 }) {
   const tipoInfo = TIPOS_ACTIVIDAD[actividad.tipo_actividad] ?? TIPOS_ACTIVIDAD.otro;
   const estadoColors: Record<string, string> = {
@@ -389,174 +391,18 @@ function ActividadCard({ actividad, onEditar, onCalificar, onReset }: {
               <RotateCcw className="w-3 h-3" /> Reset
             </button>
           )}
-          {actividad.estado !== 'calificada' && (
-            <button
-              onClick={onCalificar}
-              className="text-xs px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-1"
-            >
-              <Star className="w-3 h-3" /> Calificar
-            </button>
-          )}
+          <button
+            onClick={onRubrica}
+            className="text-xs px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-1"
+          >
+            <ClipboardCheck className="w-3 h-3" /> Rúbrica
+          </button>
           <button
             onClick={onEditar}
             className="text-xs px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-1"
           >
             <Edit3 className="w-3 h-3" /> Editar
           </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ModalCalificacion({ actividad, onClose, onSaved }: {
-  actividad: ActividadEvaluadaType & { proyecto?: Proyecto };
-  onClose: () => void;
-  onSaved: () => void;
-}) {
-  const [scores, setScores] = useState<Record<string, number>>(
-    () => Object.fromEntries((actividad.rubrica || []).map(c => [c.id, 3]))
-  );
-  const [obs, setObs] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
-
-  const rubrica = actividad.rubrica || [];
-
-  function calcTotal() {
-    let total = 0;
-    for (const c of rubrica) {
-      const score = scores[c.id] || 3;
-      total += (c.peso / 5) * score;
-    }
-    return Math.round(total * 10) / 10;
-  }
-
-  function calcNota() {
-    return Math.round(calcTotal() / 10 * 10) / 10;
-  }
-
-  async function handleCalificar() {
-    setSaving(true);
-    try {
-      const criterios = rubrica.map(c => ({
-        criterio_id: c.id,
-        puntuacion: scores[c.id] || 3,
-      }));
-      await calificarActividad(
-        actividad.id,
-        actividad.proyecto_id,
-        calcTotal(),
-        calcNota(),
-        obs || undefined,
-        criterios
-      );
-      onSaved();
-    } catch (e: any) {
-      setMsg({ tipo: 'error', texto: e.message });
-    }
-    setSaving(false);
-  }
-
-  const escalaCalificacion: Record<number, { label: string; color: string }> = {
-    1: { label: 'Deficiente', color: 'text-red-600 bg-red-50' },
-    2: { label: 'En desarrollo', color: 'text-orange-600 bg-orange-50' },
-    3: { label: 'Cumple parcialmente', color: 'text-amber-600 bg-amber-50' },
-    4: { label: 'Cumple', color: 'text-emerald-600 bg-emerald-50' },
-    5: { label: 'Superó expectativas', color: 'text-green-600 bg-green-50' },
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-lg max-h-[85vh] overflow-hidden shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
-          <div>
-            <h3 className="text-base font-bold text-slate-900">Calificar Actividad</h3>
-            <p className="text-xs text-slate-400 mt-0.5">{actividad.titulo}</p>
-          </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X className="w-5 h-5" /></button>
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
-          {rubrica.map((criterio, idx) => {
-            const score = scores[criterio.id] || 3;
-            const pts = Math.round((criterio.peso / 5) * score * 10) / 10;
-            return (
-              <div key={criterio.id} className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center">{idx + 1}</span>
-                    <span className="text-sm font-bold text-slate-800">{criterio.descripcion}</span>
-                  </div>
-                  <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-lg">{criterio.peso} pts</span>
-                </div>
-
-                {/* Score selector */}
-                <div className="flex gap-2 mb-2">
-                  {[1, 2, 3, 4, 5].map(n => (
-                    <button
-                      key={n}
-                      onClick={() => setScores(prev => ({ ...prev, [criterio.id]: n }))}
-                      className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${
-                        score === n
-                          ? `${escalaCalificacion[n].color} ring-2 ring-primary/30`
-                          : 'bg-white text-slate-400 border border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className={`${escalaCalificacion[score].color} px-2 py-0.5 rounded-lg font-medium`}>
-                    {escalaCalificacion[score].label}
-                  </span>
-                  <span className="font-bold text-slate-600">{pts} / {criterio.peso} pts</span>
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Observaciones */}
-          <div>
-            <label className="text-xs font-bold text-slate-600 mb-1 block">Observaciones (opcional)</label>
-            <textarea
-              value={obs}
-              onChange={e => setObs(e.target.value)}
-              placeholder="Comentarios sobre la evaluación..."
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
-              rows={2}
-            />
-          </div>
-
-          {msg && (
-            <div className={`text-xs p-2 rounded-lg ${msg.tipo === 'ok' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
-              {msg.texto}
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between shrink-0">
-          <div className="text-sm">
-            <span className="text-slate-500">Total: </span>
-            <span className="font-bold text-slate-900">{calcTotal()} / 100</span>
-            <span className="text-slate-400 mx-2">·</span>
-            <span className="font-bold text-primary">{calcNota()} / 10</span>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">Cancelar</button>
-            <button
-              onClick={handleCalificar}
-              disabled={saving}
-              className="px-5 py-2 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
-            >
-              {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Star className="w-4 h-4" />}
-              Calificar
-            </button>
-          </div>
         </div>
       </div>
     </div>
@@ -644,7 +490,7 @@ Responde SOLO con la descripción, sin comillas ni texto adicional.`);
       const desc = text.trim().replace(/^["']|["']$/g, '');
       setDescripcion(desc);
     } catch (e: any) {
-      setError('Error al generar descripción: ' + (e.message || 'Intenta de nuevo'));
+      setError('Error al generar descripción: ' + mensajeIA(e));
     }
     setLoadingAI(false);
   }
@@ -675,7 +521,7 @@ Incluye herramientas gratuitas y accesibles para estudiantes. Ejemplos: Google D
         setHerramientas(nuevasHerramientas.slice(0, 10)); // Max 10 herramientas
       }
     } catch (e: any) {
-      setError('Error al sugerir herramientas: ' + (e.message || 'Intenta de nuevo'));
+      setError('Error al sugerir herramientas: ' + mensajeIA(e));
     }
     setLoadingAI(false);
   }
@@ -754,7 +600,7 @@ NO incluyas texto fuera del JSON.`);
         descripcion_nivel5: c.descripcion_nivel5 || '',
       })));
     } catch (e: any) {
-      setError('Error al generar rúbrica: ' + (e.message || 'Intenta de nuevo'));
+      setError('Error al generar rúbrica: ' + mensajeIA(e));
     }
     setLoadingAI(false);
   }
@@ -795,32 +641,6 @@ NO incluyas texto fuera del JSON.`);
     if (!titulo.trim()) { setError('El título de la actividad es requerido'); return; }
     if (!descripcion.trim()) { setError('La descripción es requerida'); return; }
 
-    const rubricaData: CriterioRubrica[] = rubrica
-      .filter(c => c.descripcion.trim())
-      .map((c, i) => ({
-        id: `crit_${Date.now()}_${i}`,
-        descripcion: c.descripcion.trim(),
-        peso: Number(c.peso) || 15,
-        puntuacion_max: 5, // Siempre escala 1-5
-        descripcion_nivel1: c.descripcion_nivel1?.trim() || null as any,
-        descripcion_nivel2: c.descripcion_nivel2?.trim() || null as any,
-        descripcion_nivel3: c.descripcion_nivel3?.trim() || null as any,
-        descripcion_nivel4: c.descripcion_nivel4?.trim() || null as any,
-        descripcion_nivel5: c.descripcion_nivel5?.trim() || null as any,
-      }));
-
-    if (rubricaData.length === 0) {
-      setError('Agrega al menos un criterio de evaluación');
-      return;
-    }
-
-    // Validar que los pesos sumen 100
-    const sumaPesos = rubricaData.reduce((sum, c) => sum + c.peso, 0);
-    if (sumaPesos !== 100) {
-      setError(`Los pesos de los criterios deben sumar 100 puntos (actualmente suman ${sumaPesos})`);
-      return;
-    }
-
     setLoading(true);
     setError(null);
     try {
@@ -836,7 +656,7 @@ NO incluyas texto fuera del JSON.`);
         descripcion: descripcion.trim(),
         instrucciones: instrucciones.trim() || null as any,
         herramientas_requeridas: herramientas,
-        rubrica: rubricaData,
+        rubrica: actividadInicial?.rubrica ?? [],
         fecha_asignacion: new Date().toISOString().slice(0, 10),
         fecha_limite: fechaLimite || null as any,
         estado: 'publicada',
@@ -1074,107 +894,6 @@ NO incluyas texto fuera del JSON.`);
             />
           </div>
 
-          {/* Rúbrica */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                  Rúbrica de evaluación *
-                </label>
-                <p className="text-[9px] text-slate-400 mt-0.5">
-                  Escala 1-5 · Pesos deben sumar 100 puntos
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={generarRubricaIA} disabled={loadingAI || !titulo.trim()}
-                  className="text-[10px] text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed">
-                  {loadingAI ? (
-                    <div className="w-3 h-3 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <Sparkles className="w-3 h-3" />
-                  )}
-                  Generar con IA
-                </button>
-                <button type="button" onClick={addCriterio}
-                  className="text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1">
-                  <Plus className="w-3 h-3" /> Agregar
-                </button>
-              </div>
-            </div>
-            
-            {/* Resumen de pesos */}
-            <div className={`text-[10px] px-3 py-1.5 rounded-lg mb-2 font-medium ${
-              rubrica.reduce((sum, c) => sum + (Number(c.peso) || 0), 0) === 100
-                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                : 'bg-amber-50 text-amber-700 border border-amber-200'
-            }`}>
-              Total: {rubrica.reduce((sum, c) => sum + (Number(c.peso) || 0), 0)} / 100 puntos
-            </div>
-
-            <div className="space-y-3">
-              {rubrica.map((c, idx) => (
-                <div key={idx} className="bg-white rounded-xl p-4 space-y-3 border border-slate-200 shadow-sm">
-                  <div className="flex items-start gap-2">
-                    <span className="text-xs font-bold text-slate-400 mt-1.5">{idx + 1}.</span>
-                    <input
-                      type="text"
-                      value={c.descripcion}
-                      onChange={e => updateCriterio(idx, 'descripcion', e.target.value)}
-                      className="flex-1 px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-200"
-                      placeholder="Nombre del criterio (ej: Investigación y contenido)"
-                    />
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        min={1}
-                        max={100}
-                        value={c.peso}
-                        onChange={e => updateCriterio(idx, 'peso', e.target.value)}
-                        className="w-16 px-2 py-1.5 text-xs text-center border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-200 font-bold"
-                        title="Puntos que vale este criterio (deben sumar 100)"
-                      />
-                      <span className="text-[9px] text-slate-400">pts</span>
-                    </div>
-                    {rubrica.length > 1 && (
-                      <button type="button" onClick={() => removeCriterio(idx)}
-                        className="text-slate-400 hover:text-red-500 p-1">
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                  
-                  {/* Descripción de niveles */}
-                  <div className="grid grid-cols-5 gap-1.5 mt-2">
-                    {[
-                      { nivel: 1, label: '1 - Deficiente', color: 'red', field: 'descripcion_nivel1' },
-                      { nivel: 2, label: '2 - En desarrollo', color: 'orange', field: 'descripcion_nivel2' },
-                      { nivel: 3, label: '3 - Cumple parcial', color: 'amber', field: 'descripcion_nivel3' },
-                      { nivel: 4, label: '4 - Cumple', color: 'emerald', field: 'descripcion_nivel4' },
-                      { nivel: 5, label: '5 - Superó', color: 'green', field: 'descripcion_nivel5' },
-                    ].map(n => (
-                      <div key={n.nivel} className="text-center">
-                        <div className={`text-[8px] font-bold px-1 py-0.5 rounded ${
-                          n.color === 'red' ? 'bg-red-100 text-red-700' :
-                          n.color === 'orange' ? 'bg-orange-100 text-orange-700' :
-                          n.color === 'amber' ? 'bg-amber-100 text-amber-700' :
-                          n.color === 'emerald' ? 'bg-emerald-100 text-emerald-700' :
-                          'bg-green-100 text-green-700'
-                        }`}>
-                          {n.label}
-                        </div>
-                        <textarea
-                          value={(c as any)[n.field] || ''}
-                          onChange={e => updateCriterio(idx, n.field as any, e.target.value)}
-                          className="w-full px-1.5 py-1 text-[9px] border border-slate-200 rounded mt-1 focus:outline-none focus:ring-1 focus:ring-indigo-200 resize-none h-16"
-                          placeholder={`Qué significa获得${n.nivel} punto...`}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
 
         <div className="modal-footer">
