@@ -27,7 +27,7 @@ interface CriterioForm {
   descripcion_nivel5?: string;
 }
 
-export default function ActividadEvaluada() {
+export default function ActividadEvaluada({ proyectoInicial }: { proyectoInicial?: Proyecto }) {
   const { userProfile } = useAuth();
   const [proyectos, setProyectos] = useState<Proyecto[]>([]);
   const [actividades, setActividades] = useState<ActividadEvaluadaType[]>([]);
@@ -35,12 +35,13 @@ export default function ActividadEvaluada() {
   const [busqueda, setBusqueda] = useState('');
   const [filtroMateria, setFiltroMateria] = useState<string>('');
   const [proyectoSeleccionado, setProyectoSeleccionado] = useState<Proyecto | null>(null);
+  const [proyectoFiltro, setProyectoFiltro] = useState<Proyecto | null>(proyectoInicial ?? null);
   const [showForm, setShowForm] = useState(false);
   const [actividadEditar, setActividadEditar] = useState<ActividadEvaluadaType | null>(null);
   const [msg, setMsg] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
   const [materias, setMaterias] = useState<Subject[]>([]);
   const [teacherSubjects, setTeacherSubjects] = useState<string[]>([]);
-  const [tab, setTab] = useState<'proyectos' | 'actividades'>('proyectos');
+  const [tab, setTab] = useState<'proyectos' | 'actividades'>(proyectoInicial ? 'actividades' : 'proyectos');
   const [actividadCalificar, setActividadCalificar] = useState<ActividadEvaluadaType | null>(null);
 
   useEffect(() => {
@@ -90,6 +91,10 @@ export default function ActividadEvaluada() {
     ...a,
     proyecto: proyectos.find(p => p.id === a.proyecto_id)
   }));
+
+  const actividadesMostradas = proyectoFiltro
+    ? actividadesConProyecto.filter(a => a.proyecto_id === proyectoFiltro.id)
+    : actividadesConProyecto;
 
   const handleCreateActividad = (proyecto: Proyecto) => {
     setProyectoSeleccionado(proyecto);
@@ -227,18 +232,32 @@ export default function ActividadEvaluada() {
       {/* Tab Actividades */}
       {tab === 'actividades' && (
         <>
+          {proyectoFiltro && (
+            <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-200 rounded-xl px-3 py-2 text-xs font-semibold text-indigo-700 dark:bg-indigo-500/10 dark:border-indigo-500/30 dark:text-indigo-300">
+              <ClipboardCheck className="w-4 h-4" />
+              <span className="truncate">Proyecto: {proyectoFiltro.titulo}</span>
+              <button
+                onClick={() => { setProyectoFiltro(null); setTab('proyectos'); }}
+                className="ml-auto text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-200"
+              >
+                Quitar filtro
+              </button>
+            </div>
+          )}
           {loading ? (
             <div className="flex justify-center py-8">
               <div className="w-8 h-8 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin" />
             </div>
-          ) : actividadesConProyecto.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-8 text-center text-slate-400">
+          ) : actividadesMostradas.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-8 text-center text-slate-400 dark:bg-slate-800 dark:border-slate-700">
               <ClipboardCheck className="w-8 h-8 mx-auto mb-2 opacity-40" />
-              <p className="text-xs">No has creado actividades evaluadas aún</p>
+              <p className="text-xs">
+                {proyectoFiltro ? 'Este proyecto aún no tiene actividades evaluadas' : 'No has creado actividades evaluadas aún'}
+              </p>
             </div>
           ) : (
             <div className="space-y-2">
-              {actividadesConProyecto.map(a => (
+              {actividadesMostradas.map(a => (
                 <ActividadCard
                   key={a.id}
                   actividad={a}

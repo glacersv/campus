@@ -102,25 +102,25 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const flatItems = menuSections.flatMap(s => s.items);
 
   return (
-    <div className="flex h-screen bg-[#F3F5F6] overflow-y-auto">
+    <div className="flex h-screen overflow-y-auto bg-[#F3F5F6] dark:bg-[#0b1120]">
       {/* Sidebar - Glass premium */}
-      <aside className={`${sidebarCollapsed ? 'w-[72px]' : 'w-64'} bg-white/70 backdrop-blur-xl border-r border-slate-200/80 flex flex-col justify-between shrink-0 transition-all duration-300 z-30`}>
+      <aside className={`${sidebarCollapsed ? 'w-[72px]' : 'w-64'} flex flex-col justify-between shrink-0 border-r border-slate-200/80 bg-white/70 backdrop-blur-xl transition-all duration-300 z-30 dark:border-slate-700/60 dark:bg-slate-900/80`}>
         <div className="flex flex-col flex-1 min-h-0">
-          <div className="h-16 px-4 flex items-center justify-between border-b border-slate-100/80 shrink-0">
+          <div className="h-16 px-4 flex items-center justify-between border-b border-slate-100/80 shrink-0 dark:border-slate-700/60">
             {!sidebarCollapsed && (
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center shadow-sm">
                   <InstitutionLogo className="w-5 h-5" />
                 </div>
                 <div>
-                  <h1 className="text-sm font-bold text-slate-900 font-display">Campus</h1>
+                  <h1 className="text-sm font-bold text-slate-900 font-display dark:text-slate-100">Campus</h1>
                   <p className="text-[10px] text-slate-500 font-medium">Salesiano San José</p>
                 </div>
               </div>
             )}
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="p-1.5 rounded-lg hover:bg-slate-100/80 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-slate-100/80 transition-colors dark:hover:bg-slate-700/60"
             >
               {sidebarCollapsed ? <Menu className="w-5 h-5 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
             </button>
@@ -153,10 +153,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </nav>
         </div>
 
-        <div className="p-3 border-t border-slate-100/80 shrink-0">
+        <div className="p-3 border-t border-slate-100/80 shrink-0 dark:border-slate-700/60">
           {!sidebarCollapsed && (
             <div className="px-3 py-2 mb-2">
-              <p className="text-xs font-semibold text-slate-900 truncate">{userProfile?.displayName || 'Admin'}</p>
+              <p className="text-xs font-semibold text-slate-900 truncate dark:text-slate-100">{userProfile?.displayName || 'Admin'}</p>
               <p className="text-[10px] text-slate-400 truncate">{userProfile?.email}</p>
               <span className="text-[10px] font-bold text-primary bg-primary-light px-2 py-0.5 rounded-full mt-1 inline-block capitalize">
                 {userRole}
@@ -175,7 +175,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
       {/* Main */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-16 bg-white/60 backdrop-blur-xl border-b border-slate-200/80 px-4 flex items-center justify-between shrink-0 z-20">
+        <header className="h-16 flex items-center justify-between shrink-0 border-b border-slate-200/80 bg-white/60 px-4 z-20 backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/80">
           <div className="flex items-center gap-4 flex-1">
             {/* Global Search - Glass style */}
             <div className="relative max-w-md flex-1">
@@ -183,17 +183,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <input
                 type="text"
                 placeholder="Buscar módulos, alumnos, docentes..."
-                className="w-full pl-9 pr-4 py-2 text-sm bg-white/60 backdrop-blur-sm border border-slate-200/80 rounded-xl focus:outline-none focus:border-primary focus:bg-white transition-all placeholder:text-slate-400"
+                className="w-full pl-9 pr-4 py-2 text-sm bg-white/60 backdrop-blur-sm border border-slate-200/80 rounded-xl focus:outline-none focus:border-primary focus:bg-white transition-all placeholder:text-slate-400 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:placeholder:text-slate-500"
               />
             </div>
           </div>
           <div className="flex items-center gap-2">
             <NotificationCenter />
-            <div className="w-px h-5 bg-slate-200 mx-1" />
+            <div className="w-px h-5 bg-slate-200 mx-1 dark:bg-slate-700" />
             <ThemeSwitcher />
-            <div className="w-px h-5 bg-slate-200 hidden md:block" />
+            <div className="w-px h-5 bg-slate-200 hidden md:block dark:bg-slate-700" />
             <span className="text-xs text-slate-400 hidden md:inline">Colegio Salesiano San José</span>
-            <div className="w-px h-5 bg-slate-200 hidden md:block" />
+            <div className="w-px h-5 bg-slate-200 hidden md:block dark:bg-slate-700" />
             <span className="text-xs font-semibold text-primary bg-primary-light px-2.5 py-1 rounded-full capitalize">{userRole}</span>
           </div>
         </header>

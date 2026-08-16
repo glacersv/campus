@@ -112,7 +112,7 @@ export default function QuickStatsSidebar() {
 
   return (
     <>
-      <aside className="w-60 shrink-0 hidden xl:flex flex-col gap-3 p-4 bg-white/60 backdrop-blur-xl border-l border-slate-200/60 overflow-y-auto">
+      <aside className="w-60 shrink-0 hidden xl:flex flex-col gap-3 p-4 border-l border-slate-200/60 bg-white/60 backdrop-blur-xl overflow-y-auto dark:border-slate-700/60 dark:bg-slate-900/70">
 
         {/* ── User Card ── */}
         <div className="p-3 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20 shadow-sm relative overflow-hidden">
@@ -122,7 +122,7 @@ export default function QuickStatsSidebar() {
               {userProfile?.displayName ? userProfile.displayName.charAt(0).toUpperCase() : 'U'}
             </div>
             <div className="min-w-0 flex-1">
-              <h4 className="text-xs font-bold text-slate-900 truncate font-display">
+              <h4 className="text-xs font-bold text-slate-900 truncate font-display dark:text-slate-100">
                 {userProfile?.displayName || 'Usuario'}
               </h4>
               <div className="flex items-center gap-1 mt-0.5">
@@ -134,16 +134,16 @@ export default function QuickStatsSidebar() {
         </div>
 
         {/* ── Mini Calendario Institucional ── */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 space-y-2">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 space-y-2 dark:border-slate-700 dark:bg-slate-800">
           {/* Calendar Header */}
           <div className="flex items-center justify-between">
-            <button onClick={prevMonth} className="w-6 h-6 rounded-full hover:bg-slate-100 flex items-center justify-center transition-colors">
+            <button onClick={prevMonth} className="w-6 h-6 rounded-full hover:bg-slate-100 flex items-center justify-center transition-colors dark:hover:bg-slate-700">
               <ChevronLeft className="w-3 h-3 text-slate-500" />
             </button>
-            <h4 className="text-[0.6875rem] font-bold text-slate-800 font-display">
+            <h4 className="text-[0.6875rem] font-bold text-slate-800 font-display dark:text-slate-100">
               {MONTHS_ES[calMonth]} {calYear}
             </h4>
-            <button onClick={nextMonth} className="w-6 h-6 rounded-full hover:bg-slate-100 flex items-center justify-center transition-colors">
+            <button onClick={nextMonth} className="w-6 h-6 rounded-full hover:bg-slate-100 flex items-center justify-center transition-colors dark:hover:bg-slate-700">
               <ChevronRight className="w-3 h-3 text-slate-500" />
             </button>
           </div>
@@ -174,7 +174,7 @@ export default function QuickStatsSidebar() {
                     ${isToday ? 'bg-primary text-white shadow-sm shadow-primary/30' : ''}
                     ${!isToday && hasAsueto ? 'bg-amber-100 text-amber-800' : ''}
                     ${!isToday && hasEvent && !hasAsueto ? 'bg-primary/8 text-primary' : ''}
-                    ${!isToday && !hasEvent ? 'text-slate-500 hover:bg-slate-50' : ''}
+                    ${!isToday && !hasEvent ? 'text-slate-500 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-700' : ''}
                   `}
                 >
                   {day}
@@ -191,7 +191,7 @@ export default function QuickStatsSidebar() {
           </div>
 
           {/* Legend */}
-          <div className="flex items-center gap-2 pt-1 border-t border-slate-50">
+          <div className="flex items-center gap-2 pt-1 border-t border-slate-50 dark:border-slate-700">
             <div className="flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
               <span className="text-[0.5rem] text-slate-400 font-medium">Asueto</span>
@@ -208,9 +208,9 @@ export default function QuickStatsSidebar() {
         </div>
 
         {/* ── Próximos Eventos ── */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 space-y-2">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 space-y-2 dark:border-slate-700 dark:bg-slate-800">
           <div className="flex items-center justify-between">
-            <h4 className="text-[0.625rem] font-bold text-slate-800 uppercase tracking-wider font-display">
+            <h4 className="text-[0.625rem] font-bold text-slate-800 uppercase tracking-wider font-display dark:text-slate-100">
               Próximos Eventos
             </h4>
           </div>

@@ -13,7 +13,7 @@ import {
   Medal, Plus, ChevronDown, ChevronUp, Clock, CheckCircle2,
   XCircle, FlaskConical, Search, Eye, Award, ClipboardCheck,
   TrendingUp, Users, AlertTriangle, ChevronLeft, ChevronRight,
-  Calendar, Trash2
+  Calendar, Trash2, Atom, Dna, Monitor, Code2, Calculator
 } from 'lucide-react';
 import { TIPOS_ACTIVIDAD } from '../../types';
 
@@ -32,6 +32,27 @@ const STATUS_COLORS: Record<string, string> = {
   red: 'bg-red-100 text-red-800',
   gray: 'bg-slate-100 text-slate-600',
 };
+
+interface MateriaIconDef {
+  match: string[];
+  icon: React.ComponentType<{ className?: string }>;
+  box: string;
+}
+
+const MATERIA_ICONS: MateriaIconDef[] = [
+  { match: ['quimica', 'química', 'chemistry', 'ciencia'], icon: FlaskConical, box: 'bg-emerald-100 text-emerald-600' },
+  { match: ['biologia', 'biología', 'biology'], icon: Dna, box: 'bg-green-100 text-green-600' },
+  { match: ['fisica', 'física', 'physics'], icon: Atom, box: 'bg-blue-100 text-blue-600' },
+  { match: ['informatica', 'informática', 'computacion', 'computación', 'tics', 'tech'], icon: Monitor, box: 'bg-indigo-100 text-indigo-600' },
+  { match: ['arduino', 'robotica', 'robótica', 'codigo', 'código', 'programacion', 'programación'], icon: Code2, box: 'bg-orange-100 text-orange-600' },
+  { match: ['matematica', 'matemática', 'math'], icon: Calculator, box: 'bg-purple-100 text-purple-600' },
+];
+
+function getMateriaIcon(nombre?: string): MateriaIconDef {
+  const n = (nombre || '').toLowerCase();
+  const found = MATERIA_ICONS.find(m => m.match.some(k => n.includes(k)));
+  return found ?? { match: [], icon: FlaskConical, box: 'bg-slate-100 text-slate-500' };
+}
 
 export default function ProjectsModule({ view, compact = false }: Props) {
   const { userProfile } = useAuth();
@@ -127,10 +148,11 @@ export default function ProjectsModule({ view, compact = false }: Props) {
       >
         <div className="absolute -right-10 -bottom-10 w-60 h-60 bg-white/10 rounded-full blur-2xl pointer-events-none" />
         <div className="absolute right-32 top-0 w-32 h-32 bg-emerald-400/20 rounded-full blur-xl pointer-events-none" />
-        
+        <Medal className="absolute right-6 top-1/2 -translate-y-1/2 w-28 h-28 text-white/10 pointer-events-none" strokeWidth={1.5} />
+
         <div className="relative z-10 max-w-2xl space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-xs font-semibold text-emerald-200">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            <Medal className="w-3.5 h-3.5" />
             Semana de la Juventud 2026
           </div>
           <h2 className="text-2xl md:text-3xl font-extrabold font-display leading-tight">
@@ -185,7 +207,7 @@ export default function ProjectsModule({ view, compact = false }: Props) {
       {activeTab === 'proyectos' && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
           {[
-            { label: 'Total', value: stats.total, icon: FlaskConical, accent: 'bg-slate-50 text-slate-600 border-slate-200' },
+            { label: 'Total', value: stats.total, icon: Medal, accent: 'bg-slate-50 text-slate-600 border-slate-200' },
             { label: 'Aprobados', value: stats.aprobados, icon: CheckCircle2, accent: 'bg-emerald-50 text-emerald-600 border-emerald-200' },
             { label: 'Pendientes', value: stats.pendientes, icon: Clock, accent: 'bg-amber-50 text-amber-600 border-amber-200' },
             { label: 'Rechazados', value: stats.rechazados, icon: AlertTriangle, accent: 'bg-red-50 text-red-600 border-red-200' },
@@ -390,9 +412,14 @@ function ProyectoRow({ proyecto: p, rol, view, materias, onRevisar, onVerDetalle
   const canDelete = view === 'docente' && onDelete;
 
   const statusKey = ESTADOS_PROYECTO[p.estado]?.color ?? 'gray';
+  const materiaIcon = getMateriaIcon(p.materia_nombre);
+  const MateriaIcon = materiaIcon.icon;
 
   return (
     <div className="py-4 border-b border-slate-100 last:border-0 flex items-center gap-4 group hover:bg-slate-50 -mx-5 px-5 transition-colors">
+      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${materiaIcon.box}`}>
+        <MateriaIcon className="w-5 h-5" />
+      </div>
       <div className="flex-1 min-w-0">
         <div className="text-base font-semibold text-slate-900 truncate">{p.titulo}</div>
         <div className="text-sm text-slate-500 mt-1">

@@ -5,9 +5,10 @@ export default function TeacherHome() {
   return (
     <ModuleGridDashboard
       title="Panel Docente"
-      subtitle="Acceda a los módulos de control de asistencia, proyectos y gestión de alumnos habilitados para su usuario."
+      subtitle="Acceda a los módulos de gestión de alumnos y proyectos habilitados para su usuario."
       basePath="/docente"
       showMondayNotice={true}
+      exclude={['formacion']}
     />
   );
 }

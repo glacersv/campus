@@ -37,10 +37,10 @@ export default function NotificationCenter() {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 rounded-xl hover:bg-slate-100/80 transition-colors group"
+        className="relative p-2 rounded-xl hover:bg-slate-100/80 transition-colors group dark:hover:bg-slate-700/60"
         aria-label="Notificaciones"
       >
-        <Bell className="w-5 h-5 text-slate-600 group-hover:text-slate-900 transition-colors" />
+        <Bell className="w-5 h-5 text-slate-600 transition-colors group-hover:text-slate-900 dark:text-slate-300 dark:group-hover:text-white" />
         {unreadCount > 0 && (
           <motion.span
             initial={{ scale: 0 }}
@@ -64,29 +64,29 @@ export default function NotificationCenter() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
               transition={{ type: 'spring', bounce: 0.1 }}
-              className="absolute right-0 top-full mt-2 w-96 bg-white/80 backdrop-blur-xl rounded-2xl shadow-premium-lg border border-white/60 z-50 overflow-hidden"
+              className="absolute right-0 top-full mt-2 w-96 overflow-hidden rounded-2xl border border-white/60 bg-white/80 backdrop-blur-xl shadow-premium-lg z-50 dark:border-slate-700/60 dark:bg-slate-900/90"
             >
               {/* Header */}
-              <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="p-4 border-b border-slate-100 flex items-center justify-between dark:border-slate-700/60">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">Notificaciones</h3>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Notificaciones</h3>
                   <p className="text-xs text-slate-500">{unreadCount} sin leer</p>
                 </div>
                 <div className="flex items-center gap-1">
                   {unreadCount > 0 && (
-                    <button
-                      onClick={markAllAsRead}
-                      className="p-1.5 rounded-lg hover:bg-slate-100/80 transition-colors"
-                      title="Marcar todas como leídas"
-                    >
-                      <CheckCheck className="w-4 h-4 text-slate-500" />
+                      <button
+                        onClick={markAllAsRead}
+                        className="p-1.5 rounded-lg hover:bg-slate-100/80 transition-colors dark:hover:bg-slate-700/60"
+                        title="Marcar todas como leídas"
+                      >
+                        <CheckCheck className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                     </button>
                   )}
-                  <button
-                    onClick={() => setIsOpen(false)}
-                    className="p-1.5 rounded-lg hover:bg-slate-100/80 transition-colors"
-                  >
-                    <X className="w-4 h-4 text-slate-500" />
+                      <button
+                        onClick={() => setIsOpen(false)}
+                        className="p-1.5 rounded-lg hover:bg-slate-100/80 transition-colors dark:hover:bg-slate-700/60"
+                      >
+                        <X className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                   </button>
                 </div>
               </div>
@@ -99,14 +99,14 @@ export default function NotificationCenter() {
                     <p className="text-sm text-slate-500">No hay notificaciones</p>
                   </div>
                 ) : (
-                  <div className="divide-y divide-slate-100">
+                  <div className="divide-y divide-slate-100 dark:divide-slate-700/60">
                     {notifications.map((notification, index) => (
                       <motion.div
                         key={notification.id}
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.05 }}
-                        className={`p-4 hover:bg-slate-50/80 transition-colors cursor-pointer ${
+                        className={`p-4 hover:bg-slate-50/80 transition-colors cursor-pointer dark:hover:bg-slate-700/60 ${
                           !notification.read ? 'bg-blue-50/30' : ''
                         }`}
                         onClick={() => markAsRead(notification.id)}
@@ -117,14 +117,14 @@ export default function NotificationCenter() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-2">
-                              <h4 className="text-sm font-semibold text-slate-900 truncate">
+                              <h4 className="text-sm font-semibold text-slate-900 truncate dark:text-slate-100">
                                 {notification.title}
                               </h4>
                               {!notification.read && (
                                 <div className="w-2 h-2 rounded-full bg-primary shrink-0 mt-1" />
                               )}
                             </div>
-                            <p className="text-xs text-slate-600 mt-0.5 line-clamp-2">
+                            <p className="text-xs text-slate-600 mt-0.5 line-clamp-2 dark:text-slate-300">
                               {notification.message}
                             </p>
                             <p className="text-[10px] text-slate-400 mt-1">
@@ -143,7 +143,7 @@ export default function NotificationCenter() {
 
               {/* Footer */}
               {notifications.length > 0 && (
-                <div className="p-3 border-t border-slate-100 bg-slate-50/80">
+                <div className="p-3 border-t border-slate-100 bg-slate-50/80 dark:border-slate-700/60 dark:bg-slate-800/60">
                   <button className="w-full text-xs font-semibold text-primary hover:text-primary-dark transition-colors py-2">
                     Ver todas las notificaciones
                   </button>

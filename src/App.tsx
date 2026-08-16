@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { DarkModeProvider } from './contexts/DarkModeContext';
 import { NotificationsProvider } from './contexts/NotificationsContext';
 import Login from './components/shared/Login';
 import AdminLayout from './components/admin/AdminLayout';
@@ -40,11 +41,11 @@ import TeacherLayout from './components/docente/TeacherLayout';
 import TeacherHome from './components/docente/TeacherHome';
 import ModulePlaceholder from './components/docente/ModulePlaceholder';
 import StudentDashboard from './components/alumno/StudentDashboard';
-import Dashboard from './components/docente/Dashboard';
 import ProjectsModule from './components/proyectos/ProjectsModule';
+import DocenteProyectosCRUD from './components/docente/DocenteProyectosCRUD';
 import ProyectosAdmin from './components/coordinacion/ProyectosAdmin';
-import { Teacher, SystemModuleId } from './types';
-import { getTeacher, seedInitialData, ensureAdminAccount, seedProyectoCultivoBacterias } from './lib/firestore';
+import { SystemModuleId } from './types';
+import { seedInitialData, ensureAdminAccount, seedProyectoCultivoBacterias } from './lib/firestore';
 
 import { Routes, Route, Navigate } from 'react-router-dom';
 
@@ -90,7 +91,6 @@ function getDefaultModulesForRole(role: string): SystemModuleId[] {
 
 function AppContent() {
   const { firebaseUser, userProfile, loading, signOut, userRole, hasPermission, roleConfig } = useAuth();
-  const [teacherData, setTeacherData] = useState<Teacher | null>(null);
 
   useEffect(() => {
     ensureAdminAccount();
@@ -99,10 +99,7 @@ function AppContent() {
       // Exponer función de seed en consola para el admin
       (window as any).seedProyecto = seedProyectoCultivoBacterias;
     }
-    if (userProfile?.teacherId) {
-      getTeacher(userProfile.teacherId).then(setTeacherData);
-    }
-  }, [userProfile?.teacherId, userProfile?.role]);
+  }, [userProfile?.role]);
 
   if (loading) {
     return (
@@ -318,21 +315,9 @@ function AppContent() {
         <Route path="/docente" element={<TeacherLayout />}>
           <Route index element={<TeacherHome />} />
 
-          <Route path="formacion" element={
-            permissions.includes('formacion') ? (
-              teacherData ? (
-                <div className="bg-white rounded-2xl border border-slate-200/80 p-1">
-                  <Dashboard teacher={teacherData} onLogout={signOut} />
-                </div>
-              ) : (
-                <div className="flex justify-center items-center py-20 text-slate-500">Cargando datos del docente...</div>
-              )
-            ) : <Navigate to="/docente" replace />
-          } />
-
           <Route path="proyectos" element={
             permissions.includes('proyectos') ? (
-              <ProjectsModule view="docente" />
+              <DocenteProyectosCRUD />
             ) : <Navigate to="/docente" replace />
           } />
 
@@ -403,11 +388,13 @@ function AppContent() {
 export default function App() {
   return (
     <ThemeProvider>
-      <NotificationsProvider>
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
-      </NotificationsProvider>
+      <DarkModeProvider>
+        <NotificationsProvider>
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
+        </NotificationsProvider>
+      </DarkModeProvider>
     </ThemeProvider>
   );
 }

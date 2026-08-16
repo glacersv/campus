@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { SYSTEM_MODULES, SystemModuleId } from '../../types';
 import { ClipboardCheck, BookOpen, School, Calendar, CalendarDays, Bell, Medal, ArrowUpRight, Users, GraduationCap, CheckCircle2 } from 'lucide-react';
+import WelcomeBanner from './WelcomeBanner';
 
 interface ModuleCard {
   id: string;
@@ -23,6 +24,9 @@ interface ModuleGridDashboardProps {
   iconTextClassName?: string;
   children?: React.ReactNode;
   showMondayNotice?: boolean;
+  exclude?: string[];
+  bannerArea?: string;
+  showProfile?: boolean;
 }
 
 const moduleIcons: Record<SystemModuleId, React.ElementType> = {
@@ -59,15 +63,19 @@ export default function ModuleGridDashboard({
   iconTextClassName = 'text-primary',
   children,
   showMondayNotice = true,
+  exclude,
+  bannerArea,
+  showProfile = true,
 }: ModuleGridDashboardProps) {
   const navigate = useNavigate();
   const { userProfile, hasPermission } = useAuth();
   const today = new Date();
   const isMonday = today.getDay() === 1;
 
-  const availableModules = modules
+  const availableModules = (modules
     ? modules.filter(m => hasPermission(m.id as SystemModuleId))
-    : SYSTEM_MODULES.filter(m => hasPermission(m.id));
+    : SYSTEM_MODULES.filter(m => hasPermission(m.id)))
+    .filter(m => !exclude?.includes(m.id));
 
   const handleModuleClick = (modId: string) => {
     navigate(`${basePath}/${modId}`);
@@ -82,43 +90,17 @@ export default function ModuleGridDashboard({
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
-      {/* Hero Banner Showcase Card (Inspired by reference screens) */}
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-        className="relative rounded-3xl bg-gradient-to-r from-[#124D37] via-[#25855A] to-[#1D6F4B] text-white p-6 md:p-8 shadow-xl shadow-emerald-900/10 overflow-hidden"
-      >
-        {/* Abstract Background Circles */}
-        <div className="absolute -right-10 -bottom-10 w-60 h-60 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-        <div className="absolute right-32 top-0 w-32 h-32 bg-amber-400/20 rounded-full blur-xl pointer-events-none" />
-
-        <div className="relative z-10 max-w-2xl space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-xs font-semibold text-amber-300">
-            <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-            Sistema Integrado Salesiano • 2026
-          </div>
-          <h2 className="text-2xl md:text-3xl font-extrabold font-display leading-tight">
-            Hola, {userProfile?.displayName || 'Bienvenido'}.
-          </h2>
-          <p className="text-sm text-emerald-100/90 leading-relaxed">
-            {subtitle || 'Gestione la asistencia, calificaciones y convivencia escolar desde su panel central.'}
-          </p>
-
-          <div className="pt-2 flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => availableModules[0] && handleModuleClick(availableModules[0].id)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-amber-400 text-slate-950 font-bold text-xs hover:bg-amber-300 transition-all active:scale-95 shadow-md shadow-amber-400/20 font-display"
-            >
-              Comenzar Asistencia
-              <ArrowUpRight className="w-4 h-4" />
-            </button>
-            <span className="text-xs font-medium text-emerald-200/80">
-              {availableModules.length} módulos habilitados
-            </span>
-          </div>
-        </div>
-      </motion.div>
+      {/* Hero Banner ilustrado y contextual (temas por área, estilo diseno) */}
+      <WelcomeBanner
+        name={userProfile?.displayName || 'Bienvenido'}
+        role={userProfile?.role || undefined}
+        area={bannerArea ?? availableModules[0]?.id ?? 'general'}
+        subtitle={subtitle || 'Gestione la asistencia, calificaciones y convivencia escolar desde su panel central.'}
+        badge="Sistema Integrado Salesiano • 2026"
+        ctaLabel={availableModules[0] ? 'Comenzar' : undefined}
+        onCta={() => availableModules[0] && handleModuleClick(availableModules[0].id)}
+        showProfile={showProfile}
+      />
 
       {/* Overview Stat Badges Row */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

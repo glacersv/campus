@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Settings2, Palette, Type, Check, RotateCcw, X } from 'lucide-react';
+import { Settings2, Palette, Type, Check, RotateCcw, X, Sun, Moon } from 'lucide-react';
 import { useTheme, type ThemePalette, type FontScale, type FontFamilyId } from '../../contexts/ThemeContext';
+import { useDarkMode } from '../../contexts/DarkModeContext';
 
 const THEME_LABELS: Record<ThemePalette, string> = {
   salesiano: 'Salesiano (Institucional)',
@@ -24,6 +25,7 @@ export default function FloatingStyleWidget() {
     fontScale, setFontScale, fontScales,
     fontFamily, setFontFamily, fontFamilies,
   } = useTheme();
+  const { dark, toggle: toggleDark } = useDarkMode();
 
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<'tema' | 'texto'>('tema');
@@ -96,8 +98,23 @@ export default function FloatingStyleWidget() {
 
             <div className="p-4 max-h-[48vh] overflow-y-auto">
               {tab === 'tema' && (
-                <div className="space-y-2">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Tema de color</p>
+                <div className="space-y-3">
+                  {/* Dark mode toggle (estilo diseno: botón sol/luna) */}
+                  <button
+                    onClick={toggleDark}
+                    title="Alternar modo oscuro / claro"
+                    aria-pressed={dark}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-100 bg-slate-50/60 px-3 py-2.5 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  >
+                    {dark ? (
+                      <Sun className="h-4 w-4 text-amber-400" />
+                    ) : (
+                      <Moon className="h-4 w-4 text-indigo-500" />
+                    )}
+                    {dark ? 'Modo claro' : 'Modo oscuro'}
+                  </button>
+
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tema de color</p>
                   {(Object.keys(palettes) as ThemePalette[]).map((p) => {
                     const c = palettes[p];
                     const isActive = palette === p;

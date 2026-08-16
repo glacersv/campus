@@ -26,19 +26,19 @@ export default function RoleLayout({ modules, moduleIcons, moduleColors, childre
   const roleLabel = userRole ? ROLE_LABELS[userRole] : 'Rol';
 
   return (
-    <div className="flex h-screen bg-[#F0F4F8] overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-[#F0F4F8] dark:bg-[#0b1120]">
       {/* Sidebar - Soft Glass rounded container */}
-      <aside className={`${collapsed ? 'w-[76px]' : 'w-64'} bg-white/80 backdrop-blur-xl border-r border-slate-200/60 flex flex-col justify-between shrink-0 transition-all duration-300 z-30 shadow-sm`}>
+      <aside className={`${collapsed ? 'w-[76px]' : 'w-64'} flex flex-col justify-between shrink-0 border-r border-slate-200/60 bg-white/80 backdrop-blur-xl transition-all duration-300 z-30 shadow-sm dark:border-slate-700/60 dark:bg-slate-900/80`}>
         <div className="flex flex-col flex-1 min-h-0">
           {/* Logo */}
-          <div className="h-16 px-4 flex items-center justify-between border-b border-slate-100/80 shrink-0">
+          <div className="h-16 px-4 flex items-center justify-between border-b border-slate-100/80 shrink-0 dark:border-slate-700/60">
             {!collapsed && (
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center shadow-sm shrink-0">
                   <InstitutionLogo className="w-5 h-5" />
                 </div>
                 <div>
-                  <h1 className="text-sm font-bold text-slate-900 font-display">Campus</h1>
+                  <h1 className="text-sm font-bold text-slate-900 font-display dark:text-slate-100">Campus</h1>
                   <p className="text-[0.625rem] text-slate-500 font-medium truncate">Salesiano San José</p>
                 </div>
               </div>
@@ -50,7 +50,7 @@ export default function RoleLayout({ modules, moduleIcons, moduleColors, childre
             )}
             <button
               onClick={() => setCollapsed(!collapsed)}
-              className="p-1.5 rounded-lg hover:bg-slate-100/80 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-slate-100/80 transition-colors dark:hover:bg-slate-700/60"
             >
               {collapsed ? <Menu className="w-5 h-5 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
             </button>
@@ -100,10 +100,10 @@ export default function RoleLayout({ modules, moduleIcons, moduleColors, childre
         </div>
 
         {/* User Card at bottom */}
-        <div className="p-3 border-t border-slate-100/80 shrink-0">
+        <div className="p-3 border-t border-slate-100/80 shrink-0 dark:border-slate-700/60">
           {!collapsed && (
             <div className="px-3 py-2 mb-2">
-              <p className="text-xs font-semibold text-slate-900 truncate">{userProfile?.displayName}</p>
+              <p className="text-xs font-semibold text-slate-900 truncate dark:text-slate-100">{userProfile?.displayName}</p>
               <p className="text-[0.625rem] text-slate-400 truncate">{userProfile?.email}</p>
               <span className="text-[0.625rem] font-bold text-primary bg-primary-light px-2 py-0.5 rounded-full mt-1 inline-block capitalize">
                 {roleLabel}
@@ -123,7 +123,7 @@ export default function RoleLayout({ modules, moduleIcons, moduleColors, childre
       {/* Main Workspace */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header - Glass style with Global Search */}
-        <header className="h-16 bg-white/70 backdrop-blur-xl border-b border-slate-200/60 px-6 flex items-center justify-between shrink-0 z-20 gap-4">
+        <header className="h-16 flex items-center justify-between shrink-0 border-b border-slate-200/60 bg-white/70 px-6 z-20 gap-4 backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/80">
           {/* Global Search Bar */}
           <div className="flex-1 max-w-lg relative">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -132,18 +132,18 @@ export default function RoleLayout({ modules, moduleIcons, moduleColors, childre
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Buscar módulos, alumnos, grados..."
-              className="w-full pl-9 pr-4 py-2 text-xs font-medium bg-slate-100/70 focus:bg-white border border-transparent focus:border-primary/30 rounded-full focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400"
+              className="w-full pl-9 pr-4 py-2 text-xs font-medium bg-slate-100/70 focus:bg-white border border-transparent focus:border-primary/30 rounded-full focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500"
             />
           </div>
 
           <div className="flex items-center gap-3">
             <NotificationCenter />
-            <div className="w-px h-5 bg-slate-200" />
+            <div className="w-px h-5 bg-slate-200 dark:bg-slate-700" />
             <ThemeSwitcher />
             <div className="w-px h-5 bg-slate-200 hidden sm:block" />
             <div className="hidden sm:flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="text-xs font-semibold text-slate-600">San José</span>
+               <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">San José</span>
             </div>
             <div className="w-px h-5 bg-slate-200 hidden md:block" />
             <span className="text-xs font-bold text-primary bg-primary/10 px-3 py-1 rounded-full font-display">

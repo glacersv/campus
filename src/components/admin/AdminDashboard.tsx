@@ -18,7 +18,7 @@ import {
   ArrowUpRight
 } from 'lucide-react';
 import { getAllTeachers, getAllGrades, getAllStudents, getAllSections, getAllSubjects } from '../../lib/firestore';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
+import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
 import ProgressArcGauge from '../shared/ProgressArcGauge';
 import StatPillCards from '../shared/StatPillCards';
 import { useAuth } from '../../contexts/AuthContext';
@@ -129,34 +129,37 @@ export default function AdminDashboard() {
           </div>
           <div className="flex-1 min-h-0">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={attendanceData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <ComposedChart data={attendanceData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" stroke="#94a3b8" fontSize="0.6875rem" tickLine={false} axisLine={false} />
-                <YAxis stroke="#94a3b8" fontSize="0.6875rem" tickLine={false} axisLine={false} domain={[80, 100]} />
+                <YAxis yAxisId="left" stroke="#94a3b8" fontSize="0.6875rem" tickLine={false} axisLine={false} domain={[80, 100]} tickFormatter={(v: number) => `${v}%`} />
+                <YAxis yAxisId="right" orientation="right" stroke="#94a3b8" fontSize="0.6875rem" tickLine={false} axisLine={false} domain={[0, 6]} tickFormatter={(v: number) => `${v}%`} />
                 <Tooltip
                   contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: '16px', fontSize: '0.6875rem' }}
-                  cursor={{ fill: '#f8fafc' }}
+                  cursor={{ fill: 'rgba(148,163,184,0.12)' }}
+                  formatter={(value: number, name: string) => [`${value}%`, name]}
                 />
                 <Legend iconSize={10} iconType="circle" wrapperStyle={{ fontSize: '0.6875rem', paddingTop: '5px' }} />
                 <Bar
+                  yAxisId="left"
                   dataKey="asistencia"
                   name="Asistencia %"
                   fill="var(--color-primary)"
-                  radius={[12, 12, 0, 0]}
-                  barSize={24}
-                  maxBarSize={24}
-                  background={{ fill: 'var(--color-primary-light)', opacity: 0.35 }}
+                  radius={[10, 10, 0, 0]}
+                  barSize={26}
+                  maxBarSize={26}
                 />
-                <Bar
+                <Line
+                  yAxisId="right"
+                  type="monotone"
                   dataKey="retardos"
                   name="Retardos %"
-                  fill="var(--color-secondary)"
-                  radius={[12, 12, 0, 0]}
-                  barSize={24}
-                  maxBarSize={24}
-                  background={{ fill: 'var(--color-secondary)', opacity: 0.15 }}
+                  stroke="var(--color-secondary)"
+                  strokeWidth={3}
+                  dot={{ r: 4, fill: 'var(--color-secondary)', strokeWidth: 0 }}
+                  activeDot={{ r: 6 }}
                 />
-              </BarChart>
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         </div>

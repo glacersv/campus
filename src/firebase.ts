@@ -3,7 +3,7 @@ import { getAuth } from 'firebase/auth';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, serverTimestamp, getDocs, query, orderBy, limit, where, QueryConstraint, Timestamp, deleteDoc, doc } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
 import firebaseConfig from '../firebase-applet-config.json';
-import { AttendanceReport, AttendanceReportData } from './types';
+import { AttendanceReport } from './types';
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -42,19 +42,6 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   };
   console.error('Firestore Error:', operationType, path, error instanceof Error ? error.message : error);
   throw new Error(JSON.stringify(errInfo));
-}
-
-export async function saveAttendanceReport(reportData: AttendanceReportData): Promise<string | undefined> {
-  const collectionPath = 'attendance_reports';
-  try {
-    const docRef = await addDoc(collection(db, collectionPath), {
-      ...reportData,
-      createdAt: serverTimestamp(),
-    });
-    return docRef.id;
-  } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, collectionPath);
-  }
 }
 
 export async function getAttendanceReports(constraints: QueryConstraint[] = []): Promise<AttendanceReport[]> {

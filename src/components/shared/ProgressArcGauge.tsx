@@ -20,7 +20,7 @@ export default function ProgressArcGauge({
   size = 200,
   strokeWidth = 24,
   color = 'var(--color-primary)',
-  trackColor = '#f1f5f9',
+  trackColor,
   centerLabel,
   centerSublabel,
 }: ProgressArcGaugeProps) {
@@ -37,6 +37,7 @@ export default function ProgressArcGauge({
         <path
           d={`M ${center - radius} ${center} A ${radius} ${radius} 0 0 1 ${center + radius} ${center}`}
           fill="none"
+          className="progress-arc-track"
           stroke={trackColor}
           strokeWidth={strokeWidth}
           strokeLinecap="round"
