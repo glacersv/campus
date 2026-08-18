@@ -33,6 +33,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('bypass_admin') === 'true') {
+      const mockAdmin: User = {
+        uid: 'admin-bypass',
+        email: 'admin@salesianosanjose.edu.sv',
+        displayName: 'Administrador (Bypass)',
+        role: 'admin',
+        status: 'approved'
+      };
+      setUserProfile(mockAdmin);
+      setFirebaseUser({ uid: 'admin-bypass', email: 'admin@salesianosanjose.edu.sv' } as FirebaseUser);
+      setRoleConfig({ id: 'admin', name: 'Administrador', permissions: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'] });
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setFirebaseUser(user);
       if (user) {

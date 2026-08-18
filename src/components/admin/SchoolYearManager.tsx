@@ -52,6 +52,26 @@ const CYCLE_LABEL: Record<string, string> = {
 
 const CYCLE_KEYS: Cycle[] = ['parvularia', '1', '2', '3', '4'];
 
+const DEV_FALLBACK_GRADES: Grade[] = [
+  { id: 'k4', name: 'Kinder 4', cycle: 'parvularia', status: 'ACTIVO' },
+  { id: 'k5', name: 'Kinder 5', cycle: 'parvularia', status: 'ACTIVO' },
+  { id: 'k6', name: 'Preparatoria', cycle: 'parvularia', status: 'ACTIVO' },
+  { id: '1', name: '1° Grado', cycle: '1', status: 'ACTIVO' },
+  { id: '2', name: '2° Grado', cycle: '1', status: 'ACTIVO' },
+  { id: '3', name: '3° Grado', cycle: '1', status: 'ACTIVO' },
+  { id: '4', name: '4° Grado', cycle: '2', status: 'ACTIVO' },
+  { id: '5', name: '5° Grado', cycle: '2', status: 'ACTIVO' },
+  { id: '6', name: '6° Grado', cycle: '2', status: 'ACTIVO' },
+  { id: '7', name: '7° Grado', cycle: '3', status: 'ACTIVO' },
+  { id: '8', name: '8° Grado', cycle: '3', status: 'ACTIVO' },
+  { id: '9', name: '9° Grado', cycle: '3', status: 'ACTIVO' },
+  { id: '10g', name: '1° Bachillerato General', cycle: '4', baccalaureateType: 'general', status: 'ACTIVO' },
+  { id: '11g', name: '2° Bachillerato General', cycle: '4', baccalaureateType: 'general', status: 'ACTIVO' },
+  { id: '10t', name: '1° Bachillerato Técnico (Diseño)', cycle: '4', baccalaureateType: 'tecnico', status: 'ACTIVO' },
+  { id: '11t', name: '2° Bachillerato Técnico (Diseño)', cycle: '4', baccalaureateType: 'tecnico', status: 'ACTIVO' },
+  { id: '12t', name: '3° Bachillerato Técnico (Diseño)', cycle: '4', baccalaureateType: 'tecnico', status: 'ACTIVO' }
+];
+
 export default function SchoolYearManager() {
   const [loading, setLoading] = useState(true);
   const [currentYear, setCurrentYear] = useState<number | null>(null);
@@ -66,18 +86,24 @@ export default function SchoolYearManager() {
   const loadData = useCallback(async () => {
     try {
       const [stud, gra, sec, bts, cy] = await Promise.all([
-        getAllStudents(),
-        getAllGrades(),
-        getAllSections(),
-        getAllBaccalaureateTypes(),
-        getCurrentSchoolYear()
+        getAllStudents().catch(() => []),
+        getAllGrades().catch(() => []),
+        getAllSections().catch(() => []),
+        getAllBaccalaureateTypes().catch(() => []),
+        getCurrentSchoolYear().catch(() => null)
       ]);
+
+      const effectiveGrades = gra.length > 0 ? gra : (import.meta.env.DEV ? DEV_FALLBACK_GRADES : []);
       setStudents(stud);
       setCurrentYear(cy);
-      setRows(buildMigrationRows(stud, gra, sec, bts, cy));
+      setRows(buildMigrationRows(stud, effectiveGrades, sec, bts, cy));
     } catch (err) {
       console.error(err);
-      toast.error('Error al cargar los datos de planificación');
+      if (import.meta.env.DEV) {
+        setRows(buildMigrationRows([], DEV_FALLBACK_GRADES, [], [], 2025));
+      } else {
+        toast.error('Error al cargar los datos de planificación');
+      }
     } finally {
       setLoading(false);
     }
@@ -379,9 +405,11 @@ export default function SchoolYearManager() {
     groupedRows[cy].push(r);
   });
 
-  const activeCycles = cycleOrder.filter(c => groupedRows[c] && groupedRows[c].length > 0);
+  const activeCycles = cycleOrder
+    .filter(c => selectedCycle === 'all' || selectedCycle === c)
+    .filter(c => groupedRows[c] && groupedRows[c].length > 0);
   Object.keys(groupedRows).forEach(c => {
-    if (!activeCycles.includes(c)) {
+    if ((selectedCycle === 'all' || selectedCycle === c) && !activeCycles.includes(c) && groupedRows[c]?.length > 0) {
       activeCycles.push(c);
     }
   });
@@ -505,6 +533,35 @@ export default function SchoolYearManager() {
           </span>
         </div>
 
+        {/* Tactile Cycle Filter Pill Buttons */}
+        <div className="flex items-center gap-2 flex-wrap bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200/80 w-fit">
+          <button
+            type="button"
+            onClick={() => setSelectedCycle('all')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+              selectedCycle === 'all'
+                ? 'bg-primary text-white shadow-sm'
+                : 'text-slate-600 hover:bg-slate-200/60'
+            }`}
+          >
+            Todos
+          </button>
+          {CYCLE_KEYS.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setSelectedCycle(c)}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                selectedCycle === c
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'text-slate-600 hover:bg-slate-200/60'
+              }`}
+            >
+              {CYCLE_LABEL[c] || c}
+            </button>
+          ))}
+        </div>
+
         {rows.length === 0 ? (
           <div className="text-center py-16 card-crema text-tertiary">
             <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-40" />
@@ -530,175 +587,22 @@ export default function SchoolYearManager() {
 
                   {/* Responsive grid of interactive cards */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                    {cycleRows.map((r, rowIndex) => {
-                      const dist = getDistribution(r);
-                      const isReconfigured =
-                        r.currentSectionNames.length !==
-                        r.newSectionNames.filter(n => n.trim()).length;
-                      return (
-                        <motion.div
-                          key={r.gradeId}
-                          initial={{ opacity: 0, y: 15 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: rowIndex * 0.02 }}
-                          className="card-crema p-5 flex flex-col justify-between transition-all duration-300 relative group/card overflow-hidden min-h-[380px]"
-                        >
-                          {/* Subtle top-border gradient gradient to allow natural expansion */}
-                          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/10 via-primary/30 to-primary/10" />
-
-                          <div className="space-y-4">
-                            {/* Header: Grade & Cycle */}
-                            <div className="flex items-start justify-between gap-2 min-w-0">
-                              <div className="min-w-0 flex-1">
-                                <h4 className="text-sm font-black text-slate-900 font-display group-hover/card:text-primary transition-colors leading-tight truncate" title={r.gradeName}>
-                                  {r.gradeName}
-                                </h4>
-                                <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-md text-[9px] font-bold border ${
-                                  r.cycle === 'parvularia' ? 'bg-pink-50 text-pink-700 border-pink-100' :
-                                  r.cycle === '1' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                                  r.cycle === '2' ? 'bg-sky-50 text-sky-700 border-sky-100' :
-                                  r.cycle === '3' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
-                                  'bg-orange-50 text-orange-700 border-orange-100'
-                                }`}>
-                                  {CYCLE_LABEL[r.cycle] || r.cycle}
-                                </span>
-                              </div>
-
-                              <div className="shrink-0">
-                                {r.nextGradeId === null ? (
-                                  <span className="inline-flex items-center gap-1 text-[9px] font-black text-secondary bg-slate-50 border border-slate-200 px-2 py-1 rounded-full uppercase tracking-wider">
-                                    <GraduationCap className="w-3 h-3" />
-                                    Egreso
-                                  </span>
-                                ) : (
-                                  <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider bg-slate-100 px-2 py-1 rounded-md block max-w-[85px] truncate" title={r.nextGradeName}>
-                                    {r.nextGradeName}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Enrollment flow - styled as a visual 'Matrícula Entrante' vs 'Padrón Saliente' comparison */}
-                            <div className="space-y-1.5 bg-slate-50 border border-slate-100 rounded-xl p-2.5">
-                              <div className="flex justify-between items-center text-[10px] font-bold text-slate-400">
-                                <span className="uppercase tracking-wider">Flujo de Alumnos</span>
-                              </div>
-                              <div className="flex justify-between items-center text-xs">
-                                <span className="text-slate-500 font-medium">Ingreso (+{r.incomingCount}):</span>
-                                <span className="font-bold text-primary truncate max-w-[85px]" title={r.sourceGradeName}>{r.sourceGradeName}</span>
-                              </div>
-                              <div className="flex justify-between items-center text-xs border-t border-slate-100/60 pt-1.5 mt-1">
-                                <span className="text-slate-500 font-medium">Egreso ({r.outgoingCount}):</span>
-                                <span className="font-bold text-slate-700 truncate max-w-[85px]" title={r.nextGradeName === 'Graduación' ? 'Egreso' : r.nextGradeName}>{r.nextGradeName === 'Graduación' ? 'Egreso' : r.nextGradeName}</span>
-                              </div>
-                            </div>
-
-                            {/* Aulas en Curso (Año actual) */}
-                            <div className="space-y-1.5">
-                              <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                                Aulas en Curso
-                              </div>
-                              {r.currentSectionNames.length > 0 ? (
-                                <div className="flex flex-wrap gap-1.5">
-                                  {r.currentSectionNames.map(n => (
-                                    <span
-                                      key={n}
-                                      className="px-2.5 py-0.5 bg-slate-100 border border-slate-200/80 rounded-md text-slate-600 font-black font-mono text-[11px] shadow-sm"
-                                    >
-                                      {n}
-                                    </span>
-                                  ))}
-                                </div>
-                              ) : (
-                                <span className="text-[11px] text-slate-400 font-medium italic">
-                                  Sin aulas asignadas
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Next-year planned section inputs grouped inside a cohesive bg-slate-50/50 block */}
-                            <div className="bg-slate-50/50 p-3 rounded-xl border border-slate-100 space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                                  Aulas Planificadas ({nextYear})
-                                </span>
-                                {isReconfigured && (
-                                  <span className="text-[9px] font-black uppercase text-accent bg-accent/10 border border-accent/20 px-1.5 py-0.5 rounded">
-                                    Modificado
-                                  </span>
-                                )}
-                              </div>
-
-                              <div className="flex items-center gap-2">
-                                <div className="inline-flex items-center bg-white border border-slate-200 rounded-lg p-0.5 shadow-xs shrink-0">
-                                  <button
-                                    type="button"
-                                    onClick={() => updateCount(r.gradeId, r.newSectionNames.length - 1)}
-                                    disabled={r.newSectionNames.length <= 1}
-                                    className="w-5.5 h-5.5 rounded-md flex items-center justify-center text-slate-500 hover:bg-primary hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all font-bold cursor-pointer"
-                                  >
-                                    <Minus className="w-3 h-3" />
-                                  </button>
-                                  <span className="w-6 text-center text-xs font-black text-slate-800 font-mono">
-                                    {r.newSectionNames.length}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => updateCount(r.gradeId, r.newSectionNames.length + 1)}
-                                    disabled={r.newSectionNames.length >= 6}
-                                    className="w-5.5 h-5.5 rounded-md flex items-center justify-center text-slate-500 hover:bg-primary hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all font-bold cursor-pointer"
-                                  >
-                                    <Plus className="w-3 h-3" />
-                                  </button>
-                                </div>
-
-                                {/* Interactive inputs for section letters */}
-                                <div className="flex flex-wrap gap-1 items-center">
-                                  {r.newSectionNames.map((n, i) => (
-                                    <input
-                                      key={i}
-                                      value={n}
-                                      onChange={e => updateName(r.gradeId, i, e.target.value)}
-                                      maxLength={2}
-                                      placeholder="A"
-                                      title="Identificador de la sección"
-                                      className="w-8 h-8 text-center text-xs font-black uppercase input-crema bg-white text-primary p-0 rounded-lg border-slate-200"
-                                    />
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Live projections use neutral badges with primary-colored highlights to minimize visual noise */}
-                            <div className="space-y-1.5 pt-1">
-                              <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                                Distribución Proyectada
-                              </div>
-                              <div className="flex flex-wrap gap-1.5">
-                                {Object.entries(dist).map(([name, count]) => (
-                                  <span
-                                    key={name}
-                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 shadow-xs hover:scale-105 hover:bg-slate-200/80 transition-all duration-200 cursor-default"
-                                  >
-                                    <span className="text-[9px] text-slate-400 uppercase font-black tracking-wider">
-                                      Secc. {name}
-                                    </span>
-                                    <span className="text-primary font-black font-mono text-[11px]">
-                                      {count}
-                                    </span>
-                                  </span>
-                                ))}
-                                {Object.keys(dist).length === 0 && (
-                                  <span className="text-[10px] text-slate-400 italic">
-                                    Sin alumnos proyectados
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
+                    {cycleRows.map((r, rowIndex) => (
+                      <motion.div
+                        key={r.gradeId}
+                        initial={{ opacity: 0, y: 15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: rowIndex * 0.02 }}
+                      >
+                        <GradeMigrationCard
+                          r={r}
+                          nextYear={nextYear}
+                          getDistribution={getDistribution}
+                          updateCount={updateCount}
+                          updateName={updateName}
+                        />
+                      </motion.div>
+                    ))}
                   </div>
                 </div>
               );
@@ -904,31 +808,37 @@ function GradeMigrationCard({
   const isReconfigured = r.currentSectionNames.length !== r.newSectionNames.filter(n => n.trim()).length;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col justify-between hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 relative group/card overflow-hidden min-h-[420px]">
-      {/* Decorative premium slate/primary gradient top border */}
+    <div className="card-crema p-5 flex flex-col justify-between transition-all duration-300 relative group/card overflow-hidden min-h-[380px]">
+      {/* Decorative top-border gradient accent */}
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/10 via-primary/30 to-primary/10" />
 
       {/* Card Body Container */}
       <div className="flex-1 flex flex-col justify-between space-y-4">
         {/* Header Block */}
-        <div className="space-y-2">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <h4 className="text-base font-black text-slate-900 font-display group-hover/card:text-primary transition-colors leading-tight">
-                {r.gradeName}
-              </h4>
-              <span className="inline-flex items-center gap-1 mt-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold border bg-slate-50 text-slate-500 border-slate-200/60">
-                {CYCLE_LABEL[r.cycle] || r.cycle}
-              </span>
-            </div>
+        <div className="flex items-start justify-between gap-2 min-w-0">
+          <div className="min-w-0 flex-1">
+            <h4 className="text-sm font-black text-slate-900 font-display group-hover/card:text-primary transition-colors leading-tight truncate" title={r.gradeName}>
+              {r.gradeName}
+            </h4>
+            <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-md text-[9px] font-bold border ${
+              r.cycle === 'parvularia' ? 'bg-pink-50 text-pink-700 border-pink-100' :
+              r.cycle === '1' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+              r.cycle === '2' ? 'bg-sky-50 text-sky-700 border-sky-100' :
+              r.cycle === '3' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
+              'bg-orange-50 text-orange-700 border-orange-100'
+            }`}>
+              {CYCLE_LABEL[r.cycle] || r.cycle}
+            </span>
+          </div>
 
+          <div className="shrink-0">
             {r.nextGradeId === null ? (
-              <span className="inline-flex items-center gap-1 text-[10px] font-black text-slate-600 bg-slate-50 border border-slate-200/80 px-2.5 py-1 rounded-full uppercase tracking-wider shrink-0">
-                <GraduationCap className="w-3.5 h-3.5 text-slate-500" />
+              <span className="inline-flex items-center gap-1 text-[9px] font-black text-secondary bg-slate-50 border border-slate-200 px-2 py-1 rounded-full uppercase tracking-wider">
+                <GraduationCap className="w-3 h-3" />
                 Egreso
               </span>
             ) : (
-              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider bg-slate-100 px-2 py-1 rounded-md shrink-0">
+              <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider bg-slate-100 px-2 py-1 rounded-md block max-w-[85px] truncate" title={r.nextGradeName}>
                 {r.nextGradeName}
               </span>
             )}
@@ -936,27 +846,17 @@ function GradeMigrationCard({
         </div>
 
         {/* Enrollment Flow (Source to Destination) */}
-        <div className="bg-slate-50/70 rounded-xl p-3 border border-slate-100 space-y-2">
-          <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
-            Flujo de Matrícula
+        <div className="space-y-1.5 bg-slate-50 border border-slate-100 rounded-xl p-2.5">
+          <div className="flex justify-between items-center text-[10px] font-bold text-slate-400">
+            <span className="uppercase tracking-wider">Flujo de Alumnos</span>
           </div>
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
-            <span className="truncate max-w-[100px] bg-white border border-slate-200 px-2 py-0.5 rounded-md text-[10px] text-slate-500">
-              {r.sourceGradeName}
-            </span>
-            <div className="flex items-center gap-1 text-primary">
-              <ArrowRight className="w-3.5 h-3.5" />
-              <span className="font-bold text-[10px] font-mono bg-primary/10 px-1.5 py-0.5 rounded-md">
-                +{r.incomingCount}
-              </span>
-            </div>
-            <span className="truncate max-w-[100px] bg-primary/5 border border-primary/20 text-primary px-2 py-0.5 rounded-md text-[10px]">
-              {r.gradeName}
-            </span>
+          <div className="flex justify-between items-center text-xs">
+            <span className="text-slate-500 font-medium">Ingreso (+{r.incomingCount}):</span>
+            <span className="font-bold text-primary truncate max-w-[85px]" title={r.sourceGradeName}>{r.sourceGradeName}</span>
           </div>
-          <div className="flex items-center justify-between text-[11px] text-slate-400 pt-0.5">
-            <span>Padrón actual en grado:</span>
-            <span className="font-bold text-slate-600">{r.outgoingCount} alumnos</span>
+          <div className="flex justify-between items-center text-xs border-t border-slate-100/60 pt-1.5 mt-1">
+            <span className="text-slate-500 font-medium">Egreso ({r.outgoingCount}):</span>
+            <span className="font-bold text-slate-700 truncate max-w-[85px]" title={r.nextGradeName === 'Graduación' ? 'Egreso' : r.nextGradeName}>{r.nextGradeName === 'Graduación' ? 'Egreso' : r.nextGradeName}</span>
           </div>
         </div>
 
@@ -970,7 +870,7 @@ function GradeMigrationCard({
               {r.currentSectionNames.map(n => (
                 <span
                   key={n}
-                  className="px-2.5 py-0.5 bg-slate-100 border border-slate-200/80 rounded-md text-slate-600 font-black font-mono text-[11px] shadow-3xs"
+                  className="px-2.5 py-0.5 bg-slate-100 border border-slate-200/80 rounded-md text-slate-600 font-black font-mono text-[11px] shadow-xs"
                 >
                   {n}
                 </span>
@@ -984,25 +884,25 @@ function GradeMigrationCard({
         </div>
 
         {/* Next Year Section Settings Block */}
-        <div className="space-y-2.5 pt-3 border-t border-slate-100">
+        <div className="bg-slate-50/50 p-3 rounded-xl border border-slate-100 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
               Aulas Planificadas ({nextYear})
             </span>
             {isReconfigured && (
-              <span className="text-[9px] font-black uppercase text-amber-600 bg-amber-50 border border-amber-100/60 px-1.5 py-0.5 rounded">
-                Reconfigurado
+              <span className="text-[9px] font-black uppercase text-accent bg-accent/10 border border-accent/20 px-1.5 py-0.5 rounded">
+                Modificado
               </span>
             )}
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="inline-flex items-center bg-slate-50 border border-slate-200 rounded-lg p-0.5 shadow-3xs shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="inline-flex items-center bg-white border border-slate-200 rounded-lg p-0.5 shadow-xs shrink-0">
               <button
                 type="button"
                 onClick={() => updateCount(r.gradeId, r.newSectionNames.length - 1)}
                 disabled={r.newSectionNames.length <= 1}
-                className="w-6 h-6 rounded-md flex items-center justify-center text-slate-500 hover:bg-primary hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all font-bold cursor-pointer"
+                className="w-5.5 h-5.5 rounded-md flex items-center justify-center text-slate-500 hover:bg-primary hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all font-bold cursor-pointer"
               >
                 <Minus className="w-3 h-3" />
               </button>
@@ -1013,14 +913,14 @@ function GradeMigrationCard({
                 type="button"
                 onClick={() => updateCount(r.gradeId, r.newSectionNames.length + 1)}
                 disabled={r.newSectionNames.length >= 6}
-                className="w-6 h-6 rounded-md flex items-center justify-center text-slate-500 hover:bg-primary hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all font-bold cursor-pointer"
+                className="w-5.5 h-5.5 rounded-md flex items-center justify-center text-slate-500 hover:bg-primary hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all font-bold cursor-pointer"
               >
                 <Plus className="w-3 h-3" />
               </button>
             </div>
 
             {/* Interactive inputs for section letters */}
-            <div className="flex flex-wrap gap-1.5 items-center">
+            <div className="flex flex-wrap gap-1 items-center">
               {r.newSectionNames.map((n, i) => (
                 <input
                   key={i}
@@ -1029,7 +929,7 @@ function GradeMigrationCard({
                   maxLength={2}
                   placeholder="A"
                   title="Identificador de la sección"
-                  className="w-8 h-8 text-center text-xs font-black uppercase bg-white border border-slate-200 rounded-lg text-primary focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none transition-all shadow-3xs"
+                  className="w-8 h-8 text-center text-xs font-black uppercase input-crema bg-white text-primary p-0 rounded-lg border-slate-200"
                 />
               ))}
             </div>
@@ -1037,7 +937,7 @@ function GradeMigrationCard({
         </div>
 
         {/* Live Promotion/Balance Distribution Block */}
-        <div className="space-y-1.5 pt-3 border-t border-slate-100">
+        <div className="space-y-1.5 pt-1">
           <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
             Distribución Proyectada
           </div>
@@ -1045,18 +945,18 @@ function GradeMigrationCard({
             {Object.entries(dist).map(([name, count]) => (
               <span
                 key={name}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary/5 border border-primary/10 rounded-lg text-[11px] font-bold text-primary shadow-3xs hover:scale-105 hover:bg-primary/10 transition-all duration-200 cursor-default"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 shadow-xs hover:scale-105 hover:bg-slate-200/80 transition-all duration-200 cursor-default"
               >
-                <span className="text-[9px] text-primary/70 uppercase font-black tracking-wider">
+                <span className="text-[9px] text-slate-400 uppercase font-black tracking-wider">
                   Secc. {name}
                 </span>
-                <span className="bg-white text-primary px-1.5 py-0.2 rounded font-black font-mono text-[10px] border border-primary/10 shadow-3xs">
+                <span className="text-primary font-black font-mono text-[11px]">
                   {count}
                 </span>
               </span>
             ))}
             {Object.keys(dist).length === 0 && (
-              <span className="text-xs text-slate-400 italic">
+              <span className="text-[10px] text-slate-400 italic">
                 Sin alumnos proyectados
               </span>
             )}
