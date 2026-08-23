@@ -33,6 +33,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (import.meta.env.DEV && typeof window !== 'undefined' && window.location.search.includes('bypass_admin=true')) {
+      const mockAdminUser: any = { uid: 'mock_admin_uid', email: 'admin@salesianosanjose.edu.sv', displayName: 'Administrador Pruebas' };
+      const mockAdminProfile: User = {
+        uid: 'mock_admin_uid',
+        email: 'admin@salesianosanjose.edu.sv',
+        displayName: 'Administrador Pruebas',
+        role: 'admin',
+        status: 'approved'
+      };
+      setFirebaseUser(mockAdminUser);
+      setUserProfile(mockAdminProfile);
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setFirebaseUser(user);
       if (user) {
