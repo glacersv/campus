@@ -443,13 +443,6 @@ export default function SubjectsManager() {
   // Group grades by cycles for organized navigation lists (Parvularia, Primer Ciclo, etc.)
   const gradesByCycle = grades.reduce((acc, g) => {
     const cycle = g.cycle || 'parvularia';
-    const hasSubjects = subjects.some(s => {
-      if ((s as any).gradeIds && Array.isArray((s as any).gradeIds)) {
-        return (s as any).gradeIds.includes(g.id);
-      }
-      return s.gradeId === g.id;
-    });
-    if (!hasSubjects) return acc;
     if (!acc[cycle]) acc[cycle] = [];
     acc[cycle].push(g);
     return acc;

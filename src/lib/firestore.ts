@@ -255,10 +255,23 @@ export async function getAllGrades(): Promise<Grade[]> {
 }
 
 export async function ensureTechnicalGrades(): Promise<void> {
+  const currentYear = new Date().getFullYear();
   const ALL_GRADES = [
-    { id: '10g', name: '10° Bachillerato General', cycle: '4' as const, baccalaureateType: 'general' as const, status: 'ACTIVO' as const },
-    { id: '11g', name: '11° Bachillerato General', cycle: '4' as const, baccalaureateType: 'general' as const, status: 'ACTIVO' as const },
-    { id: '11t', name: '11° Bachillerato Técnico', cycle: '4' as const, baccalaureateType: 'tecnico' as const, status: 'ACTIVO' as const },
+    { id: 'k4', name: 'Kinder 4', cycle: 'parvularia' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: 'k5', name: 'Kinder 5', cycle: 'parvularia' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: 'k6', name: 'Preparatoria', cycle: 'parvularia' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '1', name: '1° Grado', cycle: '1' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '2', name: '2° Grado', cycle: '1' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '3', name: '3° Grado', cycle: '1' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '4', name: '4° Grado', cycle: '2' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '5', name: '5° Grado', cycle: '2' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '6', name: '6° Grado', cycle: '2' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '7', name: '7° Grado', cycle: '3' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '8', name: '8° Grado', cycle: '3' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '9', name: '9° Grado', cycle: '3' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '10g', name: '10° Bachillerato General', cycle: '4' as const, baccalaureateType: 'general' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '11g', name: '11° Bachillerato General', cycle: '4' as const, baccalaureateType: 'general' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '11t', name: '11° Bachillerato Técnico', cycle: '4' as const, baccalaureateType: 'tecnico' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
   ];
   for (const g of ALL_GRADES) {
     try {
