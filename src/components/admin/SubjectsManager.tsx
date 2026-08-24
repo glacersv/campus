@@ -32,6 +32,7 @@ import {
   reseedLMSModules,
   getAllTeachers,
   ensureTechnicalGrades,
+  cleanupDuplicateGrades,
   seedBTVCurriculumToFirestore
 } from '../../lib/firestore';
 import { Subject, Grade, CYCLE_NAMES, Cycle, LMSModule, Teacher } from '../../types';
@@ -91,6 +92,7 @@ export default function SubjectsManager() {
   const loadData = async () => {
     try {
       await ensureTechnicalGrades();
+      await cleanupDuplicateGrades();
       await seedBTVCurriculumToFirestore();
       const [subs, grds, modules, tchs] = await Promise.all([
         getAllSubjects(),

@@ -271,7 +271,9 @@ export async function ensureTechnicalGrades(): Promise<void> {
     { id: '9', name: '9° Grado', cycle: '3' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
     { id: '10g', name: '10° Bachillerato General', cycle: '4' as const, baccalaureateType: 'general' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
     { id: '11g', name: '11° Bachillerato General', cycle: '4' as const, baccalaureateType: 'general' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '10t', name: '10° Bachillerato Técnico', cycle: '4' as const, baccalaureateType: 'tecnico' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
     { id: '11t', name: '11° Bachillerato Técnico', cycle: '4' as const, baccalaureateType: 'tecnico' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
+    { id: '12t', name: '12° Bachillerato Técnico', cycle: '4' as const, baccalaureateType: 'tecnico' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
   ];
   for (const g of ALL_GRADES) {
     try {
@@ -280,6 +282,26 @@ export async function ensureTechnicalGrades(): Promise<void> {
       console.error(`Error creando grado ${g.id}:`, e);
     }
   }
+}
+
+export async function cleanupDuplicateGrades(): Promise<number> {
+  const snap = await getDocs(collection(db, GRADES_COLLECTION));
+  let deleted = 0;
+  const VALID_IDS = new Set([
+    'k4', 'k5', 'k6', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+    '10g', '11g', '10t', '11t', '12t'
+  ]);
+  for (const d of snap.docs) {
+    if (!VALID_IDS.has(d.id)) {
+      try {
+        await deleteDoc(doc(db, GRADES_COLLECTION, d.id));
+        deleted++;
+      } catch (e) {
+        console.error(`Error eliminando grado duplicado ${d.id}:`, e);
+      }
+    }
+  }
+  return deleted;
 }
 
 // ==================== BTV CURRICULUM MIGRATION ====================
