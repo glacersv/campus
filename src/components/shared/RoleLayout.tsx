@@ -1,5 +1,5 @@
 import React, { useState, ReactNode } from 'react';
-import { LogOut, ChevronRight, Menu, Search, LayoutDashboard } from 'lucide-react';
+import { LogOut, ChevronRight, Menu, Search, LayoutDashboard, BookOpen, School, ClipboardCheck, CheckCircle2 } from 'lucide-react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { SystemModuleId, SYSTEM_MODULES, ROLE_LABELS, UserRole } from '../../types';
@@ -72,30 +72,82 @@ export default function RoleLayout({ modules, moduleIcons, moduleColors, childre
               </button>
             </div>
 
-            {/* Modules Section */}
-            <div>
-              {!collapsed && (
-                <div className="sidebar-section-title">MÓDULOS DE GESTIÓN</div>
-              )}
-              <div className="space-y-0.5">
-                {modules.map((moduleId) => {
-                  const mod = SYSTEM_MODULES.find(m => m.id === moduleId);
-                  const Icon = moduleIcons[moduleId];
-                  const isActive = currentPath === moduleId;
-                  return (
-                    <button
-                      key={moduleId}
-                      onClick={() => navigate(`/${userRole}/${moduleId}`)}
-                      className={`sidebar-item ${isActive ? 'active' : ''}`}
-                      title={collapsed ? mod?.label : undefined}
-                    >
-                      {Icon && <Icon className="w-5 h-5 shrink-0" />}
-                      {!collapsed && <span className="truncate">{mod?.label}</span>}
-                    </button>
-                  );
-                })}
+            {/* Aula Virtual Section - Solo para alumno con permiso lms */}
+            {userRole === 'alumno' && modules.includes('lms') && (
+              <div>
+                {!collapsed && (
+                  <div className="sidebar-section-title">AULA VIRTUAL</div>
+                )}
+                <div className="space-y-0.5">
+                  <button
+                    onClick={() => navigate('/alumno/aula-virtual')}
+                    className={`sidebar-item ${currentPath === 'aula-virtual' ? 'active' : ''}`}
+                    title={collapsed ? 'Mi Aula Virtual' : undefined}
+                  >
+                    <BookOpen className="w-5 h-5 shrink-0" />
+                    {!collapsed && <span>Mi Aula Virtual</span>}
+                  </button>
+                  <button
+                    onClick={() => navigate('/alumno/aula-virtual/cursos')}
+                    className={`sidebar-item ${currentPath === 'cursos' ? 'active' : ''}`}
+                    title={collapsed ? 'Mis Cursos' : undefined}
+                  >
+                    <School className="w-5 h-5 shrink-0" />
+                    {!collapsed && <span>Mis Cursos</span>}
+                  </button>
+                  <button
+                    onClick={() => navigate('/alumno/aula-virtual/actividades')}
+                    className={`sidebar-item ${currentPath === 'actividades' ? 'active' : ''}`}
+                    title={collapsed ? 'Mis Actividades' : undefined}
+                  >
+                    <ClipboardCheck className="w-5 h-5 shrink-0" />
+                    {!collapsed && <span>Mis Actividades</span>}
+                  </button>
+                  <button
+                    onClick={() => navigate('/alumno/aula-virtual/progreso')}
+                    className={`sidebar-item ${currentPath === 'progreso' ? 'active' : ''}`}
+                    title={collapsed ? 'Mi Progreso' : undefined}
+                  >
+                    <CheckCircle2 className="w-5 h-5 shrink-0" />
+                    {!collapsed && <span>Mi Progreso</span>}
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Modules Section */}
+            {(() => {
+              const visibleModules = modules.filter((moduleId) => {
+                if (userRole === 'alumno' && moduleId === 'lms') return false;
+                return true;
+              });
+              if (visibleModules.length === 0) return null;
+              return (
+                <div>
+                  {!collapsed && (
+                    <div className="sidebar-section-title">MÓDULOS DE GESTIÓN</div>
+                  )}
+                  <div className="space-y-0.5">
+                    {visibleModules.map((moduleId) => {
+                      const mod = SYSTEM_MODULES.find(m => m.id === moduleId);
+                      const Icon = moduleIcons[moduleId];
+                      const isActive = currentPath === moduleId;
+                      return (
+                        <button
+                          key={moduleId}
+                          onClick={() => navigate(`/${userRole}/${moduleId}`)}
+                          className={`sidebar-item ${isActive ? 'active' : ''}`}
+                          title={collapsed ? mod?.label : undefined}
+                        >
+                          {Icon && <Icon className="w-5 h-5 shrink-0" />}
+                          {!collapsed && <span className="truncate">{mod?.label}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
           </nav>
         </div>
 

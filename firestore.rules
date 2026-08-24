@@ -96,7 +96,7 @@ service cloud.firestore {
 
     // Grades Collection
     match /grades/{gradeId} {
-      allow read: if isStaff();
+      allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 
@@ -120,25 +120,25 @@ service cloud.firestore {
 
     // Baccalaureate Types Collection
     match /baccalaureate_types/{typeId} {
-      allow read: if isStaff();
+      allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 
     // Buildings Collection
     match /buildings/{buildingId} {
-      allow read: if isStaff();
+      allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 
     // Computer Labs Collection
     match /computer_labs/{labId} {
-      allow read: if isStaff();
+      allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 
     // School Year Status Collection
     match /school_year_status/{docId} {
-      allow read: if isStaff();
+      allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 
@@ -183,6 +183,31 @@ service cloud.firestore {
       allow create: if isDocente() || isAdmin();
       allow update: if isDocente() || isAdmin();
       allow delete: if isAdmin();
+    }
+
+    // LMS State Collection (single document with courses, modules, activities)
+    match /lms_state/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isDocente();
+    }
+
+    // LMS Modules (admin structure, docentes pueden escribir contenido)
+    match /lms_modules/{moduleId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin() || isDocente();
+      allow delete: if isAdmin();
+    }
+
+    // LMS Module Content (docente editable)
+    match /lms_module_content/{moduleId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isDocente();
+    }
+
+    // LMS Calendar (admin created)
+    match /lms_calendar/{eventId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isDocente();
     }
 
     // Global Catch-All Safety Net (Default Deny)

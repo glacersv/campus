@@ -296,9 +296,7 @@ export default function SchoolYearManager() {
         else if (rawGrado.includes('9° Grado') || rawGrado === '9') gradeId = '9';
         else if (rawGrado.includes('1° Bachillerato') || rawGrado === '10g') gradeId = '10g';
         else if (rawGrado.includes('2° Bachillerato') || rawGrado === '11g') gradeId = '11g';
-        else if (rawGrado.includes('1° Diseño') || rawGrado === '10t') gradeId = '10t';
-        else if (rawGrado.includes('2° Diseño') || rawGrado === '11t') gradeId = '11t';
-        else if (rawGrado.includes('3° Diseño') || rawGrado === '12t') gradeId = '12t';
+        else if (rawGrado.includes('1° Diseño') || rawGrado === '11t') gradeId = '11t';
         else if (rawGrado.includes('Preparatoria') || rawGrado === 'k6') gradeId = 'k6';
         else if (rawGrado.includes('Kinder 5') || rawGrado === 'k5') gradeId = 'k5';
         else if (rawGrado.includes('Kinder 4') || rawGrado === 'k4') gradeId = 'k4';

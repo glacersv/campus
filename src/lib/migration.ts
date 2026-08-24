@@ -1,6 +1,6 @@
 import { Student, Grade, Section, BaccalaureateTypeDoc } from '../types';
 
-export const GRADE_ORDER = ['k4', 'k5', 'k6', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10g', '10t', '11g', '11t', '12t'];
+export const GRADE_ORDER = ['k4', 'k5', 'k6', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10g', '11g', '11t'];
 
 export function sortGrades(grades: Grade[]): Grade[] {
   return [...grades].sort((a, b) => {

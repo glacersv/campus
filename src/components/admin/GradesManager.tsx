@@ -418,6 +418,7 @@ export default function GradesManager() {
                 <div className="grid grid-cols-3 gap-3">
                   {items.map((g, i) => {
                     const sectionsCount = sections.filter((s) => s.gradeId === g.id).length;
+                    const gradeStudentsCount = students.filter(st => st.gradeId === g.id).length;
                     const buildingName = getGradeBuildingName(g.id);
                     return (
                       <GradeCard
@@ -425,6 +426,7 @@ export default function GradesManager() {
                         grade={g}
                         index={i}
                         sectionsCount={sectionsCount}
+                        studentsCount={gradeStudentsCount}
                         buildingName={buildingName}
                         selected={selected.has(g.id)}
                         onToggleSelect={() => toggleSelect(g.id)}
@@ -529,10 +531,11 @@ const CYCLE_ICON_COLORS: Record<Cycle, string> = {
   '4': 'text-orange-600'
 };
 
-function GradeCard({ grade, index, sectionsCount, buildingName, selected, onToggleSelect, onEdit, onDelete, onToggleStatus }: {
+function GradeCard({ grade, index, sectionsCount, studentsCount, buildingName, selected, onToggleSelect, onEdit, onDelete, onToggleStatus }: {
   grade: Grade;
   index: number;
   sectionsCount: number;
+  studentsCount: number;
   buildingName: string | null;
   selected: boolean;
   onToggleSelect: () => void;
@@ -542,7 +545,6 @@ function GradeCard({ grade, index, sectionsCount, buildingName, selected, onTogg
 }) {
   const cycle = grade.cycle as Cycle;
   const cycleDotColor = CYCLE_HEX[cycle] || '#25855A';
-  const studentsCount = 0; // Would need to be passed as prop
 
   return (
     <motion.div

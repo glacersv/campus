@@ -15,6 +15,7 @@ import {
   arrayUnion
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
+import { BTV_GRAPHIC_DESIGN_COURSES, getModuleDescriptorData, GENERATE_ANNUAL_PROJECT } from '../services/btvCurriculumData';
 
 const FIREBASE_API_KEY = 'AIzaSyATVsRNPWADga7le5h8bxogza_HVmQr_Z8';
 
@@ -65,7 +66,7 @@ export async function ensureAdminAccount(): Promise<void> {
     }
   } catch { /* Auth account already exists or will be created manually */ }
 }
-import { User, Grade, Section, Subject, Teacher, Student, BaccalaureateTypeDoc, Building, ComputerLab, RoleConfig, UserRole, UserStatus, ApprovalRequest, NewUserNotification, Proyecto, ActividadEvaluada, EvaluacionProyecto } from '../types';
+import { User, Grade, Section, Subject, Teacher, Student, BaccalaureateTypeDoc, Building, ComputerLab, RoleConfig, UserRole, UserStatus, ApprovalRequest, NewUserNotification, Proyecto, ActividadEvaluada, EvaluacionProyecto, LMSModule } from '../types';
 import {
   validateUser,
   validateGrade,
@@ -166,7 +167,7 @@ export async function createRole(data: Omit<RoleConfig, 'createdAt'>): Promise<v
 const CORRECT_ROLE_PERMISSIONS: Record<string, string[]> = {
   admin: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'],
   docente: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'],
-  alumno: ['formacion', 'proyectos'],
+  alumno: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'semana-juventud', 'lms'],
   coordinacion: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'],
   coordinacion_academica: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'],
   coordinacion_convivencia: ['formacion', 'avisos'],
@@ -181,13 +182,12 @@ export async function fixRolesPermissions(): Promise<void> {
   const snapshot = await getDocs(collection(db, ROLES_COLLECTION));
   for (const d of snapshot.docs) {
     const current = d.data().permissions || [];
-    // Solo arreglar roles que tengan permisos vacíos (nunca configurados)
+    const correct = CORRECT_ROLE_PERMISSIONS[d.id];
+
     // No sobrescribir permisos que el admin ya configuró manualmente
-    if (current.length === 0) {
-      const correct = CORRECT_ROLE_PERMISSIONS[d.id];
-      if (correct) {
-        await updateDoc(doc(db, ROLES_COLLECTION, d.id), { permissions: correct });
-      }
+    // Solo corregir roles que tengan permisos vacíos (nunca configurados)
+    if (current.length === 0 && correct) {
+      await updateDoc(doc(db, ROLES_COLLECTION, d.id), { permissions: correct });
     }
   }
 }
@@ -252,6 +252,102 @@ export async function getAllGrades(): Promise<Grade[]> {
   const q = query(collection(db, GRADES_COLLECTION), orderBy('name', 'asc'));
   const snapshot = await getDocs(q);
   return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Grade));
+}
+
+export async function ensureTechnicalGrades(): Promise<void> {
+  const ALL_GRADES = [
+    { id: '10g', name: '10° Bachillerato General', cycle: '4' as const, baccalaureateType: 'general' as const, status: 'ACTIVO' as const },
+    { id: '11g', name: '11° Bachillerato General', cycle: '4' as const, baccalaureateType: 'general' as const, status: 'ACTIVO' as const },
+    { id: '11t', name: '11° Bachillerato Técnico', cycle: '4' as const, baccalaureateType: 'tecnico' as const, status: 'ACTIVO' as const },
+  ];
+  for (const g of ALL_GRADES) {
+    try {
+      await setDoc(doc(db, GRADES_COLLECTION, g.id), { ...g, createdAt: serverTimestamp() }, { merge: true });
+    } catch (e) {
+      console.error(`Error creando grado ${g.id}:`, e);
+    }
+  }
+}
+
+// ==================== BTV CURRICULUM MIGRATION ====================
+
+export async function seedBTVCurriculumToFirestore(): Promise<number> {
+  const lmsModulesRef = collection(db, 'lms_modules');
+  const existingSnap = await getDocs(lmsModulesRef);
+  const existingCodes = new Set(existingSnap.docs.map(d => (d.data() as any).code));
+
+  const btvGrades: Record<string, { gradeId: string; gradeName: string }> = {
+    '1': { gradeId: '11t', gradeName: '11° Bachillerato Técnico' },
+    '2': { gradeId: '11t', gradeName: '11° Bachillerato Técnico' },
+    '3': { gradeId: '11t', gradeName: '11° Bachillerato Técnico' },
+  };
+
+  let created = 0;
+  for (const course of BTV_GRAPHIC_DESIGN_COURSES) {
+    if (existingCodes.has(course.code)) continue;
+
+    const gradeInfo = btvGrades[course.technicalYear] || btvGrades['1'];
+    const descriptor = getModuleDescriptorData(course.code);
+    const project = GENERATE_ANNUAL_PROJECT(course.code, '2026');
+
+    const moduleData = {
+      name: course.name,
+      code: course.code,
+      subjectId: course.subjectId || course.code.toLowerCase().replace(/\s+/g, '-'),
+      teacherId: course.teacherId,
+      teacherName: course.teacherName,
+      gradeId: gradeInfo.gradeId,
+      gradeName: gradeInfo.gradeName,
+      technicalYear: course.technicalYear,
+      hours: course.hours,
+      weeks: course.weeks,
+      status: course.status === 'upcoming' ? 'inactive' : 'active',
+      description: course.description,
+      icon: course.icon,
+      color: course.color,
+      affineArea: course.affineArea,
+      schedule: course.schedule,
+      classroom: course.classroom,
+      progress: course.progress || 0,
+      averageGrade: course.averageGrade,
+      minedLevel: course.minedLevel,
+      descriptor: {
+        objective: descriptor.moduleObjective || descriptor.competenceGeneral || '',
+        units: descriptor.units || [],
+        methodology: descriptor.methodology || '',
+        evaluationCriteria: descriptor.evaluationCriteria || [],
+        bibliography: descriptor.bibliography || { books: [], websites: [] },
+        saberesPrevios: descriptor.saberesPrevios || [],
+        developmentAxes: descriptor.developmentAxes || {
+          desarrolloTecnico: '',
+          desarrolloEmprendedor: '',
+          desarrolloHumanoSocial: '',
+          desarrolloAcademicoAplicado: '',
+        },
+        competenceGeneral: descriptor.competenceGeneral || '',
+        moduleObjective: descriptor.moduleObjective || '',
+        actionStages: descriptor.actionStages || {},
+        saberesNecesarios: descriptor.saberesNecesarios || [],
+        currentProject: project || descriptor.currentProject,
+        availableProjects: descriptor.availableProjects || [],
+        problematicSituation: descriptor.problematicSituation,
+        resources: descriptor.resources,
+        prerequisite: descriptor.prerequisite || '',
+        promotionCriteria: descriptor.promotionCriteria || '',
+      },
+    };
+
+    const docId = `lms-mod-${course.id}`;
+    await setDoc(doc(db, 'lms_modules', docId), {
+      ...moduleData,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    created++;
+  }
+
+  console.log(`BTV Migration: ${created} modules created, ${existingCodes.size} already existed`);
+  return created;
 }
 
 // ==================== BACCALAUREATE TYPES ====================
@@ -420,9 +516,243 @@ export async function deleteSubject(id: string): Promise<void> {
 }
 
 export async function getAllSubjects(): Promise<Subject[]> {
-  const q = query(collection(db, SUBJECTS_COLLECTION), orderBy('name', 'asc'));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Subject));
+  try {
+    const q = query(collection(db, SUBJECTS_COLLECTION), orderBy('name', 'asc'));
+    const snapshot = await getDocs(q);
+    if (!snapshot.empty) {
+      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Subject));
+    }
+  } catch (e) {
+    console.error('Error al cargar materias de Firestore:', e);
+  }
+
+  // Materias básicas por defecto si la colección en Firestore está vacía
+  const defaultSubjects: Subject[] = [
+    { id: 'mat', name: 'Matemáticas', gradeId: '1', status: 'ACTIVO', type: 'BASICA', weeklyHours: 5 },
+    { id: 'fis', name: 'Física', gradeId: '10', status: 'ACTIVO', type: 'BASICA', weeklyHours: 4 },
+    { id: 'qui', name: 'Química', gradeId: '10', status: 'ACTIVO', type: 'BASICA', weeklyHours: 4 },
+    { id: 'bio', name: 'Biología', gradeId: '7', status: 'ACTIVO', type: 'BASICA', weeklyHours: 4 },
+    { id: 'esp', name: 'Español', gradeId: '1', status: 'ACTIVO', type: 'BASICA', weeklyHours: 5 },
+    { id: 'lit', name: 'Literatura', gradeId: '7', status: 'ACTIVO', type: 'BASICA', weeklyHours: 4 },
+    { id: 'ing', name: 'Inglés', gradeId: '1', status: 'ACTIVO', type: 'BASICA', weeklyHours: 3 },
+    { id: 'his', name: 'Historia', gradeId: '7', status: 'ACTIVO', type: 'BASICA', weeklyHours: 3 },
+    { id: 'geo', name: 'Geografía', gradeId: '7', status: 'ACTIVO', type: 'BASICA', weeklyHours: 3 },
+    { id: 'civ', name: 'Cívica', gradeId: '7', status: 'ACTIVO', type: 'BASICA', weeklyHours: 2 },
+    { id: 'inf', name: 'Informática', gradeId: '1', status: 'ACTIVO', type: 'INSTITUCIONAL', weeklyHours: 2 },
+    { id: 'ef', name: 'Educación Física', gradeId: '1', status: 'ACTIVO', type: 'BASICA', weeklyHours: 2 },
+    { id: 'mus', name: 'Música', gradeId: '1', status: 'ACTIVO', type: 'BASICA', weeklyHours: 2 },
+    { id: 'art', name: 'Arte', gradeId: '1', status: 'ACTIVO', type: 'BASICA', weeklyHours: 2 },
+    { id: 'rel', name: 'Religión', gradeId: '1', status: 'ACTIVO', type: 'BASICA', weeklyHours: 2 },
+    { id: 'fil', name: 'Filosofía', gradeId: '11', status: 'ACTIVO', type: 'BASICA', weeklyHours: 3 }
+  ];
+
+  // Poblar Firestore en segundo plano
+  Promise.all(
+    defaultSubjects.map(sub =>
+      setDoc(doc(db, SUBJECTS_COLLECTION, sub.id), { ...sub, createdAt: serverTimestamp() })
+    )
+  ).catch(err => console.error('Error guardando materias básicas iniciales:', err));
+
+  return defaultSubjects;
+}
+
+// ==================== LMS MODULES ====================
+
+export async function createLMSModule(data: Omit<LMSModule, 'createdAt' | 'updatedAt'>): Promise<void> {
+  const ref = doc(db, 'lms_modules', data.id);
+  await setDoc(ref, { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+}
+
+export async function getLMSModule(id: string): Promise<LMSModule | null> {
+  const ref = doc(db, 'lms_modules', id);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...snap.data() } as LMSModule;
+}
+
+export async function updateLMSModule(id: string, data: Partial<LMSModule>): Promise<void> {
+  const ref = doc(db, 'lms_modules', id);
+  await updateDoc(ref, { ...data, updatedAt: serverTimestamp() });
+}
+
+export async function deleteLMSModule(id: string): Promise<void> {
+  const ref = doc(db, 'lms_modules', id);
+  await deleteDoc(ref);
+}
+
+export async function getAllLMSModules(): Promise<LMSModule[]> {
+  try {
+    const q = query(collection(db, 'lms_modules'), orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
+    if (!snapshot.empty) {
+      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as LMSModule));
+    }
+  } catch (e) {
+    console.error('Error al cargar módulos LMS de Firestore:', e);
+  }
+
+  // Cargar grados reales de Firestore para resolver nombres correctos
+  let gradesMap: Record<string, string> = {
+    '11t': '11° Bachillerato Técnico',
+  };
+  let sectionsMap: Record<string, string> = {
+    '11ta': 'A',
+  };
+  try {
+    const gradesSnap = await getDocs(collection(db, 'grades'));
+    gradesSnap.forEach(d => {
+      const g = d.data();
+      if (g.baccalaureateType === 'tecnico') {
+        gradesMap[d.id] = g.name;
+      }
+    });
+    const sectionsSnap = await getDocs(collection(db, 'sections'));
+    sectionsSnap.forEach(d => {
+      const s = d.data();
+      if (gradesMap[s.gradeId]) {
+        sectionsMap[d.id] = s.name;
+      }
+    });
+  } catch (e) {
+    console.warn('No se pudieron cargar grados/secciones de Firestore, usando nombres por defecto:', e);
+  }
+
+  // Mapeo de gradeId del currículum BTV a los IDs reales del sistema Firestore
+  // btvCurriculumData usa '10','11','12' pero Firestore usa '10t','11t','12t' para técnico
+  const btv2FirestoreGradeId = (year: string): string => {
+    return '11t';
+  };
+  const btv2SectionId = (year: string): string => {
+    return '11ta';
+  };
+
+  // Si no hay módulos en Firestore, cargar los 27 módulos BTV oficiales (1.º, 2.º y 3.er Año Técnico)
+  const seedModules: LMSModule[] = BTV_GRAPHIC_DESIGN_COURSES.map(course => {
+    const techYear = (course.technicalYear as string) || '1';
+    const firestoreGradeId = btv2FirestoreGradeId(techYear);
+    const firestoreSectionId = btv2SectionId(techYear);
+    return {
+      id: `lms-mod-${course.id}`,
+      name: course.name,
+      code: course.code,
+      subjectId: course.subjectId,
+      teacherId: course.teacherId,
+      teacherName: course.teacherName,
+      gradeId: firestoreGradeId,
+      gradeName: gradesMap[firestoreGradeId] || `${techYear}° Bachillerato Técnico`,
+      sectionId: firestoreSectionId,
+      sectionName: sectionsMap[firestoreSectionId] || 'A',
+      technicalYear: (techYear as '1' | '2' | '3'),
+      hours: course.hours,
+      weeks: course.weeks,
+      status: (course.status as 'active' | 'inactive') || 'active',
+      descriptor: course.descriptor || {
+        objective: '',
+        units: [],
+        methodology: '',
+        evaluationCriteria: [],
+        bibliography: { books: [], websites: [] },
+        saberesPrevios: [],
+        developmentAxes: {
+          desarrolloTecnico: '',
+          desarrolloEmprendedor: '',
+          desarrolloHumanoSocial: '',
+          desarrolloAcademicoAplicado: '',
+        },
+      },
+      createdAt: course.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  });
+
+  // Poblar Firestore en segundo plano para que persistan
+  Promise.all(
+    seedModules.map(mod =>
+      setDoc(doc(db, 'lms_modules', mod.id), { ...mod, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
+    )
+  ).catch(err => console.error('Error al poblar lms_modules en Firestore:', err));
+
+  return seedModules;
+}
+
+/** 
+ * Fuerza la re-sincronización de todos los módulos BTV oficiales en Firestore
+ * corrigiendo gradeId a los IDs técnicos reales ('10t','11t','12t').
+ * Usar desde Admin cuando los módulos muestren datos incorrectos.
+ */
+export async function reseedLMSModules(): Promise<LMSModule[]> {
+  // Borrar módulos con prefijo 'lms-mod-' (los del seed anterior)
+  try {
+    const q = query(collection(db, 'lms_modules'));
+    const snap = await getDocs(q);
+    const deletions = snap.docs
+      .filter(d => d.id.startsWith('lms-mod-'))
+      .map(d => deleteDoc(doc(db, 'lms_modules', d.id)));
+    await Promise.all(deletions);
+  } catch (e) {
+    console.warn('Error limpiando módulos anteriores:', e);
+  }
+
+  // Re-generar con gradeId correcto
+  // Resolver nombres de grado desde Firestore
+  let gradesMap: Record<string, string> = {
+    '11t': '11° Bachillerato Técnico',
+  };
+  let sectionsMap: Record<string, string> = { '11ta': 'A' };
+  try {
+    const gradesSnap = await getDocs(collection(db, 'grades'));
+    gradesSnap.forEach(d => {
+      const g = d.data();
+      if (g.baccalaureateType === 'tecnico') gradesMap[d.id] = g.name;
+    });
+    const sectionsSnap = await getDocs(collection(db, 'sections'));
+    sectionsSnap.forEach(d => {
+      const s = d.data();
+      if (gradesMap[s.gradeId]) sectionsMap[d.id] = s.name;
+    });
+  } catch (e) {
+    console.warn('Error cargando grados/secciones para reseed:', e);
+  }
+
+  const btv2Id = (year: string) => '11t';
+  const btv2Sec = (year: string) => year === '1' ? '10ta' : year === '2' ? '11ta' : '12ta';
+
+  const modules: LMSModule[] = BTV_GRAPHIC_DESIGN_COURSES.map(course => {
+    const y = (course.technicalYear as string) || '1';
+    const gid = btv2Id(y); const sid = btv2Sec(y);
+    return {
+      id: `lms-mod-${course.id}`,
+      name: course.name,
+      code: course.code,
+      subjectId: course.subjectId,
+      teacherId: course.teacherId,
+      teacherName: course.teacherName,
+      gradeId: gid,
+      gradeName: gradesMap[gid] || `${y}° Bachillerato Técnico`,
+      sectionId: sid,
+      sectionName: sectionsMap[sid] || 'A',
+      technicalYear: y as '1' | '2' | '3',
+      hours: course.hours,
+      weeks: course.weeks,
+      status: (course.status as 'active' | 'inactive') || 'active',
+      descriptor: course.descriptor || { objective: '', units: [], methodology: '', evaluationCriteria: [], bibliography: { books: [], websites: [] }, saberesPrevios: [], developmentAxes: { desarrolloTecnico: '', desarrolloEmprendedor: '', desarrolloHumanoSocial: '', desarrolloAcademicoAplicado: '' } },
+      createdAt: course.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  });
+
+  try {
+    await Promise.all(
+      modules.map(mod =>
+        setDoc(doc(db, 'lms_modules', mod.id), { ...mod, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
+      )
+    );
+  } catch (e) {
+    console.error('Error al guardar módulos en Firestore:', e);
+    throw new Error('No se pudieron guardar los módulos en Firestore. Verifique que las reglas estén desplegadas y que tenga permisos de administrador.');
+  }
+
+  return modules;
 }
 
 // ==================== TEACHERS ====================
@@ -999,7 +1329,7 @@ export async function seedInitialData(): Promise<void> {
     const rolesData: Omit<RoleConfig, 'createdAt'>[] = [
       { id: 'admin', name: 'Administrador', description: 'Control total del sistema', permissions: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'], isSystem: true },
       { id: 'docente', name: 'Docente', description: 'Profesor del colegio', permissions: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'], isSystem: true },
-      { id: 'alumno', name: 'Alumno', description: 'Estudiante del colegio', permissions: ['formacion', 'proyectos'], isSystem: true },
+      { id: 'alumno', name: 'Alumno', description: 'Estudiante del colegio', permissions: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'semana-juventud', 'lms'], isSystem: true },
       { id: 'coordinacion', name: 'Coordinación', description: 'Coordinación académica', permissions: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'], isSystem: true },
       { id: 'coordinacion_academica', name: 'Coordinación Académica', description: 'Coordinación académica', permissions: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'], isSystem: true },
       { id: 'registro_academico', name: 'Registro Académico', description: 'Registro académico', permissions: ['notas', 'horario'], isSystem: true },
@@ -1055,9 +1385,7 @@ export async function seedInitialData(): Promise<void> {
     { id: '9', name: '9° Grado', cycle: '3' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
     { id: '10g', name: '10° Bachillerato General', cycle: '4' as const, baccalaureateType: 'general' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
     { id: '11g', name: '11° Bachillerato General', cycle: '4' as const, baccalaureateType: 'general' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
-    { id: '10t', name: '10° Bachillerato Técnico', cycle: '4' as const, baccalaureateType: 'tecnico' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
-    { id: '11t', name: '11° Bachillerato Técnico', cycle: '4' as const, baccalaureateType: 'tecnico' as const, status: 'ACTIVO' as const, schoolYear: currentYear },
-    { id: '12t', name: '12° Bachillerato Técnico', cycle: '4' as const, baccalaureateType: 'tecnico' as const, status: 'ACTIVO' as const, schoolYear: currentYear }
+    { id: '11t', name: '11° Bachillerato Técnico', cycle: '4' as const, baccalaureateType: 'tecnico' as const, status: 'ACTIVO' as const, schoolYear: currentYear }
   ];
   for (const g of gradesData) await createGrade(g);
 
@@ -1084,31 +1412,28 @@ export async function seedInitialData(): Promise<void> {
     { id: '10ga', name: 'A', gradeId: '10g', capacity: 35, buildingId: 'b2', status: 'ACTIVO' as const, schoolYear: currentYear },
     { id: '10gb', name: 'B', gradeId: '10g', capacity: 35, buildingId: 'b2', status: 'ACTIVO' as const, schoolYear: currentYear },
     { id: '11ga', name: 'A', gradeId: '11g', capacity: 35, buildingId: 'b2', status: 'ACTIVO' as const, schoolYear: currentYear },
-    { id: '10ta', name: 'A', gradeId: '10t', capacity: 35, buildingId: 'b3', status: 'ACTIVO' as const, schoolYear: currentYear },
-    { id: '10tb', name: 'B', gradeId: '10t', capacity: 35, buildingId: 'b3', status: 'ACTIVO' as const, schoolYear: currentYear },
-    { id: '11ta', name: 'A', gradeId: '11t', capacity: 35, buildingId: 'b3', status: 'ACTIVO' as const, schoolYear: currentYear },
-    { id: '12ta', name: 'A', gradeId: '12t', capacity: 30, buildingId: 'b3', status: 'ACTIVO' as const, schoolYear: currentYear }
+    { id: '11ta', name: 'A', gradeId: '11t', capacity: 35, buildingId: 'b3', status: 'ACTIVO' as const, schoolYear: currentYear }
   ];
   for (const s of sectionsData) await createSection(s);
 
   // Subjects
-  const subjectsData = [
-    { id: 'mat', name: 'Matemáticas' },
-    { id: 'fis', name: 'Física' },
-    { id: 'qui', name: 'Química' },
-    { id: 'bio', name: 'Biología' },
-    { id: 'esp', name: 'Español' },
-    { id: 'lit', name: 'Literatura' },
-    { id: 'ing', name: 'Inglés' },
-    { id: 'his', name: 'Historia' },
-    { id: 'geo', name: 'Geografía' },
-    { id: 'civ', name: 'Cívica' },
-    { id: 'inf', name: 'Informática' },
-    { id: 'ef', name: 'Educación Física' },
-    { id: 'mus', name: 'Música' },
-    { id: 'art', name: 'Arte' },
-    { id: 'rel', name: 'Religión' },
-    { id: 'fil', name: 'Filosofía' }
+  const subjectsData: Array<{ id: string; name: string; gradeId: string; status: 'ACTIVO' | 'INACTIVO'; type: 'BASICA' | 'MINED' | 'INSTITUCIONAL' }> = [
+    { id: 'mat', name: 'Matemáticas', gradeId: '1', status: 'ACTIVO', type: 'BASICA' },
+    { id: 'fis', name: 'Física', gradeId: '10', status: 'ACTIVO', type: 'BASICA' },
+    { id: 'qui', name: 'Química', gradeId: '10', status: 'ACTIVO', type: 'BASICA' },
+    { id: 'bio', name: 'Biología', gradeId: '7', status: 'ACTIVO', type: 'BASICA' },
+    { id: 'esp', name: 'Español', gradeId: '1', status: 'ACTIVO', type: 'BASICA' },
+    { id: 'lit', name: 'Literatura', gradeId: '7', status: 'ACTIVO', type: 'BASICA' },
+    { id: 'ing', name: 'Inglés', gradeId: '1', status: 'ACTIVO', type: 'BASICA' },
+    { id: 'his', name: 'Historia', gradeId: '7', status: 'ACTIVO', type: 'BASICA' },
+    { id: 'geo', name: 'Geografía', gradeId: '7', status: 'ACTIVO', type: 'BASICA' },
+    { id: 'civ', name: 'Cívica', gradeId: '7', status: 'ACTIVO', type: 'BASICA' },
+    { id: 'inf', name: 'Informática', gradeId: '1', status: 'ACTIVO', type: 'INSTITUCIONAL' },
+    { id: 'ef', name: 'Educación Física', gradeId: '1', status: 'ACTIVO', type: 'BASICA' },
+    { id: 'mus', name: 'Música', gradeId: '1', status: 'ACTIVO', type: 'BASICA' },
+    { id: 'art', name: 'Arte', gradeId: '1', status: 'ACTIVO', type: 'BASICA' },
+    { id: 'rel', name: 'Religión', gradeId: '1', status: 'ACTIVO', type: 'BASICA' },
+    { id: 'fil', name: 'Filosofía', gradeId: '11', status: 'ACTIVO', type: 'BASICA' }
   ];
   for (const s of subjectsData) await createSubject(s);
 
@@ -1155,20 +1480,14 @@ export async function seedInitialData(): Promise<void> {
     { id: 's24', carnet: 'SEED-024', firstName: 'Sofía Alejandra', lastName: 'Quintanilla', name: 'Sofía Alejandra Quintanilla', gender: 'F' as const, gradeId: '10g', sectionId: '10ga', enrollmentYear: 2025 },
     { id: 's25', carnet: 'SEED-025', firstName: 'Daniel Eduardo', lastName: 'Portillo', name: 'Daniel Eduardo Portillo', gender: 'M' as const, gradeId: '10g', sectionId: '10gb', enrollmentYear: 2025 },
     { id: 's26', carnet: 'SEED-026', firstName: 'Lucía Valentina', lastName: 'Merino', name: 'Lucía Valentina Merino', gender: 'F' as const, gradeId: '10g', sectionId: '10gb', enrollmentYear: 2025 },
-    { id: 's27', carnet: 'SEED-027', firstName: 'Gerardo Ernesto', lastName: 'Alvarado', name: 'Gerardo Ernesto Alvarado', gender: 'M' as const, gradeId: '10t', sectionId: '10ta', enrollmentYear: 2025 },
-    { id: 's28', carnet: 'SEED-028', firstName: 'Natalia Estefanía', lastName: 'Guardado', name: 'Natalia Estefanía Guardado', gender: 'F' as const, gradeId: '10t', sectionId: '10ta', enrollmentYear: 2025 },
-    { id: 's29', carnet: 'SEED-029', firstName: 'Josué Daniel', lastName: 'Escalante', name: 'Josué Daniel Escalante', gender: 'M' as const, gradeId: '10t', sectionId: '10ta', enrollmentYear: 2025 },
-    { id: 's30', carnet: 'SEED-030', firstName: 'Carolina Michelle', lastName: 'García', name: 'Carolina Michelle García', gender: 'F' as const, gradeId: '10t', sectionId: '10ta', enrollmentYear: 2025 },
     { id: 's31', carnet: 'SEED-031', firstName: 'David Alejandro', lastName: 'Umaña', name: 'David Alejandro Umaña', gender: 'M' as const, gradeId: '11t', sectionId: '11ta', enrollmentYear: 2024 },
     { id: 's32', carnet: 'SEED-032', firstName: 'Jessica Tatiana', lastName: 'Martínez', name: 'Jessica Tatiana Martínez', gender: 'F' as const, gradeId: '11t', sectionId: '11ta', enrollmentYear: 2024 },
     { id: 's33', carnet: 'SEED-033', firstName: 'Erick Adalberto', lastName: 'Cruz', name: 'Erick Adalberto Cruz', gender: 'M' as const, gradeId: '11t', sectionId: '11ta', enrollmentYear: 2024 },
-    { id: 's34', carnet: 'SEED-034', firstName: 'Ana Gabriela', lastName: 'Ochoa', name: 'Ana Gabriela Ochoa', gender: 'F' as const, gradeId: '11t', sectionId: '11ta', enrollmentYear: 2024 },
-    { id: 's35', carnet: 'SEED-035', firstName: 'Bryan Alexander', lastName: 'Interiano', name: 'Bryan Alexander Interiano', gender: 'M' as const, gradeId: '12t', sectionId: '12ta', enrollmentYear: 2023 },
-    { id: 's36', carnet: 'SEED-036', firstName: 'Jennifer Vanessa', lastName: 'Guzmán', name: 'Jennifer Vanessa Guzmán', gender: 'F' as const, gradeId: '12t', sectionId: '12ta', enrollmentYear: 2023 }
+    { id: 's34', carnet: 'SEED-034', firstName: 'Ana Gabriela', lastName: 'Ochoa', name: 'Ana Gabriela Ochoa', gender: 'F' as const, gradeId: '11t', sectionId: '11ta', enrollmentYear: 2024 }
   ];
   for (const s of studentsData) await createStudent(s);
 
-  console.log('Seed completed: 7 roles, 14 grades, 25 sections, 16 subjects, 10 teachers, 36 students');
+  console.log('Seed completed: 7 roles, 12 grades, 22 sections, 16 subjects, 10 teachers, 30 students');
   }
   
   // Migrar roles existentes a minúsculas

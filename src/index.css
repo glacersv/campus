@@ -1026,7 +1026,7 @@ a:focus:not(:focus-visible) {
 .dark .card,
 .dark .card-crema,
 .dark .card-soft {
-  background: #0f172a;
+  background: #1e293b;
   border-color: rgba(148, 163, 184, 0.16);
 }
 

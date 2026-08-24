@@ -3,14 +3,19 @@ import { motion } from 'motion/react';
 import {
   ClipboardCheck,
   Medal,
-  ArrowUpRight,
+  ArrowRight,
   CheckCircle2,
   GraduationCap,
   Calendar,
+  BookOpen,
+  Users,
+  Sparkles,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { SystemModuleId } from '../../types';
+import { SystemModuleId, SYSTEM_MODULES } from '../../types';
+import WelcomeBanner from '../shared/WelcomeBanner';
+import { getRole } from '../../lib/firestore';
 
 
 interface StudentDashboardProps {
@@ -18,128 +23,239 @@ interface StudentDashboardProps {
   onLogout: () => void;
 }
 
-const MODULE_CONFIG: Record<SystemModuleId, { label: string; desc: string; icon: React.ElementType; color: string }> = {
-  formacion: { label: 'Formación Buenos Días', desc: 'Registro de asistencia y disciplina', icon: ClipboardCheck, color: 'bg-emerald-500/10 text-emerald-600 border-emerald-200' },
-  proyectos: { label: 'Semana de la Juventud', desc: 'Sube y gestiona tu proyecto', icon: Medal, color: 'bg-indigo-500/10 text-indigo-600 border-indigo-200' },
-  'semana-juventud': { label: 'Mi Proyecto', desc: 'Ver estado de mi proyecto', icon: Medal, color: 'bg-indigo-500/10 text-indigo-600 border-indigo-200' },
-  notas: { label: 'Notas', desc: 'Calificaciones y evaluaciones', icon: ClipboardCheck, color: 'bg-sky-500/10 text-sky-600 border-sky-200' },
-  clase: { label: 'Clase', desc: 'Control de clases del día', icon: ClipboardCheck, color: 'bg-amber-500/10 text-amber-600 border-amber-200' },
-  horario: { label: 'Horario', desc: 'Horarios de clases', icon: Calendar, color: 'bg-purple-500/10 text-purple-600 border-purple-200' },
-  eventos: { label: 'Eventos', desc: 'Eventos del colegio', icon: Calendar, color: 'bg-teal-500/10 text-teal-600 border-teal-200' },
-  avisos: { label: 'Avisos', desc: 'Comunicados y anuncios', icon: Calendar, color: 'bg-blue-500/10 text-blue-600 border-blue-200' },
-  'semana-juventud-admin': { label: 'Semana de la Juventud', desc: 'Administrar proyectos estudiantiles', icon: Medal, color: 'bg-indigo-500/10 text-indigo-600 border-indigo-200' },
+const MODULE_CONFIG: Partial<Record<SystemModuleId, { label: string; desc: string; icon: React.ElementType; color: string; path: string }>> = {
+  lms: {
+    label: 'Mi Aula Virtual',
+    desc: 'Cursos, actividades, rúbricas y calificaciones',
+    icon: BookOpen,
+    color: 'bg-indigo-500/10 text-indigo-600 border-indigo-200',
+    path: '/alumno/aula-virtual',
+  },
+  formacion: {
+    label: 'Formación Buenos Días',
+    desc: 'Registro de asistencia y disciplina',
+    icon: ClipboardCheck,
+    color: 'bg-emerald-500/10 text-emerald-600 border-emerald-200',
+    path: '/alumno/formacion',
+  },
+  'semana-juventud': {
+    label: 'Semana de la Juventud',
+    desc: 'Sube y gestiona tu proyecto estudiantil',
+    icon: Medal,
+    color: 'bg-indigo-500/10 text-indigo-600 border-indigo-200',
+    path: '/alumno/semana-juventud',
+  },
+  notas: {
+    label: 'Notas',
+    desc: 'Calificaciones trimestrales y cuadro de honor',
+    icon: ClipboardCheck,
+    color: 'bg-sky-500/10 text-sky-600 border-sky-200',
+    path: '/alumno/aula-virtual/progreso',
+  },
+  clase: {
+    label: 'Clase',
+    desc: 'Control de clases del día y materias',
+    icon: ClipboardCheck,
+    color: 'bg-amber-500/10 text-amber-600 border-amber-200',
+    path: '/alumno/aula-virtual/cursos',
+  },
+  horario: {
+    label: 'Horario',
+    desc: 'Horarios de clases y laboratorios',
+    icon: Calendar,
+    color: 'bg-purple-500/10 text-purple-600 border-purple-200',
+    path: '/alumno/aula-virtual/cursos',
+  },
+  eventos: {
+    label: 'Eventos',
+    desc: 'Eventos pastorales y actividades del colegio',
+    icon: Calendar,
+    color: 'bg-teal-500/10 text-teal-600 border-teal-200',
+    path: '/alumno/eventos',
+  },
+  avisos: {
+    label: 'Avisos',
+    desc: 'Comunicados oficiales y anuncios de dirección',
+    icon: Calendar,
+    color: 'bg-blue-500/10 text-blue-600 border-blue-200',
+    path: '/alumno/avisos',
+  },
+  'semana-juventud-admin': {
+    label: 'Semana de la Juventud (Admin)',
+    desc: 'Administrar proyectos estudiantiles',
+    icon: Medal,
+    color: 'bg-indigo-500/10 text-indigo-600 border-indigo-200',
+    path: '/alumno/proyectos',
+  },
 };
 
 export default function StudentDashboard({ studentName, onLogout }: StudentDashboardProps) {
-  const today = new Date();
-  const dayOfWeek = today.getDay();
-  const isMonday = dayOfWeek === 1;
   const navigate = useNavigate();
-  const { roleConfig } = useAuth();
-  
-  const enabledModules = roleConfig?.permissions || [];
+  const { roleConfig, userRole, refreshRole } = useAuth();
+
+  const enabledModuleIds = (roleConfig?.permissions || [])
+    .filter((modId): modId is SystemModuleId => modId in MODULE_CONFIG)
+    .sort((a, b) => {
+      const idxA = SYSTEM_MODULES.findIndex(m => m.id === a);
+      const idxB = SYSTEM_MODULES.findIndex(m => m.id === b);
+      return idxA - idxB;
+    });
+
+
 
   return (
-    <div className="space-y-6">
-      {/* Hero Banner */}
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-        className="relative rounded-3xl bg-gradient-to-r from-[#124D37] via-[#25855A] to-[#1D6F4B] text-white p-6 md:p-8 shadow-xl shadow-emerald-900/10 overflow-hidden"
-      >
-        <div className="absolute -right-10 -bottom-10 w-60 h-60 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-        <div className="relative z-10 max-w-2xl space-y-3">
-          <h2 className="text-2xl md:text-3xl font-extrabold font-display leading-tight">
-            ¡Hola, {studentName}!
-          </h2>
-          <p className="text-sm text-emerald-100/90 leading-relaxed">
-            Bienvenido a tu plataforma del Colegio Salesiano San José.
-          </p>
-        </div>
-      </motion.div>
+    <div className="space-y-8">
+      {/* Welcome Banner */}
+      <WelcomeBanner
+        name={studentName}
+        role="alumno"
+        area="general"
+        title={`Hola, ${studentName}.`}
+        subtitle="Acceda a los módulos de aula virtual, proyectos, calificaciones y horarios habilitados para su usuario."
+        badge="Sistema Integrado Salesiano • 2026"
+        ctaLabel="Aula Virtual LMS"
+        onCta={() => navigate('/alumno/aula-virtual')}
+        showProfile
+      />
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="stat-card">
-          <div className="stat-card-icon bg-emerald-50 text-emerald-600">
-            <GraduationCap className="w-5 h-5" />
+      {/* Stat cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="card-crema p-6 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 border border-emerald-200 flex items-center justify-center">
+            <Users className="w-6 h-6" />
           </div>
           <div>
-            <span className="stat-card-label">Estado Alumno</span>
-            <div className="stat-card-value">Activo 2026</div>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-card-icon bg-sky-50 text-sky-600">
-            <CheckCircle2 className="w-5 h-5" />
-          </div>
-          <div>
-            <span className="stat-card-label">Asistencia</span>
-            <div className="stat-card-value text-emerald-600">Al Día</div>
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+              TOTAL ALUMNOS
+            </span>
+            <h3 className="font-display font-extrabold text-2xl text-slate-900">
+              156
+            </h3>
           </div>
         </div>
 
-        <div className="stat-card">
-          <div className="stat-card-icon bg-purple-50 text-purple-600">
-            <Medal className="w-5 h-5" />
+        <div className="card-crema p-6 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-sky-500/10 text-sky-600 border border-sky-200 flex items-center justify-center">
+            <GraduationCap className="w-6 h-6" />
           </div>
           <div>
-            <span className="stat-card-label">Proyectos</span>
-            <div className="stat-card-value">Habilitados</div>
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+              GRADOS ACTIVOS
+            </span>
+            <h3 className="font-display font-extrabold text-2xl text-slate-900">
+              6 Secciones
+            </h3>
+          </div>
+        </div>
+
+        <div className="card-crema p-6 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 border border-amber-200 flex items-center justify-center">
+            <Sparkles className="w-6 h-6" />
+          </div>
+          <div>
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+              ESTADO SISTEMA
+            </span>
+            <h3 className="font-display font-extrabold text-2xl text-slate-900">
+              Al Día
+            </h3>
           </div>
         </div>
       </div>
 
-      {/* Monday Notice */}
-      {isMonday && (
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-amber-500/10 border border-amber-200 rounded-3xl flex items-start gap-3">
-          <div className="w-9 h-9 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0">
-            <Calendar className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-xs font-bold text-amber-900 font-display">
-              Hoy es Lunes — <span className="font-extrabold">Acto Cívico Automático</span>
-            </p>
-            <p className="text-xs text-amber-800/80 mt-0.5">Asiste puntualmente a la cancha principal para la formación cívica.</p>
-          </div>
-        </motion.div>
-      )}
-
       {/* Modules Grid */}
-      <div className="space-y-3">
-        <h3 className="text-base font-bold text-slate-900 font-display">Tus Módulos</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {enabledModules.map((moduleId, i) => {
-            const config = MODULE_CONFIG[moduleId];
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-display font-bold text-xl text-slate-900">
+            Módulos del Sistema
+          </h2>
+          <span className="text-xs font-semibold text-slate-400">
+            {enabledModuleIds.length} disponibles
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {enabledModuleIds.map((modId, idx) => {
+            const config = MODULE_CONFIG[modId];
             if (!config) return null;
             const Icon = config.icon;
+            const isLms = modId === 'lms';
+
             return (
               <motion.div
-                key={moduleId}
-                initial={{ opacity: 0, y: 15 }}
+                key={modId}
+                initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                onClick={() => navigate(`/alumno/${moduleId}`)}
-                className="card-crema p-6 transition-all card-interactive hover:shadow-xl hover:-translate-y-1 cursor-pointer"
+                transition={{ delay: idx * 0.04, duration: 0.3 }}
+                onClick={() => navigate(config.path)}
+                className={`card-crema card-interactive p-6 flex flex-col justify-between group cursor-pointer ${
+                  isLms ? 'ring-2 ring-[#25855A]/30' : ''
+                }`}
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className={`w-14 h-14 rounded-2xl border flex items-center justify-center shrink-0 ${config.color}`}>
-                    <Icon className="w-7 h-7" />
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div
+                      className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-transform group-hover:scale-105 ${config.color}`}
+                    >
+                      <Icon className="w-6 h-6" />
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      {isLms && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#25855A] text-white">
+                          NUEVO
+                        </span>
+                      )}
+                      <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:text-slate-700 group-hover:bg-slate-200 transition-colors">
+                        <ArrowRight className="w-4 h-4 transform group-hover:translate-x-0.5 transition-transform" />
+                      </div>
+                    </div>
                   </div>
-                  <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center">
-                    <ArrowUpRight className="w-4 h-4" />
-                  </div>
+
+                  <h3 className="font-display font-bold text-slate-900 text-lg group-hover:text-[#25855A] transition-colors">
+                    {config.label}
+                  </h3>
+
+                  <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+                    {config.desc}
+                  </p>
                 </div>
-                <div className="mt-5 space-y-1">
-                  <h4 className="text-base font-bold text-slate-900 font-display">{config.label}</h4>
-                  <p className="text-xs text-slate-400">{config.desc}</p>
+
+                <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-slate-500">
+                  <span>Acceso directo</span>
+                  <span className="text-[#25855A] group-hover:underline">Entrar</span>
                 </div>
               </motion.div>
             );
           })}
         </div>
+      </div>
+
+      {/* Módulos del rol */}
+      <div className="card-crema p-6">
+        <h3 className="font-display font-bold text-slate-900 text-base mb-4">
+          Módulos habilitados para tu rol
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          {SYSTEM_MODULES.map((mod) => {
+            const hasPermission = (roleConfig?.permissions || []).includes(mod.id);
+            return (
+              <span
+                key={mod.id}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${
+                  hasPermission
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : 'bg-slate-50 text-slate-400 border-slate-200 line-through'
+                }`}
+              >
+                {mod.label}
+              </span>
+            );
+          })}
+        </div>
+        <p className="text-[11px] text-slate-400 mt-3">
+          Estos módulos están activos según tu rol actual. El administrador puede modificarlos desde Roles y Permisos.
+        </p>
       </div>
     </div>
   );

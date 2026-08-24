@@ -80,7 +80,8 @@ export type SystemModuleId =
   | 'avisos'
   | 'proyectos'
   | 'semana-juventud'
-  | 'semana-juventud-admin';
+  | 'semana-juventud-admin'
+  | 'lms';
 
 export const SYSTEM_MODULES: { id: SystemModuleId; label: string; desc: string }[] = [
   { id: 'formacion', label: 'Formación Buenos Días', desc: 'Registro de asistencia y disciplina' },
@@ -92,6 +93,7 @@ export const SYSTEM_MODULES: { id: SystemModuleId; label: string; desc: string }
   { id: 'proyectos', label: 'Semana de la Juventud', desc: 'Gestión de proyectos estudiantiles' },
   { id: 'semana-juventud', label: 'Mi Proyecto', desc: 'Ver estado de mi proyecto' },
   { id: 'semana-juventud-admin', label: 'Semana de la Juventud', desc: 'Administrar proyectos estudiantiles' },
+  { id: 'lms', label: 'Mi Aula Virtual', desc: 'Cursos, actividades, rúbricas y calificaciones' },
 ];
 
 export interface RoleConfig {
@@ -191,13 +193,20 @@ export interface Subject {
   id: string;
   name: string;
   description?: string;
+  code?: string;
   cycle?: Cycle;
-  gradeId?: string;
-  status?: 'ACTIVO' | 'INACTIVO';
+  gradeId: string;
+  gradeName?: string;
+  status: 'ACTIVO' | 'INACTIVO';
+  type: 'BASICA' | 'MINED' | 'INSTITUCIONAL';
   weeklyHours?: number;
-  type?: 'MINED' | 'INSTITUCIONAL';
   parentSubjectId?: string;
-  createdAt?: Timestamp;
+  teacherId?: string;
+  teacherName?: string;
+  hours?: number;
+  weeks?: number;
+  isTechnicalModule?: boolean;
+  createdAt?: string;
 }
 
 export interface Teacher {
@@ -515,3 +524,357 @@ export const SECCIONES_POR_GRADO_PROYECTO: Record<string, string[]> = {
 
 export const FECHA_LIMITE_REGISTRO   = '2026-06-17';
 export const FECHA_LIMITE_APROBACION = '2026-06-23';
+
+// ==================== LMS TYPES ====================
+
+export type TechnicalYear = '1' | '2' | '3';
+export type ActionStageKey = 'informar' | 'planificar' | 'decidir' | 'ejecutar' | 'controlar' | 'valorar';
+export type MinedLevel = 1 | 2 | 3 | 4 | 5;
+export type ActivityStatus = 'pendiente' | 'entregada' | 'calificada' | 'vencida';
+
+export interface LMSCourse {
+  id: string;
+  name: string;
+  code: string;
+  description: string;
+  teacherId: string;
+  teacherName: string;
+  gradeId: string;
+  gradeName: string;
+  sectionId: string;
+  sectionName: string;
+  subjectId: string;
+  icon: string;
+  color: string;
+  status: 'active' | 'inactive' | 'upcoming';
+  schedule: string;
+  classroom: string;
+  progress: number;
+  averageGrade?: number;
+  minedLevel?: MinedLevel;
+  technicalYear: TechnicalYear;
+  hours: number;
+  weeks: number;
+  affineArea: string;
+  unitsCount: number;
+  activitiesCount: number;
+  createdAt?: string;
+  descriptor?: CourseDescriptor;
+}
+
+export interface CourseDescriptor {
+  code: string;
+  name?: string;
+  objective?: string;
+  units?: ModuleUnit[];
+  methodology?: string;
+  evaluationCriteria?: string[];
+  bibliography?: {
+    books: string[];
+    websites: string[];
+  };
+  saberesPrevios?: SaberPrevio[];
+  actionStages?: Record<string, unknown> | ActionStageKey[];
+  hours?: number;
+  weeks?: number;
+  year?: string;
+  prerequisite?: string;
+  competenceGeneral?: string;
+  moduleObjective?: string;
+  developmentAxes?: Record<string, string>;
+  saberesNecesarios?: Array<{ id: string; description: string }>;
+  currentProject?: ProjectBrief;
+  availableProjects?: ProjectBrief[];
+  resources?: unknown;
+  [key: string]: unknown;
+}
+
+export interface ModuleUnit {
+  id: string;
+  title: string;
+  description: string;
+  hours: number;
+  stageKey: ActionStageKey;
+}
+
+export interface SaberPrevio {
+  id: string;
+  question?: string;
+  description?: string;
+  options?: string[];
+  appreciation?: 'MUCHO' | 'POCO' | 'NADA';
+  [key: string]: unknown;
+}
+
+export interface ProjectBrief {
+  id: string;
+  courseId?: string;
+  courseCode?: string;
+  academicYear: string;
+  topic?: string;
+  title?: string;
+  theme?: string;
+  targetClient?: string;
+  problemStatement?: string;
+  problematicSituation?: string;
+  creativeBrief?: string;
+  generalObjective?: string;
+  specificObjectives?: string[];
+  suggestedSoftware?: string[];
+  materialsRequired?: string[];
+  deliverables: string[];
+  evaluationRubric?: string;
+  status: 'active' | 'archived' | 'upcoming';
+  createdAt?: string;
+}
+
+export interface LMSCourseModule {
+  id: string;
+  courseId: string;
+  stageKey: ActionStageKey;
+  title: string;
+  description: string;
+  order: number;
+  locked: boolean;
+  hours: number;
+  completed?: boolean;
+  resourcesCount: number;
+  activitiesCount: number;
+}
+
+export interface LMSActivity {
+  id: string;
+  courseId: string;
+  courseName: string;
+  courseCode: string;
+  courseColor: string;
+  moduleId: string;
+  moduleTitle: string;
+  stageKey: ActionStageKey;
+  title: string;
+  type: 'delivery' | 'evaluated' | 'rubric' | 'self_evaluation';
+  rubricId?: string;
+  rubric?: Rubric;
+  maxScore: number;
+  dueDate: string;
+  instructions: string;
+  status: ActivityStatus;
+  submission?: LMSSubmission;
+  attachments?: { name: string; size: string; url?: string }[];
+}
+
+export interface LMSSubmission {
+  id: string;
+  activityId: string;
+  studentId: string;
+  studentName: string;
+  submittedAt: string;
+  content: string;
+  attachments: { name: string; size: string; url?: string }[];
+  grade?: number;
+  minedLevel?: MinedLevel;
+  feedback?: string;
+  gradedAt?: string;
+  criterionScores?: Record<string, number>;
+  selfEvaluation?: {
+    learned: string;
+    difficulties: string;
+    reflection: string;
+  };
+  axisLevels?: {
+    tecnico: MinedLevel;
+    emprendedor: MinedLevel;
+    humanoSocial: MinedLevel;
+    academico: MinedLevel;
+  };
+  axesScores?: {
+    scoreTecnico: number;
+    scoreEmprendedor: number;
+    scoreHumanoSocial: number;
+    scoreAcademicoAplicado: number;
+  };
+}
+
+export interface Rubric {
+  id: string;
+  name?: string;
+  title?: string;
+  description?: string;
+  axes?: RubricAxis[];
+  criteria?: RubricCriteria[];
+  minLevel?: MinedLevel;
+  gradeRange?: { min: number; max: number };
+  approved?: boolean;
+  [key: string]: unknown;
+}
+
+export interface RubricAxis {
+  id: string;
+  name: string;
+  weight: number;
+  levels: RubricLevel[];
+}
+
+export interface RubricCriteria {
+  id: string;
+  title: string;
+  axis: string;
+  weight: number;
+  levels: RubricLevel[];
+}
+
+export interface RubricLevel {
+  level?: MinedLevel;
+  score?: number;
+  label?: string;
+  description: string;
+  gradeRange?: { min: number; max: number };
+  approved?: boolean;
+  criteria?: string[];
+  [key: string]: unknown;
+}
+
+export interface LMSStudentSummary {
+  enrolledCoursesCount: number;
+  pendingActivitiesCount: number;
+  completedActivitiesCount: number;
+  overallAverage: number;
+  overallMinedLevel: MinedLevel;
+  progressPercentage: number;
+  totalTechnicalHours: number;
+  currentYear: TechnicalYear;
+}
+
+export const MINED_LEVELS: Record<MinedLevel, { label: string; color: string; desc: string; gradeRange?: { min: number; max: number }; description?: string; approved?: boolean }> = {
+  1: { label: 'Nivel 1', color: 'text-red-600 bg-red-50', desc: 'Insatisfactorio' },
+  2: { label: 'Nivel 2', color: 'text-orange-600 bg-orange-50', desc: 'En desarrollo' },
+  3: { label: 'Nivel 3', color: 'text-yellow-600 bg-yellow-50', desc: 'Satisfactorio básico' },
+  4: { label: 'Nivel 4', color: 'text-blue-600 bg-blue-50', desc: 'Satisfactorio avanzado' },
+  5: { label: 'Nivel 5', color: 'text-emerald-600 bg-emerald-50', desc: 'Destacado' },
+};
+
+// ==================== LMS MODULE STRUCTURE (ADMIN) ====================
+
+export interface LMSModule {
+  id: string;
+  name: string;
+  code: string;
+  subjectId: string;
+  teacherId: string;
+  teacherName: string;
+  gradeId: string;
+  gradeName: string;
+  technicalYear: TechnicalYear;
+  hours: number;
+  weeks: number;
+  status: 'active' | 'inactive';
+  description?: string;
+  icon?: string;
+  color?: string;
+  affineArea?: string;
+  schedule?: string;
+  classroom?: string;
+  sectionId?: string;
+  sectionName?: string;
+  progress?: number;
+  averageGrade?: number;
+  minedLevel?: number;
+  descriptor: {
+    objective?: string;
+    units: ModuleUnit[];
+    methodology?: string;
+    evaluationCriteria: string[];
+    bibliography: {
+      books: string[];
+      websites: string[];
+    };
+    saberesPrevios: SaberPrevio[];
+    developmentAxes: {
+      desarrolloTecnico: string;
+      desarrolloEmprendedor: string;
+      desarrolloHumanoSocial: string;
+      desarrolloAcademicoAplicado: string;
+    };
+    competenceGeneral?: string;
+    moduleObjective?: string;
+    actionStages?: Record<string, {
+      title: string;
+      hoursPercentage: number;
+      guidingQuestions: string[];
+      studentTasks: string[];
+      teacherTasks: string[];
+      suggestedTools: string[];
+    }>;
+    saberesNecesarios?: Array<{ id: string; description: string }>;
+    currentProject?: ProjectBrief;
+    availableProjects?: ProjectBrief[];
+    problematicSituation?: {
+      cause: string;
+      situation: string;
+      effect: string;
+      summary: string;
+    };
+    resources?: {
+      materials: string[];
+      equipment: string[];
+      furniture: string[];
+      safety: string[];
+    };
+    prerequisite?: string;
+    promotionCriteria?: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LMSModuleContent {
+  moduleId: string;
+  theory: LMSContentItem[];
+  examples: LMSExample[];
+  exercises: LMSExercise[];
+  updatedBy: string;
+  updatedAt: string;
+}
+
+export interface LMSContentItem {
+  id: string;
+  title: string;
+  body: string;
+  videoUrl?: string;
+  attachments: LMSAttachment[];
+  order: number;
+}
+
+export interface LMSExample {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl?: string;
+  solutionUrl?: string;
+  order: number;
+}
+
+export interface LMSExercise {
+  id: string;
+  title: string;
+  instructions: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  solution?: string;
+  order: number;
+}
+
+export interface LMSAttachment {
+  name: string;
+  url: string;
+  type: 'pdf' | 'image' | 'video' | 'link';
+}
+
+export interface LMSCalendarEvent {
+  id: string;
+  moduleId: string;
+  title: string;
+  description: string;
+  date: string;
+  type: 'class' | 'exam' | 'delivery' | 'event';
+  createdAt: string;
+}

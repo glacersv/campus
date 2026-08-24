@@ -15,6 +15,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   userRole: UserRole | null;
   roleConfig: RoleConfig | null;
+  refreshRole: () => Promise<void>;
   hasPermission: (module: SystemModuleId) => boolean;
   isRole: (...roles: UserRole[]) => boolean;
   approveUser: (uid: string, role: UserRole) => Promise<void>;
@@ -113,8 +114,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const allRoles = await getAllRoles();
           updateRoleLabelsFromFirestore(allRoles);
           
-          // Fix incorrect module IDs in roles (fire-and-forget)
-          fixRolesPermissions().catch(console.error);
+          // Fix incorrect module IDs in roles (fire-and-forget) - solo admin
+          if (profile.role === 'admin') {
+            fixRolesPermissions().catch(console.error);
+          }
+          
+          // Exponer función para corregir permisos manualmente desde consola (solo admin)
+          if (profile.role === 'admin') {
+            (window as any).fixRolesPermissions = fixRolesPermissions;
+          }
         } else {
           setRoleConfig(null);
         }
@@ -370,6 +378,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return markNotif(notificationId);
   };
 
+  const refreshRole = async () => {
+    if (!userProfile?.role) return;
+    const rc = await getRole(userProfile.role);
+    setRoleConfig(rc);
+  };
+
   return (
     <AuthContext.Provider value={{
       firebaseUser,
@@ -380,6 +394,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       userRole,
       roleConfig,
+      refreshRole,
       hasPermission,
       isRole,
       approveUser,

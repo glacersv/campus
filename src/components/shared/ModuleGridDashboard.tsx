@@ -39,6 +39,7 @@ const moduleIcons: Record<SystemModuleId, React.ElementType> = {
   proyectos: Medal,
   'semana-juventud': Medal,
   'semana-juventud-admin': Medal,
+  lms: GraduationCap,
 };
 
 const moduleColors: Record<SystemModuleId, string> = {
@@ -51,6 +52,7 @@ const moduleColors: Record<SystemModuleId, string> = {
   proyectos: 'bg-indigo-500/10 text-indigo-600 border-indigo-200',
   'semana-juventud': 'bg-indigo-500/10 text-indigo-600 border-indigo-200',
   'semana-juventud-admin': 'bg-indigo-500/10 text-indigo-600 border-indigo-200',
+  lms: 'bg-indigo-500/10 text-indigo-600 border-indigo-200',
 };
 
 export default function ModuleGridDashboard({

@@ -15,7 +15,8 @@ import {
   GraduationCap,
   Clock,
   HelpCircle,
-  Minus
+  Minus,
+  RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -23,28 +24,39 @@ import {
   createSubject,
   updateSubject,
   deleteSubject,
-  getAllGrades
+  getAllGrades,
+  createLMSModule,
+  updateLMSModule,
+  deleteLMSModule,
+  getAllLMSModules,
+  reseedLMSModules,
+  getAllTeachers,
+  ensureTechnicalGrades,
+  seedBTVCurriculumToFirestore
 } from '../../lib/firestore';
-import { Subject, Grade, CYCLE_NAMES, Cycle } from '../../types';
+import { Subject, Grade, CYCLE_NAMES, Cycle, LMSModule, Teacher } from '../../types';
 
 // Centralized ordering for grades to sort chronologically
 const GRADE_ORDER: Record<string, number> = {
   k4: 1, k5: 2, k6: 3,
   '1': 4, '2': 5, '3': 6, '4': 7, '5': 8, '6': 9, '7': 10, '8': 11, '9': 12,
-  '10g': 13, '11g': 14, '10t': 15, '11t': 16, '12t': 17
+  '10g': 13, '11g': 14, '11t': 15
 };
 
 export default function SubjectsManager() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [grades, setGrades] = useState<Grade[]>([]);
+  const [lmsModules, setLmsModules] = useState<LMSModule[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isModuleTab, setIsModuleTab] = useState(false);
 
   // Search & Filter States
   const [selectedGradeId, setSelectedGradeId] = useState<string>('');
   const [selectedType, setSelectedType] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'all' | 'mined' | 'institutional'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'mined' | 'institutional' | 'technical'>('all');
 
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -52,26 +64,59 @@ export default function SubjectsManager() {
   const [form, setForm] = useState({
     name: '',
     description: '',
-    gradeIds: [] as string[], // Supports multiple grades!
+    gradeIds: [] as string[],
     status: 'ACTIVO' as 'ACTIVO' | 'INACTIVO',
     weeklyHours: 4,
-    type: 'MINED' as 'MINED' | 'INSTITUCIONAL',
+    type: 'MINED' as 'BASICA' | 'MINED' | 'INSTITUCIONAL',
     parentSubjectId: '',
+  });
+
+  // Módulo técnico form state
+  const [moduleForm, setModuleForm] = useState({
+    name: '',
+    code: '',
+    subjectId: '',
+    teacherId: '',
+    teacherName: '',
+    gradeId: '',
+    gradeName: '',
+    technicalYear: '1' as '1' | '2' | '3',
+    hours: 72,
+    weeks: 4,
+    status: 'active' as 'active' | 'inactive',
   });
 
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     try {
-      const [subs, grds] = await Promise.all([getAllSubjects(), getAllGrades()]);
+      await ensureTechnicalGrades();
+      await seedBTVCurriculumToFirestore();
+      const [subs, grds, modules, tchs] = await Promise.all([
+        getAllSubjects(),
+        getAllGrades(),
+        getAllLMSModules(),
+        getAllTeachers()
+      ]);
       // Sort grades chronologically
       const sortedGrades = [...grds].sort((a, b) => (GRADE_ORDER[a.id] || 99) - (GRADE_ORDER[b.id] || 99));
       setSubjects(subs);
       setGrades(sortedGrades);
+      setLmsModules(modules);
+      setTeachers(tchs);
     } finally { setLoading(false); }
   };
 
-  const getGradeName = (id?: string) => grades.find(g => g.id === id)?.name || id || '—';
+  const getGradeName = (id?: string) => {
+    if (!id) return '—';
+    const found = grades.find(g => g.id === id);
+    if (found) return found.name;
+    const fallback: Record<string, string> = {
+      '11t': '11° Bachillerato Técnico',
+      '10g': '10° Bachillerato General', '11g': '11° Bachillerato General',
+    };
+    return fallback[id] || id;
+  };
 
   const resetForm = () => {
     setForm({
@@ -82,7 +127,7 @@ export default function SubjectsManager() {
       weeklyHours: 4,
       type: 'MINED',
       parentSubjectId: '',
-    });
+    } as { name: string; description: string; gradeIds: string[]; status: 'ACTIVO' | 'INACTIVO'; weeklyHours: number; type: 'BASICA' | 'MINED' | 'INSTITUCIONAL'; parentSubjectId: string });
     setEditingId(null);
   };
 
@@ -222,6 +267,126 @@ export default function SubjectsManager() {
     }
   };
 
+  // ==================== LMS MODULES CRUD ====================
+
+  const resetModuleForm = () => {
+    setModuleForm({
+      name: '',
+      code: '',
+      subjectId: '',
+      teacherId: '',
+      teacherName: '',
+      gradeId: '',
+      gradeName: '',
+      technicalYear: '1',
+      hours: 72,
+      weeks: 4,
+      status: 'active',
+    });
+    setEditingId(null);
+  };
+
+  const handleModuleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!moduleForm.name.trim() || !moduleForm.code.trim()) {
+      toast.error('Nombre y código son obligatorios');
+      return;
+    }
+
+    try {
+      const grade = grades.find(g => g.id === moduleForm.gradeId);
+      const teacher = teachers.find(t => t.id === moduleForm.teacherId);
+      const payload = {
+        name: moduleForm.name.trim(),
+        code: moduleForm.code.trim(),
+        subjectId: moduleForm.subjectId || moduleForm.code.toLowerCase().replace(/\s+/g, '-'),
+        teacherId: moduleForm.teacherId || 'doc-1',
+        teacherName: teacher?.name || moduleForm.teacherName || 'Docente',
+        gradeId: moduleForm.gradeId,
+        gradeName: grade?.name || moduleForm.gradeName || '',
+        technicalYear: moduleForm.technicalYear,
+        hours: Number(moduleForm.hours) || 72,
+        weeks: Number(moduleForm.weeks) || 4,
+        status: moduleForm.status,
+        descriptor: {
+          objective: '',
+          units: [],
+          methodology: '',
+          evaluationCriteria: [],
+          bibliography: { books: [], websites: [] },
+          saberesPrevios: [],
+          developmentAxes: {
+            desarrolloTecnico: '',
+            desarrolloEmprendedor: '',
+            desarrolloHumanoSocial: '',
+            desarrolloAcademicoAplicado: '',
+          },
+        },
+      };
+
+      if (editingId) {
+        await updateLMSModule(editingId, payload);
+        toast.success('Módulo actualizado correctamente');
+      } else {
+        const id = `lms-mod-${Date.now()}`;
+        await createLMSModule({ id, ...payload });
+        toast.success('Módulo creado correctamente');
+      }
+
+      setShowForm(false);
+      resetModuleForm();
+      loadData();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al guardar módulo';
+      toast.error(msg);
+      console.error(err);
+    }
+  };
+
+  const handleEditModule = (mod: LMSModule) => {
+    setEditingId(mod.id);
+    setModuleForm({
+      name: mod.name,
+      code: mod.code,
+      subjectId: mod.subjectId,
+      teacherId: mod.teacherId,
+      teacherName: mod.teacherName,
+      gradeId: mod.gradeId,
+      gradeName: mod.gradeName,
+      technicalYear: mod.technicalYear,
+      hours: mod.hours,
+      weeks: mod.weeks,
+      status: mod.status,
+    });
+    setShowForm(true);
+  };
+
+  const handleDeleteModule = async (id: string) => {
+    if (confirm('¿Eliminar este módulo técnico?')) {
+      try {
+        await deleteLMSModule(id);
+        toast.success('Módulo eliminado');
+        loadData();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Error al eliminar módulo';
+        toast.error(msg);
+      }
+    }
+  };
+
+  const handleReseedModules = async () => {
+    if (!confirm('Esto eliminará y recargará los 27 módulos técnicos oficiales desde el plan BTV, corrigiendo los grados asignados. ¿Continuar?')) return;
+    try {
+      toast.info('Sincronizando módulos técnicos BTV...');
+      const modules = await reseedLMSModules();
+      setLmsModules(modules);
+      toast.success(`${modules.length} módulos técnicos sincronizados correctamente`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al sincronizar módulos';
+      toast.error(msg);
+    }
+  };
+
   const toggleSelect = (id: string) => {
     setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   };
@@ -233,9 +398,14 @@ export default function SubjectsManager() {
 
   // Filter logic supporting multi-grade subjects
   const filtered = subjects.filter(s => {
-    const matchType = !selectedType || (s.type || 'MINED') === selectedType;
+    const isMinedOrBasica = (s.type === 'MINED' || s.type === 'BASICA' || !s.type);
+
+    const matchType = !selectedType || 
+      (selectedType === 'MINED' && isMinedOrBasica) ||
+      (selectedType === 'INSTITUCIONAL' && s.type === 'INSTITUCIONAL');
+
     const matchTab = activeTab === 'all' || 
-      (activeTab === 'mined' && (s.type || 'MINED') === 'MINED') ||
+      (activeTab === 'mined' && isMinedOrBasica) ||
       (activeTab === 'institutional' && s.type === 'INSTITUCIONAL');
 
     // Direct check in s.gradeId or s.gradeIds list
@@ -253,6 +423,17 @@ export default function SubjectsManager() {
     return matchType && matchGrade && matchTab;
   });
 
+  const filteredModules = lmsModules.filter(m => {
+    if (selectedGradeId) {
+      const selectedGrade = grades.find(g => g.id === selectedGradeId);
+      const gradeName = selectedGrade?.name || '';
+      const matchGradeId = m.gradeId === selectedGradeId;
+      const matchTechYear = m.technicalYear === selectedGradeId || gradeName.includes(`${m.technicalYear}°`);
+      return matchGradeId || matchTechYear;
+    }
+    return true;
+  });
+
   const getSubSubjects = (parentId: string) => {
     return subjects.filter(s => s.parentSubjectId === parentId && s.status !== 'INACTIVO');
   };
@@ -262,6 +443,13 @@ export default function SubjectsManager() {
   // Group grades by cycles for organized navigation lists (Parvularia, Primer Ciclo, etc.)
   const gradesByCycle = grades.reduce((acc, g) => {
     const cycle = g.cycle || 'parvularia';
+    const hasSubjects = subjects.some(s => {
+      if ((s as any).gradeIds && Array.isArray((s as any).gradeIds)) {
+        return (s as any).gradeIds.includes(g.id);
+      }
+      return s.gradeId === g.id;
+    });
+    if (!hasSubjects) return acc;
     if (!acc[cycle]) acc[cycle] = [];
     acc[cycle].push(g);
     return acc;
@@ -282,13 +470,25 @@ export default function SubjectsManager() {
             <BookMarked className="w-5 h-5 text-slate-600" />
           </div>
           <div>
-            <h1 className="module-title">Plan de Materias</h1>
-            <p className="module-subtitle">Configuración oficial MINED y asignaciones institucionales integradas</p>
+            <h1 className="module-title">{isModuleTab ? 'Módulos Técnicos' : 'Plan de Materias'}</h1>
+            <p className="module-subtitle">{isModuleTab ? 'Configuración de módulos técnicos por año/grado' : 'Configuración oficial MINED y asignaciones institucionales integradas'}</p>
           </div>
         </div>
-        <button onClick={() => { setShowForm(true); resetForm(); }} className="btn-primary shrink-0">
-          <Plus className="w-4 h-4" /> Nueva Materia
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          {isModuleTab && (
+            <button
+              onClick={handleReseedModules}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 transition-colors cursor-pointer"
+              title="Re-sincronizar los 27 módulos BTV oficiales con grados técnicos correctos"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Sincronizar BTV
+            </button>
+          )}
+          <button onClick={() => { setShowForm(true); isModuleTab ? resetModuleForm() : resetForm(); }} className="btn-primary">
+            <Plus className="w-4 h-4" /> {isModuleTab ? 'Nuevo Módulo' : 'Nueva Materia'}
+          </button>
+        </div>
       </div>
 
       {/* Button-Pills-Only Grayscale Filtering Dashboard (Ultra Clean) */}
@@ -297,9 +497,9 @@ export default function SubjectsManager() {
         {/* Tabs Navigation */}
         <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/60">
           <button
-            onClick={() => setActiveTab('all')}
+            onClick={() => { setActiveTab('all'); setIsModuleTab(false); }}
             className={`flex-1 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
-              activeTab === 'all'
+              activeTab === 'all' && !isModuleTab
                 ? 'bg-white text-slate-900 shadow-xs'
                 : 'text-slate-500 hover:text-slate-700'
             }`}
@@ -307,9 +507,9 @@ export default function SubjectsManager() {
             Todas
           </button>
           <button
-            onClick={() => setActiveTab('mined')}
+            onClick={() => { setActiveTab('mined'); setIsModuleTab(false); }}
             className={`flex-1 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
-              activeTab === 'mined'
+              activeTab === 'mined' && !isModuleTab
                 ? 'bg-white text-slate-900 shadow-xs'
                 : 'text-slate-500 hover:text-slate-700'
             }`}
@@ -317,14 +517,24 @@ export default function SubjectsManager() {
             Materias
           </button>
           <button
-            onClick={() => setActiveTab('institutional')}
+            onClick={() => { setActiveTab('institutional'); setIsModuleTab(false); }}
             className={`flex-1 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
-              activeTab === 'institutional'
+              activeTab === 'institutional' && !isModuleTab
                 ? 'bg-white text-slate-900 shadow-xs'
                 : 'text-slate-500 hover:text-slate-700'
             }`}
           >
             Sub-materias
+          </button>
+          <button
+            onClick={() => { setActiveTab('technical'); setIsModuleTab(true); }}
+            className={`flex-1 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
+              isModuleTab
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Módulos Técnicos
           </button>
         </div>
 
@@ -488,22 +698,209 @@ export default function SubjectsManager() {
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="modal-container max-w-lg"
+              className="modal-container max-w-2xl"
             >
               <div className="modal-header">
                 <h3 className="modal-title">
-                  {editingId ? 'Editar Materia' : 'Nueva Materia o Sub-materia'}
+                  {isModuleTab
+                    ? (editingId ? 'Editar Módulo Técnico' : 'Nuevo Módulo Técnico')
+                    : (editingId ? 'Editar Materia' : 'Nueva Materia o Sub-materia')
+                  }
                 </h3>
                 <button
                   type="button"
-                  onClick={() => { setShowForm(false); resetForm(); }}
+                  onClick={() => { setShowForm(false); isModuleTab ? resetModuleForm() : resetForm(); }}
                   className="modal-close-btn"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="modal-body space-y-4">
+              {isModuleTab ? (
+                <form onSubmit={handleModuleSubmit} className="modal-body space-y-4">
+                  {/* Code & Name */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1 col-span-1">
+                      <label className="form-label text-slate-700">Código *</label>
+                      <input
+                        type="text"
+                        value={moduleForm.code}
+                        onChange={e => setModuleForm(p => ({ ...p, code: e.target.value }))}
+                        placeholder="Ej: BTV-DG-1.1"
+                        className="input-crema font-mono font-bold"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1 col-span-2">
+                      <label className="form-label text-slate-700">Nombre del Módulo Técnico *</label>
+                      <input
+                        type="text"
+                        value={moduleForm.name}
+                        onChange={e => setModuleForm(p => ({ ...p, name: e.target.value }))}
+                        placeholder="Ej: Ilustración Vectorial y Diagramación Digital"
+                        className="input-crema font-semibold"
+                        required
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  {/* Año Técnico MINED */}
+                  <div className="space-y-1.5">
+                    <label className="form-label text-slate-700">Año Técnico MINED *</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(['1', '2', '3'] as const).map(yr => (
+                        <button
+                          key={yr}
+                          type="button"
+                          onClick={() => setModuleForm(p => ({ ...p, technicalYear: yr }))}
+                          className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                            moduleForm.technicalYear === yr
+                              ? 'bg-primary border-primary text-white shadow-sm'
+                              : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          {yr === '1' ? '1.º Año' : yr === '2' ? '2.º Año' : '3.er Año'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Grado / Nivel Institucional */}
+                  <div className="space-y-1.5">
+                    <label className="form-label text-slate-700">Grado / Nivel Institucional</label>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setModuleForm(p => ({ ...p, gradeId: '', gradeName: '' }))}
+                        className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                          !moduleForm.gradeId
+                            ? 'bg-primary text-white border-primary shadow-sm'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-primary hover:text-primary'
+                        }`}
+                      >
+                        Sin grado
+                      </button>
+                      {grades.filter(g => g.id.endsWith('t')).map(g => (
+                        <button
+                          key={g.id}
+                          type="button"
+                          onClick={() => setModuleForm(p => ({ ...p, gradeId: g.id, gradeName: g.name }))}
+                          className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                            moduleForm.gradeId === g.id
+                              ? 'bg-primary text-white border-primary shadow-sm'
+                              : 'bg-white text-slate-600 border-slate-200 hover:border-primary hover:text-primary'
+                          }`}
+                        >
+                          {g.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Docente Encargado */}
+                  <div className="space-y-1.5">
+                    <label className="form-label text-slate-700">Docente Encargado del Módulo</label>
+                    <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto pr-1">
+                      <button
+                        type="button"
+                        onClick={() => setModuleForm(p => ({ ...p, teacherId: '', teacherName: '' }))}
+                        className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                          !moduleForm.teacherId
+                            ? 'bg-primary text-white border-primary shadow-sm'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-primary hover:text-primary'
+                        }`}
+                      >
+                        Sin docente
+                      </button>
+                      {teachers.map(t => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => setModuleForm(p => ({ ...p, teacherId: t.id, teacherName: t.name }))}
+                          className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                            moduleForm.teacherId === t.id
+                              ? 'bg-primary text-white border-primary shadow-sm'
+                              : 'bg-white text-slate-600 border-slate-200 hover:border-primary hover:text-primary'
+                          }`}
+                        >
+                          {t.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Hours & Weeks */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="form-label text-slate-700">Horas Totales</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={300}
+                        value={moduleForm.hours}
+                        onChange={e => setModuleForm(p => ({ ...p, hours: Number(e.target.value) }))}
+                        className="input-crema font-bold"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="form-label text-slate-700">Duración (Semanas)</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={40}
+                        value={moduleForm.weeks}
+                        onChange={e => setModuleForm(p => ({ ...p, weeks: Number(e.target.value) }))}
+                        className="input-crema font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Estado */}
+                  <div className="space-y-1.5">
+                    <label className="form-label text-slate-700">Estado Operativo</label>
+                    <div className="grid grid-cols-2 gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200/60">
+                      <button
+                        type="button"
+                        onClick={() => setModuleForm(p => ({ ...p, status: 'active' }))}
+                        className={`py-1.5 rounded-lg border-0 cursor-pointer transition-all text-[11px] font-bold ${
+                          moduleForm.status === 'active'
+                            ? 'bg-primary text-white shadow-sm'
+                            : 'text-slate-600 hover:bg-slate-200/50'
+                        }`}
+                      >
+                        Activo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setModuleForm(p => ({ ...p, status: 'inactive' }))}
+                        className={`py-1.5 rounded-lg border-0 cursor-pointer transition-all text-[11px] font-bold ${
+                          moduleForm.status === 'inactive'
+                            ? 'bg-primary text-white shadow-sm'
+                            : 'text-slate-600 hover:bg-slate-200/50'
+                        }`}
+                      >
+                        Inactivo
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="modal-footer">
+                    <button
+                      type="button"
+                      onClick={() => { setShowForm(false); resetModuleForm(); }}
+                      className="btn-secondary"
+                    >
+                      Cancelar
+                    </button>
+                    <button type="submit" className="btn-primary">
+                      <Save className="w-4 h-4" /> {editingId ? 'Actualizar Módulo' : 'Crear Módulo'}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <form onSubmit={handleSubmit} className="modal-body space-y-4">
 
                 {/* Subject Name */}
                 <div className="space-y-1">
@@ -513,7 +910,7 @@ export default function SubjectsManager() {
                     value={form.name}
                     onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
                     placeholder="Ej: Ciencias Naturales"
-                    className="input"
+                    className="input-crema"
                     autoFocus
                   />
                 </div>
@@ -525,14 +922,25 @@ export default function SubjectsManager() {
                     value={form.description}
                     onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
                     placeholder="Ej: Materias Institucionales derivadas: Física, Química, Biología..."
-                    className="input h-16 resize-none"
+                    className="input-crema h-16 resize-none"
                   />
                 </div>
 
                 {/* Classification Toggle */}
                 <div className="space-y-1">
                   <label className="form-label text-slate-700">Clasificación Curricular</label>
-                  <div className="grid grid-cols-2 gap-2 mt-1">
+                  <div className="grid grid-cols-3 gap-2 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => setForm(p => ({ ...p, type: 'BASICA', parentSubjectId: '' }))}
+                      className={`py-2 px-3 rounded-xl border font-bold text-xs cursor-pointer transition-all ${
+                        form.type === 'BASICA'
+                          ? 'bg-primary border-primary text-white shadow-sm'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      Básica (1°-11°)
+                    </button>
                     <button
                       type="button"
                       onClick={() => setForm(p => ({ ...p, type: 'MINED', parentSubjectId: '' }))}
@@ -542,7 +950,7 @@ export default function SubjectsManager() {
                           : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}
                     >
-                      Oficial MINED (Asignatura Base)
+                      MINED / Técnico
                     </button>
                     <button
                       type="button"
@@ -553,7 +961,7 @@ export default function SubjectsManager() {
                           : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}
                     >
-                      Institucional (Sub-materia Especial)
+                      Institucional
                     </button>
                   </div>
                 </div>
@@ -562,17 +970,17 @@ export default function SubjectsManager() {
                 {form.type === 'INSTITUCIONAL' && (
                   <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
                     <label className="form-label text-slate-700">Materia Base MINED a la que pertenece (Opcional)</label>
-                    <div className="grid grid-cols-1 gap-1.5 max-h-[120px] overflow-y-auto pr-1">
+                    <div className="flex flex-wrap gap-1.5 max-h-[100px] overflow-y-auto pr-1">
                       <button
                         type="button"
                         onClick={() => setForm(p => ({ ...p, parentSubjectId: '' }))}
-                        className={`p-2 rounded-lg border text-left text-xs font-semibold cursor-pointer transition-all ${
+                        className={`px-2.5 py-1 rounded-lg border text-left text-[11px] font-semibold cursor-pointer transition-all ${
                           !form.parentSubjectId
                             ? 'bg-primary border-primary text-white shadow-xs'
                             : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
                         }`}
                       >
-                        Ninguna (Materia Institucional Independiente)
+                        Ninguna
                       </button>
                       {minedSubjects.map(m => {
                         const isSelected = form.parentSubjectId === m.id;
@@ -581,7 +989,7 @@ export default function SubjectsManager() {
                             type="button"
                             key={m.id}
                             onClick={() => setForm(p => ({ ...p, parentSubjectId: m.id }))}
-                            className={`p-2 rounded-lg border text-left text-xs font-semibold cursor-pointer transition-all ${
+                            className={`px-2.5 py-1 rounded-lg border text-left text-[11px] font-semibold cursor-pointer transition-all ${
                               isSelected
                                 ? 'bg-primary border-primary text-white shadow-xs'
                                 : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
@@ -592,7 +1000,7 @@ export default function SubjectsManager() {
                         );
                       })}
                       {minedSubjects.length === 0 && (
-                        <span className="text-xs text-tertiary italic col-span-2">No hay materias oficiales creadas todavía.</span>
+                        <span className="text-[11px] text-tertiary italic">No hay materias oficiales creadas todavía.</span>
                       )}
                     </div>
                   </div>
@@ -732,310 +1140,444 @@ export default function SubjectsManager() {
                   </button>
                 </div>
               </form>
+              )}
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
-      {/* Grid view */}
-      {viewMode === 'card' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filtered.map((s, i) => {
-            const subSubjects = getSubSubjects(s.id);
-            const parentSubject = s.parentSubjectId ? subjects.find(p => p.id === s.parentSubjectId) : null;
-            const isMined = (s.type || 'MINED') === 'MINED';
-
-            // Resolve list of assigned grades
-            const subjectGradeIds = (s as any).gradeIds && Array.isArray((s as any).gradeIds)
-              ? (s as any).gradeIds
-              : s.gradeId
-              ? [s.gradeId]
-              : [];
-
-            return (
+      {/* Main Content: Módulos Técnicos vs Plan de Materias */}
+      {isModuleTab ? (
+        viewMode === 'card' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filteredModules.map((mod, i) => (
               <motion.div
-                key={s.id}
+                key={mod.id}
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.02 }}
-                className={`card-crema p-5 flex flex-col justify-between relative ${
-                  selected.has(s.id)
-                    ? 'ring-2 ring-primary border-primary'
-                    : ''
-                }`}
+                className="card-crema p-5 flex flex-col justify-between relative border border-slate-200 shadow-sm"
               >
                 <div>
-                  {/* Header with icon and title */}
-                  <div className="flex items-start justify-between gap-3 mb-4">
+                  <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center shrink-0">
-                        <BookMarked className="w-5 h-5 text-slate-600" />
+                      <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200/60 flex items-center justify-center shrink-0 text-indigo-600">
+                        <BookMarked className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
-                        <h3 className="text-sm font-bold text-slate-900 leading-tight line-clamp-1" title={s.name}>
-                          {s.name}
+                        <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-slate-900 text-white tracking-wide">
+                          {mod.code}
+                        </span>
+                        <h3 className="text-sm font-bold text-slate-900 leading-tight line-clamp-1 mt-1" title={mod.name}>
+                          {mod.name}
                         </h3>
-                        <p className="text-[10px] text-slate-400 font-medium mt-0.5">{s.type || 'MINED'}</p>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => toggleSelect(s.id)}
-                      className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
-                        selected.has(s.id) ? 'bg-primary border-primary text-white' : 'border-slate-300 hover:border-slate-800'
-                      }`}
-                    >
-                      {selected.has(s.id) && <Check className="w-3 h-3" />}
-                    </button>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      mod.status === 'active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600'
+                    }`}>
+                      {mod.status === 'active' ? 'Activo' : 'Inactivo'}
+                    </span>
                   </div>
 
-                  {/* Description */}
-                  {s.description ? (
-                    <p className="text-xs text-slate-500 line-clamp-2 mb-4 leading-relaxed">{s.description}</p>
-                  ) : (
-                    <p className="text-[11px] text-slate-400 italic mb-4">Sin descripción registrada.</p>
-                  )}
-
-                  {/* Sub-materias or Parent info */}
-                  {isMined && subSubjects.length > 0 ? (
-                    <div className="mb-4">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Sub-materias ({subSubjects.length})</span>
-                      <div className="flex flex-wrap gap-1">
-                        {subSubjects.map(sub => (
-                          <span key={sub.id} className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 text-slate-600 text-[10px] font-semibold px-2 py-0.5 rounded-md">
-                            {sub.name} ({sub.weeklyHours}h)
-                          </span>
-                        ))}
+                  <div className="space-y-1.5 text-xs text-slate-600 mb-4">
+                    <div className="flex items-center gap-2">
+                      <GraduationCap className="w-3.5 h-3.5 text-slate-400" />
+                      <span className="font-semibold">{mod.technicalYear}° Año Técnico</span>
+                      {mod.gradeId && <span className="text-slate-400">({getGradeName(mod.gradeId)})</span>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-3.5 h-3.5 text-slate-400" />
+                      <span>{mod.hours} horas • {mod.weeks} semanas</span>
+                    </div>
+                    {mod.teacherName && (
+                      <div className="text-[11px] text-slate-500 font-medium pt-1">
+                        Docente: <span className="font-bold text-slate-700">{mod.teacherName}</span>
                       </div>
-                    </div>
-                  ) : parentSubject ? (
-                    <div className="mb-4">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Asociada a</span>
-                      <span className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 text-slate-600 text-[10px] font-semibold px-2 py-0.5 rounded-md">
-                        {parentSubject.name}
-                      </span>
-                    </div>
-                  ) : null}
-                </div>
-
-                {/* Stats row at bottom */}
-                <div className="grid grid-cols-3 gap-2 pt-4 border-t border-slate-100">
-                  <div className="text-center">
-                    <span className="text-xl font-black text-emerald-600 font-display">{s.weeklyHours || '—'}</span>
-                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">Horas/Sem</p>
-                  </div>
-                  <div className="text-center">
-                    <span className="text-xl font-black text-blue-600 font-display">{subjectGradeIds.length || '—'}</span>
-                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">Grados</p>
-                  </div>
-                  <div className="text-center">
-                    <span className="text-xl font-black text-purple-600 font-display">{isMined ? subSubjects.length : '—'}</span>
-                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">Sub-mat</p>
-                  </div>
-                </div>
-
-                {/* Grade pills */}
-                {subjectGradeIds.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-3 pt-3 border-t border-slate-100">
-                    {subjectGradeIds.slice(0, 4).map(gid => (
-                      <span key={gid} className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 text-slate-600 text-[9px] font-bold px-1.5 py-0.5 rounded">
-                        <GraduationCap className="w-2.5 h-2.5" />
-                        {getGradeName(gid)}
-                      </span>
-                    ))}
-                    {subjectGradeIds.length > 4 && (
-                      <span className="text-[9px] text-slate-400 font-bold">+{subjectGradeIds.length - 4}</span>
                     )}
                   </div>
-                )}
+                </div>
 
-                {/* Action buttons */}
-                <div className="flex items-center gap-2 mt-3">
+                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100">
                   <button
-                    onClick={() => handleEdit(s)}
-                    className="flex-1 py-2 px-3 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-xs transition-colors"
+                    onClick={() => handleEditModule(mod)}
+                    className="flex-1 py-2 px-3 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-xs transition-colors cursor-pointer"
                   >
                     Editar
                   </button>
                   <button
-                    onClick={() => handleDelete(s.id)}
-                    className="p-2 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
-                    title="Eliminar"
+                    onClick={() => handleDeleteModule(mod.id)}
+                    className="p-2 hover:bg-red-50 rounded-xl transition-colors cursor-pointer border-0 bg-transparent"
+                    title="Eliminar Módulo"
                   >
                     <Trash2 className="w-4 h-4 text-red-500" />
                   </button>
                 </div>
               </motion.div>
-            );
-          })}
-        </div>
-      ) : (
-        /* List Mode */
-        <div className="card-crema overflow-hidden p-0">
-          <table className="table-crema">
-            <thead>
-              <tr>
-                <th className="w-10 px-4 py-3">
-                  <button
-                    onClick={toggleSelectAll}
-                    className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors cursor-pointer border-slate-300 ${
-                      selected.size === filtered.length && filtered.length > 0 ? 'bg-primary border-primary text-white' : ''
-                    }`}
-                  >
-                    {selected.size === filtered.length && filtered.length > 0 && <Check className="w-2.5 h-2.5" />}
-                  </button>
-                </th>
-                <th className="px-4 py-3 text-[11px] font-bold text-secondary uppercase tracking-wider">Nombre Asignatura</th>
-                <th className="px-4 py-3 text-[11px] font-bold text-secondary uppercase tracking-wider">Clasificación</th>
-                <th className="px-4 py-3 text-[11px] font-bold text-secondary uppercase tracking-wider">Grado / Nivel</th>
-                <th className="px-4 py-3 text-[11px] font-bold text-secondary uppercase tracking-wider">Horas Semanales</th>
-                <th className="px-4 py-3 text-[11px] font-bold text-secondary uppercase tracking-wider">Estado</th>
-                <th className="px-4 py-3 text-[11px] font-bold text-secondary uppercase tracking-wider text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.map((s, i) => {
-                const isMined = (s.type || 'MINED') === 'MINED';
-                const parentSubject = s.parentSubjectId ? subjects.find(p => p.id === s.parentSubjectId) : null;
-                const subSubjects = getSubSubjects(s.id);
-
-                // Resolve list of assigned grades
-                const subjectGradeIds = (s as any).gradeIds && Array.isArray((s as any).gradeIds)
-                  ? (s as any).gradeIds
-                  : s.gradeId
-                  ? [s.gradeId]
-                  : [];
-
-                return (
-                  <React.Fragment key={s.id}>
-                    <tr className={`hover:bg-slate-50/80 transition-colors ${selected.has(s.id) ? 'bg-slate-100/30' : ''}`}>
-                      <td className="px-4 py-3">
+            ))}
+          </div>
+        ) : (
+          <div className="card-crema overflow-hidden p-0">
+            <table className="table-crema">
+              <thead>
+                <tr>
+                  <th className="px-4 py-3 text-[11px] font-bold text-secondary uppercase tracking-wider">Código</th>
+                  <th className="px-4 py-3 text-[11px] font-bold text-secondary uppercase tracking-wider">Nombre Módulo Técnico</th>
+                  <th className="px-4 py-3 text-[11px] font-bold text-secondary uppercase tracking-wider">Año / Grado</th>
+                  <th className="px-4 py-3 text-[11px] font-bold text-secondary uppercase tracking-wider">Horas / Semanas</th>
+                  <th className="px-4 py-3 text-[11px] font-bold text-secondary uppercase tracking-wider">Docente</th>
+                  <th className="px-4 py-3 text-[11px] font-bold text-secondary uppercase tracking-wider">Estado</th>
+                  <th className="px-4 py-3 text-[11px] font-bold text-secondary uppercase tracking-wider text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredModules.map((mod) => (
+                  <tr key={mod.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="px-4 py-3 font-mono font-bold text-xs text-slate-800">{mod.code}</td>
+                    <td className="px-4 py-3 font-bold text-slate-800 text-sm">{mod.name}</td>
+                    <td className="px-4 py-3 text-xs text-slate-600 font-bold">{mod.technicalYear}° Año {mod.gradeId ? `(${getGradeName(mod.gradeId)})` : ''}</td>
+                    <td className="px-4 py-3 text-xs text-slate-600 font-medium">{mod.hours}h / {mod.weeks} sem</td>
+                    <td className="px-4 py-3 text-xs text-slate-700 font-semibold">{mod.teacherName || 'Sin Asignar'}</td>
+                    <td className="px-4 py-3">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        mod.status === 'active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        {mod.status === 'active' ? 'Activo' : 'Inactivo'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex justify-end gap-1">
                         <button
-                          onClick={() => toggleSelect(s.id)}
-                          className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors cursor-pointer ${
-                            selected.has(s.id) ? 'bg-primary border-primary text-white' : 'border-slate-300'
-                          }`}
+                          onClick={() => handleEditModule(mod)}
+                          className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer border-0 bg-transparent"
+                          title="Editar módulo"
                         >
-                          {selected.has(s.id) && <Check className="w-2.5 h-2.5" />}
+                          <Edit2 className="w-4 h-4 text-slate-500" />
                         </button>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-800 text-sm">{s.name}</span>
-                          {parentSubject ? (
-                            <span className="text-[10px] font-medium bg-slate-50 text-slate-600 px-2 py-0.5 rounded-md border border-slate-200/60">
-                              Sub-materia de: {parentSubject.name}
-                            </span>
-                          ) : !isMined ? (
-                            <span className="text-[10px] font-medium bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md border border-slate-200/60">
-                              Institucional Independiente
-                            </span>
-                          ) : null}
-                        </div>
-                        {s.description && <div className="text-xs text-tertiary mt-0.5 line-clamp-1">{s.description}</div>}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase bg-slate-50 text-slate-800 border border-slate-200">
-                          {s.type || 'MINED'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-600 font-bold">
-                        {subjectGradeIds.length > 0 ? (
-                          <div className="flex flex-wrap gap-1 max-w-[200px]">
-                            {subjectGradeIds.map(gid => (
-                              <span key={gid} className="bg-slate-50 border border-slate-200/80 px-1 py-0.2 rounded text-[9px]">
-                                {getGradeName(gid)}
-                              </span>
-                            ))}
-                          </div>
-                        ) : s.cycle ? (
-                          CYCLE_NAMES[s.cycle]
-                        ) : (
-                          '—'
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-600 font-medium">
-                        {s.weeklyHours || '—'} horas
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          s.status === 'INACTIVO' ? 'bg-slate-100 text-secondary' : 'bg-slate-100 text-slate-800'
-                        }`}>
-                          {s.status || 'ACTIVO'}
-                        </span>
-                      </td>
-                       <td className="px-4 py-3 text-right">
-                         <div className="flex justify-end gap-1">
-                           <button
-                             onClick={() => handleEdit(s)}
-                             className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer border-0 bg-transparent"
-                           >
-                             <Edit2 className="w-4 h-4 text-slate-500" />
-                           </button>
-                           <button
-                             onClick={() => handleDelete(s.id)}
-                             className="p-1.5 hover:bg-red-50 rounded-lg transition-colors cursor-pointer border-0 bg-transparent"
-                           >
-                             <Trash2 className="w-4 h-4 text-red-500" />
-                           </button>
-                         </div>
-                       </td>
-                    </tr>
+                        <button
+                          onClick={() => handleDeleteModule(mod.id)}
+                          className="p-1.5 hover:bg-red-50 rounded-lg transition-colors cursor-pointer border-0 bg-transparent"
+                          title="Eliminar módulo"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      ) : (
+        viewMode === 'card' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filtered.map((s, i) => {
+              const subSubjects = getSubSubjects(s.id);
+              const parentSubject = s.parentSubjectId ? subjects.find(p => p.id === s.parentSubjectId) : null;
+              const isMined = (s.type || 'MINED') === 'MINED';
 
-                    {/* Sub-row for Institutional components nested inside MINED bases */}
-                    {isMined && subSubjects.length > 0 && (
-                      <tr className="bg-slate-50/40">
-                        <td />
-                        <td colSpan={6} className="px-6 py-2.5">
-                          <div className="flex flex-col gap-1.5 pl-4 border-l-2 border-slate-200">
-                            <span className="text-[10px] font-bold text-tertiary uppercase tracking-wider block">
-                              Especialidades Institucionales Vinculadas:
+              // Resolve list of assigned grades
+              const subjectGradeIds = (s as any).gradeIds && Array.isArray((s as any).gradeIds)
+                ? (s as any).gradeIds
+                : s.gradeId
+                ? [s.gradeId]
+                : [];
+
+              return (
+                <motion.div
+                  key={s.id}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.02 }}
+                  className={`card-crema p-5 flex flex-col justify-between relative ${
+                    selected.has(s.id)
+                      ? 'ring-2 ring-primary border-primary'
+                      : ''
+                  }`}
+                >
+                  <div>
+                    {/* Header with icon and title */}
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center shrink-0">
+                          <BookMarked className="w-5 h-5 text-slate-600" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-bold text-slate-900 leading-tight line-clamp-1" title={s.name}>
+                              {s.name}
+                            </h3>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                              s.status === 'INACTIVO' ? 'bg-slate-100 text-slate-600' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            }`}>
+                              {s.status === 'INACTIVO' ? 'Inactivo' : 'Activo'}
                             </span>
-                            {subSubjects.map(sub => (
-                              <div key={sub.id} className="flex items-center justify-between text-xs bg-white p-2 rounded-lg border border-slate-200/80 max-w-2xl shadow-sm">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-bold text-slate-700">{sub.name}</span>
-                                  <span className="text-[10px] font-medium bg-slate-50 text-slate-700 px-2 py-0.2 rounded-md border border-slate-200/60">
-                                    Sub-materia
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                  <span className="text-slate-500 text-[11px]">{sub.weeklyHours} horas/semana</span>
-                                  <div className="flex gap-1">
-                                    <button
-                                      onClick={() => handleEdit(sub)}
-                                      className="p-1 hover:bg-slate-100 rounded text-slate-500 cursor-pointer border-0 bg-transparent"
-                                      title="Editar sub-materia"
-                                    >
-                                      <Edit2 className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                      onClick={() => handleDelete(sub.id)}
-                                      className="p-1 hover:bg-red-50 rounded text-red-500 cursor-pointer border-0 bg-transparent"
-                                      title="Eliminar sub-materia"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
+                          </div>
+                          <p className="text-[10px] text-slate-400 font-medium mt-0.5">{s.type || 'MINED'}</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => toggleSelect(s.id)}
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                          selected.has(s.id) ? 'bg-primary border-primary text-white' : 'border-slate-300 hover:border-slate-800'
+                        }`}
+                      >
+                        {selected.has(s.id) && <Check className="w-3 h-3" />}
+                      </button>
+                    </div>
+
+                    {/* Description */}
+                    {s.description ? (
+                      <p className="text-xs text-slate-500 line-clamp-2 mb-4 leading-relaxed">{s.description}</p>
+                    ) : (
+                      <p className="text-[11px] text-slate-400 italic mb-4">Sin descripción registrada.</p>
+                    )}
+
+                    {/* Sub-materias or Parent info */}
+                    {isMined && subSubjects.length > 0 ? (
+                      <div className="mb-4">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Sub-materias ({subSubjects.length})</span>
+                        <div className="flex flex-wrap gap-1">
+                          {subSubjects.map(sub => (
+                            <span key={sub.id} className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 text-slate-600 text-[10px] font-semibold px-2 py-0.5 rounded-md">
+                              {sub.name} ({sub.weeklyHours}h)
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : parentSubject ? (
+                      <div className="mb-4">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Asociada a</span>
+                        <span className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 text-slate-600 text-[10px] font-semibold px-2 py-0.5 rounded-md">
+                          {parentSubject.name}
+                        </span>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {/* Stats row at bottom */}
+                  <div className="grid grid-cols-3 gap-2 pt-4 border-t border-slate-100">
+                    <div className="text-center">
+                      <span className="text-xl font-black text-emerald-600 font-display">{s.weeklyHours || '—'}</span>
+                      <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">Horas/Sem</p>
+                    </div>
+                    <div className="text-center">
+                      <span className="text-xl font-black text-blue-600 font-display">{subjectGradeIds.length || '—'}</span>
+                      <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">Grados</p>
+                    </div>
+                    <div className="text-center">
+                      <span className="text-xl font-black text-purple-600 font-display">{isMined ? subSubjects.length : '—'}</span>
+                      <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">Sub-mat</p>
+                    </div>
+                  </div>
+
+                  {/* Grade pills */}
+                  {subjectGradeIds.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-3 pt-3 border-t border-slate-100">
+                      {subjectGradeIds.slice(0, 4).map(gid => (
+                        <span key={gid} className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 text-slate-600 text-[9px] font-bold px-1.5 py-0.5 rounded">
+                          <GraduationCap className="w-2.5 h-2.5" />
+                          {getGradeName(gid)}
+                        </span>
+                      ))}
+                      {subjectGradeIds.length > 4 && (
+                        <span className="text-[9px] text-slate-400 font-bold">+{subjectGradeIds.length - 4}</span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-2 mt-3">
+                    <button
+                      onClick={() => handleEdit(s)}
+                      className="flex-1 py-2 px-3 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-xs transition-colors"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      onClick={() => handleDelete(s.id)}
+                      className="p-2 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                      title="Eliminar"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </button>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        ) : (
+          /* List Mode */
+          <div className="card-crema overflow-hidden p-0">
+            <table className="table-crema">
+              <thead>
+                <tr>
+                  <th className="w-10 px-4 py-3">
+                    <button
+                      onClick={toggleSelectAll}
+                      className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors cursor-pointer border-slate-300 ${
+                        selected.size === filtered.length && filtered.length > 0 ? 'bg-primary border-primary text-white' : ''
+                      }`}
+                    >
+                      {selected.size === filtered.length && filtered.length > 0 && <Check className="w-2.5 h-2.5" />}
+                    </button>
+                  </th>
+                  <th className="px-4 py-3 text-[11px] font-bold text-secondary uppercase tracking-wider">Nombre Asignatura</th>
+                  <th className="px-4 py-3 text-[11px] font-bold text-secondary uppercase tracking-wider">Clasificación</th>
+                  <th className="px-4 py-3 text-[11px] font-bold text-secondary uppercase tracking-wider">Grado / Nivel</th>
+                  <th className="px-4 py-3 text-[11px] font-bold text-secondary uppercase tracking-wider">Horas Semanales</th>
+                  <th className="px-4 py-3 text-[11px] font-bold text-secondary uppercase tracking-wider">Estado</th>
+                  <th className="px-4 py-3 text-[11px] font-bold text-secondary uppercase tracking-wider text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filtered.map((s, i) => {
+                  const isMined = (s.type || 'MINED') === 'MINED';
+                  const parentSubject = s.parentSubjectId ? subjects.find(p => p.id === s.parentSubjectId) : null;
+                  const subSubjects = getSubSubjects(s.id);
+
+                  // Resolve list of assigned grades
+                  const subjectGradeIds = (s as any).gradeIds && Array.isArray((s as any).gradeIds)
+                    ? (s as any).gradeIds
+                    : s.gradeId
+                    ? [s.gradeId]
+                    : [];
+
+                  return (
+                    <React.Fragment key={s.id}>
+                      <tr className={`hover:bg-slate-50/80 transition-colors ${selected.has(s.id) ? 'bg-slate-100/30' : ''}`}>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => toggleSelect(s.id)}
+                            className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors cursor-pointer ${
+                              selected.has(s.id) ? 'bg-primary border-primary text-white' : 'border-slate-300'
+                            }`}
+                          >
+                            {selected.has(s.id) && <Check className="w-2.5 h-2.5" />}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-800 text-sm">{s.name}</span>
+                            {parentSubject ? (
+                              <span className="text-[10px] font-medium bg-slate-50 text-slate-600 px-2 py-0.5 rounded-md border border-slate-200/60">
+                                Sub-materia de: {parentSubject.name}
+                              </span>
+                            ) : !isMined ? (
+                              <span className="text-[10px] font-medium bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md border border-slate-200/60">
+                                Institucional Independiente
+                              </span>
+                            ) : null}
+                          </div>
+                          {s.description && <div className="text-xs text-tertiary mt-0.5 line-clamp-1">{s.description}</div>}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase bg-slate-50 text-slate-800 border border-slate-200">
+                            {s.type || 'MINED'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-slate-600 font-bold">
+                          {subjectGradeIds.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 max-w-[200px]">
+                              {subjectGradeIds.map(gid => (
+                                <span key={gid} className="bg-slate-50 border border-slate-200/80 px-1 py-0.2 rounded text-[9px]">
+                                  {getGradeName(gid)}
+                                </span>
+                              ))}
+                            </div>
+                          ) : s.cycle ? (
+                            CYCLE_NAMES[s.cycle]
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-slate-600 font-medium">
+                          {s.weeklyHours || '—'} horas
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            s.status === 'INACTIVO' ? 'bg-slate-100 text-slate-600' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          }`}>
+                            {s.status === 'INACTIVO' ? 'Inactivo' : 'Activo'}
+                          </span>
+                        </td>
+                         <td className="px-4 py-3 text-right">
+                           <div className="flex justify-end gap-1">
+                             <button
+                               onClick={() => handleEdit(s)}
+                               className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer border-0 bg-transparent"
+                             >
+                               <Edit2 className="w-4 h-4 text-slate-500" />
+                             </button>
+                             <button
+                               onClick={() => handleDelete(s.id)}
+                               className="p-1.5 hover:bg-red-50 rounded-lg transition-colors cursor-pointer border-0 bg-transparent"
+                             >
+                               <Trash2 className="w-4 h-4 text-red-500" />
+                             </button>
+                           </div>
+                         </td>
+                      </tr>
+
+                      {/* Sub-row for Institutional components nested inside MINED bases */}
+                      {isMined && subSubjects.length > 0 && (
+                        <tr className="bg-slate-50/40">
+                          <td />
+                          <td colSpan={6} className="px-6 py-2.5">
+                            <div className="flex flex-col gap-1.5 pl-4 border-l-2 border-slate-200">
+                              <span className="text-[10px] font-bold text-tertiary uppercase tracking-wider block">
+                                Especialidades Institucionales Vinculadas:
+                              </span>
+                              {subSubjects.map(sub => (
+                                <div key={sub.id} className="flex items-center justify-between text-xs bg-white p-2 rounded-lg border border-slate-200/80 max-w-2xl shadow-sm">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-bold text-slate-700">{sub.name}</span>
+                                    <span className="text-[10px] font-medium bg-slate-50 text-slate-700 px-2 py-0.2 rounded-md border border-slate-200/60">
+                                      Sub-materia
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-4">
+                                    <span className="text-slate-500 text-[11px]">{sub.weeklyHours} horas/semana</span>
+                                    <div className="flex gap-1">
+                                      <button
+                                        onClick={() => handleEdit(sub)}
+                                        className="p-1 hover:bg-slate-100 rounded text-slate-500 cursor-pointer border-0 bg-transparent"
+                                        title="Editar sub-materia"
+                                      >
+                                        <Edit2 className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        onClick={() => handleDelete(sub.id)}
+                                        className="p-1 hover:bg-red-50 rounded text-red-500 cursor-pointer border-0 bg-transparent"
+                                        title="Eliminar sub-materia"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ))}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )
       )}
 
-      {filtered.length === 0 && (
+      {((isModuleTab && filteredModules.length === 0) || (!isModuleTab && filtered.length === 0)) && (
         <div className="text-center py-12 text-tertiary">
           <BookMarked className="w-10 h-10 mx-auto mb-2 opacity-50" />
-          <p className="text-sm font-medium">No se encontraron materias en este nivel o grupo</p>
+          <p className="text-sm font-medium">
+            {isModuleTab ? 'No se encontraron módulos técnicos registrados' : 'No se encontraron materias en este nivel o grupo'}
+          </p>
         </div>
       )}
     </div>

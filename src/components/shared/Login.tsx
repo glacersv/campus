@@ -62,76 +62,76 @@ export default function Login() {
         transition={{ duration: 0.5, type: 'spring', bounce: 0.1 }}
         className="w-full max-w-md relative z-10"
       >
-        {/* Premium glass card */}
-        <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/60 shadow-premium p-8 relative overflow-hidden">
-          {/* Top accent glow */}
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent" />
-          
-          <div className="flex flex-col items-center text-center mb-8">
+      {/* Premium glass card */}
+      <div className="bg-[#ffffff]/70 backdrop-blur-xl rounded-3xl border border-[#ffffff]/60 shadow-premium p-8 relative overflow-hidden">
+        {/* Top accent glow */}
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent" />
+        
+        <div className="flex flex-col items-center text-center mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, type: 'spring', bounce: 0.1 }}
+            className="mb-4"
+          >
+            <InstitutionLogo className="w-20 h-20" />
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, type: 'spring', bounce: 0.1 }}
+          >
+            <h1 className="text-xl font-bold text-[#0f172a] tracking-tight leading-tight" style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}>
+              Campus Colegio<br />Salesiano San José
+            </h1>
+            <p className="text-xs text-[#64748b] mt-2 font-medium">Educación para el corazón</p>
+          </motion.div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {isSignUp && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1, type: 'spring', bounce: 0.1 }}
-              className="mb-4"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
             >
-              <InstitutionLogo className="w-20 h-20" />
+              <label htmlFor="signup-name" className="block text-xs font-bold text-[#475569] mb-1.5 uppercase tracking-wider">Nombre Completo</label>
+              <div className="relative group">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-[#94a3b8] group-focus-within:text-[#25855A] transition-colors"><UserPlus className="w-4 h-4" /></span>
+                <input id="signup-name" type="text" required placeholder="Nombre del docente" value={displayName} onChange={e => setDisplayName(e.target.value)} className="input pl-9 bg-[#ffffff]/60 focus:bg-white" />
+              </div>
             </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, type: 'spring', bounce: 0.1 }}
-            >
-              <h1 className="text-xl font-bold text-slate-900 tracking-tight leading-tight" style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}>
-                Campus Colegio<br />Salesiano San José
-              </h1>
-              <p className="text-xs text-slate-500 mt-2 font-medium">Educación para el corazón</p>
-            </motion.div>
+          )}
+          <div>
+            <label htmlFor="login-email" className="block text-xs font-bold text-[#475569] mb-1.5 uppercase tracking-wider">Correo Electrónico</label>
+            <div className="relative group">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-[#94a3b8] group-focus-within:text-[#25855A] transition-colors"><Mail className="w-4 h-4" /></span>
+              <input id="login-email" type="email" required placeholder="correo@salesianosanjose.edu.sv" value={email} onChange={e => setEmail(e.target.value)} className="input pl-9 bg-[#ffffff]/60 focus:bg-white" />
+            </div>
           </div>
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {isSignUp && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
-              >
-                <label htmlFor="signup-name" className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Nombre Completo</label>
-                <div className="relative group">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 group-focus-within:text-salesiano-green transition-colors"><UserPlus className="w-4 h-4" /></span>
-                  <input id="signup-name" type="text" required placeholder="Nombre del docente" value={displayName} onChange={e => setDisplayName(e.target.value)} className="input pl-9 bg-white/60 focus:bg-white" />
-                </div>
-              </motion.div>
-            )}
-            <div>
-              <label htmlFor="login-email" className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Correo Electrónico</label>
-              <div className="relative group">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 group-focus-within:text-salesiano-green transition-colors"><Mail className="w-4 h-4" /></span>
-                <input id="login-email" type="email" required placeholder="correo@salesianosanjose.edu.sv" value={email} onChange={e => setEmail(e.target.value)} className="input pl-9 bg-white/60 focus:bg-white" />
-              </div>
+          <div>
+            <label htmlFor="login-password" className="block text-xs font-bold text-[#475569] mb-1.5 uppercase tracking-wider">Contraseña</label>
+            <div className="relative group">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-[#94a3b8] group-focus-within:text-[#25855A] transition-colors"><Lock className="w-4 h-4" /></span>
+              <input id="login-password" type="password" required placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="input pl-9 bg-[#ffffff]/60 focus:bg-white" />
             </div>
-            <div>
-              <label htmlFor="login-password" className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Contraseña</label>
-              <div className="relative group">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 group-focus-within:text-salesiano-green transition-colors"><Lock className="w-4 h-4" /></span>
-                <input id="login-password" type="password" required placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="input pl-9 bg-white/60 focus:bg-white" />
-              </div>
-            </div>
-            <motion.button 
-              type="submit" 
-              disabled={loading} 
-              className="btn-primary w-full justify-center py-3 rounded-full disabled:opacity-50"
-              whileTap={{ scale: 0.97 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-            >
-              <LogIn className="w-4 h-4" />
-              {loading ? 'Procesando...' : isSignUp ? 'Crear Cuenta' : 'Iniciar Sesión'}
-            </motion.button>
-          </form>
+          </div>
+          <motion.button 
+            type="submit" 
+            disabled={loading} 
+            className="btn-primary w-full justify-center py-3 rounded-full disabled:opacity-50"
+            whileTap={{ scale: 0.97 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+          >
+            <LogIn className="w-4 h-4" />
+            {loading ? 'Procesando...' : isSignUp ? 'Crear Cuenta' : 'Iniciar Sesión'}
+          </motion.button>
+        </form>
 
-          {/* Microsoft Button (placeholder) */}
-          <div className="mt-4">
-            <button disabled className="w-full py-2.5 px-4 border border-slate-200/80 rounded-xl text-sm font-medium text-slate-400 bg-white/40 cursor-not-allowed flex items-center justify-center gap-2 opacity-60 backdrop-blur-sm">
+        {/* Microsoft Button (placeholder) */}
+        <div className="mt-4">
+          <button disabled className="w-full py-2.5 px-4 border border-[#e2e8f0]/80 rounded-xl text-sm font-medium text-[#94a3b8] bg-[#ffffff]/40 cursor-not-allowed flex items-center justify-center gap-2 opacity-60 backdrop-blur-sm">
               <svg className="w-4 h-4" viewBox="0 0 21 21">
                 <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
                 <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
@@ -142,8 +142,8 @@ export default function Login() {
             </button>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-slate-200/60 text-center">
-            <button onClick={() => { setIsSignUp(!isSignUp); }} className="text-xs font-bold text-salesiano-green hover:text-salesiano-green-dark transition-colors uppercase tracking-wider">
+          <div className="mt-6 pt-4 border-t border-[#e2e8f0]/60 text-center">
+            <button onClick={() => { setIsSignUp(!isSignUp); }} className="text-xs font-bold text-[#25855A] hover:text-[#124D37] transition-colors uppercase tracking-wider">
               {isSignUp ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate'}
             </button>
           </div>
@@ -151,9 +151,9 @@ export default function Login() {
       </motion.div>
 
       <motion.p initial={{ opacity: 0, y: 5 }} animate={{ opacity: 0.8, y: 0 }} transition={{ delay: 0.4 }}
-        className="mt-8 text-sm text-slate-600 italic text-center max-w-sm relative z-10">
+        className="mt-8 text-sm text-[#64748b] italic text-center max-w-sm relative z-10">
         "La educación es cosa del corazón."
-        <span className="block text-xs text-slate-400 mt-2 not-italic" style={{ fontFamily: 'var(--font-display)', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase' }}>— San Juan Bosco</span>
+        <span className="block text-xs text-[#94a3b8] mt-2 not-italic" style={{ fontFamily: 'var(--font-display)', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase' }}>— San Juan Bosco</span>
       </motion.p>
     </div>
   );
