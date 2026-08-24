@@ -175,7 +175,58 @@ git pull
 - [ ] Verificar que los errores 500 en alumno/docente se resolvieron
 - [ ] Probar flujo completo: admin → docente → alumno
 - [ ] Verificar que `seedBTVCurriculumToFirestore()` popula los 27 módulos correctamente
-- [ ] Asegurar que el docente pueda editar contenido y el alumno lo vea
+- [ ] Asegurar que el docente pueda editar contenido y alumno lo vea
 - [ ] Exportación PDF
 - [ ] Historial de reportes
 - [ ] Dashboard estadístico
+
+---
+
+## 12. Sesión Oficina — Tarde 24 Agosto 2026
+
+### Commits realizados
+```
+870f3d7 fix: GradesManager ejecuta cleanupDuplicateGrades() al cargar
+11dc9a1 fix: grades duplicados - crea 10t/11t/12t + limpia duplicados de Firestore
+ec5f98b fix: ensureTechnicalGrades() crea 15 grados + filtro SubjectsManager muestra todos
+```
+
+### Fix 1: `ensureTechnicalGrades()` solo creaba 3 grados
+- **Problema:** La función solo creaba 10g, 11g, 11t — faltaban Kinder, 1°-9°
+- **Solución:** Ahora crea los 15 grados completos (k4-k6, 1-9, 10g, 11g, 10t, 11t, 12t)
+- **Archivo:** `src/lib/firestore.ts:257`
+
+### Fix 2: Filtro de grados en SubjectsManager ocultaba grados sin materias
+- **Problema:** `gradesByCycle` filtraba grados que no tuvieran al menos 1 materia asignada
+- **Solución:** Eliminado el filtro `hasSubjects` — ahora muestra todos los grados
+- **Archivo:** `src/components/admin/SubjectsManager.tsx:444`
+
+### Fix 3: Grados duplicados en Firestore (° vs º)
+- **Problema:** Existían documentos como "10° Bachillerato Técnico" y "10º Bachillerato Técnico" con diferentes IDs
+- **Solución:** Nueva función `cleanupDuplicateGrades()` que elimina documentos con IDs fuera de la lista válida
+- **IDs válidos:** k4, k5, k6, 1-9, 10g, 11g, 10t, 11t, 12t
+- **Archivos:** `src/lib/firestore.ts` (función), `SubjectsManager.tsx` y `GradesManager.tsx` (la llaman al cargar)
+
+### Fix 4: Grados técnicos actualizados
+- **Antes:** Solo existía 11t
+- **Ahora:** 10t (10° Bachillerato Técnico), 11t (11° Bachillerato Técnico), 12t (12° Bachillerato Técnico)
+- **Archivo:** `src/lib/firestore.ts` ensureTechnicalGrades()
+
+### Estado al finalizar
+| Grado | ID | Estado |
+|-------|-----|--------|
+| Kinder 4 | k4 | Creado |
+| Kinder 5 | k5 | Creado |
+| Preparatoria | k6 | Creado |
+| 1°-9° Grado | 1-9 | Creados |
+| 10° Bachillerato General | 10g | Creado |
+| 11° Bachillerato General | 11g | Creado |
+| 10° Bachillerato Técnico | 10t | Creado |
+| 11° Bachillerato Técnico | 11t | Creado |
+| 12° Bachillerato Técnico | 12t | Creado |
+
+### Para sincronizar en iMac (casa)
+```bash
+git pull
+```
+Al recargar el admin, `cleanupDuplicateGrades()` eliminará los duplicados automáticamente.
