@@ -34,7 +34,8 @@ import {
   getAllSections,
   getAllBuildings,
   getCurrentSchoolYear,
-  getAllStudents
+  getAllStudents,
+  cleanupDuplicateGrades
 } from '../../lib/firestore';
 import { Grade, Section, Building, Cycle, BaccalaureateType, CYCLE_NAMES, Student } from '../../types';
 
@@ -94,6 +95,7 @@ export default function GradesManager() {
 
   const loadData = async () => {
     try {
+      await cleanupDuplicateGrades();
       const [g, s, b, cy, st] = await Promise.all([
         getAllGrades(),
         getAllSections(),
