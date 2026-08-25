@@ -33,12 +33,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // DEV BYPASS FOR OFFLINE FRONTEND VISUAL VERIFICATION AND PLAYWRIGHT SCRIPTS
+    if (import.meta.env.DEV && typeof window !== 'undefined' && window.location.search.includes('bypass_admin=true')) {
+      setFirebaseUser({ uid: 'admin_bypass', email: 'admin@salesianosanjose.edu.sv' } as any);
+      setUserProfile({
+        uid: 'admin_bypass',
+        email: 'admin@salesianosanjose.edu.sv',
+        displayName: 'Administrador (Bypass)',
+        role: 'admin',
+        status: 'approved'
+      });
+      setRoleConfig({
+        id: 'admin',
+        name: 'Administrador',
+        permissions: ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos']
+      });
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setFirebaseUser(user);
       if (user) {
         let profile = await getUser(user.uid);
         if (!profile) {
-          // SELF-HEALING FLOW: El usuario está en Auth pero no tiene registro en Firestore (Cuenta Huérfana)
+          // SELF-HEALING FLOW
           console.log('[Self-Healing] Inicializando perfil en Firestore para usuario:', user.uid);
           const email = user.email || '';
           let detectedRole: UserRole | null = null;
@@ -49,7 +68,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           let teacherId: string | undefined;
           let teacherName: string | undefined;
 
-          // Detectar rol y detalles
           const isSuperAdmin = email === 'admin@salesianosanjose.edu.sv' || email === 'jose.marquez@salesianosanjose.edu.sv';
           const teacher = await getTeacherByEmail(email);
           if (isSuperAdmin) {
@@ -109,11 +127,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const rc = await getRole(profile.role);
           setRoleConfig(rc);
           
-          // Cargar roles dinámicos desde Firestore
           const allRoles = await getAllRoles();
           updateRoleLabelsFromFirestore(allRoles);
           
-          // Fix incorrect module IDs in roles (fire-and-forget)
           fixRolesPermissions().catch(console.error);
         } else {
           setRoleConfig(null);
@@ -130,11 +146,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     await signInWithEmailAndPassword(auth, email, password);
-    
-    // Super admin bypass - siempre permitir acceso
     if (email === 'admin@salesianosanjose.edu.sv' || email === 'jose.marquez@salesianosanjose.edu.sv') return;
     
-    // Verificar estado del usuario después del login
     const profile = await getUser(auth.currentUser?.uid || '');
     if (profile?.status === 'pending') {
       await firebaseSignOut(auth);
@@ -147,12 +160,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, displayName: string) => {
-    console.log('[signUp] Inicio registro', email);
     if (!email.endsWith('@salesianosanjose.edu.sv')) {
       throw new Error('Solo se permiten correos institucionales (@salesianosanjose.edu.sv)');
     }
 
-    console.log('[signUp] Creando en Firebase Auth');
     let result;
     try {
       result = await createUserWithEmailAndPassword(auth, email, password);
@@ -163,7 +174,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw err;
     }
     const uid = result.user.uid;
-    console.log('[signUp] Auth OK', uid);
 
     let detectedRole: UserRole | null = null;
     let studentId: string | undefined;
@@ -173,7 +183,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let teacherId: string | undefined;
     let teacherName: string | undefined;
 
-    // Detectar rol y detalles del usuario registrado
     const teacher = await getTeacherByEmail(email);
     if (teacher) {
       detectedRole = 'docente';
@@ -201,27 +210,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ...(teacherId ? { teacherId } : {}),
       ...(studentId ? { studentId } : {}),
     };
-    console.log('[signUp] Creando user en Firestore');
-    // Si ya existe un usuario aprobado para este alumno (ej: creado por admin), migrar al nuevo UID
     let existingApprovedUser: User | null = null;
     if (studentId) {
       existingApprovedUser = await getUserByStudentId(studentId);
     }
     if (existingApprovedUser?.status === 'approved' && existingApprovedUser?.role) {
-      // Migrar: crear doc con nuevo UID de Auth, preservar datos aprobados
       userData.role = existingApprovedUser.role;
       userData.status = 'approved';
       userData.requestedRole = undefined;
       userData.studentId = studentId;
-      // Eliminar el doc viejo (con ID del alumno como key)
       await deleteUser(existingApprovedUser.uid).catch(() => {});
     }
     await createUser(userData);
-    console.log('[signUp] User creado');
 
-    // Si ya esta aprobado, no crear approval request
     if (userData.status !== 'approved') {
-      console.log('[signUp] Creando approval request');
       await createApprovalRequest({
         id: uid,
         userId: uid,
@@ -236,7 +238,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         teacherId,
         teacherName,
       });
-      console.log('[signUp] Approval request creada');
     }
   };
 
@@ -263,7 +264,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const user = await getUser(uid);
     if (!user) throw new Error('Usuario no encontrado');
 
-    // Auto-provisionar según rol
     if (role === 'docente') {
       const { createUserForTeacher } = await import('../lib/firestore');
       const { getTeacherByEmail } = await import('../lib/firestore');
@@ -285,7 +285,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Actualizar usuario
     const updatePayload: any = {
       role,
       status: 'approved',
@@ -296,7 +295,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     await updateUser(uid, updatePayload);
 
-    // Actualizar solicitud de aprobación
     const { updateApprovalRequestByUserId } = await import('../lib/firestore');
     await updateApprovalRequestByUserId(uid, {
       status: 'approved',
@@ -304,7 +302,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       reviewedAt: new Date() as any,
     });
 
-    // Crear notificación para el admin
     const userAfterUpdate = await getUser(uid);
     if (userAfterUpdate?.teacherId) {
       const { getTeacher } = await import('../lib/firestore');
