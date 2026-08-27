@@ -878,3 +878,48 @@ export interface LMSCalendarEvent {
   type: 'class' | 'exam' | 'delivery' | 'event';
   createdAt: string;
 }
+
+// ==================== CALENDARIO INSTITUCIONAL ====================
+
+export type SuspensionCategory = 'pausa' | 'feriado' | 'institucional' | 'suspension' | 'evaluacion';
+
+export interface SuspensionEvent {
+  id: string;
+  dia: string;
+  mes: string;
+  actividad: string;
+  tipo: SuspensionCategory;
+  diasHabilesAfectados?: number;
+}
+
+export interface MonthStats {
+  month: string;
+  name: string;
+  semanas: number;
+  dias: number;
+  feriadosDesc: string;
+  eventos?: SuspensionEvent[];
+}
+
+export interface AcademicPeriodActivity {
+  nombre: string;
+  fechas?: string;
+  fechaInicio?: string;
+  fechaCierre?: string;
+  ingresoTBox?: string;
+  porcentaje?: string;
+  tipo?: 'formativa' | 'objetiva' | 'diagnostica' | 'refuerzo' | 'recuperacion' | 'boletas' | 'temario';
+}
+
+export interface AcademicPeriod {
+  nombre: string;
+  inicio: string;
+  fin: string;
+  tipo: 'Bimestre' | 'Trimestre';
+  ingresoTBoxFinal?: string;
+  entregaBoletas?: string;
+  entregaTemarios?: string;
+  recuperacionOrdinaria?: string;
+  pruebaExtraordinaria?: string;
+  actividades: AcademicPeriodActivity[];
+}

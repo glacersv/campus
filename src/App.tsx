@@ -22,6 +22,7 @@ import CoordinacionesConfig from './components/admin/CoordinacionesConfig';
 import ConvivenciaPanel from './components/admin/ConvivenciaPanel';
 import AttendanceReportsHistory from './components/admin/AttendanceReportsHistory';
 import EstadisticasDashboard from './components/admin/EstadisticasDashboard';
+import InstitutionalCalendar from './components/admin/InstitutionalCalendar';
 import NotasView from './components/notas/NotasView';
 import HorarioView from './components/horario/HorarioView';
 import ClaseView from './components/clase/ClaseView';
@@ -175,6 +176,7 @@ function AppContent() {
           <Route path="attendance-reports" element={<AttendanceReportsHistory />} />
           <Route path="estadisticas" element={<EstadisticasDashboard />} />
           <Route path="school-year" element={<SchoolYearManager />} />
+          <Route path="calendar" element={<InstitutionalCalendar />} />
           <Route path="proyectos" element={<ProjectsModule view="admin" />} />
         </Route>
         <Route path="*" element={<Navigate to="/admin" replace />} />

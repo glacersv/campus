@@ -18,6 +18,7 @@ import {
   Settings,
   Handshake,
   Calendar,
+  CalendarDays,
   FileText,
   BarChart3,
   Search,
@@ -83,6 +84,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     ]},
     { title: 'SISTEMA', items: [
       { id: 'school-year', label: 'Iniciar Año', icon: Calendar },
+      { id: 'calendar', label: 'Calendario Institucional', icon: CalendarDays },
       { id: 'baccalaureate-types', label: 'Tipos de Bachillerato', icon: Award },
       { id: 'coordinaciones-config', label: 'Config. Coordinaciones', icon: Settings },
       { id: 'attendance-reports', label: 'Historial de Reportes', icon: FileText },
