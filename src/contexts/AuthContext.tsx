@@ -33,6 +33,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Dev bypass for Playwright / automated visual testing
+    if (import.meta.env.DEV && typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('bypass_admin') === 'true') {
+        const mockAdminUser: User = {
+          uid: 'dev_admin_bypass',
+          email: 'admin@salesianosanjose.edu.sv',
+          displayName: 'Administrador (Bypass)',
+          role: 'admin',
+          status: 'approved'
+        };
+        setUserProfile(mockAdminUser);
+        setFirebaseUser({ uid: 'dev_admin_bypass', email: 'admin@salesianosanjose.edu.sv' } as any);
+        setLoading(false);
+        return () => {};
+      }
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setFirebaseUser(user);
       if (user) {
