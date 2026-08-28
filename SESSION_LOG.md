@@ -69,3 +69,49 @@
 ## Deploy
 - Firebase: `npm run deploy`
 - GitHub: push a `feature/diseno-moderno-premium`
+
+---
+
+# Session Log - 28 Agosto 2026
+
+## Objetivo
+Integrar en el admin de campus la mejora de carga de archivos del repo `jornalizacion` (parsers inteligentes), enfocado SOLO en calendario (sin módulos, que son del docente). Y replicar el diseño HTML de carga de documentos de jornalizacion en el admin de campus.
+
+## Repos
+- campus: `https://github.com/glacersv/campus.git`
+- jornalizacion: `https://github.com/glacersv/jornalizacion.git` (commit relevante `1582bab`)
+- Copia local de jornalizacion en `C:\campus\jornalizacion-latest` (EXCLUIDA de git vía `.gitignore`)
+
+## Rama de trabajo (IMPORTANTE)
+- Todo el trabajo de calendario quedó en **`feature/calendario-institucional-unificado`** (push a origin, SIN merge a `main`).
+- Se eliminó la rama `feature/integracion-lms` (local y remota) porque duplicaba a la unificada.
+- Para continuar en otra máquina: `git fetch origin && git checkout feature/calendario-institucional-unificado`
+
+## Qué se hizo
+1. **Parsers inteligentes** (commit `9e4789f`): creado `src/utils/fileImportParsers.ts` adaptado a tipos campus (`MonthStats`, `AcademicPeriod`), SIN módulos. Funciones: `extractHorizontalMonthsFromGrid`, `extractVerticalMonthsFromGrid`, `extractMonthsFromFreeText`, `extractAcademicPeriodsFromText`, `parseExcelFile`, `parseWordFile` (mammoth), `parsePdfFile` (pdfjs jsdelivr), `parseTextFile`, `parseJsonContent`, `analyzeExtractedText`, `generateExcelTemplateWorkbook` (2 hojas: `Periodos_Evaluaciones_2026`, `Calendario_Dias_Habiles`), `createEmpty12Months`, `createDefault12Months`.
+   - Dependencias agregadas: `mammoth`, `file-saver`, `@types/file-saver`.
+2. **InstitutionalCalendar.tsx**: handlers `handleImportExcel/Word/Pdf/Json/Text` usan parsers; export Excel usa `generateExcelTemplateWorkbook`+`saveAs`; export JSON usa `saveAs`; se aceptan `.txt/.md`. Botones "Vaciar Calendario" (modal confirm) y "Restaurar Valores Predeterminados".
+3. **Rediseño Parte 5 (commit `253200f`)**: replicado el HTML de jornalizacion (sin módulos/grado):
+   - Banner "Vaciar Calendario Anual (12 Meses)" con badge `{totalSemanas} sem • {totalDias} días`
+   - 3 métodos: Lector Inteligente / Plantilla Excel Oficial / Edición Manual
+   - Container con 3 pestañas: Subir Archivo Local (dropzone), Pegar Texto o Tabla (`analyzeExtractedText`), JSON / Respaldo (pegar o subir .json)
+   - Estado Actual en Memoria: Semanas, Días Hábiles, Bimestres, Pausas/Asuetos
+   - Descargar y Respaldar: JSON, Excel, Restaurar Predeterminados
+4. Se eliminó de admin el botón "Sincronizar Fechas" (es del docente). Módulos NO van en admin.
+
+## Notas técnicas
+- `analyzeExtractedText(fileName, fileSize, rawText, fileType)` requiere 4 args (no 2).
+- La sección "Cronograma de Actividades, Descansos y Pausas Pedagógicas" (Parte 3 / `SuspensionesManager.tsx:343`) queda LIMPIA tras subir archivos: parsers solo extraen meses+bimestres, NO eventos/pausas (igual que jornalizacion).
+- `tsc --noEmit` tiene errores PRE-EXISTENTES en `GradesManager.tsx`, `TeacherLMSDashboard.tsx`, `LMSModule.tsx`, `firestore.ts` — NO relacionados con calendario.
+
+## Archivos modificados
+- `src/components/admin/InstitutionalCalendar.tsx` (núcleo)
+- `src/utils/fileImportParsers.ts` (nuevo)
+- `src/data/calendarData.ts` (datos base)
+- `.gitignore` (jornalizacion-latest/)
+- `package.json` (mammoth, file-saver)
+
+## Pendiente
+- Investigar si `SuspensionesManager.tsx` de campus está desactualizado vs jornalizacion `1582bab` (ese commit cambió 773 líneas ese archivo).
+- Decidir si las pausas/suspensiones deben auto-detectarse desde documentos (hoy NO se hace).
+- Lint errores previos fuera de alcance de calendario.
