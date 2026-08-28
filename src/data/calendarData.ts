@@ -1,18 +1,18 @@
 import { MonthStats, AcademicPeriod } from '../types';
 
 export const monthsData2026: MonthStats[] = [
-  { month: 'enero', name: 'Enero', semanas: 0, dias: 0, feriadosDesc: '', suspensiones: [] },
-  { month: 'febrero', name: 'Febrero', semanas: 0, dias: 0, feriadosDesc: '', suspensiones: [] },
-  { month: 'marzo', name: 'Marzo', semanas: 0, dias: 0, feriadosDesc: '', suspensiones: [] },
-  { month: 'abril', name: 'Abril', semanas: 0, dias: 0, feriadosDesc: '', suspensiones: [] },
-  { month: 'mayo', name: 'Mayo', semanas: 0, dias: 0, feriadosDesc: '', suspensiones: [] },
-  { month: 'junio', name: 'Junio', semanas: 0, dias: 0, feriadosDesc: '', suspensiones: [] },
-  { month: 'julio', name: 'Julio', semanas: 0, dias: 0, feriadosDesc: '', suspensiones: [] },
-  { month: 'agosto', name: 'Agosto', semanas: 0, dias: 0, feriadosDesc: '', suspensiones: [] },
-  { month: 'septiembre', name: 'Septiembre', semanas: 0, dias: 0, feriadosDesc: '', suspensiones: [] },
-  { month: 'octubre', name: 'Octubre', semanas: 0, dias: 0, feriadosDesc: '', suspensiones: [] },
-  { month: 'noviembre', name: 'Noviembre', semanas: 0, dias: 0, feriadosDesc: '', suspensiones: [] },
-  { month: 'diciembre', name: 'Diciembre', semanas: 0, dias: 0, feriadosDesc: '', suspensiones: [] },
+  { month: 'enero', name: 'Enero', semanas: 0, dias: 0, feriadosDesc: '' },
+  { month: 'febrero', name: 'Febrero', semanas: 0, dias: 0, feriadosDesc: '' },
+  { month: 'marzo', name: 'Marzo', semanas: 0, dias: 0, feriadosDesc: '' },
+  { month: 'abril', name: 'Abril', semanas: 0, dias: 0, feriadosDesc: '' },
+  { month: 'mayo', name: 'Mayo', semanas: 0, dias: 0, feriadosDesc: '' },
+  { month: 'junio', name: 'Junio', semanas: 0, dias: 0, feriadosDesc: '' },
+  { month: 'julio', name: 'Julio', semanas: 0, dias: 0, feriadosDesc: '' },
+  { month: 'agosto', name: 'Agosto', semanas: 0, dias: 0, feriadosDesc: '' },
+  { month: 'septiembre', name: 'Septiembre', semanas: 0, dias: 0, feriadosDesc: '' },
+  { month: 'octubre', name: 'Octubre', semanas: 0, dias: 0, feriadosDesc: '' },
+  { month: 'noviembre', name: 'Noviembre', semanas: 0, dias: 0, feriadosDesc: '' },
+  { month: 'diciembre', name: 'Diciembre', semanas: 0, dias: 0, feriadosDesc: '' },
 ];
 
 export const academicPeriods2026: AcademicPeriod[] = [

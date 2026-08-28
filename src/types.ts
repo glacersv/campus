@@ -923,3 +923,125 @@ export interface AcademicPeriod {
   pruebaExtraordinaria?: string;
   actividades: AcademicPeriodActivity[];
 }
+
+export interface DidacticEvaluationActivity {
+  no: number;
+  etapa?: string;
+  tiempo?: string;
+  fase?: string;
+  actividad: string;
+  evidencia?: string;
+  ponderacion: string;
+  fecha: string;
+}
+
+export interface DidacticPlan {
+  trimestrePeriodo?: string;
+  competenciasUnidad?: string;
+  conceptuales: string[];
+  procedimentales: string[];
+  actitudinales: string[];
+  metodologia?: string;
+  indicadoresTexto?: string;
+  actividades: DidacticEvaluationActivity[];
+  recursos: string;
+  tic: string;
+  bibliografia: string[];
+}
+
+export interface ModuleDescriptor {
+  codigo: string;
+  nombre: string;
+  duracionHoras?: number;
+  semanas: number;
+  horasSemanales: number;
+  desarrolloTecnico?: number;
+  desarrolloEmprendedor?: number;
+  desarrolloHumanoSocial?: number;
+  desarrolloAcademicoAplicado?: number;
+  totalIndicadores?: number;
+  horasPorUnidad?: {
+    u1: number;
+    u2?: number;
+    u3?: number;
+    u4?: number;
+  };
+  bimestres?: {
+    b1: number;
+    b2: number;
+    b3: number;
+    b4: number;
+  };
+  totalHoras: number;
+  fechaInicio: string;
+  fechaFin: string;
+  mesInicio: string;
+  diaInicio: number;
+  mesFin: string;
+  diaFin: number;
+  campo?: string;
+  especialidad?: string;
+  prerrequisito?: string;
+  competencias?: string;
+  competenciaGeneral?: string;
+  objetivoModulo?: string;
+  situacionProblematica?: string;
+  criteriosEvaluacion?: string[];
+  unidades?: number;
+  planDidactico?: DidacticPlan;
+}
+
+export interface InstitutionalHeader {
+  institucion: string;
+  tituloDocumento: string;
+  docente: string;
+  gradoSeccion: string;
+  anoLectivo: string;
+  horasSemanalesModulo: number;
+  notaEvaluativa: string;
+  anoNivel: '10' | '11' | '12';
+}
+
+export interface GuionEvaluacionRow {
+  no: number;
+  actividad: string;
+  ponderacion: string;
+  fechaRealizacion: string;
+}
+
+export interface GuionDeClase {
+  id: string;
+  sesionNumero: number;
+  totalSesiones?: number;
+  moduloCodigo: string;
+  moduloNombre: string;
+  docente: string;
+  gradoSeccion: string;
+  trimestre?: string;
+  semanaModulo: string;
+  semanaNumero?: number;
+  fecha: string;
+  unidad: string;
+  contenido: string;
+  tiempo: string;
+  horas: number;
+  etapaAccionCompleta?: string;
+  etapaNumero?: number;
+  faseEvaluacion?: string;
+  objetivoClase: string;
+  indicadorLogro: string;
+  competenciasEspecificas: string;
+  ejeTransversal: string;
+  inicioSituacion: string;
+  inicioEvaluacion: string;
+  desarrolloSituacion: string;
+  desarrolloEvaluacion: string;
+  cierreSituacion: string;
+  cierreEvaluacion: string;
+  adaptacionesCurriculares: string;
+  actividadesEvaluacion: GuionEvaluacionRow[];
+  tarea: string;
+  bibliografia: string;
+  recursosClase: string;
+  tics: string;
+}

@@ -197,10 +197,71 @@ export function formatMonthFeriadosDesc(eventos?: SuspensionEvent[]): string {
     .join(', ');
 }
 
+export const defaultInitialSuspensionEvents: Record<string, SuspensionEvent[]> = {
+  enero: [
+    { id: 'ev-ene-1', dia: '19 ene', mes: 'enero', actividad: 'Inicio oficial del Año Escolar 2026', tipo: 'institucional' },
+    { id: 'ev-ene-2', dia: '30-31 ene', mes: 'enero', actividad: 'Fiesta Solemne de San Juan Bosco', tipo: 'institucional' },
+  ],
+  febrero: [
+    { id: 'ev-feb-1', dia: '02 feb', mes: 'febrero', actividad: 'Compensatorio Fiesta Don Bosco', tipo: 'feriado' },
+    { id: 'ev-feb-2', dia: '23 feb', mes: 'febrero', actividad: 'Pausa Pedagógica #1 - Jornada de Formación Docente', tipo: 'pausa' },
+    { id: 'ev-feb-3', dia: '27 feb', mes: 'febrero', actividad: 'Jornada Pastoral de la Amorevolezza', tipo: 'institucional' },
+  ],
+  marzo: [
+    { id: 'ev-mar-1', dia: '09 mar', mes: 'marzo', actividad: 'Compensatorio Fiestón Salesiano', tipo: 'feriado' },
+    { id: 'ev-mar-2', dia: '19 mar', mes: 'marzo', actividad: 'Fiesta de San José / Sport Fest Salesiano', tipo: 'institucional' },
+    { id: 'ev-mar-3', dia: '27 mar', mes: 'marzo', actividad: 'Retiro Espiritual de Cuaresma', tipo: 'institucional' },
+    { id: 'ev-mar-4', dia: '30-31 mar', mes: 'marzo', actividad: 'Semana Santa (Lunes y Martes Santo)', tipo: 'feriado' },
+  ],
+  abril: [
+    { id: 'ev-abr-1', dia: '01-05 abr', mes: 'abril', actividad: 'Semana Santa (Miércoles Santo a Domingo de Pascua)', tipo: 'feriado' },
+    { id: 'ev-abr-2', dia: '27 abr', mes: 'abril', actividad: 'Pausa Pedagógica #2 - Evaluación y Seguimiento Curricular', tipo: 'pausa' },
+  ],
+  mayo: [
+    { id: 'ev-may-1', dia: '01 may', mes: 'mayo', actividad: 'Asueto Nacional · Día Internacional del Trabajo', tipo: 'feriado' },
+    { id: 'ev-may-2', dia: '06 may', mes: 'mayo', actividad: 'Fiesta de Santo Domingo Savio', tipo: 'institucional' },
+    { id: 'ev-may-3', dia: '25 may', mes: 'mayo', actividad: 'Compensatorio Solemnidad María Auxiliadora', tipo: 'feriado' },
+  ],
+  junio: [
+    { id: 'ev-jun-1', dia: '17 jun', mes: 'junio', actividad: 'Asueto Nacional · Día del Padre', tipo: 'feriado' },
+    { id: 'ev-jun-2', dia: '22 jun', mes: 'junio', actividad: 'Asueto Nacional · Día del Maestro', tipo: 'feriado' },
+    { id: 'ev-jun-3', dia: '23-25 jun', mes: 'junio', actividad: 'Jornadas de Análisis y Orientación Vocacional', tipo: 'institucional' },
+  ],
+  julio: [
+    { id: 'ev-jul-1', dia: '06-10 jul', mes: 'julio', actividad: 'Semana de Salud Mental, Bienestar y Convivencia', tipo: 'institucional' },
+    { id: 'ev-jul-2', dia: '24-26 jul', mes: 'julio', actividad: 'Fiesta de Señora Santa Ana (Patronales)', tipo: 'feriado' },
+    { id: 'ev-jul-3', dia: '31 jul', mes: 'julio', actividad: 'Cierre evaluativo Bimestre II y registro de notas', tipo: 'evaluacion' },
+  ],
+  agosto: [
+    { id: 'ev-ago-1', dia: '04-08 ago', mes: 'agosto', actividad: 'Vacaciones de Fiestas Agostinas / Divino Salvador del Mundo', tipo: 'feriado' },
+    { id: 'ev-ago-2', dia: '17 ago', mes: 'agosto', actividad: 'Compensatorio Natalicio de San Juan Bosco', tipo: 'feriado' },
+    { id: 'ev-ago-3', dia: '28 ago', mes: 'agosto', actividad: 'Pausa Pedagógica #3 - Balance de Rendimiento Académico', tipo: 'pausa' },
+  ],
+  septiembre: [
+    { id: 'ev-sep-1', dia: '15 sep', mes: 'septiembre', actividad: 'Asueto Nacional · Día de la Independencia Patria', tipo: 'feriado' },
+  ],
+  octubre: [
+    { id: 'ev-oct-1', dia: '16 oct', mes: 'octubre', actividad: 'Culminación Oficial de Clases Lectivas 2026', tipo: 'institucional' },
+    { id: 'ev-oct-2', dia: '29 oct', mes: 'octubre', actividad: 'Entrega final de calificaciones y cierre institucional', tipo: 'evaluacion' },
+  ],
+  noviembre: [
+    { id: 'ev-nov-1', dia: '03-06 nov', mes: 'noviembre', actividad: 'Periodo Extraordinario de Recuperación (P.E.R.)', tipo: 'evaluacion' },
+    { id: 'ev-nov-2', dia: '13 nov', mes: 'noviembre', actividad: 'Acto de Clausura y Graduación del Año Escolar 2026', tipo: 'institucional' },
+  ],
+};
+
 export function ensureMonthEvents(months: MonthStats[]): MonthStats[] {
   return months.map((m) => {
     if (m.eventos && m.eventos.length > 0) {
       return m;
+    }
+    const defaultList = defaultInitialSuspensionEvents[m.month];
+    if (defaultList && defaultList.length > 0) {
+      return {
+        ...m,
+        eventos: [...defaultList],
+        feriadosDesc: formatMonthFeriadosDesc(defaultList),
+      };
     }
     const parsed = parseFeriadosDesc(m.month, m.feriadosDesc);
     return {

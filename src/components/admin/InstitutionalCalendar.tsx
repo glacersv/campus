@@ -61,7 +61,7 @@ export default function InstitutionalCalendar() {
       'Semanas': m.semanas,
       'Días Hábiles': m.dias,
       'Descansos y Feriados': m.feriadosDesc,
-      'Suspensiones': m.suspensiones?.map(s => `${s.fecha} - ${s.motivo}`).join('; ') || '',
+      'Suspensiones': m.eventos?.map(s => `${s.dia} - ${s.actividad}`).join('; ') || '',
     }));
     const wsMonths = XLSX.utils.json_to_sheet(monthRows);
     XLSX.utils.book_append_sheet(wb, wsMonths, 'Calendario_Meses');
@@ -116,7 +116,6 @@ export default function InstitutionalCalendar() {
           semanas: Number(row['Semanas'] || row['semanas'] || row['SEMANAS'] || row[1] || 0),
           dias: Number(row['Días Hábiles'] || row['dias'] || row['DIAS'] || row[2] || 0),
           feriadosDesc: String(row['Descansos y Feriados'] || row['feriados'] || row['FERIADOS'] || row[3] || '').trim(),
-          suspensiones: [],
         };
       }).filter((m: MonthStats) => m.name && m.semanas > 0);
 
@@ -173,7 +172,7 @@ export default function InstitutionalCalendar() {
           const feriadosDesc = parts[3] || '';
           
           if (name && semanas > 0 && name.length > 2) {
-            newMonths.push({ month, name, semanas, dias, feriadosDesc, suspensiones: [] });
+            newMonths.push({ month, name, semanas, dias, feriadosDesc });
           }
         }
       }
@@ -262,7 +261,6 @@ export default function InstitutionalCalendar() {
               semanas,
               dias,
               feriadosDesc,
-              suspensiones: [],
             });
             
             break; // Found this month, move to next line
