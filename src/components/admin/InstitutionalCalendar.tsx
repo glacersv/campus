@@ -11,6 +11,7 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronRight,
+  Clipboard,
   Layers,
   GraduationCap,
   Edit2,
@@ -31,6 +32,7 @@ import {
   parseTextFile,
   parsePdfFile,
   parseJsonContent,
+  analyzeExtractedText,
   generateExcelTemplateWorkbook,
 } from '../../utils/fileImportParsers';
 import { saveAs } from 'file-saver';
@@ -49,11 +51,16 @@ export default function InstitutionalCalendar() {
   const [showClearCalendarConfirm, setShowClearCalendarConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
+  const [activeMethod, setActiveMethod] = useState<'lector' | 'plantilla' | 'asistente'>('lector');
+  const [activeUploadTab, setActiveUploadTab] = useState<'archivo' | 'texto' | 'json'>('archivo');
+  const [pastedText, setPastedText] = useState('');
+  const [pastedJson, setPastedJson] = useState('');
 
   const anoLectivo = '2026';
   const institucion = 'Colegio Salesiano San José';
   const totalSemanas = months.reduce((a, b) => a + (Number(b.semanas) || 0), 0);
   const totalDias = months.reduce((a, b) => a + (Number(b.dias) || 0), 0);
+  const totalEventos = months.reduce((a, b) => a + (b.eventos?.length || 0), 0);
 
   const effectivePeriods: AcademicPeriod[] = academicPeriods2026;
 
@@ -249,6 +256,57 @@ export default function InstitutionalCalendar() {
     }
   };
 
+  // Analizar texto/table pegado
+  const handlePasteText = () => {
+    if (!pastedText.trim()) {
+      setImportError('Pegue el texto del calendario antes de analizar.');
+      return;
+    }
+    setIsLoading(true);
+    setImportError(null);
+    setImportSuccess(null);
+    try {
+      const result = analyzeExtractedText('Texto pegado', pastedText.length, pastedText, 'text');
+      if (result.months && result.months.length > 0) {
+        setMonths(result.months);
+        const fields = result.summary.detectedFields.length > 0 ? ` (${result.summary.detectedFields.join(', ')})` : '';
+        setImportSuccess(`¡${result.months.length} meses detectados desde el texto!${fields}`);
+        setPastedText('');
+      } else {
+        setImportError('No se encontraron fechas de calendario en el texto. Use formato: "Enero: 2 semanas, 10 días".');
+      }
+    } catch (err: any) {
+      setImportError(`Error al analizar el texto: ${err.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Cargar JSON pegado
+  const handlePasteJson = () => {
+    if (!pastedJson.trim()) {
+      setImportError('Pegue el contenido JSON antes de cargar.');
+      return;
+    }
+    setIsLoading(true);
+    setImportError(null);
+    setImportSuccess(null);
+    try {
+      const result = parseJsonContent(pastedJson, 'JSON pegado', pastedJson.length);
+      if (result.months && result.months.length > 0) {
+        setMonths(result.months);
+        setImportSuccess(`¡Calendario restaurado desde JSON! ${result.months.length} meses cargados.`);
+        setPastedJson('');
+      } else {
+        setImportError('El JSON no contiene un formato válido de calendario.');
+      }
+    } catch (err: any) {
+      setImportError(`Error al leer JSON: ${err.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-16 animate-in fade-in duration-200">
       {/* Header Banner */}
@@ -317,13 +375,13 @@ export default function InstitutionalCalendar() {
         </div>
       </div>
 
-      {/* Part 5: Import / Export */}
+      {/* Part 5: Import / Export — diseño igual a jornalizacion (sin módulos) */}
       {(activePart === 'todas' || activePart === 'importar_exportar') && (
-        <section className="space-y-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+        <section className="space-y-4">
           <div className="border-b border-slate-100 pb-4">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold uppercase mb-1">Parte 5</div>
             <h2 className="text-lg font-bold text-slate-900 tracking-tight">Importar y Exportar Calendario</h2>
-            <p className="text-xs text-slate-500">Descargue respaldos o cargue datos desde archivos Excel o JSON.</p>
+            <p className="text-xs text-slate-500">Cargue datos desde archivos o descargue respaldos del calendario {anoLectivo}.</p>
           </div>
 
           {/* Notifications */}
@@ -377,93 +435,238 @@ export default function InstitutionalCalendar() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Export Section */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2"><Download className="w-4 h-4 text-blue-600" /> Descargar Calendario</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <button onClick={handleExportExcel} className="p-4 rounded-xl border-2 border-dashed border-green-300 bg-green-50 hover:bg-green-100 text-green-800 flex flex-col items-center gap-2 transition-all">
-                  <FileSpreadsheet className="w-8 h-8" />
-                  <span className="text-xs font-bold">Exportar Excel</span>
-                  <span className="text-[10px] text-green-600">Descargar .xlsx</span>
-                </button>
-                <button onClick={handleExportJson} className="p-4 rounded-xl border-2 border-dashed border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-800 flex flex-col items-center gap-2 transition-all">
-                  <FileJson className="w-8 h-8" />
-                  <span className="text-xs font-bold">Exportar JSON</span>
-                  <span className="text-[10px] text-blue-600">Descargar respaldo</span>
-                </button>
+          <div className="max-w-6xl mx-auto space-y-4">
+            {/* Banner de Vaciar Calendario */}
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 flex items-center justify-between gap-4">
+              <div className="flex items-center space-x-4">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
+                  <CalendarX className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center space-x-2 flex-wrap">
+                    <h2 className="font-bold text-slate-800">Vaciar Calendario Anual (12 Meses)</h2>
+                    <span className="bg-purple-100 text-purple-700 text-xs px-2.5 py-0.5 rounded-full font-semibold">{totalSemanas} sem • {totalDias} días</span>
+                  </div>
+                  <p className="text-sm text-slate-400 mt-0.5">Pone todas las semanas y días a 0 para que pueda cargar un calendario nuevo con sus fechas y asuetos desde su archivo Excel, Word o PDF.</p>
+                </div>
               </div>
+              <button onClick={() => setShowClearCalendarConfirm(true)} className="bg-[#7C3AED] hover:bg-purple-700 text-white text-xs font-semibold px-4 py-2.5 rounded-lg flex items-center space-x-2 transition shrink-0 cursor-pointer">
+                <CalendarX className="w-3.5 h-3.5" />
+                <span>Vaciar Calendario</span>
+              </button>
             </div>
 
-            {/* Import Section */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2"><UploadCloud className="w-4 h-4 text-emerald-600" /> Cargar Calendario</h3>
-              
-              {/* Drag & Drop Zone */}
-              <div
-                onDragEnter={handleDrag}
-                onDragLeave={handleDrag}
-                onDragOver={handleDrag}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-                className={`p-6 rounded-xl border-2 border-dashed cursor-pointer transition-all text-center ${
-                  isDragging
-                    ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500/20'
-                    : 'border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-slate-400'
-                }`}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".docx,.doc,.xlsx,.xls,.csv,.pdf,.json,.txt,.md"
-                  onChange={(e) => {
-                    if (e.target.files?.[0]) {
-                      const ext = e.target.files[0].name.toLowerCase().split('.').pop();
-                      if (ext === 'json') handleImportJson(e.target.files[0]);
-                      else if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') handleImportExcel(e.target.files[0]);
-                      else if (ext === 'docx' || ext === 'doc') handleImportWord(e.target.files[0]);
-                      else if (ext === 'pdf') handleImportPdf(e.target.files[0]);
-                      else if (ext === 'txt' || ext === 'md') handleImportText(e.target.files[0]);
-                      else setImportError('Formato no soportado.');
-                    }
-                  }}
-                  className="hidden"
-                />
-                {isLoading ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-                    <span className="text-xs text-slate-600">Procesando archivo...</span>
+            {/* Selección de Métodos */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Método 1 */}
+              <button onClick={() => setActiveMethod('lector')} className={`bg-white rounded-xl p-4 border-2 shadow-sm relative flex items-start space-x-3 cursor-pointer transition text-left ${activeMethod === 'lector' ? 'border-blue-500' : 'border-slate-200 hover:border-slate-300'}`}>
+                <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shrink-0">
+                  <UploadCloud className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-bold text-blue-800 uppercase tracking-wide">MÉTODO 1</span>
+                    <span className="bg-blue-100 text-blue-600 text-[10px] font-semibold px-2 py-0.5 rounded-full">Recomendado</span>
                   </div>
-                ) : (
-                  <>
-                    <UploadCloud className={`w-8 h-8 mx-auto mb-2 ${isDragging ? 'text-emerald-600' : 'text-slate-400'}`} />
-                    <p className="text-xs font-bold text-slate-700 mb-1">
-                      {isDragging ? 'Suelte el archivo aquí' : 'Arrastre un archivo o haga clic'}
-                    </p>
-                    <p className="text-[10px] text-slate-500">Formatos: Word (.docx), Excel (.xlsx), PDF (.pdf), JSON, CSV, TXT</p>
-                  </>
-                )}
+                  <h3 className="font-bold text-slate-800 text-sm mt-0.5">Lector Inteligente</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Excel, Word o PDF con calendario y bimestres</p>
+                </div>
+              </button>
+
+              {/* Método 2 */}
+              <button onClick={handleExportExcel} className={`bg-white rounded-xl p-4 border-2 shadow-sm relative flex items-start space-x-3 cursor-pointer transition text-left ${activeMethod === 'plantilla' ? 'border-emerald-500' : 'border-slate-200 hover:border-slate-300'}`}>
+                <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 shrink-0">
+                  <FileSpreadsheet className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-emerald-600 uppercase tracking-wide">MÉTODO 2</span>
+                  <h3 className="font-bold text-slate-800 text-sm mt-0.5">Plantilla Excel Oficial</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Descargue la plantilla de 3 hojas y súbala</p>
+                </div>
+              </button>
+
+              {/* Método 3 */}
+              <button onClick={() => { setActiveMethod('asistente'); setIsEditMode(true); }} className={`bg-white rounded-xl p-4 border-2 shadow-sm relative flex items-start space-x-3 cursor-pointer transition text-left ${activeMethod === 'asistente' ? 'border-purple-500' : 'border-slate-200 hover:border-slate-300'}`}>
+                <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 shrink-0">
+                  <Edit2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-purple-700 uppercase tracking-wide">MÉTODO 3</span>
+                  <h3 className="font-bold text-slate-800 text-sm mt-0.5">Edición Manual</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Edite semanas, días y bimestres directo en la tabla</p>
+                </div>
+              </button>
+            </div>
+
+            {/* Subir Archivo Container */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-6">
+              {/* Pestañas */}
+              <div className="flex items-center space-x-2 border-b border-slate-100 pb-4 flex-wrap gap-2">
+                <button onClick={() => setActiveUploadTab('archivo')} className={`font-semibold text-xs px-4 py-2 rounded-lg border flex items-center space-x-2 transition ${activeUploadTab === 'archivo' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'text-slate-500 border-transparent hover:text-slate-700'}`}>
+                  <UploadCloud className="w-3.5 h-3.5" />
+                  <span>Subir Archivo Local</span>
+                </button>
+                <button onClick={() => setActiveUploadTab('texto')} className={`font-semibold text-xs px-4 py-2 rounded-lg border flex items-center space-x-2 transition ${activeUploadTab === 'texto' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'text-slate-500 border-transparent hover:text-slate-700'}`}>
+                  <Clipboard className="w-3.5 h-3.5" />
+                  <span>Pegar Texto o Tabla</span>
+                </button>
+                <button onClick={() => setActiveUploadTab('json')} className={`font-semibold text-xs px-4 py-2 rounded-lg border flex items-center space-x-2 transition ${activeUploadTab === 'json' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'text-slate-500 border-transparent hover:text-slate-700'}`}>
+                  <FileJson className="w-3.5 h-3.5" />
+                  <span>JSON / Respaldo</span>
+                </button>
               </div>
 
-              {/* Acciones de Calendario */}
-              <div className="space-y-2 pt-2 border-t border-slate-100">
-                <p className="text-xs text-slate-500">Acciones rápidas:</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => setShowClearCalendarConfirm(true)}
-                    className="p-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold border border-red-200 flex items-center justify-center gap-2 transition-all"
-                  >
-                    <CalendarX className="w-3.5 h-3.5" />
-                    Vaciar Calendario (0 sem / 0 días)
-                  </button>
-                  <button
-                    onClick={handleResetDefaults}
-                    className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-200 flex items-center justify-center gap-2 transition-all"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    Restaurar Valores Predeterminados
+              {/* Tab: Subir Archivo Local */}
+              {activeUploadTab === 'archivo' && (
+                <div
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-2xl p-10 text-center bg-blue-50/20 flex flex-col items-center justify-center space-y-4 cursor-pointer transition-all ${
+                    isDragging ? 'border-blue-500 bg-blue-50' : 'border-blue-400 hover:border-blue-500'
+                  }`}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".docx,.doc,.xlsx,.xls,.csv,.pdf,.json,.txt,.md"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) {
+                        const ext = e.target.files[0].name.toLowerCase().split('.').pop();
+                        if (ext === 'json') handleImportJson(e.target.files[0]);
+                        else if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') handleImportExcel(e.target.files[0]);
+                        else if (ext === 'docx' || ext === 'doc') handleImportWord(e.target.files[0]);
+                        else if (ext === 'pdf') handleImportPdf(e.target.files[0]);
+                        else if (ext === 'txt' || ext === 'md') handleImportText(e.target.files[0]);
+                        else setImportError('Formato no soportado.');
+                      }
+                    }}
+                    className="hidden"
+                  />
+                  {isLoading ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                      <span className="text-xs text-slate-600">Procesando archivo...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="w-14 h-14 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-2xl">
+                        <UploadCloud className="w-7 h-7" />
+                      </div>
+                      <div className="space-y-1">
+                        <h3 className="font-bold text-slate-800 text-base">Arrastre y suelte su archivo aquí o haga clic para buscar</h3>
+                        <p className="text-xs text-slate-500 max-w-lg mx-auto">
+                          Detecta automáticamente hojas de <span className="font-semibold text-slate-700">Calendario Anual (12 Meses, Semanas y Días), Bimestres</span> desde Excel, Word o PDF.
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-3 pt-1 flex-wrap justify-center">
+                        <span className="bg-emerald-50 text-emerald-600 border border-emerald-200 text-[11px] font-semibold px-3 py-1 rounded-full">Excel (.xlsx, .xls)</span>
+                        <span className="bg-blue-50 text-blue-600 border border-blue-200 text-[11px] font-semibold px-3 py-1 rounded-full">Word (.docx, .doc)</span>
+                        <span className="bg-red-50 text-red-500 border border-red-200 text-[11px] font-semibold px-3 py-1 rounded-full">PDF (.pdf)</span>
+                        <span className="bg-slate-100 text-slate-600 border border-slate-200 text-[11px] font-semibold px-3 py-1 rounded-full">JSON / TXT</span>
+                      </div>
+                      <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-6 py-3 rounded-xl shadow-md shadow-blue-500/20 flex items-center space-x-2 transition mt-2 cursor-pointer">
+                        <UploadCloud className="w-3.5 h-3.5" />
+                        <span>Seleccionar Archivo de su Computadora</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Tab: Pegar Texto o Tabla */}
+              {activeUploadTab === 'texto' && (
+                <div className="space-y-3">
+                  <textarea
+                    value={pastedText}
+                    onChange={(e) => setPastedText(e.target.value)}
+                    placeholder={'Pegue aquí el texto o tabla del calendario.\nEjemplo:\nEnero: 2 semanas, 10 días\nFebrero: 3 semanas, 14 días'}
+                    className="w-full h-44 p-3 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-700 font-mono placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 resize-none"
+                  />
+                  <button onClick={handlePasteText} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-5 py-2.5 rounded-xl flex items-center space-x-2 transition cursor-pointer">
+                    <Clipboard className="w-3.5 h-3.5" />
+                    <span>Analizar y Cargar Texto</span>
                   </button>
                 </div>
+              )}
+
+              {/* Tab: JSON / Respaldo */}
+              {activeUploadTab === 'json' && (
+                <div className="space-y-3">
+                  <textarea
+                    value={pastedJson}
+                    onChange={(e) => setPastedJson(e.target.value)}
+                    placeholder={'Pegue aquí el contenido JSON del respaldo.\n{"months": [ ... ], "periods": [ ... ]}'}
+                    className="w-full h-44 p-3 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-700 font-mono placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 resize-none"
+                  />
+                  <div className="flex items-center gap-2">
+                    <button onClick={handlePasteJson} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-5 py-2.5 rounded-xl flex items-center space-x-2 transition cursor-pointer">
+                      <FileJson className="w-3.5 h-3.5" />
+                      <span>Cargar desde JSON</span>
+                    </button>
+                    <button onClick={() => jsonInputRef.current?.click()} className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs px-5 py-2.5 rounded-xl flex items-center space-x-2 transition cursor-pointer">
+                      <UploadCloud className="w-3.5 h-3.5" />
+                      <span>Subir archivo .json</span>
+                    </button>
+                    <input
+                      ref={jsonInputRef}
+                      type="file"
+                      accept=".json"
+                      onChange={(e) => { if (e.target.files?.[0]) handleImportJson(e.target.files[0]); }}
+                      className="hidden"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer: Estado Actual y Respaldo */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+              {/* Estado Actual en Memoria */}
+              <div className="lg:col-span-7 bg-white rounded-xl p-4 shadow-sm border border-slate-100 flex flex-col justify-between">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-bold text-slate-400 tracking-wider uppercase">ESTADO ACTUAL EN MEMORIA</span>
+                  <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full"></span>
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  <div className="bg-slate-50 p-2.5 rounded-lg">
+                    <span className="text-[10px] text-slate-400 block font-medium">Semanas:</span>
+                    <span className="text-xs font-bold text-blue-600 block">{totalSemanas} Semanas</span>
+                  </div>
+                  <div className="bg-slate-50 p-2.5 rounded-lg">
+                    <span className="text-[10px] text-slate-400 block font-medium">Días Hábiles:</span>
+                    <span className="text-xs font-bold text-emerald-600 block">{totalDias} Días</span>
+                  </div>
+                  <div className="bg-slate-50 p-2.5 rounded-lg">
+                    <span className="text-[10px] text-slate-400 block font-medium">Bimestres:</span>
+                    <span className="text-xs font-bold text-indigo-600 block">{effectivePeriods.length} Bimestres</span>
+                  </div>
+                  <div className="bg-slate-50 p-2.5 rounded-lg">
+                    <span className="text-[10px] text-slate-400 block font-medium">Pausas/Asuetos:</span>
+                    <span className="text-xs font-bold text-amber-600 block">{totalEventos} Eventos</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Descargar y Respaldar */}
+              <div className="lg:col-span-5 bg-white rounded-xl p-4 shadow-sm border border-slate-100 flex flex-col justify-between">
+                <span className="text-xs font-bold text-slate-400 tracking-wider uppercase mb-3 block">DESCARGAR Y RESPALDAR</span>
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={handleExportJson} className="bg-[#0F172A] hover:bg-slate-800 text-white text-xs font-semibold py-2.5 px-3 rounded-lg flex items-center justify-center space-x-2 transition cursor-pointer">
+                    <FileJson className="w-3.5 h-3.5" />
+                    <span>Descargar Copia JSON</span>
+                  </button>
+                  <button onClick={handleExportExcel} className="bg-[#047857] hover:bg-emerald-800 text-white text-xs font-semibold py-2.5 px-3 rounded-lg flex items-center justify-center space-x-2 transition cursor-pointer">
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    <span>Descargar Excel Completo</span>
+                  </button>
+                </div>
+                <button onClick={handleResetDefaults} className="mt-3 w-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold py-2.5 px-3 rounded-lg flex items-center justify-center space-x-2 transition cursor-pointer">
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Restaurar Valores Predeterminados</span>
+                </button>
               </div>
             </div>
           </div>
