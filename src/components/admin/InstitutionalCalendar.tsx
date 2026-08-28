@@ -21,8 +21,19 @@ import {
   AlertCircle,
   Trash2,
   Loader2,
+  RotateCcw,
+  CalendarX,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import {
+  parseExcelFile,
+  parseWordFile,
+  parseTextFile,
+  parsePdfFile,
+  parseJsonContent,
+  generateExcelTemplateWorkbook,
+} from '../../utils/fileImportParsers';
+import { saveAs } from 'file-saver';
 
 type CalendarSectionPart = 'todas' | 'parte1_semanas' | 'parte2_bimestres' | 'parte3_pausas' | 'parte4_per' | 'importar_exportar';
 
@@ -31,11 +42,11 @@ export default function InstitutionalCalendar() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [activePart, setActivePart] = useState<CalendarSectionPart>('todas');
   const [selectedBimestreIdx, setSelectedBimestreIdx] = useState<number | null>(null);
-  const [syncNotice, setSyncNotice] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
+  const [showClearCalendarConfirm, setShowClearCalendarConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
 
@@ -48,26 +59,40 @@ export default function InstitutionalCalendar() {
 
   const handleUpdateMonths = (newMonths: MonthStats[]) => setMonths(newMonths);
 
-  const handleSync = () => {
-    setSyncNotice('¡Fechas, semanas y días sincronizados correctamente!');
-    setTimeout(() => setSyncNotice(null), 5000);
+  // Vaciar calendario - pone todos los meses a 0 semanas y 0 días
+  const handleClearCalendar = () => {
+    const emptyMonths: MonthStats[] = [
+      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+    ].map((month, idx) => ({
+      month,
+      name: month.charAt(0).toUpperCase() + month.slice(1),
+      semanas: 0,
+      dias: 0,
+      feriadosDesc: '',
+      eventos: [],
+    }));
+    setMonths(emptyMonths);
+    setShowClearCalendarConfirm(false);
+    setImportSuccess('¡Calendario vaciado! Todos los meses ahora tienen 0 semanas y 0 días.');
+    setTimeout(() => setImportSuccess(null), 5000);
   };
 
-  // Export to Excel
+  // Restaurar valores predeterminados
+  const handleResetDefaults = () => {
+    setMonths(JSON.parse(JSON.stringify(monthsData2026)));
+    setImportSuccess('¡Calendario restaurado a valores predeterminados!');
+    setTimeout(() => setImportSuccess(null), 4000);
+  };
+
+  // Export to Excel (3-sheet template)
   const handleExportExcel = () => {
-    const wb = XLSX.utils.book_new();
-    const monthRows = months.map((m) => ({
-      'Mes': m.name,
-      'Semanas': m.semanas,
-      'Días Hábiles': m.dias,
-      'Descansos y Feriados': m.feriadosDesc,
-      'Suspensiones': m.eventos?.map(s => `${s.dia} - ${s.actividad}`).join('; ') || '',
-    }));
-    const wsMonths = XLSX.utils.json_to_sheet(monthRows);
-    XLSX.utils.book_append_sheet(wb, wsMonths, 'Calendario_Meses');
-    XLSX.writeFile(wb, `Calendario_Institucional_2026.xlsx`);
-    setSyncNotice('¡Calendario exportado a Excel correctamente!');
-    setTimeout(() => setSyncNotice(null), 4000);
+    const wb = generateExcelTemplateWorkbook(months, academicPeriods2026);
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([wbout], { type: 'application/octet-stream' });
+    saveAs(blob, `Calendario_Institucional_2026.xlsx`);
+    setImportSuccess('¡Calendario exportado a Excel correctamente!');
+    setTimeout(() => setImportSuccess(null), 4000);
   };
 
   // Export to JSON
@@ -80,53 +105,25 @@ export default function InstitutionalCalendar() {
       periods: academicPeriods2026,
     };
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'Calendario_Institucional_2026.json';
-    a.click();
-    URL.revokeObjectURL(url);
-    setSyncNotice('¡Respaldo JSON descargado correctamente!');
-    setTimeout(() => setSyncNotice(null), 4000);
+    saveAs(blob, 'Calendario_Institucional_2026.json');
+    setImportSuccess('¡Respaldo JSON descargado correctamente!');
+    setTimeout(() => setImportSuccess(null), 4000);
   };
 
-  // Import Excel/CSV
+  // Import Excel/CSV - usa el parser inteligente multi-estrategia
   const handleImportExcel = async (file: File) => {
     setIsLoading(true);
     setImportError(null);
     setImportSuccess(null);
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const data = XLSX.utils.sheet_to_json(worksheet) as any[];
-      
-      if (data.length === 0) {
-        setImportError('El archivo está vacío.');
-        return;
-      }
-
-      const newMonths: MonthStats[] = data.map((row: any) => {
-        const name = String(row['Mes'] || row['mes'] || row['MES'] || row[0] || '').trim();
-        const month = name.toLowerCase();
-        return {
-          month,
-          name,
-          semanas: Number(row['Semanas'] || row['semanas'] || row['SEMANAS'] || row[1] || 0),
-          dias: Number(row['Días Hábiles'] || row['dias'] || row['DIAS'] || row[2] || 0),
-          feriadosDesc: String(row['Descansos y Feriados'] || row['feriados'] || row['FERIADOS'] || row[3] || '').trim(),
-        };
-      }).filter((m: MonthStats) => m.name && m.semanas > 0);
-
-      if (newMonths.length === 0) {
+      const result = await parseExcelFile(file);
+      if (result.months && result.months.length > 0) {
+        setMonths(result.months);
+        const fields = result.summary.detectedFields.length > 0 ? ` (${result.summary.detectedFields.join(', ')})` : '';
+        setImportSuccess(`¡${result.months.length} meses importados desde Excel/CSV!${fields}`);
+      } else {
         setImportError('No se encontraron meses válidos en el archivo.');
-        return;
       }
-
-      setMonths(newMonths);
-      setImportSuccess(`¡${newMonths.length} meses importados correctamente desde Excel/CSV!`);
-      setTimeout(() => setImportSuccess(null), 5000);
     } catch (err: any) {
       setImportError(`Error al leer el archivo: ${err.message}`);
     } finally {
@@ -134,57 +131,20 @@ export default function InstitutionalCalendar() {
     }
   };
 
-  // Import Word (.docx)
+  // Import Word (.docx) - mammoth
   const handleImportWord = async (file: File) => {
     setIsLoading(true);
     setImportError(null);
     setImportSuccess(null);
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const zip = await import('jszip').then(m => m.default);
-      const doc = await zip.loadAsync(arrayBuffer);
-      const xmlContent = await doc.file('word/document.xml')?.async('text');
-      
-      if (!xmlContent) {
-        setImportError('No se pudo leer el documento Word.');
-        return;
-      }
-
-      const textContent = xmlContent
-        .replace(/<w:p[^>]*>/gi, '\n')
-        .replace(/<w:r[^>]*>/gi, '')
-        .replace(/<w:tab[^>]*\/>/gi, '\t')
-        .replace(/<[^>]+>/g, '')
-        .replace(/&nbsp;/g, ' ')
-        .replace(/\n\s*\n/g, '\n')
-        .trim();
-
-      const lines = textContent.split('\n').filter(l => l.trim());
-      const newMonths: MonthStats[] = [];
-      
-      for (const line of lines) {
-        const parts = line.split(/[|\t,;]/).map(p => p.trim()).filter(p => p);
-        if (parts.length >= 2) {
-          const name = parts[0];
-          const month = name.toLowerCase();
-          const semanas = parseInt(parts[1]) || 0;
-          const dias = parseInt(parts[2]) || 0;
-          const feriadosDesc = parts[3] || '';
-          
-          if (name && semanas > 0 && name.length > 2) {
-            newMonths.push({ month, name, semanas, dias, feriadosDesc });
-          }
-        }
-      }
-
-      if (newMonths.length === 0) {
+      const result = await parseWordFile(file);
+      if (result.months && result.months.length > 0) {
+        setMonths(result.months);
+        const fields = result.summary.detectedFields.length > 0 ? ` (${result.summary.detectedFields.join(', ')})` : '';
+        setImportSuccess(`¡${result.months.length} meses importados desde Word!${fields}`);
+      } else {
         setImportError('No se encontraron datos de calendario en el documento Word. Use formato: Mes | Semanas | Días | Descansos');
-        return;
       }
-
-      setMonths(newMonths);
-      setImportSuccess(`¡${newMonths.length} meses importados correctamente desde Word!`);
-      setTimeout(() => setImportSuccess(null), 5000);
     } catch (err: any) {
       setImportError(`Error al leer Word: ${err.message}. Asegúrese de que el archivo no esté corrupto.`);
     } finally {
@@ -192,90 +152,20 @@ export default function InstitutionalCalendar() {
     }
   };
 
-  // Import PDF (basic text extraction)
+  // Import PDF - pdfjs-dist con worker jsdelivr
   const handleImportPdf = async (file: File) => {
     setIsLoading(true);
     setImportError(null);
     setImportSuccess(null);
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdfjs = await import('pdfjs-dist');
-      if (pdfjs.GlobalWorkerOptions) {
-        pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version || '3.11.174'}/pdf.worker.min.mjs`;
+      const result = await parsePdfFile(file);
+      if (result.months && result.months.length > 0) {
+        setMonths(result.months);
+        const fields = result.summary.detectedFields.length > 0 ? ` (${result.summary.detectedFields.join(', ')})` : '';
+        setImportSuccess(`¡${result.months.length} meses detectados y cargados desde PDF!${fields}`);
+      } else {
+        setImportError('No se encontraron meses en el PDF. Asegúrese de que el documento contenga la sección de fechas con los meses (enero, febrero, etc.).');
       }
-      const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
-      const pdfDoc = await loadingTask.promise;
-      
-      let fullText = '';
-      for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
-        const page = await pdfDoc.getPage(pageNum);
-        const textContent = await page.getTextContent();
-        fullText += textContent.items.map((item: any) => item.str).join(' ') + '\n';
-      }
-
-      const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-      const newMonths: MonthStats[] = [];
-      
-      // Find the "FECHAS IMPORTANTES" section
-      const fechasIdx = fullText.toLowerCase().indexOf('fechas importantes');
-      const textToParse = fechasIdx >= 0 ? fullText.substring(fechasIdx) : fullText;
-      
-      // Split by month names to find each month's data
-      const lines = textToParse.split('\n').filter(l => l.trim());
-      
-      for (const line of lines) {
-        const lowerLine = line.toLowerCase();
-        
-        // Check if line starts with a month name
-        for (const monthName of monthNames) {
-          if (lowerLine.startsWith(monthName) || lowerLine.includes(monthName + ' ')) {
-            // Extract numbers from the line
-            const numbers = line.match(/\d+/g)?.map(Number) || [];
-            
-            // Get semana and dias from numbers (typically 4 semanas, 18-22 dias)
-            const semanas = numbers.find(n => n >= 1 && n <= 5) || 4;
-            const dias = numbers.find(n => n >= 10 && n <= 31) || 20;
-            
-            // Extract feriados/events from the text after month name
-            const monthStartIdx = lowerLine.indexOf(monthName);
-            const eventsText = line.substring(monthStartIdx + monthName.length).trim();
-            
-            // Parse events: look for dates and descriptions
-            const events: string[] = [];
-            const datePattern = /(\d{1,2}(?:\s*[-\/]\s*\d{1,2})?)\s+([A-Za-záéíóúñÁÉÍÓÚÑ\s,]+?)(?=\d{1,2}|$)/g;
-            let match;
-            while ((match = datePattern.exec(eventsText)) !== null) {
-              const date = match[1].trim();
-              const desc = match[2].trim();
-              if (desc.length > 3) {
-                events.push(`${date} (${desc})`);
-              }
-            }
-            
-            // If no events parsed, use raw text
-            const feriadosDesc = events.length > 0 ? events.join(', ') : eventsText;
-            
-            newMonths.push({
-              month: monthName,
-              name: monthName.charAt(0).toUpperCase() + monthName.slice(1),
-              semanas,
-              dias,
-              feriadosDesc,
-            });
-            
-            break; // Found this month, move to next line
-          }
-        }
-      }
-
-      if (newMonths.length === 0) {
-        setImportError('No se encontraron meses en el PDF. Asegúrese de que el documento contenga la sección "FECHAS IMPORTANTES" con los meses (enero, febrero, etc.).');
-        return;
-      }
-
-      setMonths(newMonths);
-      setImportSuccess(`¡${newMonths.length} meses detectados y cargados desde PDF!`);
-      setTimeout(() => setImportSuccess(null), 5000);
     } catch (err: any) {
       setImportError(`Error al leer PDF: ${err.message}. El archivo podría estar protegido.`);
     } finally {
@@ -290,12 +180,10 @@ export default function InstitutionalCalendar() {
     setImportSuccess(null);
     try {
       const text = await file.text();
-      const data = JSON.parse(text);
-      
-      if (data.months && Array.isArray(data.months)) {
-        setMonths(data.months);
-        setImportSuccess(`¡Calendario restaurado desde JSON! ${data.months.length} meses cargados.`);
-        setTimeout(() => setImportSuccess(null), 5000);
+      const result = parseJsonContent(text, file.name, file.size);
+      if (result.months && result.months.length > 0) {
+        setMonths(result.months);
+        setImportSuccess(`¡Calendario restaurado desde JSON! ${result.months.length} meses cargados.`);
       } else {
         setImportError('El archivo JSON no contiene un formato válido de calendario.');
       }
@@ -322,9 +210,32 @@ export default function InstitutionalCalendar() {
         handleImportWord(file);
       } else if (ext === 'pdf') {
         handleImportPdf(file);
+      } else if (ext === 'txt' || ext === 'md') {
+        handleImportText(file);
       } else {
-        setImportError('Formato no soportado. Use Word (.docx), Excel (.xlsx), PDF (.pdf), JSON (.json) o CSV (.csv).');
+        setImportError('Formato no soportado. Use Word (.docx), Excel (.xlsx), PDF (.pdf), JSON (.json), CSV o TXT.');
       }
+    }
+  };
+
+  // Import Text/Markdown
+  const handleImportText = async (file: File) => {
+    setIsLoading(true);
+    setImportError(null);
+    setImportSuccess(null);
+    try {
+      const result = await parseTextFile(file);
+      if (result.months && result.months.length > 0) {
+        setMonths(result.months);
+        const fields = result.summary.detectedFields.length > 0 ? ` (${result.summary.detectedFields.join(', ')})` : '';
+        setImportSuccess(`¡${result.months.length} meses detectados en texto!${fields}`);
+      } else {
+        setImportError('No se encontraron fechas de calendario en el texto. Use formato: "Enero: 2 semanas, 10 días".');
+      }
+    } catch (err: any) {
+      setImportError(`Error al leer el archivo: ${err.message}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -336,13 +247,6 @@ export default function InstitutionalCalendar() {
     } else if (e.type === 'dragleave') {
       setIsDragging(false);
     }
-  };
-
-  // Reset to defaults
-  const handleResetDefaults = () => {
-    setMonths(JSON.parse(JSON.stringify(monthsData2026)));
-    setImportSuccess('¡Calendario restaurado a valores predeterminados!');
-    setTimeout(() => setImportSuccess(null), 4000);
   };
 
   return (
@@ -388,13 +292,6 @@ export default function InstitutionalCalendar() {
           </div>
         </div>
       </div>
-
-      {/* Sync Notice */}
-      {syncNotice && (
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center justify-between text-sm shadow-xs animate-in fade-in duration-200">
-          <div className="flex items-center gap-3"><CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" /><span className="font-semibold">{syncNotice}</span></div>
-        </div>
-      )}
 
       {/* Section Selector */}
       <div className="bg-white rounded-2xl p-2.5 border border-slate-200 shadow-sm space-y-2">
@@ -444,6 +341,42 @@ export default function InstitutionalCalendar() {
             </div>
           )}
 
+          {/* Modal: Confirmar Vaciar Calendario */}
+          {showClearCalendarConfirm && (
+            <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+              <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto bg-red-100 text-red-600">
+                  <CalendarX className="w-6 h-6" />
+                </div>
+                <div className="text-center space-y-1">
+                  <h3 className="text-base font-black text-slate-900">¿Vaciar Calendario Anual?</h3>
+                  <p className="text-xs text-slate-600">
+                    Todos los 12 meses quedarán en <strong>0 semanas</strong> y <strong>0 días lectivos</strong>.
+                    Podrá cargar un nuevo calendario desde archivo o editar manualmente.
+                  </p>
+                </div>
+                <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-900">
+                  💡 <strong>Nota:</strong> Esta acción no afecta bimestres, pausas ni periodos extraordinarios.
+                  Solo pone semanas y días a 0 en los 12 meses.
+                </div>
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <button
+                    onClick={() => setShowClearCalendarConfirm(false)}
+                    className="py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleClearCalendar}
+                    className="py-2.5 px-4 rounded-xl text-white font-bold text-xs shadow-md transition-all bg-red-600 hover:bg-red-500"
+                  >
+                    Confirmar y Vaciar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Export Section */}
             <div className="space-y-3">
@@ -482,7 +415,7 @@ export default function InstitutionalCalendar() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".docx,.doc,.xlsx,.xls,.csv,.pdf,.json"
+                  accept=".docx,.doc,.xlsx,.xls,.csv,.pdf,.json,.txt,.md"
                   onChange={(e) => {
                     if (e.target.files?.[0]) {
                       const ext = e.target.files[0].name.toLowerCase().split('.').pop();
@@ -490,6 +423,7 @@ export default function InstitutionalCalendar() {
                       else if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') handleImportExcel(e.target.files[0]);
                       else if (ext === 'docx' || ext === 'doc') handleImportWord(e.target.files[0]);
                       else if (ext === 'pdf') handleImportPdf(e.target.files[0]);
+                      else if (ext === 'txt' || ext === 'md') handleImportText(e.target.files[0]);
                       else setImportError('Formato no soportado.');
                     }
                   }}
@@ -506,16 +440,31 @@ export default function InstitutionalCalendar() {
                     <p className="text-xs font-bold text-slate-700 mb-1">
                       {isDragging ? 'Suelte el archivo aquí' : 'Arrastre un archivo o haga clic'}
                     </p>
-                    <p className="text-[10px] text-slate-500">Formatos: Word (.docx), Excel (.xlsx), PDF (.pdf), JSON, CSV</p>
+                    <p className="text-[10px] text-slate-500">Formatos: Word (.docx), Excel (.xlsx), PDF (.pdf), JSON, CSV, TXT</p>
                   </>
                 )}
               </div>
 
-              {/* Reset Button */}
-              <button onClick={handleResetDefaults} className="w-full p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-200 flex items-center justify-center gap-2 transition-all">
-                <Trash2 className="w-3.5 h-3.5" />
-                Restaurar Valores Predeterminados
-              </button>
+              {/* Acciones de Calendario */}
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <p className="text-xs text-slate-500">Acciones rápidas:</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setShowClearCalendarConfirm(true)}
+                    className="p-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold border border-red-200 flex items-center justify-center gap-2 transition-all"
+                  >
+                    <CalendarX className="w-3.5 h-3.5" />
+                    Vaciar Calendario (0 sem / 0 días)
+                  </button>
+                  <button
+                    onClick={handleResetDefaults}
+                    className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-200 flex items-center justify-center gap-2 transition-all"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    Restaurar Valores Predeterminados
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -691,18 +640,15 @@ export default function InstitutionalCalendar() {
         </section>
       )}
 
-      {/* Floating Action Bar */}
-      <div className="p-5 rounded-2xl bg-slate-900 text-white border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
+      {/* Stats Summary Bar */}
+      <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0"><CalendarDays className="w-5 h-5" /></div>
           <div>
-            <h4 className="font-bold text-sm text-slate-100">Calendario Institucional {anoLectivo}</h4>
-            <p className="text-xs text-slate-400">{totalSemanas} semanas · {totalDias} días hábiles · {effectivePeriods.length} bimestres</p>
+            <h4 className="font-bold text-sm text-slate-900">Calendario Institucional {anoLectivo}</h4>
+            <p className="text-xs text-slate-600">{totalSemanas} semanas · {totalDias} días hábiles · {effectivePeriods.length} bimestres</p>
           </div>
         </div>
-        <button onClick={handleSync} className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-2 transition-all shadow-md">
-          <CheckCircle2 className="w-4 h-4" /><span>Sincronizar Fechas</span>
-        </button>
       </div>
     </div>
   );
