@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { MonthStats, AcademicPeriod, PERData } from '../../types';
 import { Table1SemanasLaborales } from './Table1SemanasLaborales';
 import { SuspensionesManager } from './SuspensionesManager';
@@ -58,6 +58,9 @@ export default function InstitutionalCalendar() {
   const [activeUploadTab, setActiveUploadTab] = useState<'archivo' | 'texto' | 'json'>('archivo');
   const [pastedText, setPastedText] = useState('');
   const [pastedJson, setPastedJson] = useState('');
+
+  // Ref to track latest import - prevents stale async results from overwriting state
+  const importIdRef = useRef(0);
 
   const anoLectivo = '2026';
   const institucion = 'Colegio Salesiano San José';
@@ -179,11 +182,14 @@ export default function InstitutionalCalendar() {
 
   // Import PDF - pdfjs-dist con worker jsdelivr
   const handleImportPdf = async (file: File) => {
+    const currentImportId = ++importIdRef.current;
     setIsLoading(true);
     setImportError(null);
     setImportSuccess(null);
     try {
       const result = await parsePdfFile(file);
+      // Skip if a newer import started while this one was pending
+      if (currentImportId !== importIdRef.current) return;
       if (result.months && result.months.length > 0) {
         setMonths(result.months);
         if (result.periods && result.periods.length > 0) setPeriods(result.periods);
@@ -195,9 +201,10 @@ export default function InstitutionalCalendar() {
         setImportError('No se encontraron meses en el PDF. Asegúrese de que el documento contenga la sección de fechas con los meses (enero, febrero, etc.).');
       }
     } catch (err: any) {
+      if (currentImportId !== importIdRef.current) return;
       setImportError(`Error al leer PDF: ${err.message}. El archivo podría estar protegido.`);
     } finally {
-      setIsLoading(false);
+      if (currentImportId === importIdRef.current) setIsLoading(false);
     }
   };
 

@@ -322,23 +322,47 @@ function extractActivitiesFromText(text: string, periodStartIdx: number, periodE
   const activities: { nombre: string; fechas: string; porcentaje: string; tipo: string; ingresoTBox?: string; fechaInicio?: string; fechaCierre?: string }[] = [];
   const lines = text.substring(periodStartIdx, periodEndIdx).split('\n');
 
-  const activityRegex = /^\s*(\d+)\s+(.+?)\s+(\d{1,2}\s+[a-záéíóúñ]+(?:\s*[–\-]\s*\d{1,2}\s+[a-záéíóúñ]+)?)\s+(\d{1,2}\s+[a-záéíóúñ]+(?:\s*[–\-]\s*\d{1,2}\s+[a-záéíóúñ]+)?)\s+([^\s]+(?:\s+[^\s]+)*)\s+([\d%]+\s*(?:\([^)]+\))?)/i;
+  // Flexible activity regex:
+  // "01. Actividad – 35% 19 enero 13 febrero 20 febrero"
+  // "03. Actividad – 35% 23 marzo 24 abril 4 marzo"
+  // "Pruebas Objetivas: materias básicas, ordinaria N°1 - 30% 16 marzo 20 marzo 27 marzo"
+  // "Pruebas Objetivas: materias básicas, ordinaria N°3-30%(Juventud) 10 agosto 13 agosto 20 agosto"
+  const activityRegex = /^(\d{1,2})\.\s*(.+?)\s*[–\-]\s*(\d{1,2}%)\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)/i;
+
+  // Also match "Pruebas Objetivas: materias básicas, ordinaria N°1 - 30% 16 marzo 20 marzo 27 marzo"
+  const pruebasRegex = /^(Pruebas?\s+Objetivas?.*?)\s*[–\-]\s*(\d{1,2}%[^\s]*)\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)/i;
 
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
 
-    const match = trimmed.match(/^(\d+)\s+(.+?)\s+(\d{1,2}\s+[a-záéíóúñ]+(?:\s*[–\-]\s*\d{1,2}\s+[a-záéíóúñ]+)?)\s+(\d{1,2}\s+[a-záéíóúñ]+(?:\s*[–\-]\s*\d{1,2}\s+[a-záéíóúñ]+)?)\s+(\S+)\s+(\d+%?\s*(?:\([^)]+\))?)/i);
+    // Try numbered activity first
+    const match = trimmed.match(activityRegex);
     if (match) {
-      const [, num, nombre, fechaIni, fechaFin, tbox, porcentaje] = match;
-      const tipo = porcentaje.includes('30%') || porcentaje.includes('objetiva') ? 'objetiva' :
-                   porcentaje.includes('35%') || porcentaje.includes('formativa') ? 'formativa' :
-                   porcentaje.includes('sumativa') ? 'sumativa' : 'formativa';
+      const [, num, nombre, porcentaje, fechaIni, fechaFin, tbox] = match;
+      const tipo = porcentaje.includes('30%') ? 'objetiva' :
+                   porcentaje.includes('35%') ? 'formativa' : 'formativa';
       activities.push({
         nombre: `${num}. ${nombre.trim()}`,
         fechas: `${fechaIni.trim()} – ${fechaFin.trim()}`,
         porcentaje: porcentaje.trim(),
         tipo,
+        ingresoTBox: tbox.trim(),
+        fechaInicio: fechaIni.trim(),
+        fechaCierre: fechaFin.trim(),
+      });
+      continue;
+    }
+
+    // Try Pruebas Objetivas
+    const pMatch = trimmed.match(pruebasRegex);
+    if (pMatch) {
+      const [, nombre, porcentaje, fechaIni, fechaFin, tbox] = pMatch;
+      activities.push({
+        nombre: nombre.trim(),
+        fechas: `${fechaIni.trim()} – ${fechaFin.trim()}`,
+        porcentaje: porcentaje.trim(),
+        tipo: 'objetiva',
         ingresoTBox: tbox.trim(),
         fechaInicio: fechaIni.trim(),
         fechaCierre: fechaFin.trim(),
@@ -381,12 +405,29 @@ export function extractAcademicPeriodsFromText(text: string): AcademicPeriod[] |
     });
   }
 
+  // Also detect Trimestres: "Trimestre I (20 enero-17 de abril)"
+  const trimestreRegex = /Trimestre\s+(I{1,3}|IV|V?I{0,3})\s*\((\d{1,2}\s+[a-záéíóúñ]+)\s*[-–]\s*(\d{1,2}\s+[a-záéíóúñ]+)\)/gi;
+  const trimestreMatches: { index: number; raw: string; inicio: string; fin: string; roman: string }[] = [];
+
+  while ((match = trimestreRegex.exec(text)) !== null) {
+    const romanMap: Record<string, string> = { 'I': 'I', 'II': 'II', 'III': 'III' };
+    const roman = romanMap[match[1]?.toUpperCase()] || match[1];
+    trimestreMatches.push({
+      index: match.index,
+      raw: match[0],
+      inicio: match[2]?.trim() || 'Por definir',
+      fin: match[3]?.trim() || 'Por definir',
+      roman,
+    });
+  }
+
+  // Extract Bimestres if found
   if (periodMatches.length >= 2) {
     for (let i = 0; i < periodMatches.length; i++) {
       const pm = periodMatches[i];
-      const nextIdx = i + 1 < periodMatches.length ? periodMatches[i + 1].index : text.length;
+      const nextIdx = i + 1 < periodMatches.length ? periodMatches[i + 1].index : 
+                      trimestreMatches.length > 0 ? trimestreMatches[0].index : text.length;
       const activities = extractActivitiesFromText(text, pm.index + pm.raw.length, nextIdx);
-
       periods.push({
         nombre: `Bimestre ${pm.roman}`,
         inicio: pm.inicio,
@@ -396,8 +437,26 @@ export function extractAcademicPeriodsFromText(text: string): AcademicPeriod[] |
         actividades: activities,
       });
     }
-    return periods;
   }
+
+  // Extract Trimestres if found (Educación Parvularia y Básica)
+  if (trimestreMatches.length >= 2) {
+    for (let i = 0; i < trimestreMatches.length; i++) {
+      const tm = trimestreMatches[i];
+      const nextIdx = i + 1 < trimestreMatches.length ? trimestreMatches[i + 1].index : text.length;
+      const activities = extractActivitiesFromText(text, tm.index + tm.raw.length, nextIdx);
+      periods.push({
+        nombre: `Trimestre ${tm.roman} (Parvularia/Básica)`,
+        inicio: tm.inicio,
+        fin: tm.fin,
+        tipo: 'Trimestre',
+        ingresoTBoxFinal: 'Conforme a calendario',
+        actividades: activities,
+      });
+    }
+  }
+
+  if (periods.length >= 2) return periods;
 
   // Pattern 2: "Bimestre I: 19 enero – 20 marzo" or "Periodo 1 (19 enero al 20 marzo)"
   const periodRegex = /(?:Bimestre|Periodo|Trimestre)\s*([1-4]|I|II|III|IV)\b[:\s\-–\.]+(?:del?\s+)?([0-9]{1,2}\s+(?:de\s+)?[A-Za-záéíóúñ]+)\s+(?:al?|hasta|-|–)\s+([0-9]{1,2}\s+(?:de\s+)?[A-Za-záéíóúñ]+)(?:.*?TBox[:\s]+([^\n\r,\.]+))?/gi;
@@ -706,32 +765,59 @@ function extractPERDataFromText(text: string): PERData | null {
 
   const lowerText = text.toLowerCase();
   
-  // Check if text contains PER-related content
-  if (!lowerText.includes('p.e.r.') && !lowerText.includes('periodo extraordinario') && !lowerText.includes('recuperación')) {
+  // Check if text contains PER-related content (flexible)
+  const hasPERContent = lowerText.includes('periodo extraordinario') || 
+                        lowerText.includes('recuperación extraordinaria') ||
+                        lowerText.includes('recuperacion extraordinaria') ||
+                        lowerText.includes('p.e.r.') ||
+                        lowerText.includes('prueba extraordinaria') ||
+                        lowerText.includes('graduación');
+  if (!hasPERContent) {
     return null;
   }
 
   const eventos: { detalle: string; tbox: string; fecha: string }[] = [];
   const graduaciones: { nivel: string; fecha: string }[] = [];
 
-  // Extract PER events - look for patterns like "03-05 nov" or "06 nov"
-  const perEventRegex = /(inicio de recuperaci[oó]n|aplicaci[oó]n de pruebas|entrega de resultados|prueba extraordinaria)[^.]*?(?:modalidad[:\s]+([^.\n]+))?[^.\n]*?(\d{1,2}[-\d]*\s*(?:de\s+)?(?:nov|noviembre))/gi;
+  // Extract PER events - multiple patterns
+  // Pattern 1: "INICIO DEL PERIODO EXTRAORDINARIO DE RECUPERACIÓN 03 noviembre"
+  const perEventRegex1 = /(inicio del periodo extraordinario|aplicación de pruebas extraordinarias|entrega de resultados|recuperación extraordinaria)[^.]*?(\d{1,2}\s*(?:de\s+)?(?:nov(?:iembre)?))/gi;
   let match;
-  while ((match = perEventRegex.exec(text)) !== null) {
+  while ((match = perEventRegex1.exec(text)) !== null) {
     const detalle = match[1]?.trim() || '';
-    const tbox = match[2]?.trim() || 'Presencial';
-    const fecha = match[3]?.trim() || '';
+    const fecha = match[2]?.trim() || '';
     if (detalle && fecha) {
-      eventos.push({ detalle: detalle.charAt(0).toUpperCase() + detalle.slice(1), tbox, fecha });
+      eventos.push({ detalle: detalle.charAt(0).toUpperCase() + detalle.slice(1), tbox: 'Presencial', fecha });
     }
   }
 
-  // Extract graduations
-  const gradRegex = /(graduaci[oó]n\s+[^.\n]+?)(?:\s+-\s+|\s+)(?:del\s+)?(\d{1,2}\s+de\s+[a-záéíóúñ]+\s+de\s+\d{4})/gi;
-  while ((match = gradRegex.exec(text)) !== null) {
+  // Pattern 2: "03-05 nov" style dates with event descriptions
+  const perEventRegex2 = /(\d{1,2}[-\d]*\s*(?:de\s+)?(?:nov(?:iembre)?))\s*[-–]\s*([^.\n]+)/gi;
+  while ((match = perEventRegex2.exec(text)) !== null) {
+    const fecha = match[1]?.trim() || '';
+    const detalle = match[2]?.trim() || '';
+    if (fecha && detalle && !eventos.some(e => e.fecha === fecha)) {
+      eventos.push({ detalle: detalle.charAt(0).toUpperCase() + detalle.slice(1), tbox: 'Presencial', fecha });
+    }
+  }
+
+  // Extract graduations - flexible patterns
+  // "graduación de nivel medio - 20 de noviembre de 2026"
+  const gradRegex1 = /(graduación\s+[^.\n]*?(?:medio|básico|preescolar|transición)[^.\n]*?)\s*[-–]\s*(\d{1,2}\s+de\s+[a-záéíóúñ]+\s+de\s+\d{4})/gi;
+  while ((match = gradRegex1.exec(text)) !== null) {
     const nivel = match[1]?.trim() || '';
     const fecha = match[2]?.trim() || '';
     if (nivel && fecha) {
+      graduaciones.push({ nivel, fecha });
+    }
+  }
+
+  // Pattern 2: just "Graduación" followed by date
+  const gradRegex2 = /(graduación[^.\n]*?)(?:\s+)(\d{1,2}\s+de\s+[a-záéíóúñ]+\s+de\s+\d{4})/gi;
+  while ((match = gradRegex2.exec(text)) !== null) {
+    const nivel = match[1]?.trim() || '';
+    const fecha = match[2]?.trim() || '';
+    if (nivel && fecha && !graduaciones.some(g => g.fecha === fecha)) {
       graduaciones.push({ nivel, fecha });
     }
   }
@@ -743,6 +829,11 @@ function extractPERDataFromText(text: string): PERData | null {
       eventos: eventos.length > 0 ? eventos : recuperacionExtraordinaria2026.eventos,
       graduaciones: graduaciones.length > 0 ? graduaciones : recuperacionExtraordinaria2026.graduaciones,
     };
+  }
+
+  // Fallback: return default PER data if PER content was detected but regex didn't match
+  if (hasPERContent) {
+    return recuperacionExtraordinaria2026;
   }
 
   return null;
