@@ -1252,13 +1252,9 @@ export const SuspensionesManager: React.FC<SuspensionesManagerProps> = ({
           </div>
         </div>
       )}
-    </div>
-  );
 
-  // Modal: Confirmar cargar valores por defecto
-  if (showLoadDefaults) {
-    return (
-      <>
+      {/* Modal: Confirmar cargar valores por defecto */}
+      {showLoadDefaults && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto bg-amber-100 text-amber-600">
@@ -1272,7 +1268,7 @@ export const SuspensionesManager: React.FC<SuspensionesManagerProps> = ({
               </p>
             </div>
             <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-900">
-              💡 <strong>Nota:</strong> Use esta opción solo si desea restaurar el calendario base del colegio.
+              Use esta opción solo si desea restaurar el calendario base del colegio.
             </div>
             <div className="grid grid-cols-2 gap-3 pt-2">
               <button
@@ -1290,12 +1286,9 @@ export const SuspensionesManager: React.FC<SuspensionesManagerProps> = ({
             </div>
           </div>
         </div>
-        <div className="fixed inset-0" />
-      </>
-    );
-  }
-
-  return (
-    <div id="detalle-descansos-pausas-section" className="bg-slate-50/70 border-t border-slate-200 p-4 text-xs text-slate-700">
+      )}
+    </div>
+  );
+};
 
 export default SuspensionesManager;
