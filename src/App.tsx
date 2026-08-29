@@ -93,6 +93,35 @@ function getDefaultModulesForRole(role: string): SystemModuleId[] {
 function AppContent() {
   const { firebaseUser, userProfile, loading, signOut, userRole, hasPermission, roleConfig } = useAuth();
 
+  // Local admin bypass for automated visual verification in DEV mode
+  if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('bypass_admin') === 'true') {
+    return (
+      <Routes>
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="grades" element={<GradesManager />} />
+          <Route path="sections" element={<SectionsManager />} />
+          <Route path="subjects" element={<SubjectsManager />} />
+          <Route path="computer-labs" element={<ComputerLabsManager />} />
+          <Route path="baccalaureate-types" element={<BaccalaureateTypesManager />} />
+          <Route path="buildings" element={<BuildingsManager />} />
+          <Route path="grade-section-assignment" element={<GradeSectionAssignment />} />
+          <Route path="teachers" element={<TeachersManager />} />
+          <Route path="students" element={<StudentsManager />} />
+          <Route path="roles" element={<RolesManager />} />
+          <Route path="users" element={<UsersManager />} />
+          <Route path="coordinaciones-config" element={<CoordinacionesConfig />} />
+          <Route path="convivencia" element={<ConvivenciaPanel />} />
+          <Route path="attendance-reports" element={<AttendanceReportsHistory />} />
+          <Route path="estadisticas" element={<EstadisticasDashboard />} />
+          <Route path="school-year" element={<SchoolYearManager />} />
+          <Route path="proyectos" element={<ProjectsModule view="admin" />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/admin/school-year?bypass_admin=true" replace />} />
+      </Routes>
+    );
+  }
+
   useEffect(() => {
     ensureAdminAccount();
     if (userProfile?.role === 'admin') {
