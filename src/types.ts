@@ -991,6 +991,23 @@ export interface ModuleDescriptor {
   planDidactico?: DidacticPlan;
 }
 
+export interface PEREvento {
+  detalle: string;
+  tbox: string;
+  fecha: string;
+}
+
+export interface PERGraduacion {
+  nivel: string;
+  fecha: string;
+}
+
+export interface PERData {
+  nombre: string;
+  eventos: PEREvento[];
+  graduaciones: PERGraduacion[];
+}
+
 export interface InstitutionalHeader {
   institucion: string;
   tituloDocumento: string;

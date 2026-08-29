@@ -6,6 +6,7 @@ import {
   getCurrentMonthKey,
   formatMonthFeriadosDesc,
   ensureMonthEvents,
+  loadDefaultSuspensionEvents,
 } from '../../utils/suspensionesHelper';
 import {
   Calendar,
@@ -37,6 +38,7 @@ interface SuspensionesManagerProps {
   months: MonthStats[];
   isEditMode?: boolean;
   onUpdateMonths?: (newMonths: MonthStats[]) => void;
+  calendarCleared?: boolean;
 }
 
 type ViewMode = 'current' | 'slide' | 'all';
@@ -45,9 +47,13 @@ export const SuspensionesManager: React.FC<SuspensionesManagerProps> = ({
   months,
   isEditMode = false,
   onUpdateMonths,
+  calendarCleared = false,
 }) => {
-  // Ensure all months have structured eventos
-  const safeMonths = useMemo(() => ensureMonthEvents(months), [months]);
+  // Ensure all months have structured eventos (skip defaults if calendar was explicitly cleared)
+  const safeMonths = useMemo(
+    () => calendarCleared ? months.map(m => ({ ...m, eventos: m.eventos || [] })) : ensureMonthEvents(months),
+    [months, calendarCleared]
+  );
 
   // Current real-world month
   const autoCurrentMonthKey = useMemo(() => getCurrentMonthKey(), []);
@@ -56,6 +62,15 @@ export const SuspensionesManager: React.FC<SuspensionesManagerProps> = ({
   const [viewMode, setViewMode] = useState<ViewMode>('slide');
   const [selectedMonthKey, setSelectedMonthKey] = useState<string>(autoCurrentMonthKey);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [showLoadDefaults, setShowLoadDefaults] = useState(false);
+
+  const handleLoadDefaults = () => {
+    if (onUpdateMonths) {
+      const newMonths = loadDefaultSuspensionEvents(safeMonths);
+      onUpdateMonths(newMonths);
+    }
+    setShowLoadDefaults(false);
+  };
 
   // Modal / Form state for Add/Edit
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -353,6 +368,16 @@ export const SuspensionesManager: React.FC<SuspensionesManagerProps> = ({
 
         {/* Global Action Controls */}
         <div className="flex items-center gap-2 shrink-0">
+          {safeMonths.some(m => !m.eventos || m.eventos.length === 0) && (
+            <button
+              type="button"
+              onClick={() => setShowLoadDefaults(true)}
+              className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs shadow-xs hover:shadow transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+            >
+              <RotateCcw className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Cargar valores por defecto</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => handleOpenAddModal(selectedMonthKey)}
@@ -1229,4 +1254,48 @@ export const SuspensionesManager: React.FC<SuspensionesManagerProps> = ({
       )}
     </div>
   );
-};
+
+  // Modal: Confirmar cargar valores por defecto
+  if (showLoadDefaults) {
+    return (
+      <>
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto bg-amber-100 text-amber-600">
+              <RotateCcw className="w-6 h-6" />
+            </div>
+            <div className="text-center space-y-1">
+              <h3 className="text-base font-black text-slate-900">Cargar Valores por Defecto</h3>
+              <p className="text-xs text-slate-600">
+                Se cargarán las 28 actividades institucionales predefinidas (feriados, pausas pedagógicas, fiestas salesianas).
+                Esto sobrescribirá los eventos actuales.
+              </p>
+            </div>
+            <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-900">
+              💡 <strong>Nota:</strong> Use esta opción solo si desea restaurar el calendario base del colegio.
+            </div>
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                onClick={() => setShowLoadDefaults(false)}
+                className="py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleLoadDefaults}
+                className="py-2.5 px-4 rounded-xl text-white font-bold text-xs shadow-md transition-all bg-amber-600 hover:bg-amber-500"
+              >
+                Confirmar y Cargar
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="fixed inset-0" />
+      </>
+    );
+  }
+
+  return (
+    <div id="detalle-descansos-pausas-section" className="bg-slate-50/70 border-t border-slate-200 p-4 text-xs text-slate-700">
+
+export default SuspensionesManager;

@@ -1,17 +1,16 @@
 import * as XLSX from 'xlsx';
 import mammoth from 'mammoth';
-import { MonthStats, AcademicPeriod } from '../types';
-import { academicPeriods2026, monthsData2026 } from '../data/calendarData';
+import { MonthStats, AcademicPeriod, PERData } from '../types';
+import { academicPeriods2026, monthsData2026, recuperacionExtraordinaria2026 } from '../data/calendarData';
 
-// Set up pdfjs-dist safely with multiple fallback workers
+// Set up pdfjs-dist with local worker
 let pdfjsLib: any = null;
 
 async function getPdfJs() {
   if (!pdfjsLib) {
     pdfjsLib = await import('pdfjs-dist');
     if (pdfjsLib.GlobalWorkerOptions) {
-      const version = pdfjsLib.version || '4.0.379';
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
     }
   }
   return pdfjsLib;
@@ -25,6 +24,7 @@ export interface ParsedDocumentResult {
   headerData?: Partial<Record<string, unknown>>;
   months?: MonthStats[];
   periods?: AcademicPeriod[];
+  perData?: PERData;
   summary: {
     monthsCount: number;
     periodsCount: number;
@@ -78,6 +78,74 @@ export function createEmpty12Months(): MonthStats[] {
  */
 export function createDefault12Months(): MonthStats[] {
   return JSON.parse(JSON.stringify(monthsData2026));
+}
+
+/**
+ * Spanish month name to month number (0-indexed)
+ */
+const MONTH_NAME_TO_NUM: Record<string, number> = {
+  enero: 0, febrero: 1, marzo: 2, abril: 3, mayo: 4, junio: 5,
+  julio: 6, agosto: 7, septiembre: 8, setiembre: 8, octubre: 9, noviembre: 10, diciembre: 11,
+};
+
+/**
+ * Parse a date string like "19 enero" or "08 de junio" into a Date object (year 2026)
+ */
+function parseDate(str: string, year = 2026): Date | null {
+  if (!str) return null;
+  const cleaned = str.toLowerCase().replace(/de\s+/g, '').trim();
+  const match = cleaned.match(/(\d{1,2})\s*([a-záéíóúñ]+)/);
+  if (!match) return null;
+  const day = parseInt(match[1], 10);
+  const monthNum = MONTH_NAME_TO_NUM[match[2]];
+  if (monthNum === undefined || isNaN(day)) return null;
+  return new Date(year, monthNum, day);
+}
+
+/**
+ * Calculate weeks and days per month from academic periods (bimestres).
+ * Counts only business days (Mon-Fri) within each period's date range.
+ */
+export function calculateMonthsFromPeriods(periods: AcademicPeriod[]): MonthStats[] {
+  const months = createEmpty12Months();
+  if (!periods || periods.length === 0) return months;
+
+  // Build list of date ranges from periods
+  const ranges: { start: Date; end: Date }[] = [];
+  for (const p of periods) {
+    const start = parseDate(p.inicio);
+    const end = parseDate(p.fin);
+    if (start && end) ranges.push({ start, end });
+  }
+  if (ranges.length === 0) return months;
+
+  // For each month, count business days within any period range
+  for (let m = 0; m < 12; m++) {
+    const year = 2026;
+    const daysInMonth = new Date(year, m + 1, 0).getDate();
+    let businessDays = 0;
+    const firstDay = new Date(year, m, 1);
+    const lastDay = new Date(year, m, daysInMonth);
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = new Date(year, m, d);
+      const dow = date.getDay();
+      if (dow === 0 || dow === 6) continue; // skip weekends
+
+      // Check if this day falls within any period
+      for (const range of ranges) {
+        if (date >= range.start && date <= range.end) {
+          businessDays++;
+          break;
+        }
+      }
+    }
+
+    months[m].dias = businessDays;
+    months[m].semanas = businessDays > 0 ? Math.ceil(businessDays / 5) : 0;
+  }
+
+  return months;
 }
 
 /**
@@ -248,15 +316,94 @@ export function extractVerticalMonthsFromGrid(rows: any[][]): MonthStats[] | nul
 }
 
 /**
- * Extracts Academic Periods (Bimestres / Trimestres) with dates from text or table
+ * Extracts activities from text (table rows after bimestre header)
+ */
+function extractActivitiesFromText(text: string, periodStartIdx: number, periodEndIdx: number): { nombre: string; fechas: string; porcentaje: string; tipo: string; ingresoTBox?: string; fechaInicio?: string; fechaCierre?: string }[] {
+  const activities: { nombre: string; fechas: string; porcentaje: string; tipo: string; ingresoTBox?: string; fechaInicio?: string; fechaCierre?: string }[] = [];
+  const lines = text.substring(periodStartIdx, periodEndIdx).split('\n');
+
+  const activityRegex = /^\s*(\d+)\s+(.+?)\s+(\d{1,2}\s+[a-záéíóúñ]+(?:\s*[–\-]\s*\d{1,2}\s+[a-záéíóúñ]+)?)\s+(\d{1,2}\s+[a-záéíóúñ]+(?:\s*[–\-]\s*\d{1,2}\s+[a-záéíóúñ]+)?)\s+([^\s]+(?:\s+[^\s]+)*)\s+([\d%]+\s*(?:\([^)]+\))?)/i;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    const match = trimmed.match(/^(\d+)\s+(.+?)\s+(\d{1,2}\s+[a-záéíóúñ]+(?:\s*[–\-]\s*\d{1,2}\s+[a-záéíóúñ]+)?)\s+(\d{1,2}\s+[a-záéíóúñ]+(?:\s*[–\-]\s*\d{1,2}\s+[a-záéíóúñ]+)?)\s+(\S+)\s+(\d+%?\s*(?:\([^)]+\))?)/i);
+    if (match) {
+      const [, num, nombre, fechaIni, fechaFin, tbox, porcentaje] = match;
+      const tipo = porcentaje.includes('30%') || porcentaje.includes('objetiva') ? 'objetiva' :
+                   porcentaje.includes('35%') || porcentaje.includes('formativa') ? 'formativa' :
+                   porcentaje.includes('sumativa') ? 'sumativa' : 'formativa';
+      activities.push({
+        nombre: `${num}. ${nombre.trim()}`,
+        fechas: `${fechaIni.trim()} – ${fechaFin.trim()}`,
+        porcentaje: porcentaje.trim(),
+        tipo,
+        ingresoTBox: tbox.trim(),
+        fechaInicio: fechaIni.trim(),
+        fechaCierre: fechaFin.trim(),
+      });
+    }
+  }
+
+  return activities;
+}
+
+/**
+ * Extracts Academic Periods (Bimestres / Trimestres) with dates AND activities from text or table
  */
 export function extractAcademicPeriodsFromText(text: string): AcademicPeriod[] | null {
   if (!text) return null;
 
   const periods: AcademicPeriod[] = [];
-  const periodRegex = /(?:Bimestre|Periodo|Trimestre)\s*([1-4]|I|II|III|IV)\b[:\s\-–\.]+(?:del?\s+)?([0-9]{1,2}\s+(?:de\s+)?[A-Za-z]+)\s+(?:al?|hasta|-|–)\s+([0-9]{1,2}\s+(?:de\s+)?[A-Za-z]+)(?:.*?TBox[:\s]+([^\n\r,\.]+))?/gi;
 
+  // Pattern 1: "PRIMER PERIODO (19 enero – 20 marzo)" — Word-exported PDFs
+  const periodNameMap: Record<string, string> = {
+    'primer': 'I', 'segundo': 'II', 'tercer': 'III', 'cuarto': 'IV',
+    '1': 'I', '2': 'II', '3': 'III', '4': 'IV',
+  };
+  const pdfPeriodRegex = /(?:PRIMER|SEGUNDO|TERCER(?:O)?|CUARTO)\s+PERIODO\s*\((\d{1,2}\s+[a-záéíóúñ]+)\s*[–\-]\s*(\d{1,2}\s+[a-záéíóúñ]+)\)/gi;
   let match;
+  const periodMatches: { index: number; raw: string; inicio: string; fin: string; roman: string }[] = [];
+
+  while ((match = pdfPeriodRegex.exec(text)) !== null) {
+    const nombreRaw = match[0].split('(')[0].trim().toLowerCase();
+    let roman = 'I';
+    for (const [key, val] of Object.entries(periodNameMap)) {
+      if (nombreRaw.startsWith(key)) { roman = val; break; }
+    }
+    periodMatches.push({
+      index: match.index,
+      raw: match[0],
+      inicio: match[1]?.trim() || 'Por definir',
+      fin: match[2]?.trim() || 'Por definir',
+      roman,
+    });
+  }
+
+  if (periodMatches.length >= 2) {
+    for (let i = 0; i < periodMatches.length; i++) {
+      const pm = periodMatches[i];
+      const nextIdx = i + 1 < periodMatches.length ? periodMatches[i + 1].index : text.length;
+      const activities = extractActivitiesFromText(text, pm.index + pm.raw.length, nextIdx);
+
+      periods.push({
+        nombre: `Bimestre ${pm.roman}`,
+        inicio: pm.inicio,
+        fin: pm.fin,
+        tipo: 'Bimestre',
+        ingresoTBoxFinal: 'Conforme a calendario',
+        actividades: activities,
+      });
+    }
+    return periods;
+  }
+
+  // Pattern 2: "Bimestre I: 19 enero – 20 marzo" or "Periodo 1 (19 enero al 20 marzo)"
+  const periodRegex = /(?:Bimestre|Periodo|Trimestre)\s*([1-4]|I|II|III|IV)\b[:\s\-–\.]+(?:del?\s+)?([0-9]{1,2}\s+(?:de\s+)?[A-Za-záéíóúñ]+)\s+(?:al?|hasta|-|–)\s+([0-9]{1,2}\s+(?:de\s+)?[A-Za-záéíóúñ]+)(?:.*?TBox[:\s]+([^\n\r,\.]+))?/gi;
+
+  const periodMatches2: { index: number; rawNum: string; inicio: string; fin: string; tbox: string; roman: string }[] = [];
+
   while ((match = periodRegex.exec(text)) !== null) {
     const rawNum = match[1];
     const inicio = match[2]?.trim();
@@ -266,17 +413,31 @@ export function extractAcademicPeriodsFromText(text: string): AcademicPeriod[] |
     const numMap: { [key: string]: string } = { '1': 'I', '2': 'II', '3': 'III', '4': 'IV', i: 'I', ii: 'II', iii: 'III', iv: 'IV' };
     const roman = numMap[rawNum.toLowerCase()] || rawNum;
 
-    periods.push({
-      nombre: `Bimestre ${roman}`,
+    periodMatches2.push({
+      index: match.index,
+      rawNum,
       inicio: inicio || 'Por definir',
       fin: fin || 'Por definir',
-      tipo: 'Bimestre',
-      ingresoTBoxFinal: tbox || 'Conforme a calendario',
-      actividades: [],
+      tbox: tbox || 'Conforme a calendario',
+      roman,
     });
   }
 
-  if (periods.length >= 2) {
+  if (periodMatches2.length >= 2) {
+    for (let i = 0; i < periodMatches2.length; i++) {
+      const pm = periodMatches2[i];
+      const nextIdx = i + 1 < periodMatches2.length ? periodMatches2[i + 1].index : text.length;
+      const activities = extractActivitiesFromText(text, pm.index + 100, nextIdx);
+
+      periods.push({
+        nombre: `Bimestre ${pm.roman}`,
+        inicio: pm.inicio,
+        fin: pm.fin,
+        tipo: 'Bimestre',
+        ingresoTBoxFinal: pm.tbox,
+        actividades: activities,
+      });
+    }
     return periods;
   }
 
@@ -373,12 +534,20 @@ export async function parseExcelFile(file: File): Promise<ParsedDocumentResult> 
     }
   });
 
-  const finalMonths = detectedMonths || monthsData2026;
+  // If no months detected directly, calculate from periods
+  let finalMonths = detectedMonths || null;
+  if (!finalMonths && detectedPeriods && detectedPeriods.length > 0) {
+    finalMonths = calculateMonthsFromPeriods(detectedPeriods);
+  }
+  if (!finalMonths) {
+    finalMonths = monthsData2026;
+  }
   const finalPeriods = detectedPeriods || academicPeriods2026;
 
   const detectedFields: string[] = [];
   if (detectedMonths) detectedFields.push(`${detectedMonths.length} Meses de Calendario Anual`);
   if (detectedPeriods) detectedFields.push(`${detectedPeriods.length} Períodos / Bimestres Identificados`);
+  if (!detectedMonths && finalMonths && detectedPeriods) detectedFields.push('Semanas y días calculados desde períodos');
 
   const summary = {
     monthsCount: finalMonths.length,
@@ -442,8 +611,24 @@ export async function parsePdfFile(file: File): Promise<ParsedDocumentResult> {
     for (let i = 1; i <= Math.min(pdf.numPages, 20); i++) {
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
-      const pageText = textContent.items.map((item: any) => item.str).join(' ');
-      fullText += `\n--- PÁGINA ${i} ---\n` + pageText;
+
+      // Group text items by Y position (same line) and sort by X (left to right)
+      const linesByY: Record<number, { str: string; x: number }[]> = {};
+      for (const item of textContent.items as any[]) {
+        const y = Math.round(item.transform[5]);
+        const x = item.transform[4];
+        if (!linesByY[y]) linesByY[y] = [];
+        linesByY[y].push({ str: item.str, x });
+      }
+
+      // Sort lines top-to-bottom (descending Y), items left-to-right
+      const sortedYs = Object.keys(linesByY).map(Number).sort((a, b) => b - a);
+      const pageLines = sortedYs.map(y => {
+        const items = linesByY[y].sort((a, b) => a.x - b.x);
+        return items.map(i => i.str).join(' ').replace(/\s+/g, ' ').trim();
+      }).filter(line => line.length > 0);
+
+      fullText += `\n--- PÁGINA ${i} ---\n` + pageLines.join('\n');
     }
   } catch (err: any) {
     console.warn('PDF parsing fallback:', err);
@@ -481,14 +666,17 @@ export function parseJsonContent(text: string, fileName = 'documento.json', file
 
   const months = Array.isArray(parsed.months) ? parsed.months : undefined;
   const periods = Array.isArray(parsed.periods) ? parsed.periods : undefined;
+  const perData = parsed.perData ? parsed.perData : undefined;
   const headerData = parsed.headerData || undefined;
 
   const finalMonths = months || monthsData2026;
   const finalPeriods = periods || academicPeriods2026;
+  const finalPER = perData || null;
 
   const detectedFields: string[] = [];
   if (months && Array.isArray(months)) detectedFields.push(`${months.length} Meses y Calendario`);
   if (periods && Array.isArray(periods)) detectedFields.push(`${periods.length} Bimestres y Periodos`);
+  if (perData) detectedFields.push('P.E.R. y Graduaciones');
 
   const summary = {
     monthsCount: finalMonths.length,
@@ -505,8 +693,59 @@ export function parseJsonContent(text: string, fileName = 'documento.json', file
     headerData,
     months: finalMonths,
     periods: finalPeriods,
+    perData: finalPER,
     summary,
   };
+}
+
+/**
+ * Extracts PER (Periodo Extraordinario de Recuperación) data from text
+ */
+function extractPERDataFromText(text: string): PERData | null {
+  if (!text) return null;
+
+  const lowerText = text.toLowerCase();
+  
+  // Check if text contains PER-related content
+  if (!lowerText.includes('p.e.r.') && !lowerText.includes('periodo extraordinario') && !lowerText.includes('recuperación')) {
+    return null;
+  }
+
+  const eventos: { detalle: string; tbox: string; fecha: string }[] = [];
+  const graduaciones: { nivel: string; fecha: string }[] = [];
+
+  // Extract PER events - look for patterns like "03-05 nov" or "06 nov"
+  const perEventRegex = /(inicio de recuperaci[oó]n|aplicaci[oó]n de pruebas|entrega de resultados|prueba extraordinaria)[^.]*?(?:modalidad[:\s]+([^.\n]+))?[^.\n]*?(\d{1,2}[-\d]*\s*(?:de\s+)?(?:nov|noviembre))/gi;
+  let match;
+  while ((match = perEventRegex.exec(text)) !== null) {
+    const detalle = match[1]?.trim() || '';
+    const tbox = match[2]?.trim() || 'Presencial';
+    const fecha = match[3]?.trim() || '';
+    if (detalle && fecha) {
+      eventos.push({ detalle: detalle.charAt(0).toUpperCase() + detalle.slice(1), tbox, fecha });
+    }
+  }
+
+  // Extract graduations
+  const gradRegex = /(graduaci[oó]n\s+[^.\n]+?)(?:\s+-\s+|\s+)(?:del\s+)?(\d{1,2}\s+de\s+[a-záéíóúñ]+\s+de\s+\d{4})/gi;
+  while ((match = gradRegex.exec(text)) !== null) {
+    const nivel = match[1]?.trim() || '';
+    const fecha = match[2]?.trim() || '';
+    if (nivel && fecha) {
+      graduaciones.push({ nivel, fecha });
+    }
+  }
+
+  // If we found PER content, return the data
+  if (eventos.length > 0 || graduaciones.length > 0) {
+    return {
+      nombre: 'Periodo Extraordinario de Recuperación (P.E.R.) 2026',
+      eventos: eventos.length > 0 ? eventos : recuperacionExtraordinaria2026.eventos,
+      graduaciones: graduaciones.length > 0 ? graduaciones : recuperacionExtraordinaria2026.graduaciones,
+    };
+  }
+
+  return null;
 }
 
 /**
@@ -531,8 +770,23 @@ export function analyzeExtractedText(
     detectedFields.push(`${detectedPeriods.length} Períodos / Bimestres Identificados`);
   }
 
-  const finalMonths = detectedMonths || monthsData2026;
+  const detectedPER = extractPERDataFromText(rawText);
+  if (detectedPER) {
+    detectedFields.push('P.E.R. y Graduaciones Detectados');
+  }
+
+  // If no months detected directly, calculate from periods
+  let finalMonths = detectedMonths || null;
+  if (!finalMonths && detectedPeriods && detectedPeriods.length > 0) {
+    finalMonths = calculateMonthsFromPeriods(detectedPeriods);
+    detectedFields.push('Semanas y días calculados desde períodos');
+  }
+  if (!finalMonths) {
+    finalMonths = monthsData2026;
+  }
+
   const finalPeriods = detectedPeriods || academicPeriods2026;
+  const finalPER = detectedPER || null;
 
   return {
     fileName,
@@ -541,6 +795,7 @@ export function analyzeExtractedText(
     rawText,
     months: finalMonths,
     periods: finalPeriods,
+    perData: finalPER,
     summary: {
       monthsCount: finalMonths.length,
       periodsCount: finalPeriods.length,

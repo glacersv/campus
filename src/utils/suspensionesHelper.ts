@@ -255,6 +255,17 @@ export function ensureMonthEvents(months: MonthStats[]): MonthStats[] {
     if (m.eventos && m.eventos.length > 0) {
       return m;
     }
+    const parsed = parseFeriadosDesc(m.month, m.feriadosDesc);
+    return {
+      ...m,
+      eventos: parsed,
+      feriadosDesc: formatMonthFeriadosDesc(parsed),
+    };
+  });
+}
+
+export function loadDefaultSuspensionEvents(months: MonthStats[]): MonthStats[] {
+  return months.map((m) => {
     const defaultList = defaultInitialSuspensionEvents[m.month];
     if (defaultList && defaultList.length > 0) {
       return {
@@ -263,11 +274,6 @@ export function ensureMonthEvents(months: MonthStats[]): MonthStats[] {
         feriadosDesc: formatMonthFeriadosDesc(defaultList),
       };
     }
-    const parsed = parseFeriadosDesc(m.month, m.feriadosDesc);
-    return {
-      ...m,
-      eventos: parsed,
-      feriadosDesc: formatMonthFeriadosDesc(parsed),
-    };
+    return m;
   });
 }

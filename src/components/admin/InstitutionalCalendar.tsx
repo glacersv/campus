@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { MonthStats, AcademicPeriod } from '../../types';
+import { MonthStats, AcademicPeriod, PERData } from '../../types';
 import { Table1SemanasLaborales } from './Table1SemanasLaborales';
 import { SuspensionesManager } from './SuspensionesManager';
 import {
@@ -41,6 +41,8 @@ type CalendarSectionPart = 'todas' | 'parte1_semanas' | 'parte2_bimestres' | 'pa
 
 export default function InstitutionalCalendar() {
   const [months, setMonths] = useState<MonthStats[]>(() => JSON.parse(JSON.stringify(monthsData2026)));
+  const [periods, setPeriods] = useState<AcademicPeriod[]>(() => JSON.parse(JSON.stringify(academicPeriods2026)));
+  const [perData, setPerData] = useState<PERData>(() => JSON.parse(JSON.stringify(recuperacionExtraordinaria2026)));
   const [isEditMode, setIsEditMode] = useState(false);
   const [activePart, setActivePart] = useState<CalendarSectionPart>('todas');
   const [selectedBimestreIdx, setSelectedBimestreIdx] = useState<number | null>(null);
@@ -49,6 +51,7 @@ export default function InstitutionalCalendar() {
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
   const [showClearCalendarConfirm, setShowClearCalendarConfirm] = useState(false);
+  const [calendarCleared, setCalendarCleared] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const [activeMethod, setActiveMethod] = useState<'lector' | 'plantilla' | 'asistente'>('lector');
@@ -62,7 +65,8 @@ export default function InstitutionalCalendar() {
   const totalDias = months.reduce((a, b) => a + (Number(b.dias) || 0), 0);
   const totalEventos = months.reduce((a, b) => a + (b.eventos?.length || 0), 0);
 
-  const effectivePeriods: AcademicPeriod[] = academicPeriods2026;
+  const effectivePeriods: AcademicPeriod[] = periods;
+  const effectivePerData: PERData = perData;
 
   const handleUpdateMonths = (newMonths: MonthStats[]) => setMonths(newMonths);
 
@@ -79,7 +83,11 @@ export default function InstitutionalCalendar() {
       feriadosDesc: '',
       eventos: [],
     }));
+    const emptyPER: PERData = { nombre: 'Periodo Extraordinario de Recuperación (P.E.R.) 2026', eventos: [], graduaciones: [] };
     setMonths(emptyMonths);
+    setPeriods([]);
+    setPerData(emptyPER);
+    setCalendarCleared(true);
     setShowClearCalendarConfirm(false);
     setImportSuccess('¡Calendario vaciado! Todos los meses ahora tienen 0 semanas y 0 días.');
     setTimeout(() => setImportSuccess(null), 5000);
@@ -88,13 +96,16 @@ export default function InstitutionalCalendar() {
   // Restaurar valores predeterminados
   const handleResetDefaults = () => {
     setMonths(JSON.parse(JSON.stringify(monthsData2026)));
+    setPeriods(JSON.parse(JSON.stringify(academicPeriods2026)));
+    setPerData(JSON.parse(JSON.stringify(recuperacionExtraordinaria2026)));
+    setCalendarCleared(false);
     setImportSuccess('¡Calendario restaurado a valores predeterminados!');
     setTimeout(() => setImportSuccess(null), 4000);
   };
 
   // Export to Excel (3-sheet template)
   const handleExportExcel = () => {
-    const wb = generateExcelTemplateWorkbook(months, academicPeriods2026);
+    const wb = generateExcelTemplateWorkbook(months, periods);
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     const blob = new Blob([wbout], { type: 'application/octet-stream' });
     saveAs(blob, `Calendario_Institucional_2026.xlsx`);
@@ -109,7 +120,8 @@ export default function InstitutionalCalendar() {
       app: 'Calendario Institucional - Colegio Salesiano San José',
       anoLectivo: '2026',
       months,
-      periods: academicPeriods2026,
+      periods: periods,
+      perData,
     };
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json;charset=utf-8' });
     saveAs(blob, 'Calendario_Institucional_2026.json');
@@ -126,6 +138,9 @@ export default function InstitutionalCalendar() {
       const result = await parseExcelFile(file);
       if (result.months && result.months.length > 0) {
         setMonths(result.months);
+        if (result.periods && result.periods.length > 0) setPeriods(result.periods);
+        if (result.perData) setPerData(result.perData);
+        setCalendarCleared(false);
         const fields = result.summary.detectedFields.length > 0 ? ` (${result.summary.detectedFields.join(', ')})` : '';
         setImportSuccess(`¡${result.months.length} meses importados desde Excel/CSV!${fields}`);
       } else {
@@ -147,6 +162,9 @@ export default function InstitutionalCalendar() {
       const result = await parseWordFile(file);
       if (result.months && result.months.length > 0) {
         setMonths(result.months);
+        if (result.periods && result.periods.length > 0) setPeriods(result.periods);
+        if (result.perData) setPerData(result.perData);
+        setCalendarCleared(false);
         const fields = result.summary.detectedFields.length > 0 ? ` (${result.summary.detectedFields.join(', ')})` : '';
         setImportSuccess(`¡${result.months.length} meses importados desde Word!${fields}`);
       } else {
@@ -168,6 +186,9 @@ export default function InstitutionalCalendar() {
       const result = await parsePdfFile(file);
       if (result.months && result.months.length > 0) {
         setMonths(result.months);
+        if (result.periods && result.periods.length > 0) setPeriods(result.periods);
+        if (result.perData) setPerData(result.perData);
+        setCalendarCleared(false);
         const fields = result.summary.detectedFields.length > 0 ? ` (${result.summary.detectedFields.join(', ')})` : '';
         setImportSuccess(`¡${result.months.length} meses detectados y cargados desde PDF!${fields}`);
       } else {
@@ -190,6 +211,9 @@ export default function InstitutionalCalendar() {
       const result = parseJsonContent(text, file.name, file.size);
       if (result.months && result.months.length > 0) {
         setMonths(result.months);
+        if (result.periods && result.periods.length > 0) setPeriods(result.periods);
+        if (result.perData) setPerData(result.perData);
+        setCalendarCleared(false);
         setImportSuccess(`¡Calendario restaurado desde JSON! ${result.months.length} meses cargados.`);
       } else {
         setImportError('El archivo JSON no contiene un formato válido de calendario.');
@@ -234,6 +258,9 @@ export default function InstitutionalCalendar() {
       const result = await parseTextFile(file);
       if (result.months && result.months.length > 0) {
         setMonths(result.months);
+        if (result.periods && result.periods.length > 0) setPeriods(result.periods);
+        if (result.perData) setPerData(result.perData);
+        setCalendarCleared(false);
         const fields = result.summary.detectedFields.length > 0 ? ` (${result.summary.detectedFields.join(', ')})` : '';
         setImportSuccess(`¡${result.months.length} meses detectados en texto!${fields}`);
       } else {
@@ -269,6 +296,9 @@ export default function InstitutionalCalendar() {
       const result = analyzeExtractedText('Texto pegado', pastedText.length, pastedText, 'text');
       if (result.months && result.months.length > 0) {
         setMonths(result.months);
+        if (result.periods && result.periods.length > 0) setPeriods(result.periods);
+        if (result.perData) setPerData(result.perData);
+        setCalendarCleared(false);
         const fields = result.summary.detectedFields.length > 0 ? ` (${result.summary.detectedFields.join(', ')})` : '';
         setImportSuccess(`¡${result.months.length} meses detectados desde el texto!${fields}`);
         setPastedText('');
@@ -295,6 +325,9 @@ export default function InstitutionalCalendar() {
       const result = parseJsonContent(pastedJson, 'JSON pegado', pastedJson.length);
       if (result.months && result.months.length > 0) {
         setMonths(result.months);
+        if (result.periods && result.periods.length > 0) setPeriods(result.periods);
+        if (result.perData) setPerData(result.perData);
+        setCalendarCleared(false);
         setImportSuccess(`¡Calendario restaurado desde JSON! ${result.months.length} meses cargados.`);
         setPastedJson('');
       } else {
@@ -792,7 +825,7 @@ export default function InstitutionalCalendar() {
             <h2 className="text-lg font-bold text-slate-900 tracking-tight">Pausas Pedagógicas, Descansos y Asuetos {anoLectivo}</h2>
             <p className="text-xs text-slate-500">Registro completo de pausas pedagógicas, feriados y actividades institucionales.</p>
           </div>
-          <SuspensionesManager months={months} isEditMode={isEditMode} onUpdateMonths={handleUpdateMonths} />
+          <SuspensionesManager key={calendarCleared ? 'cleared' : 'default'} months={months} isEditMode={isEditMode} onUpdateMonths={handleUpdateMonths} calendarCleared={calendarCleared} />
         </section>
       )}
 
@@ -801,7 +834,7 @@ export default function InstitutionalCalendar() {
         <section className="space-y-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
           <div className="border-b border-slate-100 pb-4">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[11px] font-bold uppercase mb-1">Parte 4</div>
-            <h2 className="text-lg font-bold text-slate-900 tracking-tight">{recuperacionExtraordinaria2026.nombre}</h2>
+            <h2 className="text-lg font-bold text-slate-900 tracking-tight">{effectivePerData.nombre}</h2>
             <p className="text-xs text-slate-500">Ponderación: <strong>40% Guía de Estudio + 60% Prueba Final</strong> · Artículos 89° y 90° de la Ley General de Educación.</p>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -811,7 +844,7 @@ export default function InstitutionalCalendar() {
                 <span className="text-[11px] text-purple-200">Noviembre {anoLectivo}</span>
               </div>
               <div className="divide-y divide-slate-100 text-xs">
-                {recuperacionExtraordinaria2026.eventos.map((ev, eIdx) => (
+                {effectivePerData.eventos.map((ev, eIdx) => (
                   <div key={eIdx} className="p-3.5 hover:bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
                       <span className="font-bold text-slate-900 block">{ev.detalle}</span>
@@ -827,7 +860,7 @@ export default function InstitutionalCalendar() {
                 <GraduationCap className="w-4 h-4" /><span>Graduaciones y Clausuras</span>
               </div>
               <div className="space-y-2.5">
-                {recuperacionExtraordinaria2026.graduaciones.map((grad, gIdx) => (
+                {effectivePerData.graduaciones.map((grad, gIdx) => (
                   <div key={gIdx} className="p-3 rounded-xl bg-white border border-slate-200 shadow-xs">
                     <span className="text-slate-500 text-[11px] block">{grad.nivel}</span>
                     <strong className="text-slate-900 text-xs font-bold block mt-0.5">{grad.fecha}</strong>
