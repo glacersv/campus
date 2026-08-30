@@ -17,10 +17,10 @@ export const monthsData2026: MonthStats[] = [
 
 export const academicPeriods2026: AcademicPeriod[] = [
   {
-    nombre: 'Primer Periodo (Bimestre I)',
+    nombre: 'Primer Periodo (Trimestre I)',
     inicio: '19 enero',
     fin: '20 marzo',
-    tipo: 'Bimestre',
+    tipo: 'Trimestre',
     entregaBoletas: '08 de abril',
     entregaTemarios: '23 feb – 02 mar',
     recuperacionOrdinaria: '23 mar – 27 mar',
@@ -32,10 +32,10 @@ export const academicPeriods2026: AcademicPeriod[] = [
     ],
   },
   {
-    nombre: 'Segundo Periodo (Bimestre II)',
+    nombre: 'Segundo Periodo (Trimestre II)',
     inicio: '08 junio',
     fin: '31 julio',
-    tipo: 'Bimestre',
+    tipo: 'Trimestre',
     entregaBoletas: '19 de junio',
     entregaTemarios: '11-18 may',
     recuperacionOrdinaria: '08-12 jun',
@@ -47,10 +47,10 @@ export const academicPeriods2026: AcademicPeriod[] = [
     ],
   },
   {
-    nombre: 'Tercer Periodo (Bimestre III)',
+    nombre: 'Tercer Periodo (Trimestre III)',
     inicio: '17 agosto',
     fin: '10 septiembre',
-    tipo: 'Bimestre',
+    tipo: 'Trimestre',
     entregaBoletas: '31 de agosto',
     entregaTemarios: '13-27 jul',
     recuperacionOrdinaria: '18-20 ago',
@@ -62,10 +62,10 @@ export const academicPeriods2026: AcademicPeriod[] = [
     ],
   },
   {
-    nombre: 'Cuarto Periodo (Bimestre IV)',
+    nombre: 'Cuarto Periodo (Trimestre IV)',
     inicio: '17 agosto',
     fin: '16 octubre',
-    tipo: 'Bimestre',
+    tipo: 'Trimestre',
     entregaBoletas: '29 de octubre',
     entregaTemarios: '14-28 sep',
     recuperacionOrdinaria: '19-21 oct',

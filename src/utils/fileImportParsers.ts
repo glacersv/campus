@@ -1,7 +1,8 @@
 import * as XLSX from 'xlsx';
 import mammoth from 'mammoth';
-import { MonthStats, AcademicPeriod, PERData } from '../types';
+import { MonthStats, AcademicPeriod, AcademicPeriodActivity, PERData, SuspensionEvent } from '../types';
 import { academicPeriods2026, monthsData2026, recuperacionExtraordinaria2026 } from '../data/calendarData';
+import { inferCategoryFromText } from './suspensionesHelper';
 
 // Set up pdfjs-dist with local worker
 let pdfjsLib: any = null;
@@ -318,35 +319,42 @@ export function extractVerticalMonthsFromGrid(rows: any[][]): MonthStats[] | nul
 /**
  * Extracts activities from text (table rows after bimestre header)
  */
-function extractActivitiesFromText(text: string, periodStartIdx: number, periodEndIdx: number): { nombre: string; fechas: string; porcentaje: string; tipo: string; ingresoTBox?: string; fechaInicio?: string; fechaCierre?: string }[] {
-  const activities: { nombre: string; fechas: string; porcentaje: string; tipo: string; ingresoTBox?: string; fechaInicio?: string; fechaCierre?: string }[] = [];
+function extractActivitiesFromText(text: string, periodStartIdx: number, periodEndIdx: number): AcademicPeriodActivity[] {
+  const activities: AcademicPeriodActivity[] = [];
   const lines = text.substring(periodStartIdx, periodEndIdx).split('\n');
+  const dp = '(\\d{1,2}\\s+(?:de\\s+)?[a-záéíóúñ]+)';
 
-  // Flexible activity regex:
-  // "01. Actividad – 35% 19 enero 13 febrero 20 febrero"
-  // "03. Actividad – 35% 23 marzo 24 abril 4 marzo"
-  // "Pruebas Objetivas: materias básicas, ordinaria N°1 - 30% 16 marzo 20 marzo 27 marzo"
-  // "Pruebas Objetivas: materias básicas, ordinaria N°3-30%(Juventud) 10 agosto 13 agosto 20 agosto"
-  const activityRegex = /^(\d{1,2})\.\s*(.+?)\s*[–\-]\s*(\d{1,2}%)\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)/i;
-
-  // Also match "Pruebas Objetivas: materias básicas, ordinaria N°1 - 30% 16 marzo 20 marzo 27 marzo"
-  const pruebasRegex = /^(Pruebas?\s+Objetivas?.*?)\s*[–\-]\s*(\d{1,2}%[^\s]*)\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)/i;
+  // 1. "01. Actividad – 35% 19 enero 13 febrero 20 febrero"
+  const activityRegex = new RegExp(`^(\\d{1,2})\\.\\s*(.+?)\\s*[–\\-]\\s*(\\d{1,2}%)\\s+${dp}\\s+${dp}\\s+${dp}`, 'i');
+  // 2. "Pruebas Objetivas: materias básicas, ordinaria N°1 - 30% 16 marzo 20 marzo 27 marzo"
+  const pruebasRegex = new RegExp(`^(Pruebas?\\s+Objetivas?.*?)\\s*[–\\-]\\s*(\\d{1,2}%[^\\s]*)\\s+${dp}\\s+${dp}\\s+${dp}`, 'i');
+  // 3. "*Pruebas diagnósticas 19 enero 23 enero"
+  const diagnosticasRegex = new RegExp(`^[*]?\\s*Pruebas?\\s+diagn[oó]sticas?\\s+${dp}\\s+${dp}`, 'i');
+  // 4. "Refuerzo académico: materias básicas y PO Formativas 9 marzo 13 marzo"
+  const refuerzoRegex = new RegExp(`^Refuerzo\\s+acad[eé]mico.*?\\s+${dp}\\s+${dp}`, 'i');
+  // 5. "Prueba extraordinaria 23 marzo 27 marzo"
+  const extraordinariaRegex = new RegExp(`^Prueba\\s+extraordinaria\\s+${dp}\\s+${dp}`, 'i');
+  // 6. "Entrega de actividades pendientes 23 marzo 25 marzo 1 abril"
+  const entregaPendientesRegex = new RegExp(`^Entrega\\s+de\\s+actividades?\\s+pendientes?\\s+${dp}\\s+${dp}\\s+${dp}`, 'i');
+  // 7. "1ª Entrega de boletas de calificaciones 8 abril"
+  const boletasRegex = new RegExp(`^(\\d+[ª°]?\\s+)?Entrega\\s+de\\s+boletas?.*?\\s+${dp}`, 'i');
+  // 8. "Recuperación ordinaria"
+  const recuperacionRegex = /^Recuperaci[oó]n\s+ordinaria/i;
+  // 9. "Entrega de temarios y pruebas objetivas a coordinación"
+  const temariosRegex = /^Entrega\s+de\s+temarios/i;
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (!trimmed) continue;
+    if (!trimmed || trimmed.startsWith('(materias')) continue;
 
-    // Try numbered activity first
-    const match = trimmed.match(activityRegex);
-    if (match) {
-      const [, num, nombre, porcentaje, fechaIni, fechaFin, tbox] = match;
-      const tipo = porcentaje.includes('30%') ? 'objetiva' :
-                   porcentaje.includes('35%') ? 'formativa' : 'formativa';
+    const m1 = trimmed.match(activityRegex);
+    if (m1) {
+      const [, num, nombre, porcentaje, fechaIni, fechaFin, tbox] = m1;
       activities.push({
         nombre: `${num}. ${nombre.trim()}`,
         fechas: `${fechaIni.trim()} – ${fechaFin.trim()}`,
         porcentaje: porcentaje.trim(),
-        tipo,
+        tipo: porcentaje.includes('30%') ? 'objetiva' : 'formativa',
         ingresoTBox: tbox.trim(),
         fechaInicio: fechaIni.trim(),
         fechaCierre: fechaFin.trim(),
@@ -354,10 +362,9 @@ function extractActivitiesFromText(text: string, periodStartIdx: number, periodE
       continue;
     }
 
-    // Try Pruebas Objetivas
-    const pMatch = trimmed.match(pruebasRegex);
-    if (pMatch) {
-      const [, nombre, porcentaje, fechaIni, fechaFin, tbox] = pMatch;
+    const m2 = trimmed.match(pruebasRegex);
+    if (m2) {
+      const [, nombre, porcentaje, fechaIni, fechaFin, tbox] = m2;
       activities.push({
         nombre: nombre.trim(),
         fechas: `${fechaIni.trim()} – ${fechaFin.trim()}`,
@@ -367,6 +374,81 @@ function extractActivitiesFromText(text: string, periodStartIdx: number, periodE
         fechaInicio: fechaIni.trim(),
         fechaCierre: fechaFin.trim(),
       });
+      continue;
+    }
+
+    const m3 = trimmed.match(diagnosticasRegex);
+    if (m3) {
+      const [, fechaIni, fechaFin] = m3;
+      activities.push({
+        nombre: 'Pruebas diagnósticas',
+        fechas: `${fechaIni.trim()} – ${fechaFin.trim()}`,
+        tipo: 'diagnostica',
+        fechaInicio: fechaIni.trim(),
+        fechaCierre: fechaFin.trim(),
+      });
+      continue;
+    }
+
+    const m4 = trimmed.match(refuerzoRegex);
+    if (m4) {
+      const [, fechaIni, fechaFin] = m4;
+      activities.push({
+        nombre: 'Refuerzo académico',
+        fechas: `${fechaIni.trim()} – ${fechaFin.trim()}`,
+        tipo: 'refuerzo',
+        fechaInicio: fechaIni.trim(),
+        fechaCierre: fechaFin.trim(),
+      });
+      continue;
+    }
+
+    const m5 = trimmed.match(extraordinariaRegex);
+    if (m5) {
+      const [, fechaIni, fechaFin] = m5;
+      activities.push({
+        nombre: 'Prueba extraordinaria',
+        fechas: `${fechaIni.trim()} – ${fechaFin.trim()}`,
+        tipo: 'recuperacion',
+        fechaInicio: fechaIni.trim(),
+        fechaCierre: fechaFin.trim(),
+      });
+      continue;
+    }
+
+    const m6 = trimmed.match(entregaPendientesRegex);
+    if (m6) {
+      const [, fechaIni, fechaFin, fechaExtra] = m6;
+      activities.push({
+        nombre: 'Entrega de actividades pendientes',
+        fechas: fechaExtra ? `${fechaIni.trim()} – ${fechaExtra.trim()}` : `${fechaIni.trim()} – ${fechaFin.trim()}`,
+        tipo: 'recuperacion',
+        fechaInicio: fechaIni.trim(),
+        fechaCierre: fechaExtra?.trim() || fechaFin.trim(),
+      });
+      continue;
+    }
+
+    const m7 = trimmed.match(boletasRegex);
+    if (m7) {
+      const [, prefijo, fecha] = m7;
+      activities.push({
+        nombre: `${prefijo ? prefijo.trim() + ' ' : ''}Entrega de boletas de calificaciones`.trim(),
+        fechas: fecha.trim(),
+        tipo: 'boletas',
+        fechaInicio: fecha.trim(),
+      });
+      continue;
+    }
+
+    if (recuperacionRegex.test(trimmed)) {
+      activities.push({ nombre: 'Recuperación ordinaria', tipo: 'recuperacion' });
+      continue;
+    }
+
+    if (temariosRegex.test(trimmed)) {
+      activities.push({ nombre: 'Entrega de temarios y pruebas objetivas a coordinación', tipo: 'temario' });
+      continue;
     }
   }
 
@@ -374,7 +456,7 @@ function extractActivitiesFromText(text: string, periodStartIdx: number, periodE
 }
 
 /**
- * Extracts Academic Periods (Bimestres / Trimestres) with dates AND activities from text or table
+ * Extracts Academic Periods (Trimestres) with dates AND activities from text or table
  */
 export function extractAcademicPeriodsFromText(text: string): AcademicPeriod[] | null {
   if (!text) return null;
@@ -386,7 +468,7 @@ export function extractAcademicPeriodsFromText(text: string): AcademicPeriod[] |
     'primer': 'I', 'segundo': 'II', 'tercer': 'III', 'cuarto': 'IV',
     '1': 'I', '2': 'II', '3': 'III', '4': 'IV',
   };
-  const pdfPeriodRegex = /(?:PRIMER|SEGUNDO|TERCER(?:O)?|CUARTO)\s+PERIODO\s*\((\d{1,2}\s+[a-záéíóúñ]+)\s*[–\-]\s*(\d{1,2}\s+[a-záéíóúñ]+)\)/gi;
+  const pdfPeriodRegex = /(?:PRIMER|SEGUNDO|TERCER(?:O)?|CUARTO)\s+PERIODO\s*\((\d{1,2}\s+(?:de\s+)?[a-záéíóúñ]+)\s*[–\-]\s*(\d{1,2}\s+(?:de\s+)?[a-záéíóúñ]+)\)/gi;
   let match;
   const periodMatches: { index: number; raw: string; inicio: string; fin: string; roman: string }[] = [];
 
@@ -406,7 +488,7 @@ export function extractAcademicPeriodsFromText(text: string): AcademicPeriod[] |
   }
 
   // Also detect Trimestres: "Trimestre I (20 enero-17 de abril)"
-  const trimestreRegex = /Trimestre\s+(I{1,3}|IV|V?I{0,3})\s*\((\d{1,2}\s+[a-záéíóúñ]+)\s*[-–]\s*(\d{1,2}\s+[a-záéíóúñ]+)\)/gi;
+  const trimestreRegex = /Trimestre\s+(I{1,3}|IV|V?I{0,3})\s*\((\d{1,2}\s+(?:de\s+)?[a-záéíóúñ]+)\s*[-–]\s*(\d{1,2}\s+(?:de\s+)?[a-záéíóúñ]+)\)/gi;
   const trimestreMatches: { index: number; raw: string; inicio: string; fin: string; roman: string }[] = [];
 
   while ((match = trimestreRegex.exec(text)) !== null) {
@@ -421,7 +503,7 @@ export function extractAcademicPeriodsFromText(text: string): AcademicPeriod[] |
     });
   }
 
-  // Extract Bimestres if found
+  // Extract Trimestres if found
   if (periodMatches.length >= 2) {
     for (let i = 0; i < periodMatches.length; i++) {
       const pm = periodMatches[i];
@@ -429,10 +511,10 @@ export function extractAcademicPeriodsFromText(text: string): AcademicPeriod[] |
                       trimestreMatches.length > 0 ? trimestreMatches[0].index : text.length;
       const activities = extractActivitiesFromText(text, pm.index + pm.raw.length, nextIdx);
       periods.push({
-        nombre: `Bimestre ${pm.roman}`,
+        nombre: `Trimestre ${pm.roman}`,
         inicio: pm.inicio,
         fin: pm.fin,
-        tipo: 'Bimestre',
+        tipo: 'Trimestre',
         ingresoTBoxFinal: 'Conforme a calendario',
         actividades: activities,
       });
@@ -489,10 +571,10 @@ export function extractAcademicPeriodsFromText(text: string): AcademicPeriod[] |
       const activities = extractActivitiesFromText(text, pm.index + 100, nextIdx);
 
       periods.push({
-        nombre: `Bimestre ${pm.roman}`,
+        nombre: `Trimestre ${pm.roman}`,
         inicio: pm.inicio,
         fin: pm.fin,
-        tipo: 'Bimestre',
+        tipo: 'Trimestre',
         ingresoTBoxFinal: pm.tbox,
         actividades: activities,
       });
@@ -605,7 +687,7 @@ export async function parseExcelFile(file: File): Promise<ParsedDocumentResult> 
 
   const detectedFields: string[] = [];
   if (detectedMonths) detectedFields.push(`${detectedMonths.length} Meses de Calendario Anual`);
-  if (detectedPeriods) detectedFields.push(`${detectedPeriods.length} Períodos / Bimestres Identificados`);
+  if (detectedPeriods) detectedFields.push(`${detectedPeriods.length} Períodos / Trimestres Identificados`);
   if (!detectedMonths && finalMonths && detectedPeriods) detectedFields.push('Semanas y días calculados desde períodos');
 
   const summary = {
@@ -653,6 +735,7 @@ export async function parseTextFile(file: File): Promise<ParsedDocumentResult> {
 
 /**
  * Parses a PDF file using pdfjs-dist in the browser.
+ * Simple extraction - let the text analyzer handle month assignment.
  */
 export async function parsePdfFile(file: File): Promise<ParsedDocumentResult> {
   let fullText = '';
@@ -734,7 +817,7 @@ export function parseJsonContent(text: string, fileName = 'documento.json', file
 
   const detectedFields: string[] = [];
   if (months && Array.isArray(months)) detectedFields.push(`${months.length} Meses y Calendario`);
-  if (periods && Array.isArray(periods)) detectedFields.push(`${periods.length} Bimestres y Periodos`);
+  if (periods && Array.isArray(periods)) detectedFields.push(`${periods.length} Trimestres y Periodos`);
   if (perData) detectedFields.push('P.E.R. y Graduaciones');
 
   const summary = {
@@ -840,6 +923,226 @@ function extractPERDataFromText(text: string): PERData | null {
 }
 
 /**
+ * Extracts important dates from the "FECHAS IMPORTANTES A TOMAR EN CUENTA" section.
+ * Handles 2-column PDF layout where month names and dates may be interleaved.
+ * Returns events mapped to each month.
+ */
+function extractImportantDatesFromText(text: string): Record<string, SuspensionEvent[]> {
+  const result: Record<string, SuspensionEvent[]> = {};
+  if (!text) return result;
+
+  const headerIdx = text.toLowerCase().indexOf('fechas importantes');
+  if (headerIdx === -1) {
+    console.log('[extractImportantDatesFromText] "fechas importantes" NOT FOUND in text');
+    return result;
+  }
+
+  const section = text.substring(headerIdx);
+  console.log('[extractImportantDatesFromText] Section length:', section.length);
+  console.log('[extractImportantDatesFromText] Section preview:', section.substring(0, 1000));
+
+  // The PDF has 2 columns. Month names appear in pairs on the same line:
+  // "Enero Julio", "Febrero Agosto", "Abril Octubre", "Mayo Noviembre", "Junio Diciembre"
+  // Events from both columns are interleaved on the same lines.
+
+  // Find ALL month name positions
+  const monthRegex = new RegExp(`\\b(${SPANISH_MONTH_NAMES.join('|')})\\b`, 'gi');
+  const monthPositions: { month: string; pos: number }[] = [];
+  let mm;
+  while ((mm = monthRegex.exec(section)) !== null) {
+    monthPositions.push({ month: mm[1].toLowerCase(), pos: mm.index });
+  }
+  console.log('[extractImportantDatesFromText] Month positions found:', monthPositions);
+  if (monthPositions.length === 0) return result;
+
+  // Find all date-event pairs
+  const allEvents: { pos: number; dia: string; nombre: string }[] = [];
+
+  // Range patterns: "04 al 08", "12-16", "30/31", "14/16"
+  // Stop capture at next date pattern or line break
+  const nextDatePattern = '(?:\\s*\\d{1,2}\\s*(?:al|[-–]|\\/)\\s*\\d{1,2}|\\s*\\d{1,2}\\s+[A-Za-záéíóúñ]|$)';
+  const rangePatterns = [
+    new RegExp(`(\\d{1,2})\\s+al\\s+(\\d{1,2})\\s+([A-Za-záéíóúñ][^\\n]{2,60}?)(?=${nextDatePattern})`, 'gi'),
+    new RegExp(`(\\d{1,2})\\s*[-–]\\s*(\\d{1,2})\\s+([A-Za-záéíóúñ][^\\n]{2,60}?)(?=${nextDatePattern})`, 'gi'),
+    new RegExp(`(\\d{1,2})\\s*\\/\\s*(\\d{1,2})\\s+([A-Za-záéíóúñ][^\\n]{2,60}?)(?=${nextDatePattern})`, 'gi'),
+  ];
+
+  for (const regex of rangePatterns) {
+    let em;
+    while ((em = regex.exec(section)) !== null) {
+      const nombre = em[3].trim().replace(/\s+/g, ' ');
+      if (SPANISH_MONTH_NAMES.includes(nombre.toLowerCase())) continue;
+      if (nombre.length < 3) continue;
+      allEvents.push({ pos: em.index, dia: `${em[1]} al ${em[2]}`, nombre });
+    }
+  }
+
+  // Single date: "5 inicio de labores" — anywhere in text, not just start of line
+  // Match: digit + space + letters (event name), stopping at next date pattern
+  const singleDateRegex = new RegExp(`(\\d{1,2})\\s+([A-Za-záéíóúñ][a-záéíóúñ\\s]{2,50}?)(?=${nextDatePattern})`, 'gi');
+  let sm;
+  while ((sm = singleDateRegex.exec(section)) !== null) {
+    const nombre = sm[2].trim().replace(/\s+/g, ' ');
+    if (SPANISH_MONTH_NAMES.includes(nombre.toLowerCase())) continue;
+    if (nombre.length < 3) continue;
+    // Skip if already captured as part of a range
+    const alreadyCaptured = allEvents.some(e => Math.abs(e.pos - sm.index) < 5);
+    if (!alreadyCaptured) {
+      allEvents.push({ pos: sm.index, dia: sm[1], nombre });
+    }
+  }
+  console.log('[extractImportantDatesFromText] All events found:', allEvents.map(e => ({ dia: e.dia, nombre: e.nombre, pos: e.pos })));
+
+  // 2-column PDF layout association:
+  // The PDF has two vertical columns (fixed pairs):
+  //   Col 1 (left):  Enero, Febrero, Marzo, Abril, Mayo, Junio
+  //   Col 2 (right): Julio, Agosto, Septiembre, Octubre, Noviembre, Diciembre
+  // Visual layout (rows top to bottom):
+  // Row 1: Enero (left) | Julio (right)
+  // Row 2: Febrero (left) | Agosto (right)
+  // Row 3: Marzo (left) | Septiembre (right)
+  // Row 4: Abril (left) | Octubre (right)
+  // Row 5: Mayo (left) | Noviembre (right)
+  // Row 6: Junio (left) | Diciembre (right)
+  const FIXED_MONTH_PAIRS: { left: string; right: string }[] = [
+    { left: 'enero', right: 'julio' },
+    { left: 'febrero', right: 'agosto' },
+    { left: 'marzo', right: 'septiembre' },
+    { left: 'abril', right: 'octubre' },
+    { left: 'mayo', right: 'noviembre' },
+    { left: 'junio', right: 'diciembre' },
+  ];
+
+  // Find positions of all 12 months in text
+  const monthPosMap = new Map<string, number>();
+  for (const mp of monthPositions) {
+    // Keep first occurrence of each month
+    if (!monthPosMap.has(mp.month)) {
+      monthPosMap.set(mp.month, mp.pos);
+    }
+  }
+  console.log('[extractImportantDatesFromText] Month positions map:', Object.fromEntries(monthPosMap));
+  console.log('[extractImportantDatesFromText] All monthPositions raw:', monthPositions.map(m => ({month: m.month, pos: m.pos})));
+
+  // Build month pairs in FIXED VISUAL ORDER (not sorted by text position)
+  const monthPairs: { left: string; right: string; leftPos: number; rightPos: number; mid: number; pos: number; visualRow: number }[] = [];
+  
+  for (let i = 0; i < FIXED_MONTH_PAIRS.length; i++) {
+    const fixedPair = FIXED_MONTH_PAIRS[i];
+    const leftPos = monthPosMap.get(fixedPair.left);
+    const rightPos = monthPosMap.get(fixedPair.right);
+    
+    if (leftPos !== undefined && rightPos !== undefined) {
+      // Both found - use visual row index for ordering, not text position
+      monthPairs.push({
+        left: fixedPair.left,
+        right: fixedPair.right,
+        leftPos,
+        rightPos,
+        mid: (leftPos + rightPos) / 2,
+        pos: leftPos, // anchor
+        visualRow: i, // 0=top row (Enero/Julio), 5=bottom row (Junio/Diciembre)
+      });
+    } else if (leftPos !== undefined) {
+      monthPairs.push({
+        left: fixedPair.left,
+        right: '',
+        leftPos,
+        rightPos: leftPos,
+        mid: leftPos,
+        pos: leftPos,
+        visualRow: i,
+      });
+    } else if (rightPos !== undefined) {
+      monthPairs.push({
+        left: '',
+        right: fixedPair.right,
+        leftPos: rightPos,
+        rightPos,
+        mid: rightPos,
+        pos: rightPos,
+        visualRow: i,
+      });
+    }
+  }
+
+  // Sort by VISUAL ROW ORDER (top to bottom), not by text position
+  monthPairs.sort((a, b) => a.visualRow - b.visualRow);
+  console.log('[extractImportantDatesFromText] Month pairs (visual row order):', monthPairs.map(p => ({ left: p.left, right: p.right, leftPos: p.leftPos, rightPos: p.rightPos, visualRow: p.visualRow })));
+
+  // Associate events: assign by VISUAL ROW SECTIONS, then sort by date within each month
+  // Visual rows: 0=Enero/Julio, 1=Febrero/Agosto, 2=Marzo/Septiembre, 3=Abril/Octubre, 4=Mayo/Noviembre, 5=Junio/Diciembre
+  const pairMidpoints = monthPairs.map(p => p.mid);
+
+  for (const ev of allEvents) {
+    let bestMonth = '';
+    let bestDist = Infinity;
+
+    // Find which visual row section this event falls into
+    for (let i = 0; i < monthPairs.length; i++) {
+      const pair = monthPairs[i];
+      const sectionStart = i === 0 ? -Infinity : (pairMidpoints[i - 1] + pair.mid) / 2;
+      const sectionEnd = (pair.mid + (pairMidpoints[i + 1] ?? Infinity)) / 2;
+      
+      if (ev.pos >= sectionStart && ev.pos < sectionEnd) {
+        // Event is in this visual row - assign to left or right month by proximity
+        if (pair.right && pair.left) {
+          const distToLeft = Math.abs(ev.pos - pair.leftPos);
+          const distToRight = Math.abs(ev.pos - pair.rightPos);
+          bestMonth = distToLeft <= distToRight ? pair.left : pair.right;
+        } else if (pair.left) {
+          bestMonth = pair.left;
+        } else if (pair.right) {
+          bestMonth = pair.right;
+        }
+        break;
+      }
+    }
+
+    // Fallback: nearest month overall
+    if (!bestMonth) {
+      for (const [month, pos] of monthPosMap) {
+        const dist = Math.abs(ev.pos - pos);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestMonth = month;
+        }
+      }
+    }
+
+    if (!bestMonth) continue;
+
+    const tipo = inferCategoryFromText(ev.nombre);
+    const id = `${bestMonth}-${ev.dia}-${ev.nombre.replace(/\s+/g, '-').substring(0, 30)}`;
+    const evento: SuspensionEvent = { id, dia: ev.dia, mes: bestMonth, actividad: ev.nombre, tipo };
+
+    if (!result[bestMonth]) result[bestMonth] = [];
+    if (!result[bestMonth].some(e => e.actividad === ev.nombre && e.dia === ev.dia)) {
+      result[bestMonth].push(evento);
+    }
+  }
+
+  // Sort events within each month by date (ascending)
+  const monthOrder = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  
+  function parseDiaForSort(diaStr: string): number {
+    // Extract first number from dia string like "5", "04 al 08", "12-16", "30/31"
+    const match = diaStr.match(/(\d{1,2})/);
+    return match ? parseInt(match[1], 10) : 99;
+  }
+
+  for (const month of monthOrder) {
+    const events = result[month];
+    if (events && events.length > 0) {
+      events.sort((a, b) => parseDiaForSort(a.dia) - parseDiaForSort(b.dia));
+    }
+  }
+
+  console.log('[extractImportantDatesFromText] Final result (sorted by month & date):', Object.fromEntries(Object.entries(result).map(([k, v]) => [k, v.map(e => `${e.dia} ${e.actividad}`)])));
+  return result;
+}
+
+/**
  * High-tolerance NLP / Regex analyzer for arbitrary text, Word, PDF, or pasted clipboard content.
  * Focused on calendar extraction (months, periods) for the admin institutional calendar.
  */
@@ -858,7 +1161,7 @@ export function analyzeExtractedText(
 
   const detectedPeriods = extractAcademicPeriodsFromText(rawText);
   if (detectedPeriods) {
-    detectedFields.push(`${detectedPeriods.length} Períodos / Bimestres Identificados`);
+    detectedFields.push(`${detectedPeriods.length} Períodos / Trimestres Identificados`);
   }
 
   const detectedPER = extractPERDataFromText(rawText);
@@ -874,6 +1177,19 @@ export function analyzeExtractedText(
   }
   if (!finalMonths) {
     finalMonths = monthsData2026;
+  }
+
+  // Extract important dates from "FECHAS IMPORTANTES" section and apply to months
+  const importantDates = extractImportantDatesFromText(rawText);
+  const importantDateMonths = Object.keys(importantDates);
+  if (importantDateMonths.length > 0) {
+    detectedFields.push(`${importantDateMonths.reduce((sum, m) => sum + importantDates[m].length, 0)} Fechas Importantes detectadas`);
+    for (const month of finalMonths) {
+      const events = importantDates[month.month];
+      if (events && events.length > 0) {
+        month.eventos = [...(month.eventos || []), ...events];
+      }
+    }
   }
 
   const finalPeriods = detectedPeriods || academicPeriods2026;
@@ -906,10 +1222,10 @@ export function generateExcelTemplateWorkbook(
 ): XLSX.WorkBook {
   const wb = XLSX.utils.book_new();
 
-  // Hoja 1: Periodos y Evaluaciones (Bimestres con TBox y fechas oficiales)
+  // Hoja 1: Periodos y Evaluaciones (Trimestres con TBox y fechas oficiales)
   const periodRows: any[] = [];
   periodRows.push([
-    'Bimestre / Periodo',
+    'Trimestre / Periodo',
     'Fecha Inicio',
     'Fecha Fin',
     'Semanas',

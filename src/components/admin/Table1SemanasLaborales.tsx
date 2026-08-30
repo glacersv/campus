@@ -269,13 +269,7 @@ export const Table1SemanasLaborales: React.FC<Table1Props> = ({
         </table>
       </div>
 
-      {/* Interactive Detalle de descansos, pausas pedagógicas y suspensiones institucionales */}
-      <SuspensionesManager
-        months={months}
-        isEditMode={isEditMode}
-        onUpdateMonths={onUpdateMonths}
-      />
-    </div>
+      </div>
   );
 };
 

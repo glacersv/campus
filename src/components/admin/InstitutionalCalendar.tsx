@@ -35,9 +35,10 @@ import {
   analyzeExtractedText,
   generateExcelTemplateWorkbook,
 } from '../../utils/fileImportParsers';
+import { loadDefaultSuspensionEvents } from '../../utils/suspensionesHelper';
 import { saveAs } from 'file-saver';
 
-type CalendarSectionPart = 'todas' | 'parte1_semanas' | 'parte2_bimestres' | 'parte3_pausas' | 'parte4_per' | 'importar_exportar';
+type CalendarSectionPart = 'todas' | 'parte1_semanas' | 'parte2_trimestres' | 'parte3_pausas' | 'parte4_per' | 'importar_exportar';
 
 export default function InstitutionalCalendar() {
   const [months, setMonths] = useState<MonthStats[]>(() => JSON.parse(JSON.stringify(monthsData2026)));
@@ -45,7 +46,7 @@ export default function InstitutionalCalendar() {
   const [perData, setPerData] = useState<PERData>(() => JSON.parse(JSON.stringify(recuperacionExtraordinaria2026)));
   const [isEditMode, setIsEditMode] = useState(false);
   const [activePart, setActivePart] = useState<CalendarSectionPart>('todas');
-  const [selectedBimestreIdx, setSelectedBimestreIdx] = useState<number | null>(null);
+  const [selectedTrimestreIdx, setSelectedTrimestreIdx] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
@@ -140,7 +141,14 @@ export default function InstitutionalCalendar() {
     try {
       const result = await parseExcelFile(file);
       if (result.months && result.months.length > 0) {
-        setMonths(result.months);
+        let monthsWithSuspensions = loadDefaultSuspensionEvents(result.months);
+        monthsWithSuspensions = monthsWithSuspensions.map(m => ({
+          ...m,
+          eventos: (m.eventos || []).filter((ev, idx, arr) => 
+            arr.findIndex(e => e.dia === ev.dia && e.actividad === ev.actividad) === idx
+          )
+        }));
+        setMonths(monthsWithSuspensions);
         if (result.periods && result.periods.length > 0) setPeriods(result.periods);
         if (result.perData) setPerData(result.perData);
         setCalendarCleared(false);
@@ -164,7 +172,14 @@ export default function InstitutionalCalendar() {
     try {
       const result = await parseWordFile(file);
       if (result.months && result.months.length > 0) {
-        setMonths(result.months);
+        let monthsWithSuspensions = loadDefaultSuspensionEvents(result.months);
+        monthsWithSuspensions = monthsWithSuspensions.map(m => ({
+          ...m,
+          eventos: (m.eventos || []).filter((ev, idx, arr) => 
+            arr.findIndex(e => e.dia === ev.dia && e.actividad === ev.actividad) === idx
+          )
+        }));
+        setMonths(monthsWithSuspensions);
         if (result.periods && result.periods.length > 0) setPeriods(result.periods);
         if (result.perData) setPerData(result.perData);
         setCalendarCleared(false);
@@ -191,7 +206,18 @@ export default function InstitutionalCalendar() {
       // Skip if a newer import started while this one was pending
       if (currentImportId !== importIdRef.current) return;
       if (result.months && result.months.length > 0) {
-        setMonths(result.months);
+        const hasPdfEvents = result.months.some(m => m.eventos && m.eventos.length > 0);
+        let monthsWithSuspensions = hasPdfEvents ? result.months : loadDefaultSuspensionEvents(result.months);
+        
+        // Deduplicate eventos in each month
+        monthsWithSuspensions = monthsWithSuspensions.map(m => ({
+          ...m,
+          eventos: (m.eventos || []).filter((ev, idx, arr) => 
+            arr.findIndex(e => e.dia === ev.dia && e.actividad === ev.actividad) === idx
+          )
+        }));
+        
+        setMonths(monthsWithSuspensions);
         if (result.periods && result.periods.length > 0) setPeriods(result.periods);
         if (result.perData) setPerData(result.perData);
         setCalendarCleared(false);
@@ -217,7 +243,14 @@ export default function InstitutionalCalendar() {
       const text = await file.text();
       const result = parseJsonContent(text, file.name, file.size);
       if (result.months && result.months.length > 0) {
-        setMonths(result.months);
+        let monthsWithSuspensions = loadDefaultSuspensionEvents(result.months);
+        monthsWithSuspensions = monthsWithSuspensions.map(m => ({
+          ...m,
+          eventos: (m.eventos || []).filter((ev, idx, arr) => 
+            arr.findIndex(e => e.dia === ev.dia && e.actividad === ev.actividad) === idx
+          )
+        }));
+        setMonths(monthsWithSuspensions);
         if (result.periods && result.periods.length > 0) setPeriods(result.periods);
         if (result.perData) setPerData(result.perData);
         setCalendarCleared(false);
@@ -264,7 +297,14 @@ export default function InstitutionalCalendar() {
     try {
       const result = await parseTextFile(file);
       if (result.months && result.months.length > 0) {
-        setMonths(result.months);
+        let monthsWithSuspensions = loadDefaultSuspensionEvents(result.months);
+        monthsWithSuspensions = monthsWithSuspensions.map(m => ({
+          ...m,
+          eventos: (m.eventos || []).filter((ev, idx, arr) => 
+            arr.findIndex(e => e.dia === ev.dia && e.actividad === ev.actividad) === idx
+          )
+        }));
+        setMonths(monthsWithSuspensions);
         if (result.periods && result.periods.length > 0) setPeriods(result.periods);
         if (result.perData) setPerData(result.perData);
         setCalendarCleared(false);
@@ -381,7 +421,7 @@ export default function InstitutionalCalendar() {
             </div>
             <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
               <span className="text-slate-400 block text-[11px]">Períodos:</span>
-              <strong className="text-base text-indigo-400 font-extrabold">{effectivePeriods.length} Bimestres</strong>
+              <strong className="text-base text-indigo-400 font-extrabold">{effectivePeriods.length} Trimestres</strong>
             </div>
             <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
               <span className="text-slate-400 block text-[11px]">Carga Técnica:</span>
@@ -404,7 +444,7 @@ export default function InstitutionalCalendar() {
             { key: 'importar_exportar', label: 'Importar/Exportar', color: 'bg-emerald-600 text-white border-emerald-600' },
             { key: 'todas', label: 'Ver Todo', color: 'bg-slate-900 text-white border-slate-900' },
             { key: 'parte1_semanas', label: 'Semanas y Días', color: 'bg-blue-600 text-white border-blue-600' },
-            { key: 'parte2_bimestres', label: 'Bimestres & TBox', color: 'bg-indigo-600 text-white border-indigo-600' },
+            { key: 'parte2_trimestres', label: 'Trimestres & TBox', color: 'bg-indigo-600 text-white border-indigo-600' },
             { key: 'parte3_pausas', label: 'Pausas & Asuetos', color: 'bg-amber-600 text-white border-amber-600' },
             { key: 'parte4_per', label: 'P.E.R. & Graduación', color: 'bg-purple-600 text-white border-purple-600' },
           ] as const).map((item) => (
@@ -598,7 +638,7 @@ export default function InstitutionalCalendar() {
                       <div className="space-y-1">
                         <h3 className="font-bold text-slate-800 text-base">Arrastre y suelte su archivo aquí o haga clic para buscar</h3>
                         <p className="text-xs text-slate-500 max-w-lg mx-auto">
-                          Detecta automáticamente hojas de <span className="font-semibold text-slate-700">Calendario Anual (12 Meses, Semanas y Días), Bimestres</span> desde Excel, Word o PDF.
+                          Detecta automáticamente hojas de <span className="font-semibold text-slate-700">Calendario Anual (12 Meses, Semanas y Días), Trimestres</span> desde Excel, Word o PDF.
                         </p>
                       </div>
                       <div className="flex items-center space-x-3 pt-1 flex-wrap justify-center">
@@ -680,8 +720,8 @@ export default function InstitutionalCalendar() {
                     <span className="text-xs font-bold text-emerald-600 block">{totalDias} Días</span>
                   </div>
                   <div className="bg-slate-50 p-2.5 rounded-lg">
-                    <span className="text-[10px] text-slate-400 block font-medium">Bimestres:</span>
-                    <span className="text-xs font-bold text-indigo-600 block">{effectivePeriods.length} Bimestres</span>
+                    <span className="text-[10px] text-slate-400 block font-medium">Trimestres:</span>
+                    <span className="text-xs font-bold text-indigo-600 block">{effectivePeriods.length} Trimestres</span>
                   </div>
                   <div className="bg-slate-50 p-2.5 rounded-lg">
                     <span className="text-[10px] text-slate-400 block font-medium">Pausas/Asuetos:</span>
@@ -730,8 +770,8 @@ export default function InstitutionalCalendar() {
         </section>
       )}
 
-      {/* Part 2: Bimestres */}
-      {(activePart === 'todas' || activePart === 'parte2_bimestres') && (
+      {/* Part 2: Trimestres */}
+      {(activePart === 'todas' || activePart === 'parte2_trimestres') && (
         <section className="space-y-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
           <div className="border-b border-slate-100 pb-4">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-[11px] font-bold uppercase mb-1">Parte 2</div>
@@ -739,12 +779,12 @@ export default function InstitutionalCalendar() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {effectivePeriods.map((p, idx) => {
-              const isSelected = selectedBimestreIdx === idx;
+              const isSelected = selectedTrimestreIdx === idx;
               return (
-                <div key={idx} onClick={() => setSelectedBimestreIdx(isSelected ? null : idx)} className={`rounded-2xl border p-4 shadow-xs transition-all cursor-pointer ${isSelected ? 'bg-indigo-50/70 border-indigo-500 ring-2 ring-indigo-500/20' : 'bg-white border-slate-200 hover:border-indigo-300 hover:bg-slate-50/50'}`}>
+                <div key={idx} onClick={() => setSelectedTrimestreIdx(isSelected ? null : idx)} className={`rounded-2xl border p-4 shadow-xs transition-all cursor-pointer ${isSelected ? 'bg-indigo-50/70 border-indigo-500 ring-2 ring-indigo-500/20' : 'bg-white border-slate-200 hover:border-indigo-300 hover:bg-slate-50/50'}`}>
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700'}`}>B{idx + 1}</div>
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700'}`}>T{idx + 1}</div>
                       <h3 className="font-bold text-slate-900 text-xs">{p.nombre}</h3>
                     </div>
                     <span className="text-[10px] font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full">10 sem</span>
@@ -766,7 +806,7 @@ export default function InstitutionalCalendar() {
           {/* Detail Tables */}
           <div className="space-y-6">
             {effectivePeriods.map((p, pIdx) => {
-              if (selectedBimestreIdx !== null && selectedBimestreIdx !== pIdx) return null;
+              if (selectedTrimestreIdx !== null && selectedTrimestreIdx !== pIdx) return null;
               return (
                 <div key={pIdx} className="rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
                   <div className="bg-slate-900 text-white px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -889,7 +929,7 @@ export default function InstitutionalCalendar() {
           <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0"><CalendarDays className="w-5 h-5" /></div>
           <div>
             <h4 className="font-bold text-sm text-slate-900">Calendario Institucional {anoLectivo}</h4>
-            <p className="text-xs text-slate-600">{totalSemanas} semanas · {totalDias} días hábiles · {effectivePeriods.length} bimestres</p>
+            <p className="text-xs text-slate-600">{totalSemanas} semanas · {totalDias} días hábiles · {effectivePeriods.length} trimestres</p>
           </div>
         </div>
       </div>

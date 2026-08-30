@@ -26,7 +26,6 @@ import {
   Grid,
   Sliders,
   Sparkles,
-  CalendarDays,
   CalendarRange,
   Clock,
   RotateCcw,
@@ -347,26 +346,12 @@ export const SuspensionesManager: React.FC<SuspensionesManagerProps> = ({
   return (
     <div id="detalle-descansos-pausas-section" className="bg-slate-50/70 border-t border-slate-200 p-4 text-xs text-slate-700">
       
-      {/* Header Bar */}
+      {/* Global Action Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 pb-3 border-b border-slate-200">
-        <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="p-1.5 rounded-xl bg-blue-100 text-blue-800">
-              <CalendarDays className="w-4 h-4" />
-            </span>
-            <h3 className="font-extrabold text-slate-900 text-sm tracking-tight">
-              Cronograma de Actividades, Descansos y Pausas Pedagógicas
-            </h3>
-            <span className="px-2.5 py-0.5 bg-blue-100 text-blue-900 rounded-full font-bold text-[10px] border border-blue-200">
-              {totalEventsCount} actividades registradas
-            </span>
-          </div>
-          <p className="text-[11px] text-slate-500 mt-1">
-            Seleccione un mes en el panel izquierdo para visualizar y gestionar sus fechas y asuetos al centro.
-          </p>
+        <div className="text-[11px] text-slate-500">
+          Seleccione un mes en el panel izquierdo para visualizar y gestionar sus fechas y asuetos al centro.
         </div>
 
-        {/* Global Action Controls */}
         <div className="flex items-center gap-2 shrink-0">
           {safeMonths.some(m => !m.eventos || m.eventos.length === 0) && (
             <button
@@ -1222,11 +1207,11 @@ export const SuspensionesManager: React.FC<SuspensionesManagerProps> = ({
                     type="button"
                     onClick={() => {
                       setFormTipo('evaluacion');
-                      setFormActividad('Cierre Evaluativo Bimestral y Registro TBox');
+                      setFormActividad('Cierre Evaluativo Trimestral y Registro TBox');
                     }}
                     className="text-[10px] bg-blue-50 text-blue-900 border border-blue-200 px-2 py-0.5 rounded-md hover:bg-blue-100 font-medium"
                   >
-                    📝 Cierre de Bimestre
+                    📝 Cierre de Trimestre
                   </button>
                 </div>
               </div>
