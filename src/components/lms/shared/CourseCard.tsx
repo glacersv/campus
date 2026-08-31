@@ -32,6 +32,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { LMSCourse } from '../../../types';
+import { lmsService } from '../../../services/lmsService';
 import ProgressRing from './ProgressRing';
 
 interface CourseCardProps {
@@ -169,7 +170,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course, onClick, index =
         <div className="space-y-1.5 pt-2 border-t border-slate-100 text-xs text-slate-600">
           <div className="flex items-center gap-2">
             <Users className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span className="font-medium text-slate-700 truncate">{course.teacherName}</span>
+            <span className="font-medium text-slate-700 truncate">{lmsService.getTeacherName(course.teacherId)}</span>
           </div>
           {course.classroom && (
             <div className="flex items-center gap-2">

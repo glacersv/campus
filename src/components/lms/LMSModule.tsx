@@ -15,7 +15,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import { lmsService } from '../../services/lmsService';
-import { LMSModule as LMSModuleType } from '../../types';
+import { LMSModule as LMSModuleType, MinedLevel } from '../../types';
 import WelcomeBanner from '../shared/WelcomeBanner';
 import CourseCard from './shared/CourseCard';
 
@@ -314,9 +314,10 @@ export const StudentLMSDashboard: React.FC<StudentLMSDashboardProps> = ({
                   color: mod.color || '#0D71B9',
                   icon: mod.icon || 'BookOpen',
                   teacherName: mod.teacherName,
+                  teacherId: mod.teacherId || '',
                   classroom: mod.classroom || '',
                   progress: mod.progress || 0,
-                  minedLevel: mod.minedLevel,
+                  minedLevel: (mod.minedLevel || 4) as MinedLevel,
                   averageGrade: mod.averageGrade,
                   status: mod.status as any,
                   gradeId: mod.gradeId,

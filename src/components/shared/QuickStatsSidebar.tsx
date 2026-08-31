@@ -5,17 +5,20 @@
  *  1. Tarjeta de usuario (perfil + rol)
  *  2. Mini Calendario Mensual con días de asueto marcados
  *  3. Lista de próximos eventos del calendario institucional
- *  4. Acceso a Configuración del Calendario (solo admin/coordinación)
+ *  4. Próximas Entregas LMS (si el rol tiene permiso lms)
+ *  5. Acceso a Configuración del Calendario (solo admin/coordinación)
  */
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   CalendarDays, ChevronLeft, ChevronRight, Settings2,
-  Flag, PartyPopper, GraduationCap, AlertCircle, BookOpen
+  Flag, PartyPopper, GraduationCap, AlertCircle, BookOpen, Clock
 } from 'lucide-react';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
+import { lmsService } from '../../services/lmsService';
+import { LMSActivity } from '../../types';
 import CalendarConfigModal, { CalendarEvent, EventType } from './CalendarConfigModal';
 
 /* ─── Event type display config ─── */
@@ -44,16 +47,23 @@ function getFirstDayOfMonth(year: number, month: number) {
 export default function QuickStatsSidebar() {
   const { userProfile, userRole } = useAuth();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [lmsActivities, setLmsActivities] = useState<LMSActivity[]>([]);
   const [showConfig, setShowConfig] = useState(false);
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const today = new Date();
 
   const canManageCalendar = userRole === 'admin' || userRole === 'coordinacion';
+  const showLmsDeliveries = userRole === 'alumno';
 
   useEffect(() => {
     loadEvents();
-  }, []);
+    if (showLmsDeliveries) {
+      loadLmsActivities();
+      const unsub = lmsService.subscribe(() => loadLmsActivities());
+      return () => unsub();
+    }
+  }, [showLmsDeliveries]);
 
   const loadEvents = async () => {
     try {
@@ -63,6 +73,12 @@ export default function QuickStatsSidebar() {
     } catch {
       // silently fail if no events yet
     }
+  };
+
+  const loadLmsActivities = () => {
+    const all = lmsService.getActivities();
+    const pending = all.filter(a => a.status === 'pendiente');
+    setLmsActivities(pending);
   };
 
   /* Build set of event dates for the current calendar month */
@@ -244,6 +260,48 @@ export default function QuickStatsSidebar() {
             </div>
           )}
         </div>
+
+        {/* ── Próximas Entregas LMS ── */}
+        {showLmsDeliveries && lmsActivities.length > 0 && (
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 space-y-2 dark:border-slate-700 dark:bg-slate-800">
+            <div className="flex items-center justify-between">
+              <h4 className="text-[0.625rem] font-bold text-slate-800 uppercase tracking-wider font-display dark:text-slate-100">
+                Próximas Entregas
+              </h4>
+              <span className="text-[0.5rem] font-bold text-[#25855A] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                LMS
+              </span>
+            </div>
+
+            <div className="space-y-1.5">
+              {lmsActivities.slice(0, 3).map((act) => (
+                <div
+                  key={act.id}
+                  className="p-2 rounded-xl bg-slate-50 border border-slate-200/70 hover:border-[#25855A]/50 transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between text-[0.5625rem] mb-0.5">
+                    <span
+                      className="font-bold truncate max-w-[100px]"
+                      style={{ color: act.courseColor || '#0D71B9' }}
+                    >
+                      {act.courseName}
+                    </span>
+                    <span className="text-slate-500 flex items-center gap-0.5">
+                      <Clock className="w-2 h-2" />
+                      {new Date(act.dueDate).toLocaleDateString('es-SV', {
+                        day: 'numeric',
+                        month: 'short',
+                      })}
+                    </span>
+                  </div>
+                  <p className="text-[0.625rem] font-semibold text-slate-800 line-clamp-1 group-hover:text-[#25855A] transition-colors">
+                    {act.title}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── Configurar Calendario (solo admin / coordinación) ── */}
         {canManageCalendar && (

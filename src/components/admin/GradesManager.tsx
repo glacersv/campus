@@ -447,6 +447,7 @@ export default function GradesManager() {
         <div className="grid grid-cols-3 gap-3">
           {filtered.map((g, i) => {
             const sectionsCount = sections.filter((s) => s.gradeId === g.id).length;
+            const gradeStudentsCount = students.filter(st => st.gradeId === g.id).length;
             const buildingName = getGradeBuildingName(g.id);
             return (
               <GradeCard
@@ -454,6 +455,7 @@ export default function GradesManager() {
                 grade={g}
                 index={i}
                 sectionsCount={sectionsCount}
+                studentsCount={gradeStudentsCount}
                 buildingName={buildingName}
                 selected={selected.has(g.id)}
                 onToggleSelect={() => toggleSelect(g.id)}

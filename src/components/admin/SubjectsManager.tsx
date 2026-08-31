@@ -16,7 +16,31 @@ import {
   Clock,
   HelpCircle,
   Minus,
-  RefreshCw
+  RefreshCw,
+  Compass,
+  Languages,
+  Sparkles,
+  Palette,
+  PenTool,
+  Brush,
+  Feather,
+  Briefcase,
+  Layout,
+  Radio,
+  Image,
+  Globe,
+  Megaphone,
+  BookOpen,
+  Box,
+  TrendingUp,
+  Printer,
+  Camera,
+  Award,
+  Target,
+  Video,
+  Coins,
+  Presentation,
+  MapPin,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -33,9 +57,40 @@ import {
   getAllTeachers,
   ensureTechnicalGrades,
   cleanupDuplicateGrades,
-  seedBTVCurriculumToFirestore
+  seedBTVCurriculumToFirestore,
+  getAllBuildings,
+  getAllComputerLabs,
 } from '../../lib/firestore';
-import { Subject, Grade, CYCLE_NAMES, Cycle, LMSModule, Teacher } from '../../types';
+import { Subject, Grade, CYCLE_NAMES, Cycle, LMSModule, Teacher, Building, ComputerLab } from '../../types';
+import { BTV_GRAPHIC_DESIGN_COURSES } from '../../services/btvCurriculumData';
+
+// Iconos disponibles para módulos
+const ICON_OPTIONS = [
+  { name: 'Compass', icon: Compass },
+  { name: 'Languages', icon: Languages },
+  { name: 'Search', icon: Search },
+  { name: 'Sparkles', icon: Sparkles },
+  { name: 'Palette', icon: Palette },
+  { name: 'PenTool', icon: PenTool },
+  { name: 'Brush', icon: Brush },
+  { name: 'Feather', icon: Feather },
+  { name: 'Briefcase', icon: Briefcase },
+  { name: 'Layout', icon: Layout },
+  { name: 'Radio', icon: Radio },
+  { name: 'Image', icon: Image },
+  { name: 'Globe', icon: Globe },
+  { name: 'Megaphone', icon: Megaphone },
+  { name: 'BookOpen', icon: BookOpen },
+  { name: 'Box', icon: Box },
+  { name: 'TrendingUp', icon: TrendingUp },
+  { name: 'Printer', icon: Printer },
+  { name: 'Camera', icon: Camera },
+  { name: 'Award', icon: Award },
+  { name: 'Target', icon: Target },
+  { name: 'Video', icon: Video },
+  { name: 'Coins', icon: Coins },
+  { name: 'Presentation', icon: Presentation },
+];
 
 // Centralized ordering for grades to sort chronologically
 const GRADE_ORDER: Record<string, number> = {
@@ -49,6 +104,8 @@ export default function SubjectsManager() {
   const [grades, setGrades] = useState<Grade[]>([]);
   const [lmsModules, setLmsModules] = useState<LMSModule[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [buildings, setBuildings] = useState<Building[]>([]);
+  const [computerLabs, setComputerLabs] = useState<ComputerLab[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -85,6 +142,15 @@ export default function SubjectsManager() {
     hours: 72,
     weeks: 4,
     status: 'active' as 'active' | 'inactive',
+    description: '',
+    affineArea: '',
+    icon: 'BookOpen',
+    color: '#0D71B9',
+    classroom: '',
+    sectionId: '',
+    sectionName: '',
+    unitsCount: 6,
+    activitiesCount: 3,
   });
 
   useEffect(() => { loadData(); }, []);
@@ -94,11 +160,13 @@ export default function SubjectsManager() {
       await ensureTechnicalGrades();
       await cleanupDuplicateGrades();
       await seedBTVCurriculumToFirestore();
-      const [subs, grds, modules, tchs] = await Promise.all([
+      const [subs, grds, modules, tchs, blds, labs] = await Promise.all([
         getAllSubjects(),
         getAllGrades(),
         getAllLMSModules(),
-        getAllTeachers()
+        getAllTeachers(),
+        getAllBuildings(),
+        getAllComputerLabs(),
       ]);
       // Sort grades chronologically
       const sortedGrades = [...grds].sort((a, b) => (GRADE_ORDER[a.id] || 99) - (GRADE_ORDER[b.id] || 99));
@@ -106,6 +174,8 @@ export default function SubjectsManager() {
       setGrades(sortedGrades);
       setLmsModules(modules);
       setTeachers(tchs);
+      setBuildings(blds);
+      setComputerLabs(labs);
     } finally { setLoading(false); }
   };
 
@@ -284,6 +354,15 @@ export default function SubjectsManager() {
       hours: 72,
       weeks: 4,
       status: 'active',
+      description: '',
+      affineArea: '',
+      icon: 'BookOpen',
+      color: '#0D71B9',
+      classroom: '',
+      sectionId: '',
+      sectionName: '',
+      unitsCount: 6,
+      activitiesCount: 3,
     });
     setEditingId(null);
   };
@@ -302,14 +381,24 @@ export default function SubjectsManager() {
         name: moduleForm.name.trim(),
         code: moduleForm.code.trim(),
         subjectId: moduleForm.subjectId || moduleForm.code.toLowerCase().replace(/\s+/g, '-'),
-        teacherId: moduleForm.teacherId || 'doc-1',
-        teacherName: teacher?.name || moduleForm.teacherName || 'Docente',
+        teacherId: moduleForm.teacherId || 't_1786176116597',
+        teacherName: teacher?.name || moduleForm.teacherName || 'Giovanni Marquez',
         gradeId: moduleForm.gradeId,
         gradeName: grade?.name || moduleForm.gradeName || '',
         technicalYear: moduleForm.technicalYear,
         hours: Number(moduleForm.hours) || 72,
         weeks: Number(moduleForm.weeks) || 4,
         status: moduleForm.status,
+        description: moduleForm.description,
+        affineArea: moduleForm.affineArea,
+        icon: moduleForm.icon,
+        color: moduleForm.color,
+        schedule: `Semana 1 • ${Number(moduleForm.hours) || 72} Horas • ${Number(moduleForm.weeks) || 4} ${Number(moduleForm.weeks) === 1 ? 'semana' : 'semanas'}`,
+        classroom: moduleForm.classroom,
+        sectionId: moduleForm.sectionId,
+        sectionName: moduleForm.sectionName,
+        unitsCount: Number(moduleForm.unitsCount) || 6,
+        activitiesCount: Number(moduleForm.activitiesCount) || 3,
         descriptor: {
           objective: '',
           units: [],
@@ -347,6 +436,10 @@ export default function SubjectsManager() {
 
   const handleEditModule = (mod: LMSModule) => {
     setEditingId(mod.id);
+
+    // Buscar datos hardcodeados por código para poblar campos vacíos
+    const hardcoded = BTV_GRAPHIC_DESIGN_COURSES.find(c => c.code === mod.code);
+
     setModuleForm({
       name: mod.name,
       code: mod.code,
@@ -359,6 +452,15 @@ export default function SubjectsManager() {
       hours: mod.hours,
       weeks: mod.weeks,
       status: mod.status,
+      description: mod.description || hardcoded?.description || '',
+      affineArea: mod.affineArea || hardcoded?.affineArea || '',
+      icon: mod.icon || hardcoded?.icon || 'BookOpen',
+      color: mod.color || hardcoded?.color || '#0D71B9',
+      classroom: mod.classroom || hardcoded?.classroom || '',
+      sectionId: mod.sectionId || hardcoded?.sectionId || '',
+      sectionName: mod.sectionName || hardcoded?.sectionName || '',
+      unitsCount: mod.unitsCount || (hardcoded as any)?.unitsCount || 6,
+      activitiesCount: mod.activitiesCount || (hardcoded as any)?.activitiesCount || 3,
     });
     setShowForm(true);
   };
@@ -878,6 +980,151 @@ export default function SubjectsManager() {
                       >
                         Inactivo
                       </button>
+                    </div>
+                  </div>
+
+                  {/* Campos Extendidos */}
+                  <div className="border-t border-slate-200 pt-4 space-y-4">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Campos Extendidos del Módulo</span>
+
+                    {/* Descripción */}
+                    <div className="space-y-1">
+                      <label className="form-label text-slate-700">Descripción del Módulo</label>
+                      <textarea
+                        value={moduleForm.description}
+                        onChange={e => setModuleForm(p => ({ ...p, description: e.target.value }))}
+                        placeholder="Descripción detallada del módulo técnico..."
+                        className="input-crema h-16 resize-none text-xs"
+                      />
+                    </div>
+
+                    {/* Área Afín + Aula */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="form-label text-slate-700">Área Afín</label>
+                        <input
+                          type="text"
+                          value={moduleForm.affineArea}
+                          onChange={e => setModuleForm(p => ({ ...p, affineArea: e.target.value }))}
+                          placeholder="Ej: Diseño y diagramación"
+                          className="input-crema text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="form-label text-slate-700">Aula / Taller</label>
+                        <div className="flex flex-wrap gap-1.5 max-h-[100px] overflow-y-auto pr-1">
+                          <button
+                            type="button"
+                            onClick={() => setModuleForm(p => ({ ...p, classroom: '' }))}
+                            className={`px-2.5 py-1 rounded-lg border text-[11px] font-semibold cursor-pointer transition-all ${
+                              !moduleForm.classroom
+                                ? 'bg-primary border-primary text-white shadow-xs'
+                                : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
+                            }`}
+                          >
+                            Sin asignar
+                          </button>
+                          {buildings.map(b => (
+                            <button
+                              key={b.id}
+                              type="button"
+                              onClick={() => setModuleForm(p => ({ ...p, classroom: b.name }))}
+                              className={`px-2.5 py-1 rounded-lg border text-[11px] font-semibold cursor-pointer transition-all ${
+                                moduleForm.classroom === b.name
+                                  ? 'bg-primary border-primary text-white shadow-xs'
+                                  : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
+                              }`}
+                            >
+                              {b.name}
+                            </button>
+                          ))}
+                          {computerLabs.map(l => (
+                            <button
+                              key={l.id}
+                              type="button"
+                              onClick={() => setModuleForm(p => ({ ...p, classroom: l.name }))}
+                              className={`px-2.5 py-1 rounded-lg border text-[11px] font-semibold cursor-pointer transition-all ${
+                                moduleForm.classroom === l.name
+                                  ? 'bg-primary border-primary text-white shadow-xs'
+                                  : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
+                              }`}
+                            >
+                              {l.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Selector de Ícono Visual */}
+                    <div className="space-y-1.5">
+                      <label className="form-label text-slate-700">Ícono del Módulo</label>
+                      <div className="grid grid-cols-8 gap-1.5 bg-slate-50 p-2 rounded-xl border border-slate-200/60 max-h-[120px] overflow-y-auto">
+                        {ICON_OPTIONS.map(opt => {
+                          const IconComp = opt.icon;
+                          return (
+                            <button
+                              key={opt.name}
+                              type="button"
+                              onClick={() => setModuleForm(p => ({ ...p, icon: opt.name }))}
+                              title={opt.name}
+                              className={`p-2 rounded-lg border cursor-pointer transition-all flex items-center justify-center ${
+                                moduleForm.icon === opt.name
+                                  ? 'bg-primary text-white border-primary shadow-sm'
+                                  : 'bg-white text-slate-500 border-slate-200 hover:border-primary hover:text-primary'
+                              }`}
+                            >
+                              <IconComp className="w-4 h-4" />
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <span className="text-[10px] text-slate-400">Seleccionado: {moduleForm.icon}</span>
+                    </div>
+
+                    {/* Color */}
+                    <div className="space-y-1">
+                      <label className="form-label text-slate-700">Color</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={moduleForm.color}
+                          onChange={e => setModuleForm(p => ({ ...p, color: e.target.value }))}
+                          className="w-8 h-8 rounded border border-slate-200 cursor-pointer"
+                        />
+                        <input
+                          type="text"
+                          value={moduleForm.color}
+                          onChange={e => setModuleForm(p => ({ ...p, color: e.target.value }))}
+                          className="input-crema text-xs flex-1 font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Unidades + Actividades */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="form-label text-slate-700">Unidades</label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={20}
+                          value={moduleForm.unitsCount}
+                          onChange={e => setModuleForm(p => ({ ...p, unitsCount: Number(e.target.value) }))}
+                          className="input-crema text-xs font-bold"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="form-label text-slate-700">Actividades</label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={50}
+                          value={moduleForm.activitiesCount}
+                          onChange={e => setModuleForm(p => ({ ...p, activitiesCount: Number(e.target.value) }))}
+                          className="input-crema text-xs font-bold"
+                        />
+                      </div>
                     </div>
                   </div>
 

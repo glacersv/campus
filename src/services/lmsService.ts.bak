@@ -37,7 +37,6 @@ const LMS_DOC_REF = doc(db, 'lms_state', 'global');
 const LMS_MODULES_COLLECTION = 'lms_modules';
 const LMS_MODULE_CONTENT_COLLECTION = 'lms_module_content';
 const LMS_CALENDAR_COLLECTION = 'lms_calendar';
-const TEACHERS_COLLECTION = 'teachers';
 
 // Genera los 6 módulos de acción completa para un curso
 const buildActionStageModules = (courseId: string): LMSCourseModule[] => {
@@ -256,15 +255,9 @@ class LMSService {
   private state: LMSState = { ...DEFAULT_STATE };
   private listeners: (() => void)[] = [];
   private unsubscribeFirestore?: Unsubscribe;
-  private teachersCache: Map<string, string> = new Map(); // teacherId -> teacherName
 
   constructor() {
     this.init();
-  }
-
-  public async reseedAll(): Promise<void> {
-    this.seedInitialData();
-    await this.saveToFirestore();
   }
 
   private async init() {
@@ -287,11 +280,7 @@ class LMSService {
     this.unsubscribeFirestore = onSnapshot(LMS_DOC_REF, (snap) => {
       if (snap.exists()) {
         const data = snap.data() as LMSState;
-        const currentActiveYear = this.state.activeYear;
         this.state = { ...DEFAULT_STATE, ...data };
-        this.state.activeYear = data.activeYear || currentActiveYear || '1';
-        // Resolver nombres de docentes desde Firebase después de cargar cursos
-        this.resolveTeacherNames();
         this.notify();
       }
     });
@@ -302,69 +291,6 @@ class LMSService {
         this.notify();
       });
     }
-
-    // 4. Cargar docentes de Firebase para resolver teacherId -> nombre real
-    this.loadTeachersFromFirebase();
-  }
-
-  private async loadTeachersFromFirebase() {
-    try {
-      const snap = await getDocs(collection(db, TEACHERS_COLLECTION));
-      this.teachersCache.clear();
-      snap.docs.forEach((d) => {
-        const data = d.data();
-        if (data.name) {
-          this.teachersCache.set(d.id, data.name);
-          this.teachersCache.set(data.name.toLowerCase(), data.name);
-          const idParts = d.id.toLowerCase().split('-');
-          if (idParts.length > 1) {
-            this.teachersCache.set(idParts[idParts.length - 1], data.name);
-          }
-        }
-      });
-      console.log('📚 Docentes cargados desde Firebase:', Object.fromEntries(this.teachersCache));
-      // Resolver nombres en los cursos existentes y notificar cambio
-      this.resolveTeacherNames();
-      this.notify();
-    } catch (e) {
-      console.error('Error loading teachers from Firebase:', e);
-    }
-  }
-
-  private resolveTeacherNames() {
-    this.state.courses.forEach((c) => {
-      const resolved = this.resolveTeacherName(c.teacherId, c.teacherName);
-      if (resolved) c.teacherName = resolved;
-    });
-  }
-
-  /** Obtiene el nombre del docente desde Firebase (siempre fresco) */
-  public getTeacherName(teacherId?: string): string {
-    if (!teacherId) return 'Sin docente asignado';
-    const fromCache = this.teachersCache.get(teacherId);
-    if (fromCache) return fromCache;
-    // Fallback: buscar por última parte del ID
-    const parts = teacherId.toLowerCase().split('-');
-    const lastPart = parts[parts.length - 1];
-    return this.teachersCache.get(lastPart) || 'Sin docente asignado';
-  }
-
-  public resolveTeacherName(teacherId?: string, fallback?: string): string | undefined {
-    if (!teacherId) return fallback;
-    // 1. Buscar por ID exacto
-    const byId = this.teachersCache.get(teacherId);
-    if (byId) return byId;
-    // 2. Buscar por última parte del ID (ej: 'doc-karla' -> 'karla')
-    const parts = teacherId.toLowerCase().split('-');
-    const lastPart = parts[parts.length - 1];
-    const byPart = this.teachersCache.get(lastPart);
-    if (byPart) return byPart;
-    // 3. Buscar por nombre exacto en el cache
-    if (fallback) {
-      const byName = this.teachersCache.get(fallback.toLowerCase());
-      if (byName) return byName;
-    }
-    return fallback;
   }
 
   private loadFromLocalStorage() {
@@ -411,49 +337,12 @@ class LMSService {
     this.state.activeYear = '1';
 
     this.saveToLocalStorage();
-    this.saveToFirestore();
   }
 
   private async saveToFirestore() {
     try {
       const sanitized = JSON.parse(JSON.stringify(this.state));
       await setDoc(LMS_DOC_REF, sanitized);
-
-      // Sincronizar módulos/cursos a lms_modules para que el alumno y docente los vean
-      const modulesRefs = this.state.courses.map((c) => {
-        const ref = doc(db, LMS_MODULES_COLLECTION, c.id);
-        const resolvedTeacherName = this.resolveTeacherName(c.teacherId, c.teacherName);
-        return setDoc(ref, {
-          id: c.id,
-          name: c.name,
-          code: c.code,
-          subjectId: c.subjectId || c.code.toLowerCase().replace(/\s+/g, '-'),
-          teacherId: c.teacherId || 't_1786176116597',
-          teacherName: resolvedTeacherName || c.teacherName || 'Giovanni Marquez',
-          gradeId: c.gradeId || '10',
-          gradeName: c.gradeName || '1° Año Técnico',
-          technicalYear: c.technicalYear || '1',
-          hours: c.hours || 72,
-          weeks: c.weeks || 4,
-          status: c.status || 'active',
-          description: c.description || '',
-          icon: c.icon || 'BookOpen',
-          color: c.color || '#0D71B9',
-          affineArea: c.affineArea || '',
-          schedule: c.schedule || '',
-          classroom: c.classroom || '',
-          sectionId: c.sectionId || '',
-          sectionName: c.sectionName || '',
-          progress: c.progress ?? 0,
-          averageGrade: c.averageGrade ?? 0,
-          minedLevel: c.minedLevel ?? 4,
-          unitsCount: (c as any).unitsCount ?? 6,
-          activitiesCount: (c as any).activitiesCount ?? 3,
-          descriptor: c.descriptor || getModuleDescriptorData(c.code),
-        });
-      });
-
-      await Promise.all(modulesRefs);
     } catch (e) {
       console.error('Failed to save LMS state to Firestore', e);
     }
@@ -493,7 +382,7 @@ class LMSService {
   public setActiveTechnicalYear(year: TechnicalYear) {
     this.state.activeYear = year;
     this.saveToLocalStorage();
-    // No sincronizar a Firestore: el año activo es preferencia individual del usuario
+    this.saveToFirestore();
   }
 
   public getAcademicCohortYear(): string {
@@ -679,8 +568,8 @@ class LMSService {
       name: courseData.name,
       code: courseData.code,
       description: courseData.description || '',
-      teacherId: courseData.teacherId || 't_1786176116597',
-      teacherName: courseData.teacherName || 'Giovanni Marquez',
+      teacherId: courseData.teacherId || 'doc-1',
+      teacherName: courseData.teacherName || 'Docente de Especialidad',
       gradeId: courseData.gradeId || '10',
       gradeName: courseData.gradeName || '1° Año Técnico',
       sectionId: courseData.sectionId || 'A',
@@ -1019,8 +908,8 @@ class LMSService {
       name: data.name,
       code: data.code,
       subjectId: data.subjectId,
-      teacherId: data.teacherId || 't_1786176116597',
-      teacherName: data.teacherName || 'Giovanni Marquez',
+      teacherId: data.teacherId || 'doc-1',
+      teacherName: data.teacherName || 'Docente',
       gradeId: data.gradeId || '12',
       gradeName: data.gradeName || '12° Grado',
       technicalYear: data.technicalYear || '1',
@@ -1059,99 +948,14 @@ class LMSService {
 
   public async getAllModules(): Promise<LMSModule[]> {
     const snap = await getDocs(collection(db, LMS_MODULES_COLLECTION));
-    const modules = snap.docs.map(d => ({ id: d.id, ...d.data() } as LMSModule));
-
-    if (modules.length === 0) {
-      try {
-        const stateSnap = await getDoc(LMS_DOC_REF);
-        if (stateSnap.exists()) {
-          const stateData = stateSnap.data() as any;
-          const courses = (stateData?.courses || []) as any[];
-          return courses.map((c) => ({
-            id: c.id,
-            name: c.name,
-            code: c.code,
-            subjectId: c.subjectId || c.code.toLowerCase().replace(/\s+/g, '-'),
-            teacherId: c.teacherId || 't_1786176116597',
-            teacherName: c.teacherName || 'Giovanni Marquez',
-            gradeId: c.gradeId || '10',
-            gradeName: c.gradeName || '1° Año Técnico',
-            technicalYear: c.technicalYear || '1',
-            hours: c.hours || 72,
-            weeks: c.weeks || 4,
-            status: c.status || 'active',
-            description: c.description || '',
-            icon: c.icon || 'BookOpen',
-            color: c.color || '#0D71B9',
-            affineArea: c.affineArea || '',
-            schedule: c.schedule || '',
-            classroom: c.classroom || '',
-            sectionId: c.sectionId || '',
-            sectionName: c.sectionName || '',
-            progress: c.progress ?? 0,
-            averageGrade: c.averageGrade,
-            minedLevel: c.minedLevel,
-            descriptor: c.descriptor || getModuleDescriptorData(c.code),
-          } as LMSModule));
-        }
-      } catch (e) {
-        console.error('Error loading modules from lms_state fallback:', e);
-      }
-    }
-
-    return modules;
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as LMSModule));
   }
 
   public async getModuleById(moduleId: string): Promise<LMSModule | null> {
-    // 1. Try Firestore first
-    try {
-      const ref = doc(db, LMS_MODULES_COLLECTION, moduleId);
-      const snap = await getDoc(ref);
-      if (snap.exists()) {
-        const module = { id: snap.id, ...snap.data() } as LMSModule;
-        if (!module.descriptor || Object.keys(module.descriptor).length === 0) {
-          module.descriptor = getModuleDescriptorData(module.code);
-        }
-        return module;
-      }
-    } catch (e) {
-      console.error('Error loading module from Firestore:', e);
-    }
-
-    // 2. Fallback: search local state (courses seeded from btvCurriculumData)
-    const course = this.state.courses.find((c) => c.id === moduleId || c.code === moduleId);
-    if (course) {
-      return {
-        id: course.id,
-        name: course.name,
-        code: course.code,
-        subjectId: course.subjectId || course.code.toLowerCase().replace(/\s+/g, '-'),
-        teacherId: course.teacherId,
-        teacherName: course.teacherName,
-        gradeId: course.gradeId,
-        gradeName: course.gradeName,
-        technicalYear: course.technicalYear,
-        hours: course.hours,
-        weeks: course.weeks,
-        status: course.status === 'active' ? 'active' : 'inactive',
-        description: course.description,
-        icon: course.icon,
-        color: course.color,
-        affineArea: course.affineArea,
-        schedule: course.schedule,
-        classroom: course.classroom,
-        sectionId: course.sectionId,
-        sectionName: course.sectionName,
-        progress: course.progress,
-        averageGrade: course.averageGrade,
-        minedLevel: course.minedLevel,
-        descriptor: course.descriptor as any || getModuleDescriptorData(course.code),
-        createdAt: course.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      } as LMSModule;
-    }
-
-    return null;
+    const ref = doc(db, LMS_MODULES_COLLECTION, moduleId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return null;
+    return { id: snap.id, ...snap.data() } as LMSModule;
   }
 
   public async updateModule(moduleId: string, data: Partial<LMSModule>): Promise<void> {

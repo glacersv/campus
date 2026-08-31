@@ -382,7 +382,7 @@ function AppContent() {
       <Routes>
         <Route path="/alumno" element={
           <RoleLayout modules={modules} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
-            <StudentDashboard studentName={userProfile.displayName} onLogout={signOut} />
+            {permissions.includes('lms') ? <AlumnoAulaVirtual /> : <StudentDashboard studentName={userProfile.displayName} onLogout={signOut} />}
           </RoleLayout>
         } />
         <Route path="/alumno/formacion" element={
@@ -479,10 +479,13 @@ function AppContent() {
   return withStyleWidget(
     <Routes>
       <Route path="/" element={
-        <StudentDashboard
-          studentName={userProfile.displayName}
-          onLogout={signOut}
-        />
+        normalizedRoleForView === 'alumno' ? (
+          <RoleLayout modules={getModules()} moduleIcons={roleModuleIcons} moduleColors={roleModuleColors}>
+            {getModules().includes('lms') ? <AlumnoAulaVirtual /> : <StudentDashboard studentName={userProfile.displayName} onLogout={signOut} />}
+          </RoleLayout>
+        ) : (
+          <StudentDashboard studentName={userProfile.displayName} onLogout={signOut} />
+        )
       } />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
@@ -509,8 +512,9 @@ function StudentLMSModule() {
 
 function LMSCourseDetailRoute() {
   const { courseId } = useParams<{ courseId: string }>();
+  const navigate = useNavigate();
   if (!courseId) return <Navigate to="/alumno/aula-virtual/cursos" replace />;
-  return <LMSCourseDetail courseId={courseId} />;
+  return <LMSCourseDetail courseId={courseId} onBack={() => navigate('/alumno/aula-virtual/cursos')} />;
 }
 
 function LMSActivityDetailRoute() {

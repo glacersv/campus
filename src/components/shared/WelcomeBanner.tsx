@@ -15,6 +15,7 @@ const BANNER_THEMES: Record<string, BannerTheme> = {
   proyectos: { light: 'from-[#7C2D12] via-[#F97316] to-[#C2410C]', dark: 'dark:from-[#0b1120] dark:via-[#4a1d09] dark:to-[#0b1120]' },
   'semana-juventud': { light: 'from-[#1E1B4B] via-[#6366F1] to-[#4338CA]', dark: 'dark:from-[#0b1120] dark:via-[#1e1b4b] dark:to-[#0b1120]' },
   'semana-juventud-admin': { light: 'from-[#1E1B4B] via-[#6366F1] to-[#4338CA]', dark: 'dark:from-[#0b1120] dark:via-[#1e1b4b] dark:to-[#0b1120]' },
+  lms: { light: 'from-[#0D71B9] via-[#25855A] to-[#1D6F4B]', dark: 'dark:from-[#0b1120] dark:via-[#0c3a52] dark:to-[#0b1120]' },
   perfil: { light: 'from-[#124D37] via-[#25855A] to-[#1D6F4B]', dark: 'dark:from-[#0b1120] dark:via-[#0a3d2b] dark:to-[#0b1120]' },
   general: { light: 'from-[#124D37] via-[#25855A] to-[#1D6F4B]', dark: 'dark:from-[#0b1120] dark:via-[#0a3d2b] dark:to-[#0b1120]' },
 };

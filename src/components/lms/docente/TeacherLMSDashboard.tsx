@@ -129,7 +129,7 @@ export default function TeacherLMSDashboard() {
                 </span>
                 <span className="flex items-center gap-1">
                   <Users className="w-3 h-3" />
-                  {mod.teacherName}
+                  {lmsService.getTeacherName(mod.teacherId)}
                 </span>
               </div>
 

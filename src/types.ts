@@ -779,32 +779,22 @@ export interface LMSModule {
   progress?: number;
   averageGrade?: number;
   minedLevel?: number;
+  unitsCount?: number;
+  activitiesCount?: number;
   descriptor: {
     objective?: string;
-    units: ModuleUnit[];
+    units?: ModuleUnit[];
     methodology?: string;
-    evaluationCriteria: string[];
-    bibliography: {
+    evaluationCriteria?: string[];
+    bibliography?: {
       books: string[];
       websites: string[];
     };
-    saberesPrevios: SaberPrevio[];
-    developmentAxes: {
-      desarrolloTecnico: string;
-      desarrolloEmprendedor: string;
-      desarrolloHumanoSocial: string;
-      desarrolloAcademicoAplicado: string;
-    };
+    saberesPrevios?: SaberPrevio[];
+    developmentAxes?: Record<string, string>;
     competenceGeneral?: string;
     moduleObjective?: string;
-    actionStages?: Record<string, {
-      title: string;
-      hoursPercentage: number;
-      guidingQuestions: string[];
-      studentTasks: string[];
-      teacherTasks: string[];
-      suggestedTools: string[];
-    }>;
+    actionStages?: Record<string, any>;
     saberesNecesarios?: Array<{ id: string; description: string }>;
     currentProject?: ProjectBrief;
     availableProjects?: ProjectBrief[];
@@ -814,12 +804,7 @@ export interface LMSModule {
       effect: string;
       summary: string;
     };
-    resources?: {
-      materials: string[];
-      equipment: string[];
-      furniture: string[];
-      safety: string[];
-    };
+    resources?: Record<string, any>;
     prerequisite?: string;
     promotionCriteria?: string;
   };
