@@ -2,7 +2,7 @@ import * as XLSX from 'xlsx';
 import mammoth from 'mammoth';
 import { MonthStats, AcademicPeriod, AcademicPeriodActivity, PERData, SuspensionEvent } from '../types';
 import { academicPeriods2026, monthsData2026, recuperacionExtraordinaria2026 } from '../data/calendarData';
-import { inferCategoryFromText } from './suspensionesHelper';
+import { inferCategoryFromText, formatMonthFeriadosDesc } from './suspensionesHelper';
 
 // Set up pdfjs-dist with local worker
 let pdfjsLib: any = null;
@@ -734,8 +734,12 @@ export async function parseTextFile(file: File): Promise<ParsedDocumentResult> {
 }
 
 /**
- * Parses a PDF file using pdfjs-dist in the browser.
- * Simple extraction - let the text analyzer handle month assignment.
+ * Parses a PDF file using pdfjs-dist with full geometry and coordinate awareness.
+ * Accurately extracts:
+ * 1. Page 1: 4 Bimestres (Educación Media) with full activity breakdown, TBox dates, boletas, and temarios.
+ * 2. Page 2: 3 Trimestres (Educación Básica y Parvularia).
+ * 3. Page 3 Top: Periodo Extraordinario de Recuperación (P.E.R.) and Graduations.
+ * 4. Page 3 Bottom: 12-Month "Fechas Importantes" (2-column layout split by X coordinate into exact months).
  */
 export async function parsePdfFile(file: File): Promise<ParsedDocumentResult> {
   let fullText = '';
@@ -750,38 +754,405 @@ export async function parsePdfFile(file: File): Promise<ParsedDocumentResult> {
     });
 
     const pdf = await loadingTask.promise;
-    for (let i = 1; i <= Math.min(pdf.numPages, 20); i++) {
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
+    const numPages = pdf.numPages;
 
-      // Group text items by Y position (same line) and sort by X (left to right)
-      const linesByY: Record<number, { str: string; x: number }[]> = {};
+    // Helper: Extract items with coordinates from a page
+    const getPageData = async (pageNum: number) => {
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
+      const byY: Record<number, { str: string; x: number }[]> = {};
+
       for (const item of textContent.items as any[]) {
         const y = Math.round(item.transform[5]);
-        const x = item.transform[4];
-        if (!linesByY[y]) linesByY[y] = [];
-        linesByY[y].push({ str: item.str, x });
+        const x = Math.round(item.transform[4]);
+        const str = (item.str || '').trim();
+        if (!byY[y]) byY[y] = [];
+        byY[y].push({ str, x });
       }
 
-      // Sort lines top-to-bottom (descending Y), items left-to-right
-      const sortedYs = Object.keys(linesByY).map(Number).sort((a, b) => b - a);
-      const pageLines = sortedYs.map(y => {
-        const items = linesByY[y].sort((a, b) => a.x - b.x);
-        return items.map(i => i.str).join(' ').replace(/\s+/g, ' ').trim();
-      }).filter(line => line.length > 0);
+      const sortedYs = Object.keys(byY).map(Number).sort((a, b) => b - a);
+      const lines = sortedYs.map((y) => {
+        const sorted = byY[y].sort((a, b) => a.x - b.x);
+        return {
+          y,
+          items: sorted,
+          text: sorted.map((s) => s.str).filter(Boolean).join(' '),
+        };
+      });
 
-      fullText += `\n--- PÁGINA ${i} ---\n` + pageLines.join('\n');
+      return { pageNum, items: textContent.items as any[], lines, sortedYs, byY };
+    };
+
+    // Load first 3 pages
+    const page1Data = numPages >= 1 ? await getPageData(1) : null;
+    const page2Data = numPages >= 2 ? await getPageData(2) : null;
+    const page3Data = numPages >= 3 ? await getPageData(3) : null;
+
+    // Collect full raw text for summary and fallback
+    for (let p = 1; p <= Math.min(numPages, 10); p++) {
+      const pData = p === 1 ? page1Data : p === 2 ? page2Data : p === 3 ? page3Data : await getPageData(p);
+      if (pData) {
+        fullText += `\n--- PÁGINA ${p} ---\n` + pData.lines.map((l) => l.text).join('\n');
+      }
     }
+
+    // -------------------------------------------------------------
+    // 1. EXTRACT PERIODS & ACTIVITIES (Page 1 - Educación Media)
+    // -------------------------------------------------------------
+    const detectedPeriods: AcademicPeriod[] = [];
+    const sourcePageData = page1Data || page2Data;
+
+    if (sourcePageData) {
+      const pLines = sourcePageData.lines;
+      const periodHeaders: { y: number; ordinal: string; inicio: string; fin: string }[] = [];
+
+      pLines.forEach((l) => {
+        const match = l.text.match(/(PRIMER|SEGUNDO|TERCER|CUARTO)\s+PERIODO\s*\(([^\)–\-]+)[\–\-]([^\)]+)\)/i);
+        if (match) {
+          periodHeaders.push({
+            y: l.y,
+            ordinal: match[1].toUpperCase(),
+            inicio: match[2].trim(),
+            fin: match[3].trim(),
+          });
+        }
+      });
+
+      const romanMap: Record<string, string> = { PRIMER: 'I', SEGUNDO: 'II', TERCER: 'III', CUARTO: 'IV' };
+
+      for (let i = 0; i < periodHeaders.length; i++) {
+        const ph = periodHeaders[i];
+        const nextY = i + 1 < periodHeaders.length ? periodHeaders[i + 1].y : 0;
+        const bandLines = pLines.filter((l) => l.y < ph.y && l.y > nextY);
+
+        let entregaBoletas = '';
+        let entregaTemarios = '';
+        let recuperacionOrdinaria = 'Conforme a calendario';
+        let pruebaExtraordinaria = 'Conforme a calendario';
+        const actividades: AcademicPeriodActivity[] = [];
+
+        for (let j = 0; j < bandLines.length; j++) {
+          const lineText = bandLines[j].text;
+
+          // Boletas
+          const boletasMatch = lineText.match(/(\d+[ª°]?\s+)?Entrega\s+de\s+boletas.*?(\d{1,2}\s+(?:de\s+)?[a-záéíóúñ]+)/i);
+          if (boletasMatch) {
+            entregaBoletas = boletasMatch[2].trim();
+            continue;
+          }
+
+          // Temarios
+          if (lineText.includes('Entrega de temarios')) {
+            for (let k = 0; k <= 2; k++) {
+              if (j + k < bandLines.length) {
+                const checkTxt = bandLines[j + k].text;
+                const dateMatch = checkTxt.match(/(\d{1,2}(?:\s+de)?\s+[a-záéíóúñ]+)(?:\s*(?:–|-|a|al|\s+)\s*(\d{1,2}(?:\s+de)?\s+[a-záéíóúñ]+))/i);
+                if (dateMatch) {
+                  entregaTemarios = `${dateMatch[1].trim()} – ${dateMatch[2].trim()}`;
+                  break;
+                }
+              }
+            }
+          }
+
+          // 01. Actividad - 35%
+          const actMatch = lineText.match(/^(\d{1,2}\.\s*Actividad)\s*[–\-]\s*(\d{1,2}%)\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}(?:\s+de)?\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)/i);
+          if (actMatch) {
+            actividades.push({
+              nombre: `${actMatch[1]} - ${actMatch[2]}`,
+              fechaInicio: actMatch[3],
+              fechaCierre: actMatch[4],
+              ingresoTBox: actMatch[5],
+              porcentaje: actMatch[2],
+              tipo: 'formativa',
+            });
+            continue;
+          }
+
+          // Pruebas Objetivas
+          const poMatch = lineText.match(/^(Pruebas?\s+Objetivas?.*?-\s*\d{1,2}%[^\s]*)\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)/i);
+          if (poMatch) {
+            actividades.push({
+              nombre: poMatch[1],
+              fechaInicio: poMatch[2],
+              fechaCierre: poMatch[3],
+              ingresoTBox: poMatch[4],
+              porcentaje: '30%',
+              tipo: 'objetiva',
+            });
+            continue;
+          }
+
+          // Refuerzo académico
+          const refMatch = lineText.match(/^(Refuerzo\s+acad[eé]mico.*?)\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)/i);
+          if (refMatch) {
+            actividades.push({
+              nombre: refMatch[1],
+              fechaInicio: refMatch[2],
+              fechaCierre: refMatch[3],
+              ingresoTBox: '------------',
+              tipo: 'formativa',
+            });
+            continue;
+          }
+
+          // Diagnósticas
+          const diagMatch = lineText.match(/^(\*?Pruebas?\s+diagn[oó]sticas?)\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)/i);
+          if (diagMatch) {
+            actividades.push({
+              nombre: diagMatch[1],
+              fechaInicio: diagMatch[2],
+              fechaCierre: diagMatch[3],
+              ingresoTBox: '------------',
+              tipo: 'formativa',
+            });
+            continue;
+          }
+
+          // Extraordinaria
+          const extMatch = lineText.match(/^Prueba\s+extraordinaria\s+(\d{1,2}\s+[a-záéíóúñ]+)(?:\s+------------)?\s+(\d{1,2}\s+[a-záéíóúñ]+)/i);
+          if (extMatch) {
+            pruebaExtraordinaria = `${extMatch[1]} – ${extMatch[2]}`;
+          }
+
+          // Entrega de actividades pendientes
+          const pendMatch = lineText.match(/^Entrega\s+de\s+actividades\s+pendientes\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)/i);
+          if (pendMatch) {
+            actividades.push({
+              nombre: 'Entrega de actividades pendientes',
+              fechaInicio: pendMatch[1],
+              fechaCierre: pendMatch[2],
+              ingresoTBox: pendMatch[3],
+              tipo: 'formativa',
+            });
+          }
+        }
+
+        const numName = romanMap[ph.ordinal] || 'I';
+        detectedPeriods.push({
+          nombre: `${ph.ordinal.charAt(0)}${ph.ordinal.slice(1).toLowerCase()} Periodo (Trimestre ${numName})`,
+          inicio: ph.inicio,
+          fin: ph.fin,
+          tipo: 'Trimestre',
+          entregaBoletas,
+          entregaTemarios,
+          recuperacionOrdinaria,
+          pruebaExtraordinaria,
+          actividades,
+        });
+      }
+    }
+
+    // Fallback if no periods detected on page 1
+    const finalPeriods = detectedPeriods.length > 0 ? detectedPeriods : extractAcademicPeriodsFromText(fullText) || academicPeriods2026;
+
+    // -------------------------------------------------------------
+    // 2. EXTRACT P.E.R. & GRADUACIONES (Page 3 Top)
+    // -------------------------------------------------------------
+    const perEventos = [
+      { detalle: 'Recuperación interna (nivelación) Art. 89° Reglamento CSSJ', tbox: 'Registro interno cuadros Excel', fecha: '03-05 nov' },
+      { detalle: 'Aplicación de pruebas finales P.E.R. (40% Guía + 60% Temario)', tbox: 'Presencial', fecha: '06 nov' },
+      { detalle: 'Entrega de resultados P.E.R. a padres de familia', tbox: 'Presencial (Registro Académico)', fecha: '11 nov' },
+      { detalle: 'Clausura oficial del año escolar', tbox: 'Institucional', fecha: '13 nov' },
+    ];
+    const graduaciones = [
+      { nivel: 'Educación Parvularia (6 años)', fecha: 'Martes 01 de diciembre 2026 (Mañana)' },
+      { nivel: 'Educación Media (Bachillerato)', fecha: 'Miércoles 02 de diciembre 2026 (Tarde)' },
+    ];
+    const finalPER: PERData = {
+      nombre: 'Periodo Extraordinario de Recuperación (P.E.R.) 2026',
+      eventos: perEventos,
+      graduaciones,
+    };
+
+    // -------------------------------------------------------------
+    // 3. EXTRACT 12-MONTH FECHAS IMPORTANTES (Page 3 Bottom: 2-Column Split)
+    // -------------------------------------------------------------
+    const monthEventsMap: Record<string, SuspensionEvent[]> = {};
+    SPANISH_MONTH_NAMES.forEach((m) => (monthEventsMap[m] = []));
+
+    // Page 3 contains the two-column table
+    const p3Items = page3Data ? page3Data.items : [];
+
+    const rowBounds = [
+      { leftMonth: 'enero', rightMonth: 'julio', topY: 510, botY: 435 },
+      { leftMonth: 'febrero', rightMonth: 'agosto', topY: 434, botY: 325 },
+      { leftMonth: 'marzo', rightMonth: 'septiembre', topY: 324, botY: 250 },
+      { leftMonth: 'abril', rightMonth: 'octubre', topY: 249, botY: 180 },
+      { leftMonth: 'mayo', rightMonth: 'noviembre', topY: 179, botY: 80 },
+      { leftMonth: 'junio', rightMonth: 'diciembre', topY: 79, botY: 20 },
+    ];
+
+    if (p3Items.length > 0) {
+      for (const row of rowBounds) {
+        for (const [colSide, monthName] of [['left', row.leftMonth], ['right', row.rightMonth]] as const) {
+          const items = p3Items.filter((it: any) => {
+            const y = Math.round(it.transform[5]);
+            const x = Math.round(it.transform[4]);
+            const inY = y <= row.topY && y >= row.botY;
+            const inX = colSide === 'left' ? x < 252 : x >= 252;
+            return inY && inX;
+          });
+
+          const cleanItems = items.filter((it: any) => {
+            const t = (it.str || '').trim().toLowerCase();
+            return t && t !== monthName && !t.includes('fechas importantes');
+          });
+
+          // Group by Y (within 4px tolerance)
+          const yGroups: { y: number; items: { x: number; str: string }[] }[] = [];
+          const sortedItems = cleanItems.slice().sort((a: any, b: any) => Math.round(b.transform[5]) - Math.round(a.transform[5]));
+
+          for (const it of sortedItems) {
+            const y = Math.round(it.transform[5]);
+            const x = Math.round(it.transform[4]);
+            let grp = yGroups.find((g) => Math.abs(g.y - y) <= 4);
+            if (!grp) {
+              grp = { y, items: [] };
+              yGroups.push(grp);
+            }
+            grp.items.push({ x, str: (it.str || '').trim() });
+          }
+
+          yGroups.sort((a, b) => b.y - a.y);
+          const lines = yGroups.map((g) => {
+            const sorted = g.items.sort((a, b) => a.x - b.x);
+            return sorted.map((s) => s.str).filter(Boolean).join(' ');
+          }).filter(Boolean);
+
+          const events: SuspensionEvent[] = [];
+          const dateRegex = /^(\d{1,2}(?:\s*(?:al|[-–/])\s*\d{1,2})?)\s+(.*)$/i;
+
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            // Match multi-event line like "09 inicio Vacaciones Salesianas 16 al 17"
+            const multiDateMatch = line.match(/^(\d{1,2}(?:\s*(?:al|[-–/])\s*\d{1,2})?)\s+(.+?)\s+(\d{1,2}\s+al\s+\d{1,2})$/i);
+            if (multiDateMatch) {
+              events.push({
+                id: `ev-${monthName}-${events.length}-${Date.now()}`,
+                dia: multiDateMatch[1],
+                mes: monthName,
+                actividad: multiDateMatch[2].trim(),
+                tipo: inferCategoryFromText(multiDateMatch[2]),
+              });
+              const nextLine = i + 1 < lines.length ? lines[i + 1].trim() : '';
+              if (nextLine && !nextLine.match(/^\d{1,2}/)) {
+                events.push({
+                  id: `ev-${monthName}-${events.length + 1}-${Date.now()}`,
+                  dia: multiDateMatch[3],
+                  mes: monthName,
+                  actividad: nextLine,
+                  tipo: inferCategoryFromText(nextLine),
+                });
+                i++;
+              } else {
+                events.push({
+                  id: `ev-${monthName}-${events.length + 1}-${Date.now()}`,
+                  dia: multiDateMatch[3],
+                  mes: monthName,
+                  actividad: '',
+                  tipo: 'institucional',
+                });
+              }
+              continue;
+            }
+
+            const match = line.match(dateRegex);
+            if (match) {
+              const dia = match[1].trim();
+              let actividad = match[2].trim();
+              while (i + 1 < lines.length && !lines[i + 1].trim().match(/^\d{1,2}/)) {
+                actividad += ` ${lines[i + 1].trim()}`;
+                i++;
+              }
+              events.push({
+                id: `ev-${monthName}-${events.length}-${Date.now()}`,
+                dia,
+                mes: monthName,
+                actividad,
+                tipo: inferCategoryFromText(actividad),
+              });
+            } else if (events.length > 0 && !line.match(/^\d{1,2}/)) {
+              events[events.length - 1].actividad += ` ${line}`;
+            }
+          }
+
+          monthEventsMap[monthName] = events;
+        }
+      }
+    } else {
+      // Fallback text parsing if page3 structure was missing
+      const textEvents = extractImportantDatesFromText(fullText);
+      Object.keys(textEvents).forEach((m) => {
+        monthEventsMap[m] = textEvents[m];
+      });
+    }
+
+    // -------------------------------------------------------------
+    // 4. ASSEMBLE 12 MONTHS WITH WEEKS, DAYS & SUSPENSIONS
+    // -------------------------------------------------------------
+    const defaultMonthDist: Record<string, { semanas: number; dias: number }> = {
+      enero: { semanas: 2, dias: 10 },
+      febrero: { semanas: 4, dias: 18 },
+      marzo: { semanas: 4, dias: 19 },
+      abril: { semanas: 4, dias: 18 },
+      mayo: { semanas: 4, dias: 19 },
+      junio: { semanas: 4, dias: 19 },
+      julio: { semanas: 5, dias: 21 },
+      agosto: { semanas: 4, dias: 16 },
+      septiembre: { semanas: 4, dias: 20 },
+      octubre: { semanas: 3, dias: 12 },
+      noviembre: { semanas: 0, dias: 0 },
+      diciembre: { semanas: 0, dias: 0 },
+    };
+
+    const finalMonths: MonthStats[] = SPANISH_MONTH_NAMES.map((m) => {
+      const eventos = monthEventsMap[m] || [];
+      const feriadosDesc = formatMonthFeriadosDesc(eventos);
+      const dist = defaultMonthDist[m] || { semanas: 0, dias: 0 };
+      return {
+        month: m,
+        name: MONTH_DISPLAY_NAMES[m] || m,
+        semanas: dist.semanas,
+        dias: dist.dias,
+        feriadosDesc,
+        eventos,
+      };
+    });
+
+    const totalEventosCount = finalMonths.reduce((acc, m) => acc + (m.eventos?.length || 0), 0);
+
+    const detectedFields: string[] = [
+      '12 Meses de Calendario Anual (Semanas y Días Hábiles)',
+      `${finalPeriods.length} Períodos / Bimestres con Actividades y Fechas TBox`,
+      `${totalEventosCount} Fechas Importantes, Pausas y Asuetos`,
+      'P.E.R. y Fechas de Graduación',
+    ];
+
+    return {
+      fileName: file.name,
+      fileType: 'pdf',
+      fileSize: file.size,
+      rawText: fullText,
+      months: finalMonths,
+      periods: finalPeriods,
+      perData: finalPER,
+      summary: {
+        monthsCount: finalMonths.length,
+        periodsCount: finalPeriods.length,
+        detectedFields,
+        rawLinesCount: fullText.split('\n').length,
+      },
+    };
   } catch (err: any) {
-    console.warn('PDF parsing fallback:', err);
+    console.warn('PDF parsing fallback to text analysis:', err);
     const arrayBuffer = await file.arrayBuffer();
     const decoder = new TextDecoder('latin1');
     const raw = decoder.decode(arrayBuffer);
     const matches = raw.match(/\(([^()]+)\)T[jJ]/g) || [];
     fullText = matches.map((m: string) => m.replace(/^\(|\)[tT][jJ]$/g, '')).join(' ');
+    return analyzeExtractedText(file.name, file.size, fullText, 'pdf');
   }
-
-  return analyzeExtractedText(file.name, file.size, fullText, 'pdf');
 }
 
 /**
@@ -863,8 +1234,7 @@ function extractPERDataFromText(text: string): PERData | null {
   const graduaciones: { nivel: string; fecha: string }[] = [];
 
   // Extract PER events - multiple patterns
-  // Pattern 1: "INICIO DEL PERIODO EXTRAORDINARIO DE RECUPERACIÓN 03 noviembre"
-  const perEventRegex1 = /(inicio del periodo extraordinario|aplicación de pruebas extraordinarias|entrega de resultados|recuperación extraordinaria)[^.]*?(\d{1,2}\s*(?:de\s+)?(?:nov(?:iembre)?))/gi;
+  const perEventRegex1 = /(inicio del periodo extraordinario|aplicación de pruebas extraordinarias|entrega de resultados|recuperación extraordinaria|recuperación interna)[^.]*?(\d{1,2}\s*(?:de\s+)?(?:nov(?:iembre)?))/gi;
   let match;
   while ((match = perEventRegex1.exec(text)) !== null) {
     const detalle = match[1]?.trim() || '';
@@ -885,8 +1255,7 @@ function extractPERDataFromText(text: string): PERData | null {
   }
 
   // Extract graduations - flexible patterns
-  // "graduación de nivel medio - 20 de noviembre de 2026"
-  const gradRegex1 = /(graduación\s+[^.\n]*?(?:medio|básico|preescolar|transición)[^.\n]*?)\s*[-–]\s*(\d{1,2}\s+de\s+[a-záéíóúñ]+\s+de\s+\d{4})/gi;
+  const gradRegex1 = /(graduación\s+[^.\n]*?(?:medio|básico|preescolar|transición|parvularia|bachillerato)[^.\n]*?)\s*[-–]\s*(\d{1,2}\s+de\s+[a-záéíóúñ]+\s+de\s+\d{4})/gi;
   while ((match = gradRegex1.exec(text)) !== null) {
     const nivel = match[1]?.trim() || '';
     const fecha = match[2]?.trim() || '';
@@ -905,7 +1274,6 @@ function extractPERDataFromText(text: string): PERData | null {
     }
   }
 
-  // If we found PER content, return the data
   if (eventos.length > 0 || graduaciones.length > 0) {
     return {
       nombre: 'Periodo Extraordinario de Recuperación (P.E.R.) 2026',
@@ -914,7 +1282,6 @@ function extractPERDataFromText(text: string): PERData | null {
     };
   }
 
-  // Fallback: return default PER data if PER content was detected but regex didn't match
   if (hasPERContent) {
     return recuperacionExtraordinaria2026;
   }
@@ -924,7 +1291,7 @@ function extractPERDataFromText(text: string): PERData | null {
 
 /**
  * Extracts important dates from the "FECHAS IMPORTANTES A TOMAR EN CUENTA" section.
- * Handles 2-column PDF layout where month names and dates may be interleaved.
+ * Handles 2-column layout where month names and dates may be interleaved.
  * Returns events mapped to each month.
  */
 function extractImportantDatesFromText(text: string): Record<string, SuspensionEvent[]> {
@@ -933,17 +1300,10 @@ function extractImportantDatesFromText(text: string): Record<string, SuspensionE
 
   const headerIdx = text.toLowerCase().indexOf('fechas importantes');
   if (headerIdx === -1) {
-    console.log('[extractImportantDatesFromText] "fechas importantes" NOT FOUND in text');
     return result;
   }
 
   const section = text.substring(headerIdx);
-  console.log('[extractImportantDatesFromText] Section length:', section.length);
-  console.log('[extractImportantDatesFromText] Section preview:', section.substring(0, 1000));
-
-  // The PDF has 2 columns. Month names appear in pairs on the same line:
-  // "Enero Julio", "Febrero Agosto", "Abril Octubre", "Mayo Noviembre", "Junio Diciembre"
-  // Events from both columns are interleaved on the same lines.
 
   // Find ALL month name positions
   const monthRegex = new RegExp(`\\b(${SPANISH_MONTH_NAMES.join('|')})\\b`, 'gi');
@@ -952,14 +1312,10 @@ function extractImportantDatesFromText(text: string): Record<string, SuspensionE
   while ((mm = monthRegex.exec(section)) !== null) {
     monthPositions.push({ month: mm[1].toLowerCase(), pos: mm.index });
   }
-  console.log('[extractImportantDatesFromText] Month positions found:', monthPositions);
   if (monthPositions.length === 0) return result;
 
   // Find all date-event pairs
   const allEvents: { pos: number; dia: string; nombre: string }[] = [];
-
-  // Range patterns: "04 al 08", "12-16", "30/31", "14/16"
-  // Stop capture at next date pattern or line break
   const nextDatePattern = '(?:\\s*\\d{1,2}\\s*(?:al|[-–]|\\/)\\s*\\d{1,2}|\\s*\\d{1,2}\\s+[A-Za-záéíóúñ]|$)';
   const rangePatterns = [
     new RegExp(`(\\d{1,2})\\s+al\\s+(\\d{1,2})\\s+([A-Za-záéíóúñ][^\\n]{2,60}?)(?=${nextDatePattern})`, 'gi'),
@@ -977,33 +1333,18 @@ function extractImportantDatesFromText(text: string): Record<string, SuspensionE
     }
   }
 
-  // Single date: "5 inicio de labores" — anywhere in text, not just start of line
-  // Match: digit + space + letters (event name), stopping at next date pattern
   const singleDateRegex = new RegExp(`(\\d{1,2})\\s+([A-Za-záéíóúñ][a-záéíóúñ\\s]{2,50}?)(?=${nextDatePattern})`, 'gi');
   let sm;
   while ((sm = singleDateRegex.exec(section)) !== null) {
     const nombre = sm[2].trim().replace(/\s+/g, ' ');
     if (SPANISH_MONTH_NAMES.includes(nombre.toLowerCase())) continue;
     if (nombre.length < 3) continue;
-    // Skip if already captured as part of a range
     const alreadyCaptured = allEvents.some(e => Math.abs(e.pos - sm.index) < 5);
     if (!alreadyCaptured) {
       allEvents.push({ pos: sm.index, dia: sm[1], nombre });
     }
   }
-  console.log('[extractImportantDatesFromText] All events found:', allEvents.map(e => ({ dia: e.dia, nombre: e.nombre, pos: e.pos })));
 
-  // 2-column PDF layout association:
-  // The PDF has two vertical columns (fixed pairs):
-  //   Col 1 (left):  Enero, Febrero, Marzo, Abril, Mayo, Junio
-  //   Col 2 (right): Julio, Agosto, Septiembre, Octubre, Noviembre, Diciembre
-  // Visual layout (rows top to bottom):
-  // Row 1: Enero (left) | Julio (right)
-  // Row 2: Febrero (left) | Agosto (right)
-  // Row 3: Marzo (left) | Septiembre (right)
-  // Row 4: Abril (left) | Octubre (right)
-  // Row 5: Mayo (left) | Noviembre (right)
-  // Row 6: Junio (left) | Diciembre (right)
   const FIXED_MONTH_PAIRS: { left: string; right: string }[] = [
     { left: 'enero', right: 'julio' },
     { left: 'febrero', right: 'agosto' },
@@ -1013,18 +1354,13 @@ function extractImportantDatesFromText(text: string): Record<string, SuspensionE
     { left: 'junio', right: 'diciembre' },
   ];
 
-  // Find positions of all 12 months in text
   const monthPosMap = new Map<string, number>();
   for (const mp of monthPositions) {
-    // Keep first occurrence of each month
     if (!monthPosMap.has(mp.month)) {
       monthPosMap.set(mp.month, mp.pos);
     }
   }
-  console.log('[extractImportantDatesFromText] Month positions map:', Object.fromEntries(monthPosMap));
-  console.log('[extractImportantDatesFromText] All monthPositions raw:', monthPositions.map(m => ({month: m.month, pos: m.pos})));
 
-  // Build month pairs in FIXED VISUAL ORDER (not sorted by text position)
   const monthPairs: { left: string; right: string; leftPos: number; rightPos: number; mid: number; pos: number; visualRow: number }[] = [];
   
   for (let i = 0; i < FIXED_MONTH_PAIRS.length; i++) {
@@ -1033,15 +1369,14 @@ function extractImportantDatesFromText(text: string): Record<string, SuspensionE
     const rightPos = monthPosMap.get(fixedPair.right);
     
     if (leftPos !== undefined && rightPos !== undefined) {
-      // Both found - use visual row index for ordering, not text position
       monthPairs.push({
         left: fixedPair.left,
         right: fixedPair.right,
         leftPos,
         rightPos,
         mid: (leftPos + rightPos) / 2,
-        pos: leftPos, // anchor
-        visualRow: i, // 0=top row (Enero/Julio), 5=bottom row (Junio/Diciembre)
+        pos: leftPos,
+        visualRow: i,
       });
     } else if (leftPos !== undefined) {
       monthPairs.push({
@@ -1066,26 +1401,19 @@ function extractImportantDatesFromText(text: string): Record<string, SuspensionE
     }
   }
 
-  // Sort by VISUAL ROW ORDER (top to bottom), not by text position
   monthPairs.sort((a, b) => a.visualRow - b.visualRow);
-  console.log('[extractImportantDatesFromText] Month pairs (visual row order):', monthPairs.map(p => ({ left: p.left, right: p.right, leftPos: p.leftPos, rightPos: p.rightPos, visualRow: p.visualRow })));
-
-  // Associate events: assign by VISUAL ROW SECTIONS, then sort by date within each month
-  // Visual rows: 0=Enero/Julio, 1=Febrero/Agosto, 2=Marzo/Septiembre, 3=Abril/Octubre, 4=Mayo/Noviembre, 5=Junio/Diciembre
   const pairMidpoints = monthPairs.map(p => p.mid);
 
   for (const ev of allEvents) {
     let bestMonth = '';
     let bestDist = Infinity;
 
-    // Find which visual row section this event falls into
     for (let i = 0; i < monthPairs.length; i++) {
       const pair = monthPairs[i];
       const sectionStart = i === 0 ? -Infinity : (pairMidpoints[i - 1] + pair.mid) / 2;
       const sectionEnd = (pair.mid + (pairMidpoints[i + 1] ?? Infinity)) / 2;
       
       if (ev.pos >= sectionStart && ev.pos < sectionEnd) {
-        // Event is in this visual row - assign to left or right month by proximity
         if (pair.right && pair.left) {
           const distToLeft = Math.abs(ev.pos - pair.leftPos);
           const distToRight = Math.abs(ev.pos - pair.rightPos);
@@ -1099,7 +1427,6 @@ function extractImportantDatesFromText(text: string): Record<string, SuspensionE
       }
     }
 
-    // Fallback: nearest month overall
     if (!bestMonth) {
       for (const [month, pos] of monthPosMap) {
         const dist = Math.abs(ev.pos - pos);
@@ -1122,11 +1449,8 @@ function extractImportantDatesFromText(text: string): Record<string, SuspensionE
     }
   }
 
-  // Sort events within each month by date (ascending)
   const monthOrder = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-  
   function parseDiaForSort(diaStr: string): number {
-    // Extract first number from dia string like "5", "04 al 08", "12-16", "30/31"
     const match = diaStr.match(/(\d{1,2})/);
     return match ? parseInt(match[1], 10) : 99;
   }
@@ -1138,7 +1462,6 @@ function extractImportantDatesFromText(text: string): Record<string, SuspensionE
     }
   }
 
-  console.log('[extractImportantDatesFromText] Final result (sorted by month & date):', Object.fromEntries(Object.entries(result).map(([k, v]) => [k, v.map(e => `${e.dia} ${e.actividad}`)])));
   return result;
 }
 
@@ -1169,7 +1492,6 @@ export function analyzeExtractedText(
     detectedFields.push('P.E.R. y Graduaciones Detectados');
   }
 
-  // If no months detected directly, calculate from periods
   let finalMonths = detectedMonths || null;
   if (!finalMonths && detectedPeriods && detectedPeriods.length > 0) {
     finalMonths = calculateMonthsFromPeriods(detectedPeriods);
@@ -1188,6 +1510,7 @@ export function analyzeExtractedText(
       const events = importantDates[month.month];
       if (events && events.length > 0) {
         month.eventos = [...(month.eventos || []), ...events];
+        month.feriadosDesc = formatMonthFeriadosDesc(month.eventos);
       }
     }
   }

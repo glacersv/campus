@@ -7,6 +7,7 @@ import {
   formatMonthFeriadosDesc,
   ensureMonthEvents,
   loadDefaultSuspensionEvents,
+  sortSuspensionEventsChronologically,
 } from '../../utils/suspensionesHelper';
 import {
   Calendar,
@@ -48,9 +49,15 @@ export const SuspensionesManager: React.FC<SuspensionesManagerProps> = ({
   onUpdateMonths,
   calendarCleared = false,
 }) => {
-  // Ensure all months have structured eventos (skip defaults if calendar was explicitly cleared)
+  // Ensure all months have structured eventos sorted chronologically (1 to 31)
   const safeMonths = useMemo(
-    () => calendarCleared ? months.map(m => ({ ...m, eventos: m.eventos || [] })) : ensureMonthEvents(months),
+    () => {
+      const base = calendarCleared ? months.map(m => ({ ...m, eventos: m.eventos || [] })) : ensureMonthEvents(months);
+      return base.map(m => ({
+        ...m,
+        eventos: sortSuspensionEventsChronologically(m.eventos || []),
+      }));
+    },
     [months, calendarCleared]
   );
 
@@ -293,10 +300,12 @@ export const SuspensionesManager: React.FC<SuspensionesManagerProps> = ({
         updatedEventos.push(newEv);
       }
 
+      const sorted = sortSuspensionEventsChronologically(updatedEventos);
+
       return {
         ...m,
-        eventos: updatedEventos,
-        feriadosDesc: formatMonthFeriadosDesc(updatedEventos),
+        eventos: sorted,
+        feriadosDesc: formatMonthFeriadosDesc(sorted),
       };
     });
 
@@ -313,10 +322,11 @@ export const SuspensionesManager: React.FC<SuspensionesManagerProps> = ({
     const newMonths = safeMonths.map((m) => {
       if (m.month !== monthKey) return m;
       const updatedEventos = (m.eventos || []).filter((e) => e.id !== eventId);
+      const sorted = sortSuspensionEventsChronologically(updatedEventos);
       return {
         ...m,
-        eventos: updatedEventos,
-        feriadosDesc: formatMonthFeriadosDesc(updatedEventos),
+        eventos: sorted,
+        feriadosDesc: formatMonthFeriadosDesc(sorted),
       };
     });
 

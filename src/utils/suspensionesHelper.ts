@@ -181,14 +181,36 @@ export function parseFeriadosDesc(monthKey: string, desc: string): SuspensionEve
     });
   });
 
-  return results;
+  return sortSuspensionEventsChronologically(results);
+}
+
+/**
+ * Parses the initial day number from a string like "5", "04 al 08", "12-16", "30/31", "19 ene", "23 feb"
+ */
+export function parseStartDayFromDia(diaStr: string): number {
+  if (!diaStr) return 99;
+  const match = diaStr.match(/(\d{1,2})/);
+  return match ? parseInt(match[1], 10) : 99;
+}
+
+/**
+ * Sorts suspension events strictly in chronological order by day number (1 -> 31).
+ */
+export function sortSuspensionEventsChronologically(events: SuspensionEvent[]): SuspensionEvent[] {
+  return [...events].sort((a, b) => {
+    const dayA = parseStartDayFromDia(a.dia);
+    const dayB = parseStartDayFromDia(b.dia);
+    if (dayA !== dayB) return dayA - dayB;
+    return (a.actividad || '').localeCompare(b.actividad || '');
+  });
 }
 
 export function formatMonthFeriadosDesc(eventos?: SuspensionEvent[]): string {
   if (!eventos || eventos.length === 0) {
     return 'Sin suspensiones.';
   }
-  return eventos
+  const sorted = sortSuspensionEventsChronologically(eventos);
+  return sorted
     .map((e) => {
       const diaClean = e.dia.trim();
       const actClean = e.actividad.trim();
@@ -253,13 +275,19 @@ export const defaultInitialSuspensionEvents: Record<string, SuspensionEvent[]> =
 export function ensureMonthEvents(months: MonthStats[]): MonthStats[] {
   return months.map((m) => {
     if (m.eventos && m.eventos.length > 0) {
-      return m;
+      const sorted = sortSuspensionEventsChronologically(m.eventos);
+      return {
+        ...m,
+        eventos: sorted,
+        feriadosDesc: formatMonthFeriadosDesc(sorted),
+      };
     }
     const parsed = parseFeriadosDesc(m.month, m.feriadosDesc);
+    const sorted = sortSuspensionEventsChronologically(parsed);
     return {
       ...m,
-      eventos: parsed,
-      feriadosDesc: formatMonthFeriadosDesc(parsed),
+      eventos: sorted,
+      feriadosDesc: formatMonthFeriadosDesc(sorted),
     };
   });
 }
@@ -268,10 +296,11 @@ export function loadDefaultSuspensionEvents(months: MonthStats[]): MonthStats[] 
   return months.map((m) => {
     const defaultList = defaultInitialSuspensionEvents[m.month];
     if (defaultList && defaultList.length > 0) {
+      const sorted = sortSuspensionEventsChronologically(defaultList);
       return {
         ...m,
-        eventos: [...defaultList],
-        feriadosDesc: formatMonthFeriadosDesc(defaultList),
+        eventos: [...sorted],
+        feriadosDesc: formatMonthFeriadosDesc(sorted),
       };
     }
     return m;
