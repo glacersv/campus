@@ -141,3 +141,27 @@ Integrar en el admin de campus la mejora de carga de archivos del repo `jornaliz
    - Tabla de detalle de actividades con fechas, ingreso TBox y ponderaciones.
    - KPI superior con ambos conteos (`3 Trimestres / 4 Bimestres`).
 
+## Session Log - 3 Septiembre 2026
+
+### Migración a clases CSS unificadas (Tier 1)
+
+#### Card containers ? card-crema
+Migrados 20+ componentes que usaban bg-white rounded-2xl/3xl border border-slate-* hacia la clase CSS unificada .card-crema:
+- Admin: AdminDashboard, AttendanceReportsHistory, SuspensionesManager, SchoolYearManager, UsersManager
+- InstitutionalCalendar, Proyectos (ActividadEvaluada, ProjectsModule, AdminPanel, EvaluacionProyecto, ProyectosDashboard, SugerenciaInformatica)
+- Shared: StatPillCards
+- Other modules: HorarioView, AvisosView, EventosView, ModulePlaceholder, ProyectosAdmin
+
+#### Modal overlays/containers
+- SuspensionesManager: 2 modal overlays ? .modal-backdrop, 2 containers ? .modal-container
+- InstitutionalCalendar: modal overlay ? .modal-backdrop, container ? .modal-container
+
+#### Inputs ? input-crema
+- AttendanceReportsHistory, SuspensionesManager, ActividadEvaluada, ProjectsModule, Login, NotasView
+
+#### Buttons ? btn-primary/btn-secondary/btn-danger
+- SuspensionesManager, ActividadEvaluada, ProjectsModule
+
+#### Verification
+- npx tsc --noEmit ? 0 errors
+- npm run build ? success (11.40s)
