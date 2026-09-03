@@ -5,6 +5,8 @@ import { SuspensionesManager } from './SuspensionesManager';
 import {
   monthsData2026,
   academicPeriods2026,
+  academicPeriodsBasica2026,
+  academicPeriodsMedia2026,
   recuperacionExtraordinaria2026,
 } from '../../data/calendarData';
 import {
@@ -24,6 +26,8 @@ import {
   Loader2,
   RotateCcw,
   CalendarX,
+  BookOpen,
+  School,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import {
@@ -43,6 +47,9 @@ type CalendarSectionPart = 'todas' | 'parte1_semanas' | 'parte2_trimestres' | 'p
 export default function InstitutionalCalendar() {
   const [months, setMonths] = useState<MonthStats[]>(() => JSON.parse(JSON.stringify(monthsData2026)));
   const [periods, setPeriods] = useState<AcademicPeriod[]>(() => JSON.parse(JSON.stringify(academicPeriods2026)));
+  const [periodsBasica, setPeriodsBasica] = useState<AcademicPeriod[]>(() => JSON.parse(JSON.stringify(academicPeriodsBasica2026)));
+  const [periodsMedia, setPeriodsMedia] = useState<AcademicPeriod[]>(() => JSON.parse(JSON.stringify(academicPeriodsMedia2026)));
+  const [activeLevelTab, setActiveLevelTab] = useState<'basica' | 'media'>('basica');
   const [perData, setPerData] = useState<PERData>(() => JSON.parse(JSON.stringify(recuperacionExtraordinaria2026)));
   const [isEditMode, setIsEditMode] = useState(false);
   const [activePart, setActivePart] = useState<CalendarSectionPart>('todas');
@@ -69,10 +76,31 @@ export default function InstitutionalCalendar() {
   const totalDias = months.reduce((a, b) => a + (Number(b.dias) || 0), 0);
   const totalEventos = months.reduce((a, b) => a + (b.eventos?.length || 0), 0);
 
-  const effectivePeriods: AcademicPeriod[] = periods;
+  const effectivePeriods: AcademicPeriod[] = activeLevelTab === 'basica' ? periodsBasica : periodsMedia;
   const effectivePerData: PERData = perData;
 
   const handleUpdateMonths = (newMonths: MonthStats[]) => setMonths(newMonths);
+
+  // Helper para asignar períodos importados respetando Básica y Media
+  const applyImportedPeriods = useCallback((result: { periods?: AcademicPeriod[]; periodsMedia?: AcademicPeriod[]; periodsBasica?: AcademicPeriod[] }) => {
+    if (result.periodsMedia && result.periodsMedia.length > 0) {
+      setPeriodsMedia(result.periodsMedia);
+    }
+    if (result.periodsBasica && result.periodsBasica.length > 0) {
+      setPeriodsBasica(result.periodsBasica);
+    }
+    if (result.periods && result.periods.length > 0) {
+      setPeriods(result.periods);
+      if (!result.periodsMedia) {
+        const m = result.periods.filter(p => p.nivel === 'media' || p.tipo === 'Bimestre');
+        if (m.length > 0) setPeriodsMedia(m);
+      }
+      if (!result.periodsBasica) {
+        const b = result.periods.filter(p => p.nivel === 'basica' || p.tipo === 'Trimestre');
+        if (b.length > 0) setPeriodsBasica(b);
+      }
+    }
+  }, []);
 
   // Vaciar calendario - pone todos los meses a 0 semanas y 0 días
   const handleClearCalendar = () => {
@@ -90,6 +118,8 @@ export default function InstitutionalCalendar() {
     const emptyPER: PERData = { nombre: 'Periodo Extraordinario de Recuperación (P.E.R.) 2026', eventos: [], graduaciones: [] };
     setMonths(emptyMonths);
     setPeriods([]);
+    setPeriodsBasica([]);
+    setPeriodsMedia([]);
     setPerData(emptyPER);
     setCalendarCleared(true);
     setShowClearCalendarConfirm(false);
@@ -101,15 +131,17 @@ export default function InstitutionalCalendar() {
   const handleResetDefaults = () => {
     setMonths(JSON.parse(JSON.stringify(monthsData2026)));
     setPeriods(JSON.parse(JSON.stringify(academicPeriods2026)));
+    setPeriodsBasica(JSON.parse(JSON.stringify(academicPeriodsBasica2026)));
+    setPeriodsMedia(JSON.parse(JSON.stringify(academicPeriodsMedia2026)));
     setPerData(JSON.parse(JSON.stringify(recuperacionExtraordinaria2026)));
     setCalendarCleared(false);
     setImportSuccess('¡Calendario restaurado a valores predeterminados!');
     setTimeout(() => setImportSuccess(null), 4000);
   };
 
-  // Export to Excel (3-sheet template)
+  // Export to Excel (Plantilla completa con hojas por nivel)
   const handleExportExcel = () => {
-    const wb = generateExcelTemplateWorkbook(months, periods);
+    const wb = generateExcelTemplateWorkbook(months, periods, periodsBasica, periodsMedia);
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     const blob = new Blob([wbout], { type: 'application/octet-stream' });
     saveAs(blob, `Calendario_Institucional_2026.xlsx`);
@@ -124,7 +156,9 @@ export default function InstitutionalCalendar() {
       app: 'Calendario Institucional - Colegio Salesiano San José',
       anoLectivo: '2026',
       months,
-      periods: periods,
+      periods: periodsMedia,
+      periodsMedia,
+      periodsBasica,
       perData,
     };
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json;charset=utf-8' });
@@ -149,7 +183,7 @@ export default function InstitutionalCalendar() {
           )
         }));
         setMonths(monthsWithSuspensions);
-        if (result.periods && result.periods.length > 0) setPeriods(result.periods);
+        applyImportedPeriods(result);
         if (result.perData) setPerData(result.perData);
         setCalendarCleared(false);
         const fields = result.summary.detectedFields.length > 0 ? ` (${result.summary.detectedFields.join(', ')})` : '';
@@ -180,7 +214,7 @@ export default function InstitutionalCalendar() {
           )
         }));
         setMonths(monthsWithSuspensions);
-        if (result.periods && result.periods.length > 0) setPeriods(result.periods);
+        applyImportedPeriods(result);
         if (result.perData) setPerData(result.perData);
         setCalendarCleared(false);
         const fields = result.summary.detectedFields.length > 0 ? ` (${result.summary.detectedFields.join(', ')})` : '';
@@ -218,7 +252,7 @@ export default function InstitutionalCalendar() {
         }));
         
         setMonths(monthsWithSuspensions);
-        if (result.periods && result.periods.length > 0) setPeriods(result.periods);
+        applyImportedPeriods(result);
         if (result.perData) setPerData(result.perData);
         setCalendarCleared(false);
         const fields = result.summary.detectedFields.length > 0 ? ` (${result.summary.detectedFields.join(', ')})` : '';
@@ -251,7 +285,7 @@ export default function InstitutionalCalendar() {
           )
         }));
         setMonths(monthsWithSuspensions);
-        if (result.periods && result.periods.length > 0) setPeriods(result.periods);
+        applyImportedPeriods(result);
         if (result.perData) setPerData(result.perData);
         setCalendarCleared(false);
         setImportSuccess(`¡Calendario restaurado desde JSON! ${result.months.length} meses cargados.`);
@@ -284,7 +318,7 @@ export default function InstitutionalCalendar() {
       } else if (ext === 'txt' || ext === 'md') {
         handleImportText(file);
       } else {
-        setImportError('Formato no soportado. Use Word (.docx), Excel (.xlsx), PDF (.pdf), JSON (.json), CSV o TXT.');
+        setImportError('Formato no soportado. Use Word (.docx), Excel (.xlsx), PDF (.pdf), JSON (.json), CSV ou TXT.');
       }
     }
   };
@@ -305,7 +339,7 @@ export default function InstitutionalCalendar() {
           )
         }));
         setMonths(monthsWithSuspensions);
-        if (result.periods && result.periods.length > 0) setPeriods(result.periods);
+        applyImportedPeriods(result);
         if (result.perData) setPerData(result.perData);
         setCalendarCleared(false);
         const fields = result.summary.detectedFields.length > 0 ? ` (${result.summary.detectedFields.join(', ')})` : '';
@@ -343,7 +377,7 @@ export default function InstitutionalCalendar() {
       const result = analyzeExtractedText('Texto pegado', pastedText.length, pastedText, 'text');
       if (result.months && result.months.length > 0) {
         setMonths(result.months);
-        if (result.periods && result.periods.length > 0) setPeriods(result.periods);
+        applyImportedPeriods(result);
         if (result.perData) setPerData(result.perData);
         setCalendarCleared(false);
         const fields = result.summary.detectedFields.length > 0 ? ` (${result.summary.detectedFields.join(', ')})` : '';
@@ -372,7 +406,7 @@ export default function InstitutionalCalendar() {
       const result = parseJsonContent(pastedJson, 'JSON pegado', pastedJson.length);
       if (result.months && result.months.length > 0) {
         setMonths(result.months);
-        if (result.periods && result.periods.length > 0) setPeriods(result.periods);
+        applyImportedPeriods(result);
         if (result.perData) setPerData(result.perData);
         setCalendarCleared(false);
         setImportSuccess(`¡Calendario restaurado desde JSON! ${result.months.length} meses cargados.`);
@@ -403,7 +437,7 @@ export default function InstitutionalCalendar() {
                 Calendario Institucional {anoLectivo}
               </h1>
               <p className="text-sm text-slate-300 max-w-3xl leading-relaxed">
-                Configuración oficial de <strong>{institucion}</strong> · Educación Media. 
+                Configuración oficial de <strong>{institucion}</strong> · Educación Parvularia, Básica y Media. 
                 Semanas laborales, fechas de corte, pausas pedagógicas y periodo extraordinario.
               </p>
             </div>
@@ -420,8 +454,12 @@ export default function InstitutionalCalendar() {
               <strong className="text-base text-emerald-400 font-extrabold">{totalDias} Días</strong>
             </div>
             <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
-              <span className="text-slate-400 block text-[11px]">Períodos:</span>
-              <strong className="text-base text-indigo-400 font-extrabold">{effectivePeriods.length} Trimestres</strong>
+              <span className="text-slate-400 block text-[11px]">Distribución por Nivel:</span>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-xs text-indigo-300 font-bold">{periodsBasica.length} Trimestres</span>
+                <span className="text-slate-600">/</span>
+                <span className="text-xs text-blue-300 font-bold">{periodsMedia.length} Bimestres</span>
+              </div>
             </div>
             <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
               <span className="text-slate-400 block text-[11px]">Carga Técnica:</span>
@@ -770,32 +808,126 @@ export default function InstitutionalCalendar() {
         </section>
       )}
 
-      {/* Part 2: Trimestres */}
+      {/* Part 2: Trimestres y Bimestres por Nivel */}
       {(activePart === 'todas' || activePart === 'parte2_trimestres') && (
         <section className="space-y-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
-          <div className="border-b border-slate-100 pb-4">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-[11px] font-bold uppercase mb-1">Parte 2</div>
-            <h2 className="text-lg font-bold text-slate-900 tracking-tight">Los 4 Períodos Académicos y Cronograma de TBox {anoLectivo}</h2>
+          {/* Header con Selector de Nivel (Básica vs Media) */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-[11px] font-bold uppercase mb-1.5">
+                Parte 2
+              </div>
+              <h2 className="text-xl font-black text-slate-900 tracking-tight">
+                {activeLevelTab === 'basica'
+                  ? `CALENDARIO ACADÉMICO ${anoLectivo} — Educación Parvularia y Educación Básica`
+                  : `CALENDARIO ACADÉMICO ${anoLectivo} — Educación Media`}
+              </h2>
+              <p className="text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-2">
+                <span>
+                  {activeLevelTab === 'basica'
+                    ? 'Distribución: 3 Trimestres (K4 a 9° Grado) · Cronograma de Evaluaciones y TBox'
+                    : 'Distribución: 4 Períodos / Bimestres (Bachillerato) · Cronograma de Evaluaciones y TBox'}
+                </span>
+                <span className="text-slate-300">•</span>
+                <span className="text-slate-600 font-medium">1ª Asamblea de Padres: 19 de enero de {anoLectivo} (4:30 p.m.)</span>
+              </p>
+            </div>
+
+            {/* Pestañas de Nivel Ergonómicas */}
+            <div className="inline-flex items-center p-1 bg-slate-100/90 rounded-xl border border-slate-200 shrink-0 self-start lg:self-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveLevelTab('basica');
+                  setSelectedTrimestreIdx(null);
+                }}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
+                  activeLevelTab === 'basica'
+                    ? 'bg-white text-indigo-900 shadow-xs border border-slate-200/80'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
+              >
+                <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Educación Parvularia y Básica</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 font-extrabold">
+                  {periodsBasica.length} Trimestres
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveLevelTab('media');
+                  setSelectedTrimestreIdx(null);
+                }}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
+                  activeLevelTab === 'media'
+                    ? 'bg-white text-indigo-900 shadow-xs border border-slate-200/80'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
+              >
+                <School className="w-3.5 h-3.5 text-blue-600" />
+                <span>Educación Media</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-extrabold">
+                  {periodsMedia.length} Bimestres
+                </span>
+              </button>
+            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
+          {/* Grid de Tarjetas (3 columnas para Básica, 4 para Media) */}
+          <div className={`grid grid-cols-1 md:grid-cols-2 ${activeLevelTab === 'basica' ? 'lg:grid-cols-3' : 'lg:grid-cols-4'} gap-4`}>
             {effectivePeriods.map((p, idx) => {
               const isSelected = selectedTrimestreIdx === idx;
+              const badgePrefix = activeLevelTab === 'basica' ? 'T' : 'P';
+              const badgeColor = activeLevelTab === 'basica' ? 'bg-indigo-600' : 'bg-blue-600';
               return (
-                <div key={idx} onClick={() => setSelectedTrimestreIdx(isSelected ? null : idx)} className={`rounded-2xl border p-4 shadow-xs transition-all cursor-pointer ${isSelected ? 'bg-indigo-50/70 border-indigo-500 ring-2 ring-indigo-500/20' : 'bg-white border-slate-200 hover:border-indigo-300 hover:bg-slate-50/50'}`}>
-                  <div className="flex items-center justify-between mb-2">
+                <div
+                  key={idx}
+                  onClick={() => setSelectedTrimestreIdx(isSelected ? null : idx)}
+                  className={`rounded-2xl border p-4 shadow-xs transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-indigo-50/80 border-indigo-500 ring-2 ring-indigo-500/20'
+                      : 'bg-white border-slate-200 hover:border-indigo-300 hover:bg-slate-50/60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2.5">
                     <div className="flex items-center gap-2">
-                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700'}`}>T{idx + 1}</div>
-                      <h3 className="font-bold text-slate-900 text-xs">{p.nombre}</h3>
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black ${isSelected ? `${badgeColor} text-white` : 'bg-slate-100 text-slate-700'}`}>
+                        {badgePrefix}{idx + 1}
+                      </div>
+                      <h3 className="font-bold text-slate-900 text-xs tracking-tight">{p.nombre}</h3>
                     </div>
-                    <span className="text-[10px] font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full">10 sem</span>
+                    <span className="text-[10px] font-bold text-indigo-700 bg-indigo-100/70 px-2 py-0.5 rounded-full">
+                      {p.actividades.length} actividades
+                    </span>
                   </div>
+
                   <div className="space-y-1.5 text-xs text-slate-600 border-t border-slate-100 pt-2.5">
-                    <div className="flex justify-between"><span className="text-slate-400">Rango:</span><strong className="text-slate-800">{p.inicio} – {p.fin}</strong></div>
-                    <div className="flex justify-between"><span className="text-slate-400">Boletas:</span><strong className="text-emerald-700 font-bold">{p.entregaBoletas || '---'}</strong></div>
-                    <div className="flex justify-between"><span className="text-slate-400">Recuperación:</span><span className="text-amber-800 font-medium">{p.recuperacionOrdinaria || '---'}</span></div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Rango:</span>
+                      <strong className="text-slate-800 font-semibold">{p.inicio} – {p.fin}</strong>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Boletas:</span>
+                      <strong className="text-emerald-700 font-bold">{p.entregaBoletas || '---'}</strong>
+                    </div>
+                    {p.entregaTemarios && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">Temarios:</span>
+                        <span className="text-blue-800 font-medium text-[11px] truncate max-w-[170px]">{p.entregaTemarios}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Recuperación:</span>
+                      <span className="text-amber-800 font-medium text-[11px] truncate max-w-[170px]">
+                        {p.pruebaExtraordinaria || p.recuperacionOrdinaria || '---'}
+                      </span>
+                    </div>
                   </div>
-                  <div className="mt-3 pt-2 border-t border-slate-100 text-[11px] text-indigo-600 font-bold flex items-center justify-between">
-                    <span>{isSelected ? 'Ocultar detalle' : 'Ver detalle'}</span>
+
+                  <div className="mt-3 pt-2.5 border-t border-slate-100 text-[11px] text-indigo-600 font-bold flex items-center justify-between">
+                    <span>{isSelected ? 'Ocultar actividades' : 'Ver detalle de actividades'}</span>
                     <ChevronRight className={`w-3.5 h-3.5 transition-transform ${isSelected ? 'rotate-90' : ''}`} />
                   </div>
                 </div>

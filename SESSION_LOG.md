@@ -115,3 +115,29 @@ Integrar en el admin de campus la mejora de carga de archivos del repo `jornaliz
 - Investigar si `SuspensionesManager.tsx` de campus está desactualizado vs jornalizacion `1582bab` (ese commit cambió 773 líneas ese archivo).
 - Decidir si las pausas/suspensiones deben auto-detectarse desde documentos (hoy NO se hace).
 - Lint errores previos fuera de alcance de calendario.
+
+---
+
+# Session Log - 3 Septiembre 2026
+
+## Separación de Niveles en Calendario Académico 2026 (Educación Básica y Parvularia vs Educación Media)
+
+### Qué se hizo
+1. **Lector de PDF (`src/utils/fileImportParsers.ts`)**:
+   - Resuelto bug donde solo se procesaba la Página 1 (`page1Data || page2Data`), descartando la Página 2 (Educación Parvularia y Básica).
+   - Implementado agrupamiento de líneas con tolerancia geométrica vertical (`extractPeriodsFromPdfLines`) para extraer fielmente:
+     - **Página 1**: Educación Media con 4 Bimestres (`periodsMedia`).
+     - **Página 2**: Educación Parvularia y Básica con 3 Trimestres (`periodsBasica`).
+   - Soporte en exportación e importación Excel (`Trimestres_Parvularia_Basica` y `Periodos_Educacion_Media`) y JSON.
+2. **Datos Base Oficiales (`src/data/calendarData.ts`)**:
+   - `academicPeriodsBasica2026`: 3 Trimestres completos (actividades 35%, diagnósticas, refuerzo, PO 30%, entrega de boletas K4-9°, temarios y proyectos).
+   - `academicPeriodsMedia2026`: 4 Bimestres completos.
+3. **Tipos (`src/types.ts`)**:
+   - Añadido `nivel?: 'media' | 'basica' | 'todos'` a `AcademicPeriod`.
+   - Soporte de `periodsMedia` y `periodsBasica` en `ParsedDocumentResult`.
+4. **Diseño en Panel Admin (`src/components/admin/InstitutionalCalendar.tsx`)**:
+   - Pestañas ergonómicas en Parte 2 para alternar entre **Educación Parvularia y Básica** (3 Trimestres) y **Educación Media** (4 Bimestres).
+   - Tarjetas interactivas adaptables (3 columnas en Básica `T1-T3` y 4 columnas en Media `P1-P4`).
+   - Tabla de detalle de actividades con fechas, ingreso TBox y ponderaciones.
+   - KPI superior con ambos conteos (`3 Trimestres / 4 Bimestres`).
+

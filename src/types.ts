@@ -901,6 +901,7 @@ export interface AcademicPeriod {
   inicio: string;
   fin: string;
   tipo: 'Bimestre' | 'Trimestre';
+  nivel?: 'media' | 'basica' | 'todos';
   ingresoTBoxFinal?: string;
   entregaBoletas?: string;
   entregaTemarios?: string;

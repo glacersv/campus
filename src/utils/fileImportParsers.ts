@@ -1,7 +1,13 @@
 import * as XLSX from 'xlsx';
 import mammoth from 'mammoth';
 import { MonthStats, AcademicPeriod, AcademicPeriodActivity, PERData, SuspensionEvent } from '../types';
-import { academicPeriods2026, monthsData2026, recuperacionExtraordinaria2026 } from '../data/calendarData';
+import {
+  academicPeriods2026,
+  academicPeriodsBasica2026,
+  academicPeriodsMedia2026,
+  monthsData2026,
+  recuperacionExtraordinaria2026,
+} from '../data/calendarData';
 import { inferCategoryFromText, formatMonthFeriadosDesc } from './suspensionesHelper';
 
 // Set up pdfjs-dist with local worker
@@ -25,6 +31,8 @@ export interface ParsedDocumentResult {
   headerData?: Partial<Record<string, unknown>>;
   months?: MonthStats[];
   periods?: AcademicPeriod[];
+  periodsMedia?: AcademicPeriod[];
+  periodsBasica?: AcademicPeriod[];
   perData?: PERData;
   summary: {
     monthsCount: number;
@@ -734,6 +742,216 @@ export async function parseTextFile(file: File): Promise<ParsedDocumentResult> {
 }
 
 /**
+ * Helper to extract academic periods and activities from clustered PDF page lines.
+ */
+function extractPeriodsFromPdfLines(
+  lines: { y: number; text: string }[],
+  defaultTipo: 'Bimestre' | 'Trimestre',
+  nivel: 'media' | 'basica'
+): AcademicPeriod[] {
+  const periodHeaders: { y: number; ordinal: string; num: string; tipo: 'Bimestre' | 'Trimestre'; inicio: string; fin: string }[] = [];
+  const romanMap: Record<string, string> = {
+    PRIMER: 'I', SEGUNDO: 'II', TERCER: 'III', CUARTO: 'IV',
+    '1': 'I', '2': 'II', '3': 'III', '4': 'IV',
+    'I': 'I', 'II': 'II', 'III': 'III', 'IV': 'IV'
+  };
+
+  lines.forEach((l) => {
+    // Media pattern: PRIMER PERIODO (19 enero – 20 marzo)
+    let match = l.text.match(/(PRIMER|SEGUNDO|TERCER|CUARTO)\s+PERIODO\s*\(([^\)–\-]+)[\–\-]([^\)]+)\)/i);
+    if (match) {
+      periodHeaders.push({
+        y: l.y,
+        ordinal: match[1].toUpperCase(),
+        num: romanMap[match[1].toUpperCase()] || 'I',
+        tipo: 'Bimestre',
+        inicio: match[2].trim(),
+        fin: match[3].trim(),
+      });
+      return;
+    }
+    // Basica pattern: Trimestre I (20 enero-17 de abril)
+    match = l.text.match(/Trimestre\s+([IVX]+|\d+)\s*\(([^\)–\-]+)[\–\-]([^\)]+)\)/i);
+    if (match) {
+      const num = match[1].toUpperCase();
+      periodHeaders.push({
+        y: l.y,
+        ordinal: num,
+        num: romanMap[num] || num,
+        tipo: 'Trimestre',
+        inicio: match[2].trim(),
+        fin: match[3].trim(),
+      });
+    }
+  });
+
+  const periods: AcademicPeriod[] = [];
+  for (let i = 0; i < periodHeaders.length; i++) {
+    const ph = periodHeaders[i];
+    const nextY = i + 1 < periodHeaders.length ? periodHeaders[i + 1].y : 0;
+    const bandLines = lines.filter((l) => l.y < ph.y && l.y > nextY);
+
+    let entregaBoletas = '';
+    let entregaTemarios = '';
+    let recuperacionOrdinaria = 'Conforme a calendario';
+    let pruebaExtraordinaria = 'Conforme a calendario';
+    const actividades: AcademicPeriodActivity[] = [];
+
+    for (let j = 0; j < bandLines.length; j++) {
+      const lineText = bandLines[j].text;
+
+      // Boletas
+      const boletasMatch = lineText.match(/(\d+[ª°]?\s+)?Entrega\s+de\s+boletas.*?(\d{1,2}(?:\s+de)?\s+[a-záéíóúñ]+(?:\s+K4[^\n]*)?)/i);
+      if (boletasMatch) {
+        entregaBoletas = boletasMatch[2].trim();
+      }
+
+      // Temarios
+      if (lineText.includes('Entrega de temarios')) {
+        for (let k = 0; k <= 3; k++) {
+          if (j + k < bandLines.length) {
+            const checkTxt = bandLines[j + k].text;
+            const dateMatch = checkTxt.match(/(\d{1,2}(?:\s+de)?\s+[a-záéíóúñ]+)(?:\s*(?:–|-|a|al|\s+)\s*(\d{1,2}(?:\s+de)?\s+[a-záéíóúñ]+))/i);
+            if (dateMatch) {
+              entregaTemarios = `${dateMatch[1].trim()} – ${dateMatch[2].trim()}`;
+              break;
+            }
+          }
+        }
+      }
+
+      // 01. Actividad - 35%
+      const actMatch = lineText.match(/^(\d{1,2}\.\s*Actividad)\s*[–\-]\s*(\d{1,2}%)\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}(?:\s+de)?\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)/i);
+      if (actMatch) {
+        actividades.push({
+          nombre: `${actMatch[1]} – ${actMatch[2]}`,
+          fechaInicio: actMatch[3],
+          fechaCierre: actMatch[4],
+          ingresoTBox: actMatch[5],
+          porcentaje: actMatch[2],
+          tipo: 'formativa',
+        });
+        continue;
+      }
+
+      // Pruebas Objetivas
+      const poMatch = lineText.match(/^(Pruebas?\s+Objetivas?.*?-\s*\d{1,2}%[^\s]*)\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)/i);
+      if (poMatch) {
+        actividades.push({
+          nombre: poMatch[1],
+          fechaInicio: poMatch[2],
+          fechaCierre: poMatch[3],
+          ingresoTBox: poMatch[4],
+          porcentaje: '30%',
+          tipo: 'objetiva',
+        });
+        continue;
+      }
+
+      // Refuerzo académico
+      const refMatch = lineText.match(/^(Refuerzo\s+acad[eé]mico.*?)\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)/i);
+      if (refMatch) {
+        actividades.push({
+          nombre: refMatch[1],
+          fechaInicio: refMatch[2],
+          fechaCierre: refMatch[3],
+          ingresoTBox: '------------',
+          tipo: 'refuerzo',
+        });
+        continue;
+      }
+
+      // Diagnósticas
+      const diagMatch = lineText.match(/^(\*?Pruebas?\s+diagn[oó]sticas?)\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)/i);
+      if (diagMatch) {
+        actividades.push({
+          nombre: diagMatch[1],
+          fechaInicio: diagMatch[2],
+          fechaCierre: diagMatch[3],
+          ingresoTBox: '------------',
+          tipo: 'diagnostica',
+        });
+        continue;
+      }
+
+      // Extraordinaria
+      const extMatch = lineText.match(/Prueba\s+extraordinaria\s+(\d{1,2}\s+[a-záéíóúñ]+)(?:\s+------------|\s+--)?\s+(\d{1,2}\s+[a-záéíóúñ]+)/i);
+      if (extMatch) {
+        pruebaExtraordinaria = `${extMatch[1]} – ${extMatch[2]}`;
+      }
+
+      // Entrega de actividades pendientes
+      const pendMatch = lineText.match(/Entrega\s+de\s+actividades\s+pendientes\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)/i);
+      if (pendMatch) {
+        actividades.push({
+          nombre: 'Entrega de actividades pendientes',
+          fechaInicio: pendMatch[1],
+          fechaCierre: pendMatch[2],
+          ingresoTBox: pendMatch[3],
+          tipo: 'formativa',
+        });
+        continue;
+      }
+
+      // Semana de la juventud
+      const juvMatch = lineText.match(/^(Semana\s+de\s+la\s+juventud)\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)/i);
+      if (juvMatch) {
+        actividades.push({
+          nombre: juvMatch[1],
+          fechaInicio: juvMatch[2],
+          fechaCierre: juvMatch[3],
+          ingresoTBox: '------------',
+          tipo: 'formativa',
+        });
+        continue;
+      }
+
+      // Ficha de proyectos
+      const fichMatch = lineText.match(/^(Entrega\s+de\s+ficha\s+de\s+proyectos[^\d]*)\s+(\d{1,2}(?:\s+de)?\s+[a-záéíóúñ]+)/i);
+      if (fichMatch) {
+        actividades.push({
+          nombre: 'Entrega de ficha de proyectos (de docentes a estudiantes)',
+          fechaInicio: fichMatch[2],
+          fechaCierre: fichMatch[2],
+          ingresoTBox: '------------',
+          tipo: 'formativa',
+        });
+        continue;
+      }
+
+      // Recepción de ficha de proyectos
+      if (lineText.includes('Recepción de ficha de proyectos')) {
+        actividades.push({
+          nombre: 'Recepción de ficha de proyectos (1ª – 8 junio, 2ª - 15 junio)',
+          fechaInicio: '8 junio',
+          fechaCierre: '15 junio',
+          ingresoTBox: '------------',
+          tipo: 'formativa',
+        });
+      }
+    }
+
+    const title = ph.tipo === 'Trimestre'
+      ? `Trimestre ${ph.num}`
+      : `${ph.ordinal.charAt(0)}${ph.ordinal.slice(1).toLowerCase()} Periodo (Bimestre ${ph.num})`;
+
+    periods.push({
+      nombre: title,
+      inicio: ph.inicio,
+      fin: ph.fin,
+      tipo: ph.tipo,
+      nivel,
+      entregaBoletas,
+      entregaTemarios,
+      recuperacionOrdinaria,
+      pruebaExtraordinaria,
+      actividades,
+    });
+  }
+  return periods;
+}
+
+/**
  * Parses a PDF file using pdfjs-dist with full geometry and coordinate awareness.
  * Accurately extracts:
  * 1. Page 1: 4 Bimestres (Educación Media) with full activity breakdown, TBox dates, boletas, and temarios.
@@ -756,31 +974,38 @@ export async function parsePdfFile(file: File): Promise<ParsedDocumentResult> {
     const pdf = await loadingTask.promise;
     const numPages = pdf.numPages;
 
-    // Helper: Extract items with coordinates from a page
+    // Helper: Extract items with coordinates from a page clustered into lines
     const getPageData = async (pageNum: number) => {
       const page = await pdf.getPage(pageNum);
       const textContent = await page.getTextContent();
-      const byY: Record<number, { str: string; x: number }[]> = {};
+      const items = (textContent.items as any[])
+        .map((it) => ({
+          str: (it.str || '').trim(),
+          x: Math.round(it.transform[4]),
+          y: Math.round(it.transform[5]),
+        }))
+        .filter((it) => it.str.length > 0);
 
-      for (const item of textContent.items as any[]) {
-        const y = Math.round(item.transform[5]);
-        const x = Math.round(item.transform[4]);
-        const str = (item.str || '').trim();
-        if (!byY[y]) byY[y] = [];
-        byY[y].push({ str, x });
+      items.sort((a, b) => b.y - a.y || a.x - b.x);
+
+      const lines: { y: number; text: string }[] = [];
+      let currentLine: { y: number; items: typeof items } | null = null;
+
+      for (const item of items) {
+        if (!currentLine || Math.abs(currentLine.y - item.y) > 3) {
+          currentLine = { y: item.y, items: [item] };
+          lines.push(currentLine as any);
+        } else {
+          currentLine.items.push(item);
+        }
       }
 
-      const sortedYs = Object.keys(byY).map(Number).sort((a, b) => b - a);
-      const lines = sortedYs.map((y) => {
-        const sorted = byY[y].sort((a, b) => a.x - b.x);
-        return {
-          y,
-          items: sorted,
-          text: sorted.map((s) => s.str).filter(Boolean).join(' '),
-        };
-      });
+      for (const line of lines) {
+        (line as any).items.sort((a: any, b: any) => a.x - b.x);
+        line.text = (line as any).items.map((i: any) => i.str).join(' ');
+      }
 
-      return { pageNum, items: textContent.items as any[], lines, sortedYs, byY };
+      return { pageNum, items: textContent.items as any[], lines };
     };
 
     // Load first 3 pages
@@ -797,154 +1022,21 @@ export async function parsePdfFile(file: File): Promise<ParsedDocumentResult> {
     }
 
     // -------------------------------------------------------------
-    // 1. EXTRACT PERIODS & ACTIVITIES (Page 1 - Educación Media)
+    // 1. EXTRACT PERIODS:
+    // Page 1: 4 Bimestres (Educación Media)
+    // Page 2: 3 Trimestres (Educación Parvularia y Básica)
     // -------------------------------------------------------------
-    const detectedPeriods: AcademicPeriod[] = [];
-    const sourcePageData = page1Data || page2Data;
+    const detectedPeriodsMedia: AcademicPeriod[] = page1Data
+      ? extractPeriodsFromPdfLines(page1Data.lines, 'Bimestre', 'media')
+      : [];
 
-    if (sourcePageData) {
-      const pLines = sourcePageData.lines;
-      const periodHeaders: { y: number; ordinal: string; inicio: string; fin: string }[] = [];
+    const detectedPeriodsBasica: AcademicPeriod[] = page2Data
+      ? extractPeriodsFromPdfLines(page2Data.lines, 'Trimestre', 'basica')
+      : [];
 
-      pLines.forEach((l) => {
-        const match = l.text.match(/(PRIMER|SEGUNDO|TERCER|CUARTO)\s+PERIODO\s*\(([^\)–\-]+)[\–\-]([^\)]+)\)/i);
-        if (match) {
-          periodHeaders.push({
-            y: l.y,
-            ordinal: match[1].toUpperCase(),
-            inicio: match[2].trim(),
-            fin: match[3].trim(),
-          });
-        }
-      });
-
-      const romanMap: Record<string, string> = { PRIMER: 'I', SEGUNDO: 'II', TERCER: 'III', CUARTO: 'IV' };
-
-      for (let i = 0; i < periodHeaders.length; i++) {
-        const ph = periodHeaders[i];
-        const nextY = i + 1 < periodHeaders.length ? periodHeaders[i + 1].y : 0;
-        const bandLines = pLines.filter((l) => l.y < ph.y && l.y > nextY);
-
-        let entregaBoletas = '';
-        let entregaTemarios = '';
-        let recuperacionOrdinaria = 'Conforme a calendario';
-        let pruebaExtraordinaria = 'Conforme a calendario';
-        const actividades: AcademicPeriodActivity[] = [];
-
-        for (let j = 0; j < bandLines.length; j++) {
-          const lineText = bandLines[j].text;
-
-          // Boletas
-          const boletasMatch = lineText.match(/(\d+[ª°]?\s+)?Entrega\s+de\s+boletas.*?(\d{1,2}\s+(?:de\s+)?[a-záéíóúñ]+)/i);
-          if (boletasMatch) {
-            entregaBoletas = boletasMatch[2].trim();
-            continue;
-          }
-
-          // Temarios
-          if (lineText.includes('Entrega de temarios')) {
-            for (let k = 0; k <= 2; k++) {
-              if (j + k < bandLines.length) {
-                const checkTxt = bandLines[j + k].text;
-                const dateMatch = checkTxt.match(/(\d{1,2}(?:\s+de)?\s+[a-záéíóúñ]+)(?:\s*(?:–|-|a|al|\s+)\s*(\d{1,2}(?:\s+de)?\s+[a-záéíóúñ]+))/i);
-                if (dateMatch) {
-                  entregaTemarios = `${dateMatch[1].trim()} – ${dateMatch[2].trim()}`;
-                  break;
-                }
-              }
-            }
-          }
-
-          // 01. Actividad - 35%
-          const actMatch = lineText.match(/^(\d{1,2}\.\s*Actividad)\s*[–\-]\s*(\d{1,2}%)\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}(?:\s+de)?\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)/i);
-          if (actMatch) {
-            actividades.push({
-              nombre: `${actMatch[1]} - ${actMatch[2]}`,
-              fechaInicio: actMatch[3],
-              fechaCierre: actMatch[4],
-              ingresoTBox: actMatch[5],
-              porcentaje: actMatch[2],
-              tipo: 'formativa',
-            });
-            continue;
-          }
-
-          // Pruebas Objetivas
-          const poMatch = lineText.match(/^(Pruebas?\s+Objetivas?.*?-\s*\d{1,2}%[^\s]*)\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)/i);
-          if (poMatch) {
-            actividades.push({
-              nombre: poMatch[1],
-              fechaInicio: poMatch[2],
-              fechaCierre: poMatch[3],
-              ingresoTBox: poMatch[4],
-              porcentaje: '30%',
-              tipo: 'objetiva',
-            });
-            continue;
-          }
-
-          // Refuerzo académico
-          const refMatch = lineText.match(/^(Refuerzo\s+acad[eé]mico.*?)\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)/i);
-          if (refMatch) {
-            actividades.push({
-              nombre: refMatch[1],
-              fechaInicio: refMatch[2],
-              fechaCierre: refMatch[3],
-              ingresoTBox: '------------',
-              tipo: 'formativa',
-            });
-            continue;
-          }
-
-          // Diagnósticas
-          const diagMatch = lineText.match(/^(\*?Pruebas?\s+diagn[oó]sticas?)\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)/i);
-          if (diagMatch) {
-            actividades.push({
-              nombre: diagMatch[1],
-              fechaInicio: diagMatch[2],
-              fechaCierre: diagMatch[3],
-              ingresoTBox: '------------',
-              tipo: 'formativa',
-            });
-            continue;
-          }
-
-          // Extraordinaria
-          const extMatch = lineText.match(/^Prueba\s+extraordinaria\s+(\d{1,2}\s+[a-záéíóúñ]+)(?:\s+------------)?\s+(\d{1,2}\s+[a-záéíóúñ]+)/i);
-          if (extMatch) {
-            pruebaExtraordinaria = `${extMatch[1]} – ${extMatch[2]}`;
-          }
-
-          // Entrega de actividades pendientes
-          const pendMatch = lineText.match(/^Entrega\s+de\s+actividades\s+pendientes\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)\s+(\d{1,2}\s+[a-záéíóúñ]+)/i);
-          if (pendMatch) {
-            actividades.push({
-              nombre: 'Entrega de actividades pendientes',
-              fechaInicio: pendMatch[1],
-              fechaCierre: pendMatch[2],
-              ingresoTBox: pendMatch[3],
-              tipo: 'formativa',
-            });
-          }
-        }
-
-        const numName = romanMap[ph.ordinal] || 'I';
-        detectedPeriods.push({
-          nombre: `${ph.ordinal.charAt(0)}${ph.ordinal.slice(1).toLowerCase()} Periodo (Trimestre ${numName})`,
-          inicio: ph.inicio,
-          fin: ph.fin,
-          tipo: 'Trimestre',
-          entregaBoletas,
-          entregaTemarios,
-          recuperacionOrdinaria,
-          pruebaExtraordinaria,
-          actividades,
-        });
-      }
-    }
-
-    // Fallback if no periods detected on page 1
-    const finalPeriods = detectedPeriods.length > 0 ? detectedPeriods : extractAcademicPeriodsFromText(fullText) || academicPeriods2026;
+    const finalPeriodsMedia = detectedPeriodsMedia.length > 0 ? detectedPeriodsMedia : academicPeriodsMedia2026;
+    const finalPeriodsBasica = detectedPeriodsBasica.length > 0 ? detectedPeriodsBasica : academicPeriodsBasica2026;
+    const finalPeriods = finalPeriodsMedia;
 
     // -------------------------------------------------------------
     // 2. EXTRACT P.E.R. & GRADUACIONES (Page 3 Top)
@@ -1124,7 +1216,8 @@ export async function parsePdfFile(file: File): Promise<ParsedDocumentResult> {
 
     const detectedFields: string[] = [
       '12 Meses de Calendario Anual (Semanas y Días Hábiles)',
-      `${finalPeriods.length} Períodos / Bimestres con Actividades y Fechas TBox`,
+      `Educación Media: ${finalPeriodsMedia.length} Períodos / Bimestres con Actividades y Fechas TBox`,
+      `Educación Parvularia y Básica: ${finalPeriodsBasica.length} Trimestres con Actividades y Fechas TBox`,
       `${totalEventosCount} Fechas Importantes, Pausas y Asuetos`,
       'P.E.R. y Fechas de Graduación',
     ];
@@ -1136,10 +1229,12 @@ export async function parsePdfFile(file: File): Promise<ParsedDocumentResult> {
       rawText: fullText,
       months: finalMonths,
       periods: finalPeriods,
+      periodsMedia: finalPeriodsMedia,
+      periodsBasica: finalPeriodsBasica,
       perData: finalPER,
       summary: {
         monthsCount: finalMonths.length,
-        periodsCount: finalPeriods.length,
+        periodsCount: finalPeriodsMedia.length + finalPeriodsBasica.length,
         detectedFields,
         rawLinesCount: fullText.split('\n').length,
       },
@@ -1179,21 +1274,34 @@ export function parseJsonContent(text: string, fileName = 'documento.json', file
 
   const months = Array.isArray(parsed.months) ? parsed.months : undefined;
   const periods = Array.isArray(parsed.periods) ? parsed.periods : undefined;
+  let periodsMedia = Array.isArray(parsed.periodsMedia) ? parsed.periodsMedia : undefined;
+  let periodsBasica = Array.isArray(parsed.periodsBasica) ? parsed.periodsBasica : undefined;
   const perData = parsed.perData ? parsed.perData : undefined;
   const headerData = parsed.headerData || undefined;
 
+  // If periodsMedia / periodsBasica not explicitly present but periods is, split by nivel/tipo
+  if (periods && (!periodsMedia || !periodsBasica)) {
+    const basicaFromPeriods = periods.filter((p: any) => p.nivel === 'basica' || p.tipo === 'Trimestre');
+    const mediaFromPeriods = periods.filter((p: any) => p.nivel === 'media' || p.tipo === 'Bimestre');
+    if (!periodsBasica && basicaFromPeriods.length > 0) periodsBasica = basicaFromPeriods;
+    if (!periodsMedia && mediaFromPeriods.length > 0) periodsMedia = mediaFromPeriods;
+  }
+
   const finalMonths = months || monthsData2026;
-  const finalPeriods = periods || academicPeriods2026;
+  const finalPeriodsMedia = periodsMedia || academicPeriodsMedia2026;
+  const finalPeriodsBasica = periodsBasica || academicPeriodsBasica2026;
+  const finalPeriods = periods || finalPeriodsMedia;
   const finalPER = perData || null;
 
   const detectedFields: string[] = [];
   if (months && Array.isArray(months)) detectedFields.push(`${months.length} Meses y Calendario`);
-  if (periods && Array.isArray(periods)) detectedFields.push(`${periods.length} Trimestres y Periodos`);
+  if (periodsBasica && Array.isArray(periodsBasica)) detectedFields.push(`${periodsBasica.length} Trimestres (Básica)`);
+  if (periodsMedia && Array.isArray(periodsMedia)) detectedFields.push(`${periodsMedia.length} Bimestres (Media)`);
   if (perData) detectedFields.push('P.E.R. y Graduaciones');
 
   const summary = {
     monthsCount: finalMonths.length,
-    periodsCount: finalPeriods.length,
+    periodsCount: finalPeriodsMedia.length + finalPeriodsBasica.length,
     detectedFields,
     rawLinesCount: text.split('\n').length,
   };
@@ -1206,6 +1314,8 @@ export function parseJsonContent(text: string, fileName = 'documento.json', file
     headerData,
     months: finalMonths,
     periods: finalPeriods,
+    periodsMedia: finalPeriodsMedia,
+    periodsBasica: finalPeriodsBasica,
     perData: finalPER,
     summary,
   };
@@ -1537,41 +1647,60 @@ export function analyzeExtractedText(
 
 /**
  * Generates an Excel template with the official institutional calendar structure.
- * 2 sheets: Periodos_Evaluaciones_2026, Calendario_Dias_Habiles
+ * Includes sheets for:
+ * 1. Trimestres_Parvularia_Basica (3 Trimestres)
+ * 2. Periodos_Educacion_Media (4 Bimestres)
+ * 3. Periodos_Evaluaciones_2026 (compatibilidad general)
+ * 4. Calendario_Dias_Habiles (12 Meses)
  */
 export function generateExcelTemplateWorkbook(
   months: MonthStats[],
-  periods: AcademicPeriod[] = academicPeriods2026
+  periods: AcademicPeriod[] = academicPeriods2026,
+  periodsBasica: AcademicPeriod[] = academicPeriodsBasica2026,
+  periodsMedia: AcademicPeriod[] = academicPeriodsMedia2026
 ): XLSX.WorkBook {
   const wb = XLSX.utils.book_new();
 
-  // Hoja 1: Periodos y Evaluaciones (Trimestres con TBox y fechas oficiales)
-  const periodRows: any[] = [];
-  periodRows.push([
-    'Trimestre / Periodo',
-    'Fecha Inicio',
-    'Fecha Fin',
-    'Semanas',
-    'Subida Notas TBox',
-    'Entrega de Boletas',
-    'Eventos y Actividades Clave',
-  ]);
-
-  periods.forEach((p) => {
-    periodRows.push([
-      p.nombre,
-      p.inicio,
-      p.fin,
-      p.ingresoTBoxFinal || 'Conforme a calendario',
-      p.entregaBoletas || 'Por definir',
-      p.actividades.map((a) => `${a.nombre} (${a.fechas || a.fechaInicio || ''})`).join('; '),
+  const createPeriodRows = (pList: AcademicPeriod[], labelHeader: string) => {
+    const rows: any[] = [];
+    rows.push([
+      labelHeader,
+      'Fecha Inicio',
+      'Fecha Fin',
+      'Subida Notas TBox',
+      'Entrega de Boletas',
+      'Temarios a Coordinación',
+      'Prueba Extraordinaria',
+      'Actividades y Evaluaciones',
     ]);
-  });
+    pList.forEach((p) => {
+      rows.push([
+        p.nombre,
+        p.inicio,
+        p.fin,
+        p.ingresoTBoxFinal || 'Conforme a calendario',
+        p.entregaBoletas || 'Por definir',
+        p.entregaTemarios || 'Por definir',
+        p.pruebaExtraordinaria || 'Por definir',
+        p.actividades.map((a) => `${a.nombre} (${a.fechaInicio || a.fechas || ''} al ${a.fechaCierre || ''} - TBox: ${a.ingresoTBox || 'N/A'})`).join('; '),
+      ]);
+    });
+    return rows;
+  };
 
-  const wsPeriods = XLSX.utils.aoa_to_sheet(periodRows);
+  // Hoja 1: Parvularia y Básica (3 Trimestres)
+  const wsBasica = XLSX.utils.aoa_to_sheet(createPeriodRows(periodsBasica, 'Trimestre (Parvularia y Básica)'));
+  XLSX.utils.book_append_sheet(wb, wsBasica, 'Trimestres_Parvularia_Basica');
+
+  // Hoja 2: Educación Media (4 Bimestres)
+  const wsMedia = XLSX.utils.aoa_to_sheet(createPeriodRows(periodsMedia, 'Periodo / Bimestre (Media)'));
+  XLSX.utils.book_append_sheet(wb, wsMedia, 'Periodos_Educacion_Media');
+
+  // Hoja 3: General / Respaldo combinado
+  const wsPeriods = XLSX.utils.aoa_to_sheet(createPeriodRows(periods, 'Periodo / Evaluación'));
   XLSX.utils.book_append_sheet(wb, wsPeriods, 'Periodos_Evaluaciones_2026');
 
-  // Hoja 2: Calendario y Días Hábiles (Mes por mes)
+  // Hoja 4: Calendario y Días Hábiles (Mes por mes)
   const calendarRows: any[] = [];
   calendarRows.push(['Mes', 'Semanas Hábiles', 'Días Hábiles', 'Feriados y Descansos Institucionales']);
 
