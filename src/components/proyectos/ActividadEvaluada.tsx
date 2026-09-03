@@ -122,7 +122,7 @@ export default function ActividadEvaluada({ proyectoInicial }: { proyectoInicial
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 flex items-center gap-3">
+      <div className="card-crema p-4 flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
           <ClipboardCheck className="w-5 h-5 text-indigo-600" />
         </div>
@@ -166,7 +166,7 @@ export default function ActividadEvaluada({ proyectoInicial }: { proyectoInicial
       {tab === 'proyectos' && (
         <>
           {/* Filters */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 space-y-3">
+          <div className="card-crema p-4 space-y-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
@@ -208,7 +208,7 @@ export default function ActividadEvaluada({ proyectoInicial }: { proyectoInicial
               <div className="w-8 h-8 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : proyectosFiltrados.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-8 text-center text-slate-400">
+            <div className="card-crema p-8 text-center text-slate-400">
               <ClipboardCheck className="w-8 h-8 mx-auto mb-2 opacity-40" />
               <p className="text-xs">No hay proyectos aprobados disponibles</p>
             </div>
@@ -251,7 +251,7 @@ export default function ActividadEvaluada({ proyectoInicial }: { proyectoInicial
               <div className="w-8 h-8 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : actividadesMostradas.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-8 text-center text-slate-400 dark:bg-slate-800 dark:border-slate-700">
+            <div className="card-crema p-8 text-center text-slate-400 dark:bg-slate-800 dark:border-slate-700">
               <ClipboardCheck className="w-8 h-8 mx-auto mb-2 opacity-40" />
               <p className="text-xs">
                 {proyectoFiltro ? 'Este proyecto aún no tiene actividades evaluadas' : 'No has creado actividades evaluadas aún'}
@@ -304,7 +304,7 @@ function ProyectoCard({ proyecto: p, materias, actividades, onCrearActividad }: 
   proyecto: Proyecto; materias: Subject[]; actividades: ActividadEvaluadaType[]; onCrearActividad: () => void;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/80 p-4 hover:shadow-xs transition-shadow">
+    <div className="card-crema p-4 hover:shadow-xs transition-shadow">
       <div className="flex justify-between items-start gap-3">
         <div className="flex-1 min-w-0">
           <div className="text-sm font-bold text-slate-900 truncate">{p.titulo}</div>
@@ -354,7 +354,7 @@ function ActividadCard({ actividad, onEditar, onRubrica, onReset }: {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/80 p-4 hover:shadow-xs transition-shadow">
+    <div className="card-crema p-4 hover:shadow-xs transition-shadow">
       <div className="flex justify-between items-start gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
@@ -737,7 +737,7 @@ NO incluyas texto fuera del JSON.`);
               type="text"
               value={titulo}
               onChange={e => setTitulo(e.target.value)}
-              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              className="input-crema text-sm"
               placeholder="Ej: Reporte de investigación científica"
             />
           </div>
@@ -775,7 +775,7 @@ NO incluyas texto fuera del JSON.`);
             <textarea
               value={descripcion}
               onChange={e => setDescripcion(e.target.value)}
-              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-200 min-h-[80px] resize-y"
+              className="input-crema text-sm min-h-[80px] resize-y"
               placeholder="Describe brevemente la actividad..."
             />
           </div>
@@ -788,7 +788,7 @@ NO incluyas texto fuera del JSON.`);
             <textarea
               value={instrucciones}
               onChange={e => setInstrucciones(e.target.value)}
-              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-200 min-h-[100px] resize-y"
+              className="input-crema text-sm min-h-[100px] resize-y"
               placeholder="Paso a paso, requisitos específicos, formato de entrega..."
             />
           </div>
@@ -825,7 +825,7 @@ NO incluyas texto fuera del JSON.`);
                     setShowToolSuggestions(false);
                   }
                 }}
-                className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                className="input-crema text-sm flex-1"
                 placeholder="Ej: Arduino, PowerPoint, Scratch"
               />
               <button type="button" onClick={addHerramienta}
@@ -890,18 +890,18 @@ NO incluyas texto fuera del JSON.`);
               type="date"
               value={fechaLimite}
               onChange={e => setFechaLimite(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              className="input-crema text-sm"
             />
           </div>
 
         </div>
 
         <div className="modal-footer">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors">
+          <button type="button" onClick={onClose} className="btn-secondary text-xs">
             Cancelar
           </button>
           <button type="button" onClick={handleSubmit} disabled={loading}
-            className="px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center gap-1.5">
+            className="btn-primary text-sm">
             {loading ? (
               <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
             ) : (

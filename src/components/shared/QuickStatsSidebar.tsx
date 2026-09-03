@@ -128,7 +128,7 @@ export default function QuickStatsSidebar() {
 
   return (
     <>
-      <aside className="w-60 shrink-0 hidden xl:flex flex-col gap-3 p-4 border-l border-slate-200/60 bg-white/60 backdrop-blur-xl overflow-y-auto dark:border-slate-700/60 dark:bg-slate-900/70">
+      <aside className="w-72 shrink-0 hidden xl:flex flex-col gap-3 p-4 border-l border-slate-200/60 bg-white/60 backdrop-blur-xl overflow-y-auto dark:border-slate-700/60 dark:bg-slate-900/70">
 
         {/* ── User Card ── */}
         <div className="p-3 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20 shadow-sm relative overflow-hidden">
@@ -150,31 +150,31 @@ export default function QuickStatsSidebar() {
         </div>
 
         {/* ── Mini Calendario Institucional ── */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 space-y-2 dark:border-slate-700 dark:bg-slate-800">
+        <div className="card-crema p-3.5 space-y-2.5">
           {/* Calendar Header */}
           <div className="flex items-center justify-between">
-            <button onClick={prevMonth} className="w-6 h-6 rounded-full hover:bg-slate-100 flex items-center justify-center transition-colors dark:hover:bg-slate-700">
-              <ChevronLeft className="w-3 h-3 text-slate-500" />
+            <button onClick={prevMonth} className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors dark:hover:bg-slate-700">
+              <ChevronLeft className="w-4 h-4 text-slate-500" />
             </button>
-            <h4 className="text-[0.6875rem] font-bold text-slate-800 font-display dark:text-slate-100">
+            <h4 className="text-xs font-bold text-slate-800 font-display dark:text-slate-100">
               {MONTHS_ES[calMonth]} {calYear}
             </h4>
-            <button onClick={nextMonth} className="w-6 h-6 rounded-full hover:bg-slate-100 flex items-center justify-center transition-colors dark:hover:bg-slate-700">
-              <ChevronRight className="w-3 h-3 text-slate-500" />
+            <button onClick={nextMonth} className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors dark:hover:bg-slate-700">
+              <ChevronRight className="w-4 h-4 text-slate-500" />
             </button>
           </div>
 
           {/* Day headers */}
-          <div className="grid grid-cols-7 gap-px">
+          <div className="grid grid-cols-7 gap-0.5">
             {DAYS_SHORT.map(d => (
-              <div key={d} className="text-center text-[0.5rem] font-bold text-slate-400 uppercase py-0.5">{d}</div>
+              <div key={d} className="text-center text-[10px] font-bold text-slate-400 uppercase py-1">{d}</div>
             ))}
           </div>
 
           {/* Day cells */}
-          <div className="grid grid-cols-7 gap-px">
+          <div className="grid grid-cols-7 gap-0.5">
             {calDays.map((day, idx) => {
-              if (!day) return <div key={`empty-${idx}`} />;
+              if (!day) return <div key={`empty-${idx}`} className="h-7" />;
               const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
               const dayEvents = eventDateMap.get(dateStr) || [];
               const isToday = calYear === today.getFullYear() && calMonth === today.getMonth() && day === today.getDate();
@@ -186,18 +186,18 @@ export default function QuickStatsSidebar() {
                   key={dateStr}
                   title={dayEvents.map(e => e.title).join(', ')}
                   className={`
-                    relative flex items-center justify-center w-full aspect-square rounded-lg text-[0.5625rem] font-semibold transition-all
-                    ${isToday ? 'bg-primary text-white shadow-sm shadow-primary/30' : ''}
+                    relative h-7 flex items-center justify-center rounded-lg text-[11px] font-semibold transition-all cursor-default
+                    ${isToday ? 'bg-primary-dark text-white font-bold shadow-sm' : ''}
                     ${!isToday && hasAsueto ? 'bg-amber-100 text-amber-800' : ''}
-                    ${!isToday && hasEvent && !hasAsueto ? 'bg-primary/8 text-primary' : ''}
-                    ${!isToday && !hasEvent ? 'text-slate-500 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-700' : ''}
+                    ${!isToday && hasEvent && !hasAsueto ? 'bg-primary/10 text-primary' : ''}
+                    ${!isToday && !hasEvent ? 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700' : ''}
                   `}
                 >
                   {day}
                   {hasEvent && !isToday && (
                     <span
-                      className={`absolute bottom-0.5 w-0.5 h-0.5 rounded-full ${
-                        hasAsueto ? 'bg-amber-500' : 'bg-primary/60'
+                      className={`absolute bottom-0.5 w-1 h-1 rounded-full ${
+                        hasAsueto ? 'bg-amber-400' : 'bg-primary/50'
                       }`}
                     />
                   )}
@@ -207,28 +207,29 @@ export default function QuickStatsSidebar() {
           </div>
 
           {/* Legend */}
-          <div className="flex items-center gap-2 pt-1 border-t border-slate-50 dark:border-slate-700">
-            <div className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
-              <span className="text-[0.5rem] text-slate-400 font-medium">Asueto</span>
+          <div className="flex items-center justify-center gap-3 pt-2 mt-1 border-t border-slate-100 dark:border-slate-700">
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block shrink-0" />
+              <span className="text-[10px] text-slate-500 font-medium">Asueto</span>
             </div>
-            <div className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary/60 inline-block" />
-              <span className="text-[0.5rem] text-slate-400 font-medium">Evento</span>
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary/60 inline-block shrink-0" />
+              <span className="text-[10px] text-slate-500 font-medium">Evento</span>
             </div>
-            <div className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
-              <span className="text-[0.5rem] text-slate-400 font-medium">Hoy</span>
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary-dark inline-block shrink-0" />
+              <span className="text-[10px] text-slate-500 font-medium">Hoy</span>
             </div>
           </div>
         </div>
 
         {/* ── Próximos Eventos ── */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 space-y-2 dark:border-slate-700 dark:bg-slate-800">
+        <div className="card-crema p-3.5 space-y-2">
           <div className="flex items-center justify-between">
-            <h4 className="text-[0.625rem] font-bold text-slate-800 uppercase tracking-wider font-display dark:text-slate-100">
+            <h4 className="text-[10px] font-bold text-slate-700 uppercase tracking-wider font-display dark:text-slate-100">
               Próximos Eventos
             </h4>
+            <CalendarDays className="w-3.5 h-3.5 text-slate-400" />
           </div>
 
           {upcomingEvents.length === 0 ? (
@@ -241,16 +242,16 @@ export default function QuickStatsSidebar() {
                 const cfg = EVENT_COLORS[event.type];
                 const Icon = cfg.icon;
                 return (
-                  <div key={event.id} className={`flex items-center gap-2 p-2 rounded-xl ${cfg.bg}`}>
-                    <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 bg-white/80`}>
-                      <Icon className={`w-3 h-3 ${cfg.text}`} />
+                  <div key={event.id} className={`flex items-center gap-2 p-2.5 rounded-xl ${cfg.bg}`}>
+                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 bg-white/80`}>
+                      <Icon className={`w-3.5 h-3.5 ${cfg.text}`} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className={`text-[0.625rem] font-bold ${cfg.text} leading-tight truncate`}>{event.title}</p>
-                      <p className="text-[0.5625rem] text-slate-400">{formatDate(event.date)}</p>
+                      <p className={`text-[11px] font-bold ${cfg.text} leading-tight truncate`}>{event.title}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{formatDate(event.date)}</p>
                     </div>
                     {event.affectsClasses && (
-                      <span className="text-[0.5rem] font-bold text-red-500 shrink-0 bg-red-50 px-1 py-0.5 rounded-full">
+                      <span className="text-[9px] font-bold text-red-500 shrink-0 bg-red-50 px-1.5 py-0.5 rounded-full border border-red-100">
                         Sin clases
                       </span>
                     )}
@@ -263,12 +264,12 @@ export default function QuickStatsSidebar() {
 
         {/* ── Próximas Entregas LMS ── */}
         {showLmsDeliveries && lmsActivities.length > 0 && (
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 space-y-2 dark:border-slate-700 dark:bg-slate-800">
+          <div className="card-crema p-3.5 space-y-2">
             <div className="flex items-center justify-between">
-              <h4 className="text-[0.625rem] font-bold text-slate-800 uppercase tracking-wider font-display dark:text-slate-100">
+              <h4 className="text-[10px] font-bold text-slate-700 uppercase tracking-wider font-display dark:text-slate-100">
                 Próximas Entregas
               </h4>
-              <span className="text-[0.5rem] font-bold text-[#25855A] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+              <span className="text-[9px] font-bold text-[#25855A] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
                 LMS
               </span>
             </div>
@@ -277,24 +278,24 @@ export default function QuickStatsSidebar() {
               {lmsActivities.slice(0, 3).map((act) => (
                 <div
                   key={act.id}
-                  className="p-2 rounded-xl bg-slate-50 border border-slate-200/70 hover:border-[#25855A]/50 transition-all cursor-pointer group"
+                  className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/70 hover:border-[#25855A]/50 transition-all cursor-pointer group"
                 >
-                  <div className="flex items-center justify-between text-[0.5625rem] mb-0.5">
+                  <div className="flex items-center justify-between text-[10px] mb-1">
                     <span
-                      className="font-bold truncate max-w-[100px]"
+                      className="font-bold truncate max-w-[120px]"
                       style={{ color: act.courseColor || '#0D71B9' }}
                     >
                       {act.courseName}
                     </span>
-                    <span className="text-slate-500 flex items-center gap-0.5">
-                      <Clock className="w-2 h-2" />
+                    <span className="text-slate-500 flex items-center gap-1">
+                      <Clock className="w-2.5 h-2.5" />
                       {new Date(act.dueDate).toLocaleDateString('es-SV', {
                         day: 'numeric',
                         month: 'short',
                       })}
                     </span>
                   </div>
-                  <p className="text-[0.625rem] font-semibold text-slate-800 line-clamp-1 group-hover:text-[#25855A] transition-colors">
+                  <p className="text-[11px] font-semibold text-slate-800 line-clamp-1 group-hover:text-[#25855A] transition-colors">
                     {act.title}
                   </p>
                 </div>

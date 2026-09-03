@@ -170,7 +170,7 @@ export default function ProyectosAdmin() {
       {/* Projects List */}
       <div className="space-y-3">
         {proyectosFiltrados.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center text-slate-400">
+          <div className="card-crema p-12 text-center text-slate-400">
             <Medal className="w-12 h-12 mx-auto mb-3 text-slate-300" />
             <p className="text-sm font-semibold">No hay proyectos registrados</p>
           </div>

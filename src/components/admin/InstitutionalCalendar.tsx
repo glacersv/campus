@@ -424,12 +424,12 @@ export default function InstitutionalCalendar() {
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-16 animate-in fade-in duration-200">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800 relative overflow-hidden">
+      <div className="card-hero-dark p-7 md:p-9 relative">
         <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
         <div className="relative z-10 space-y-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 text-xs font-bold uppercase tracking-wider">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30 text-xs font-bold uppercase tracking-wider">
                 <CalendarDays className="w-3.5 h-3.5" />
                 <span>CALENDARIO ACADÉMICO {anoLectivo}</span>
               </div>
@@ -470,7 +470,7 @@ export default function InstitutionalCalendar() {
       </div>
 
       {/* Section Selector */}
-      <div className="bg-white rounded-2xl p-2.5 border border-slate-200 shadow-sm space-y-2">
+      <div className="card-crema p-2.5 border border-slate-200 shadow-sm space-y-2">
         <div className="flex items-center justify-between px-2 pt-1 pb-2 border-b border-slate-100">
           <div className="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider">
             <Layers className="w-4 h-4 text-blue-600" />
@@ -519,8 +519,8 @@ export default function InstitutionalCalendar() {
 
           {/* Modal: Confirmar Vaciar Calendario */}
           {showClearCalendarConfirm && (
-            <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-              <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+              <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+                <div className="modal-container max-w-md w-full p-6 space-y-4">
                 <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto bg-red-100 text-red-600">
                   <CalendarX className="w-6 h-6" />
                 </div>
@@ -555,10 +555,10 @@ export default function InstitutionalCalendar() {
 
           <div className="max-w-6xl mx-auto space-y-4">
             {/* Banner de Vaciar Calendario */}
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 flex items-center justify-between gap-4">
+            <div className="card-crema p-5 border border-purple-200/80 shadow-sm flex items-center justify-between gap-4">
               <div className="flex items-center space-x-4">
-                <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
-                  <CalendarX className="w-5 h-5" />
+                <div className="w-12 h-12 rounded-2xl bg-purple-100 flex items-center justify-center text-purple-600 shrink-0">
+                  <CalendarX className="w-6 h-6" />
                 </div>
                 <div>
                   <div className="flex items-center space-x-2 flex-wrap">
@@ -577,7 +577,7 @@ export default function InstitutionalCalendar() {
             {/* Selección de Métodos */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Método 1 */}
-              <button onClick={() => setActiveMethod('lector')} className={`bg-white rounded-xl p-4 border-2 shadow-sm relative flex items-start space-x-3 cursor-pointer transition text-left ${activeMethod === 'lector' ? 'border-blue-500' : 'border-slate-200 hover:border-slate-300'}`}>
+              <button onClick={() => setActiveMethod('lector')} className={`upload-method-card ${activeMethod === 'lector' ? 'active-blue' : ''}`}>
                 <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shrink-0">
                   <UploadCloud className="w-5 h-5" />
                 </div>
@@ -592,7 +592,7 @@ export default function InstitutionalCalendar() {
               </button>
 
               {/* Método 2 */}
-              <button onClick={handleExportExcel} className={`bg-white rounded-xl p-4 border-2 shadow-sm relative flex items-start space-x-3 cursor-pointer transition text-left ${activeMethod === 'plantilla' ? 'border-emerald-500' : 'border-slate-200 hover:border-slate-300'}`}>
+              <button onClick={handleExportExcel} className={`upload-method-card ${activeMethod === 'plantilla' ? 'active-emerald' : ''}`}>
                 <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 shrink-0">
                   <FileSpreadsheet className="w-5 h-5" />
                 </div>
@@ -604,7 +604,7 @@ export default function InstitutionalCalendar() {
               </button>
 
               {/* Método 3 */}
-              <button onClick={() => { setActiveMethod('asistente'); setIsEditMode(true); }} className={`bg-white rounded-xl p-4 border-2 shadow-sm relative flex items-start space-x-3 cursor-pointer transition text-left ${activeMethod === 'asistente' ? 'border-purple-500' : 'border-slate-200 hover:border-slate-300'}`}>
+              <button onClick={() => { setActiveMethod('asistente'); setIsEditMode(true); }} className={`upload-method-card ${activeMethod === 'asistente' ? 'active-purple' : ''}`}>
                 <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 shrink-0">
                   <Edit2 className="w-5 h-5" />
                 </div>
@@ -617,7 +617,7 @@ export default function InstitutionalCalendar() {
             </div>
 
             {/* Subir Archivo Container */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-6">
+            <div className="card-crema p-6 shadow-sm border border-slate-100 space-y-6">
               {/* Pestañas */}
               <div className="flex items-center space-x-2 border-b border-slate-100 pb-4 flex-wrap gap-2">
                 <button onClick={() => setActiveUploadTab('archivo')} className={`font-semibold text-xs px-4 py-2 rounded-lg border flex items-center space-x-2 transition ${activeUploadTab === 'archivo' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'text-slate-500 border-transparent hover:text-slate-700'}`}>
@@ -642,9 +642,7 @@ export default function InstitutionalCalendar() {
                   onDragOver={handleDrag}
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-2xl p-10 text-center bg-blue-50/20 flex flex-col items-center justify-center space-y-4 cursor-pointer transition-all ${
-                    isDragging ? 'border-blue-500 bg-blue-50' : 'border-blue-400 hover:border-blue-500'
-                  }`}
+                  className={`upload-dropzone ${isDragging ? 'drag-active' : ''} p-10 text-center flex flex-col items-center justify-center space-y-4 cursor-pointer`}
                 >
                   <input
                     ref={fileInputRef}

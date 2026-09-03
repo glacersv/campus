@@ -21,6 +21,7 @@ import { getAllTeachers, getAllGrades, getAllStudents, getAllSections, getAllSub
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
 import ProgressArcGauge from '../shared/ProgressArcGauge';
 import StatPillCards from '../shared/StatPillCards';
+import WelcomeBanner from '../shared/WelcomeBanner';
 import { useAuth } from '../../contexts/AuthContext';
 
 const attendanceData = [
@@ -74,23 +75,18 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
-      {/* Hero Showcase Banner */}
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-        className="relative rounded-3xl bg-gradient-to-r from-[#124D37] via-[#25855A] to-[#1D6F4B] text-white p-7 md:p-9 shadow-xl shadow-emerald-900/10 overflow-hidden"
-      >
-        <div className="absolute -right-10 -bottom-10 w-60 h-60 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-        <div className="relative z-10 max-w-2xl space-y-3">
-          <h2 className="text-2xl md:text-3xl font-extrabold font-display leading-tight">
-            Bienvenido, {userProfile?.displayName || 'Administrador'}.
-          </h2>
-          <p className="text-sm text-emerald-100/90 leading-relaxed">
-            Resumen global de la institución: control de matriculados, docentes, horarios, secciones e incidencias en tiempo real.
-          </p>
-        </div>
-      </motion.div>
+      {/* Hero Banner — estilo LMS/Jornalización */}
+      <WelcomeBanner
+        name={userProfile?.displayName || 'Administrador'}
+        role={userProfile?.role || 'admin'}
+        area="admin"
+        title={`Bienvenido, ${userProfile?.displayName?.split(' ')[0] || 'Administrador'}.`}
+        subtitle="Resumen global de la institución: control de matriculados, docentes, horarios, secciones e incidencias en tiempo real."
+        badge="Sistema Integrado Salesiano • 2026"
+        ctaLabel="Ver Reporte"
+        onCta={() => {}}
+        showProfile={true}
+      />
 
       {/* Stats Cards Row */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5 md:gap-6">
@@ -116,7 +112,7 @@ export default function AdminDashboard() {
       {/* Analytics Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Attendance Chart - barras redondeadas */}
-        <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col h-[380px]">
+        <div className="lg:col-span-2 card-crema rounded-3xl p-6 flex flex-col h-[380px]">
           <div className="flex items-center justify-between mb-4 shrink-0">
             <div>
               <h3 className="text-base font-bold text-slate-900 font-display flex items-center gap-2">
@@ -165,7 +161,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Discipline Chart */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col h-[380px]">
+        <div className="card-crema rounded-3xl p-6 flex flex-col h-[380px]">
           <div className="mb-4 shrink-0">
             <h3 className="text-base font-bold text-slate-900 font-display flex items-center gap-2">
               <ShieldAlert className="w-5 h-5 text-red-600" />
@@ -217,7 +213,7 @@ export default function AdminDashboard() {
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-        className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm"
+         className="card-crema rounded-3xl p-6"
       >
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -228,7 +224,7 @@ export default function AdminDashboard() {
           </div>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="bg-slate-50 rounded-2xl border border-slate-100 p-4 flex items-center justify-center">
+            <div className="bg-slate-50 rounded-2xl border border-slate-100 p-4 flex items-center justify-center">
             <ProgressArcGauge
               value={stats.students > 0 ? Math.min(100, Math.round((stats.teachers / stats.students) * 100)) : 0}
               title="Docentes vs Alumnos"

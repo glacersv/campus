@@ -109,7 +109,7 @@ export default function StudentDashboard({ studentName, onLogout }: StudentDashb
       <WelcomeBanner
         name={studentName}
         role="alumno"
-        area="general"
+        area="alumno"
         title={`Hola, ${studentName}.`}
         subtitle="Acceda a los módulos de aula virtual, proyectos, calificaciones y horarios habilitados para su usuario."
         badge="Sistema Integrado Salesiano • 2026"

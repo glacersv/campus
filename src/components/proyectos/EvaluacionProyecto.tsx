@@ -319,7 +319,7 @@ NO incluyas texto fuera del JSON.`);
     <div className="min-h-screen" style={{ background: 'var(--bg-main)' }}>
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-5">
         {/* Header del proyecto */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 dark:border-slate-700 dark:bg-slate-800">
+        <div className="card-crema p-5 dark:border-slate-700 dark:bg-slate-800">
           <div className="flex items-start justify-between gap-3">
             <button onClick={back} className="btn-secondary rounded-xl px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 shrink-0">
               <ArrowLeft className="w-4 h-4" /> Volver
@@ -369,7 +369,7 @@ NO incluyas texto fuera del JSON.`);
         )}
 
         {/* Stepper */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 dark:border-slate-700 dark:bg-slate-800">
+        <div className="card-crema p-4 dark:border-slate-700 dark:bg-slate-800">
           <div className="flex items-center">
             {steps.map((s, i) => {
               const active = step === s.n;
@@ -398,7 +398,7 @@ NO incluyas texto fuera del JSON.`);
         </div>
 
         {/* Contenido del paso */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 dark:border-slate-700 dark:bg-slate-800">
+        <div className="card-crema p-6 dark:border-slate-700 dark:bg-slate-800">
           {step === 1 && (
             <StepActividad
               proyecto={proyecto}

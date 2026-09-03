@@ -15,11 +15,11 @@ export default function AcademicaDashboard() {
       title="Coordinación Académica"
       subtitle="Gestión de notas, evaluaciones, horarios y proyectos estudiantiles."
       basePath="/coordinacion-academica"
+      bannerArea="academica"
       icon={BookOpen}
       iconBgClassName="bg-sky-500/10"
       iconTextClassName="text-sky-600"
       modules={customModules}
-      showMondayNotice={false}
     />
   );
 }

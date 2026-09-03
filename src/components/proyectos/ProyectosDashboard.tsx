@@ -174,7 +174,7 @@ export default function ProyectosDashboard() {
         )}
 
         {vista === 'lista' && mainTab === 'cronograma' && (
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-6">
+          <div className="card-crema p-6">
             <Cronograma />
           </div>
         )}

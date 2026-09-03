@@ -25,7 +25,7 @@ export default function StatPillCards({ items }: StatPillCardsProps) {
         return (
           <div
             key={item.id}
-            className="rounded-2xl bg-white p-5 border border-slate-100 shadow-sm flex flex-col justify-between"
+            className="card-crema p-5 flex flex-col justify-between"
           >
             <div className="flex justify-between items-center">
               <span className="text-sm font-bold text-slate-700">{item.label}</span>

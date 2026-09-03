@@ -8,7 +8,7 @@ interface ModulePlaceholderProps {
 
 export default function ModulePlaceholder({ title = 'Módulo en Desarrollo', subtitle = 'Este módulo está actualmente bajo mantenimiento o en fase de diseño premium. Pronto estará disponible para tu cuenta docente.' }: ModulePlaceholderProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-20 px-4 bg-white rounded-2xl border border-slate-200/80 max-w-lg mx-auto text-center">
+    <div className="flex flex-col items-center justify-center py-20 px-4 card-crema max-w-lg mx-auto text-center">
       <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mb-4">
         <Lock className="w-8 h-8 text-slate-400" />
       </div>

@@ -20,7 +20,7 @@ export default function AvisosView() {
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-8 text-center">
+      <div className="card-crema p-8 text-center">
         <Bell className="w-12 h-12 mx-auto mb-4 text-slate-300" />
         <h3 className="text-lg font-bold text-slate-900 mb-2">Vista de Avisos</h3>
         <p className="text-sm text-slate-500 max-w-md mx-auto">

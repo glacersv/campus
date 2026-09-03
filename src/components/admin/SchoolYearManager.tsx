@@ -902,7 +902,7 @@ function GradeMigrationCard({
   const isReconfigured = r.currentSectionNames.length !== r.newSectionNames.filter(n => n.trim()).length;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col justify-between hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 relative group/card overflow-hidden min-h-[420px]">
+    <div className="card-crema p-5 flex flex-col justify-between hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 relative group/card overflow-hidden min-h-[420px]">
       {/* Decorative premium slate/primary gradient top border */}
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/10 via-primary/30 to-primary/10" />
 

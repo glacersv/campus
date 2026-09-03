@@ -54,17 +54,17 @@ export default function NotasView() {
           <input
             type="text"
             placeholder="Buscar por alumno o evaluación..."
-            className="input pl-9"
+            className="input-crema pl-9"
           />
         </div>
         <div className="flex gap-2">
-          <select className="input w-auto">
+          <select className="input-crema w-auto">
             <option>Todos los grados</option>
             <option>1° Grado</option>
             <option>2° Grado</option>
             <option>3° Grado</option>
           </select>
-          <select className="input w-auto">
+          <select className="input-crema w-auto">
             <option>Todas las materias</option>
             <option>Matemáticas</option>
             <option>Lenguaje</option>

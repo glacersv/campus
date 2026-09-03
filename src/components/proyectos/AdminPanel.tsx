@@ -80,7 +80,7 @@ export default function AdminPanel({ proyectos }: { proyectos: Proyecto[] }) {
 
       {tabAdmin === 'validadores' && (
         <div>
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 mb-3">
+          <div className="card-crema p-5 mb-3">
             <h3 className="text-sm font-bold text-slate-900 mb-2">Asignar docente validador</h3>
             <p className="text-xs text-slate-400 mb-3">Define qué docente valida proyectos de cada grado y materia.</p>
 
@@ -119,7 +119,7 @@ export default function AdminPanel({ proyectos }: { proyectos: Proyecto[] }) {
               onClick={handleAsignar}>Guardar asignación</button>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5">
+          <div className="card-crema p-5">
             <h3 className="text-sm font-bold text-slate-900 mb-3">Asignaciones actuales</h3>
             {loading && <p className="text-sm text-slate-400">Cargando...</p>}
             {!loading && asignaciones.length === 0 && <p className="text-sm text-slate-400">No hay asignaciones configuradas aún.</p>}
@@ -202,7 +202,7 @@ export default function AdminPanel({ proyectos }: { proyectos: Proyecto[] }) {
             ))}
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 mb-3">
+          <div className="card-crema p-5 mb-3">
             <h3 className="text-sm font-bold text-slate-900 mb-3">Distribución por estado</h3>
             {Object.entries(ESTADOS_PROYECTO).map(([estado, info]) => {
               const count = conteo[estado] ?? 0;
@@ -222,7 +222,7 @@ export default function AdminPanel({ proyectos }: { proyectos: Proyecto[] }) {
             })}
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5">
+          <div className="card-crema p-5">
             <h3 className="text-sm font-bold text-slate-900 mb-3">Proyectos por grado</h3>
             {GRADOS_PROYECTO.map(g => {
               const count = proyectos.filter(p => p.grado === g).length;

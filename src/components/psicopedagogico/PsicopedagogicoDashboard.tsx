@@ -6,11 +6,12 @@ export default function PsicopedagogiaDashboard() {
   return (
     <ModuleGridDashboard
       title="Psicopedagogía"
-      subtitle="Selecciona un módulo."
+      subtitle="Acompañamiento estudiantil, formación integral, notas y avisos institucionales desde su panel de psicopedagogía."
       basePath="/psicopedagogico"
       icon={Brain}
       iconBgClassName="bg-purple-50"
       iconTextClassName="text-purple-600"
+      bannerArea="psicopedagogico"
     />
   );
 }

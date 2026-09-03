@@ -5,10 +5,11 @@ export default function TeacherHome() {
   return (
     <ModuleGridDashboard
       title="Panel Docente"
-      subtitle="Acceda a los módulos de gestión de alumnos y proyectos habilitados para su usuario."
+      subtitle="Gestione proyectos estudiantiles, actividades LMS y módulos curriculares desde su panel de docente."
       basePath="/docente"
       showMondayNotice={true}
       exclude={['formacion']}
+      bannerArea="docente"
     />
   );
 }

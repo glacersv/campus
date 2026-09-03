@@ -65,7 +65,7 @@ export default function SugerenciaInformatica({ proyecto, onAsignado }: Props) {
     const c = proyecto.complemento_informatica!;
     const info = TIPO_INFO[c.tipo] ?? { label: c.tipo, icon: '📌', color: 'text-slate-700 bg-slate-100' };
     return (
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-5 mb-3">
+      <div className="card-crema p-5 mb-3">
         <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
           <Computer className="w-4 h-4 text-indigo-500" /> Complemento de Informática asignado
         </h3>
@@ -93,7 +93,7 @@ export default function SugerenciaInformatica({ proyecto, onAsignado }: Props) {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/80 p-5 mb-3">
+    <div className="card-crema p-5 mb-3">
       <h3 className="text-sm font-bold text-slate-900 mb-2 flex items-center gap-2">
         <Computer className="w-4 h-4 text-indigo-500" /> Complemento de Informática
       </h3>

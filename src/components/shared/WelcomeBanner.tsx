@@ -6,6 +6,7 @@ import AreaIllustration from './AreaIllustration';
 type BannerTheme = { light: string; dark: string };
 
 const BANNER_THEMES: Record<string, BannerTheme> = {
+  // ── Module-based themes (migrated from jornalizacion/lms) ──
   formacion: { light: 'from-[#124D37] via-[#25855A] to-[#1D6F4B]', dark: 'dark:from-[#0b1120] dark:via-[#0a3d2b] dark:to-[#0b1120]' },
   notas: { light: 'from-[#0C4A6E] via-[#0EA5E9] to-[#0369A1]', dark: 'dark:from-[#0b1120] dark:via-[#0c3a52] dark:to-[#0b1120]' },
   clase: { light: 'from-[#92400E] via-[#F59E0B] to-[#B45309]', dark: 'dark:from-[#0b1120] dark:via-[#4a2607] dark:to-[#0b1120]' },
@@ -18,6 +19,15 @@ const BANNER_THEMES: Record<string, BannerTheme> = {
   lms: { light: 'from-[#0D71B9] via-[#25855A] to-[#1D6F4B]', dark: 'dark:from-[#0b1120] dark:via-[#0c3a52] dark:to-[#0b1120]' },
   perfil: { light: 'from-[#124D37] via-[#25855A] to-[#1D6F4B]', dark: 'dark:from-[#0b1120] dark:via-[#0a3d2b] dark:to-[#0b1120]' },
   general: { light: 'from-[#124D37] via-[#25855A] to-[#1D6F4B]', dark: 'dark:from-[#0b1120] dark:via-[#0a3d2b] dark:to-[#0b1120]' },
+  // ── Role-specific themes (migrated from LMS/Jornalización) ──
+  admin: { light: 'from-[#0f172a] via-[#1e3a5f] to-[#0f172a]', dark: 'dark:from-[#020617] dark:via-[#1e3a5f] dark:to-[#020617]' },
+  docente: { light: 'from-[#124D37] via-[#25855A] to-[#0D71B9]', dark: 'dark:from-[#0b1120] dark:via-[#0c3a52] dark:to-[#0b1120]' },
+  coordinacion: { light: 'from-[#1e3a5f] via-[#124D37] to-[#1e3a5f]', dark: 'dark:from-[#0b1120] dark:via-[#1e3a5f] dark:to-[#0b1120]' },
+  academica: { light: 'from-[#1e3a5f] via-[#124D37] to-[#25855A]', dark: 'dark:from-[#0b1120] dark:via-[#0c3a52] dark:to-[#0b1120]' },
+  enfermeria: { light: 'from-[#7c3aed] via-[#a854f3] to-[#db2777]', dark: 'dark:from-[#0b1120] dark:via-[#4a1c7d] dark:to-[#0b1120]' },
+  psicopedagogico: { light: 'from-[#0e7490] via-[#0891b2] to-[#1d4ed8]', dark: 'dark:from-[#0b1120] dark:via-[#11384c] dark:to-[#0b1120]' },
+  registro: { light: 'from-[#b45309] via-[#ea580c] to-[#b91c1c]', dark: 'dark:from-[#0b1120] dark:via-[#7c2d0a] dark:to-[#0b1120]' },
+  alumno: { light: 'from-[#0D71B9] via-[#25855A] to-[#0D71B9]', dark: 'dark:from-[#0b1120] dark:via-[#0c3a52] dark:to-[#0b1120]' },
 };
 
 const FALLBACK_THEME = BANNER_THEMES.general;
@@ -80,7 +90,7 @@ export default function WelcomeBanner({
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-      className={`relative overflow-hidden rounded-3xl bg-gradient-to-r ${theme.light} ${theme.dark} p-6 text-white shadow-xl shadow-black/10 md:p-8`}
+      className={`relative overflow-hidden rounded-[28px] bg-gradient-to-r ${theme.light} ${theme.dark} p-7 text-white shadow-xl shadow-black/10 md:p-9`}
     >
       {/* Glow circles */}
       <div className="pointer-events-none absolute -right-10 -bottom-10 h-60 w-60 rounded-full bg-white/10 blur-2xl" />
@@ -120,7 +130,7 @@ export default function WelcomeBanner({
             <div className="flex flex-wrap items-center gap-3 pt-1">
               <button
                 onClick={onCta}
-                className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 font-display text-xs font-bold text-slate-900 shadow-md shadow-black/20 transition-all hover:bg-white/90 active:scale-95"
+                className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 font-display text-xs font-bold text-slate-900 shadow-md shadow-black/20 transition-all hover:scale-105 active:scale-95"
               >
                 {ctaLabel}
                 <ArrowUpRight className="h-4 w-4" />

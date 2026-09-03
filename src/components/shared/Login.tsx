@@ -99,7 +99,7 @@ export default function Login() {
               <label htmlFor="signup-name" className="block text-xs font-bold text-[#475569] mb-1.5 uppercase tracking-wider">Nombre Completo</label>
               <div className="relative group">
                 <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-[#94a3b8] group-focus-within:text-[#25855A] transition-colors"><UserPlus className="w-4 h-4" /></span>
-                <input id="signup-name" type="text" required placeholder="Nombre del docente" value={displayName} onChange={e => setDisplayName(e.target.value)} className="input pl-9 bg-[#ffffff]/60 focus:bg-white" />
+                <input id="signup-name" type="text" required placeholder="Nombre del docente" value={displayName} onChange={e => setDisplayName(e.target.value)} className="input-crema pl-9 bg-[#ffffff]/60 focus:bg-white" />
               </div>
             </motion.div>
           )}
@@ -107,14 +107,14 @@ export default function Login() {
             <label htmlFor="login-email" className="block text-xs font-bold text-[#475569] mb-1.5 uppercase tracking-wider">Correo Electrónico</label>
             <div className="relative group">
               <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-[#94a3b8] group-focus-within:text-[#25855A] transition-colors"><Mail className="w-4 h-4" /></span>
-              <input id="login-email" type="email" required placeholder="correo@salesianosanjose.edu.sv" value={email} onChange={e => setEmail(e.target.value)} className="input pl-9 bg-[#ffffff]/60 focus:bg-white" />
+              <input id="login-email" type="email" required placeholder="correo@salesianosanjose.edu.sv" value={email} onChange={e => setEmail(e.target.value)} className="input-crema pl-9 bg-[#ffffff]/60 focus:bg-white" />
             </div>
           </div>
           <div>
             <label htmlFor="login-password" className="block text-xs font-bold text-[#475569] mb-1.5 uppercase tracking-wider">Contraseña</label>
             <div className="relative group">
               <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-[#94a3b8] group-focus-within:text-[#25855A] transition-colors"><Lock className="w-4 h-4" /></span>
-              <input id="login-password" type="password" required placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="input pl-9 bg-[#ffffff]/60 focus:bg-white" />
+              <input id="login-password" type="password" required placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="input-crema pl-9 bg-[#ffffff]/60 focus:bg-white" />
             </div>
           </div>
           <motion.button 

@@ -241,7 +241,7 @@ export default function ProjectsModule({ view, compact = false }: Props) {
 
       {/* Vista de Actividades Evaluadas */}
       {activeTab === 'actividades' && view === 'docente' && (
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+        <div className="card-crema rounded-3xl p-6">
           <ActividadEvaluada />
         </div>
       )}
@@ -251,16 +251,16 @@ export default function ProjectsModule({ view, compact = false }: Props) {
 
       {/* Vista de Proyectos */}
       {activeTab === 'proyectos' && (
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm">
+        <div className="card-crema rounded-3xl">
           {/* Filters (admin/coordinacion) */}
           {(view === 'admin' || view === 'coordinacion') && (
             <div className="p-5 border-b border-slate-100 flex gap-3">
               <div className="relative flex-1">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input className="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-200"
+                <input                  className="input-crema text-sm pl-10"
                   placeholder="Buscar proyectos..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
               </div>
-              <select className="px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-200"
+              <select                 className="input-crema text-sm"
                 value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
                 <option value="">Todos los estados</option>
                 {Object.entries(ESTADOS_PROYECTO).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
@@ -373,7 +373,7 @@ export default function ProjectsModule({ view, compact = false }: Props) {
                 Motivo de eliminación *
               </label>
               <textarea
-                className="input min-h-[80px] resize-none"
+                 className="input-crema min-h-[80px] resize-none text-sm"
                 placeholder="Describe el motivo por el cual se elimina este proyecto..."
                 value={deleteModal.motivo}
                 onChange={e => setDeleteModal({ ...deleteModal, motivo: e.target.value })}
@@ -382,13 +382,13 @@ export default function ProjectsModule({ view, compact = false }: Props) {
 
             <div className="flex gap-3 justify-end">
               <button
-                className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors"
+                className="btn-secondary text-xs"
                 onClick={() => setDeleteModal(null)}
               >
                 Cancelar
               </button>
               <button
-                className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50"
+                className="btn-danger text-xs"
                 disabled={!deleteModal.motivo.trim()}
                 onClick={handleEliminar}
               >
@@ -510,22 +510,22 @@ function ModalDocente({ proyectos, modal, formModal, setFormModal, onAccion, onC
 
       <div className="mb-4 mt-4">
         <label className="text-sm font-medium text-slate-600 mb-2 block">Materia confirmada</label>
-        <select className="w-full text-sm border border-slate-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-200"
+        <select className="input-crema text-sm"
           value={formModal.materia} onChange={e => setFormModal(f => ({ ...f, materia: e.target.value }))}>
           {materias.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
       </div>
       <div className="mb-5">
         <label className="text-sm font-medium text-slate-600 mb-2 block">Comentarios</label>
-        <textarea className="w-full text-sm border border-slate-200 rounded-xl px-4 py-3 min-h-[80px] resize-y focus:outline-none focus:ring-2 focus:ring-orange-200"
+        <textarea className="input-crema text-sm min-h-[80px] resize-y"
           value={formModal.comentario} onChange={e => setFormModal(f => ({ ...f, comentario: e.target.value }))}
           placeholder="Observaciones..." />
       </div>
       <div className="flex gap-3 justify-end">
-        <button className="px-5 py-2.5 text-sm font-medium border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors" onClick={onCancel}>Cancelar</button>
+        <button className="btn-secondary text-xs" onClick={onCancel}>Cancelar</button>
         <button className="px-5 py-2.5 text-sm font-medium bg-slate-100 text-slate-700 border border-slate-200 rounded-xl hover:bg-slate-200 transition-colors"
           onClick={() => onAccion('reclasificar')}>Reclasificar</button>
-        <button className="px-5 py-2.5 text-sm font-medium bg-red-50 text-red-700 border border-red-200 rounded-xl hover:bg-red-100 transition-colors"
+        <button className="btn-danger text-xs"
           onClick={() => onAccion('rechazar')}>Rechazar</button>
         <button className="px-5 py-2.5 text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition-colors"
           onClick={() => onAccion('aprobar')}>Aprobar</button>
@@ -565,13 +565,13 @@ function ModalCoordinacion({ proyectos, modal, formModal, setFormModal, onAccion
 
       <div className="mb-5 mt-4">
         <label className="text-sm font-medium text-slate-600 mb-2 block">Motivo de rechazo (si aplica)</label>
-        <textarea className="w-full text-sm border border-slate-200 rounded-xl px-4 py-3 min-h-[80px] resize-y focus:outline-none focus:ring-2 focus:ring-orange-200"
+        <textarea className="input-crema text-sm min-h-[80px] resize-y"
           value={formModal.comentario} onChange={e => setFormModal(f => ({ ...f, comentario: e.target.value }))}
           placeholder="Solo si rechazas..." />
       </div>
       <div className="flex gap-3 justify-end">
-        <button className="px-5 py-2.5 text-sm font-medium border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors" onClick={onCancel}>Cancelar</button>
-        <button className="px-5 py-2.5 text-sm font-medium bg-red-50 text-red-700 border border-red-200 rounded-xl hover:bg-red-100 transition-colors"
+        <button className="btn-secondary text-xs" onClick={onCancel}>Cancelar</button>
+        <button className="btn-danger text-xs"
           onClick={() => onAccion('rechazar_oficial')}>Rechazar</button>
         <button className="px-5 py-2.5 text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition-colors"
           onClick={() => onAccion('aprobar_oficial')}>Aprobar</button>

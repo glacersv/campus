@@ -388,7 +388,7 @@ export const SuspensionesManager: React.FC<SuspensionesManagerProps> = ({
       <div className="flex flex-col md:flex-row items-start gap-4">
         
         {/* LEFT COLUMN: Meses del Año (Vertical Selector) */}
-        <div className="w-full md:w-56 lg:w-64 shrink-0 bg-white rounded-2xl border border-slate-200 p-3 shadow-xs space-y-2">
+         <div className="w-full md:w-56 lg:w-64 shrink-0 card-crema p-3 shadow-xs space-y-2">
           <div className="flex items-center justify-between px-1 pb-2 border-b border-slate-100">
             <div className="flex items-center gap-1.5">
               <CalendarRange className="w-3.5 h-3.5 text-blue-600" />
@@ -498,7 +498,7 @@ export const SuspensionesManager: React.FC<SuspensionesManagerProps> = ({
           
           {/* VIEW MODE: SLIDE / MES EN CURSO */}
           {viewMode !== 'all' && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 transition-all space-y-4">
+             <div className="card-crema shadow-sm p-4 sm:p-5 transition-all space-y-4">
               
               {/* Slide Header: Navigation & Month Info */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
@@ -857,8 +857,8 @@ export const SuspensionesManager: React.FC<SuspensionesManagerProps> = ({
 
       {/* ADD / EDIT EVENT MODAL WITH VISUAL CALENDAR PICKER */}
       {isFormOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-xl w-full my-auto overflow-hidden animate-in fade-in zoom-in-95 max-h-[95vh] flex flex-col">
+        <div className="modal-backdrop">
+          <div className="modal-container max-w-xl w-full my-auto overflow-hidden animate-in fade-in zoom-in-95 max-h-[95vh] flex flex-col">
             {/* Modal Header */}
             <div className="p-4 sm:px-6 border-b border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
@@ -1094,7 +1094,7 @@ export const SuspensionesManager: React.FC<SuspensionesManagerProps> = ({
                     }
                   }}
                   placeholder="Ej: 23 feb, 19 mar, 01-05 abr, 30-31 mar"
-                  className="w-full p-2.5 rounded-xl border border-slate-300 font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 text-xs bg-white"
+                  className="input-crema font-mono font-bold text-xs"
                   required
                 />
                 <div className="flex flex-wrap gap-1.5 mt-1.5">
@@ -1172,7 +1172,7 @@ export const SuspensionesManager: React.FC<SuspensionesManagerProps> = ({
                   value={formActividad}
                   onChange={(e) => setFormActividad(e.target.value)}
                   placeholder="Ej: Pausa Pedagógica #1 - Formación y Evaluación Curricular"
-                  className="w-full p-2.5 rounded-xl border border-slate-300 font-medium text-slate-800 focus:ring-2 focus:ring-blue-500 text-xs"
+                   className="input-crema font-medium text-xs resize-none h-16"
                   required
                 />
               </div>
@@ -1230,14 +1230,14 @@ export const SuspensionesManager: React.FC<SuspensionesManagerProps> = ({
               <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2 shrink-0">
                 <button
                   type="button"
-                  onClick={() => setIsFormOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold hover:bg-slate-100 transition-colors"
+                   onClick={() => setIsFormOpen(false)}
+                  className="btn-secondary text-xs"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+                  className="btn-primary text-xs"
                 >
                   <Check className="w-4 h-4" />
                   <span>{editingEventId ? 'Actualizar Actividad' : 'Guardar en Jornalización'}</span>
@@ -1250,8 +1250,8 @@ export const SuspensionesManager: React.FC<SuspensionesManagerProps> = ({
 
       {/* Modal: Confirmar cargar valores por defecto */}
       {showLoadDefaults && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+      <div className="modal-backdrop animate-in fade-in">
+        <div className="modal-container max-w-md w-full p-6 space-y-4">
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto bg-amber-100 text-amber-600">
               <RotateCcw className="w-6 h-6" />
             </div>

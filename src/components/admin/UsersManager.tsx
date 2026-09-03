@@ -555,7 +555,7 @@ export default function UsersManager() {
               {Object.entries(ROLE_LABELS).map(([role, label]) => {
                 const count = roleCounts[role] || 0;
                 return (
-                  <div key={role} className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs">
+                  <div key={role} className="card-crema p-4 shadow-2xs">
                     <p className="text-xl font-black text-slate-800">{count}</p>
                     <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{label}</p>
                   </div>
@@ -564,7 +564,7 @@ export default function UsersManager() {
             </div>
 
             {/* Advanced Filters & Search (Premium Pills & No Select) */}
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 space-y-4">
+            <div className="card-crema p-5 space-y-4">
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Filtrar por rol</span>
                 <div className="flex flex-wrap gap-1.5 mt-1.5">
@@ -716,7 +716,7 @@ export default function UsersManager() {
             </div>
 
             {pendingApprovals.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center text-secondary">
+              <div className="card-crema p-12 text-center text-secondary">
                 <Check className="w-10 h-10 mx-auto mb-3 text-slate-300" />
                 <p className="text-xs font-semibold">Todas las solicitudes han sido resueltas</p>
               </div>
@@ -960,7 +960,7 @@ export default function UsersManager() {
             </div>
 
             {newNotifications.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center text-secondary">
+              <div className="card-crema p-12 text-center text-secondary">
                 <Mail className="w-10 h-10 mx-auto mb-3 text-slate-300" />
                 <p className="text-xs font-semibold">No hay credenciales pendientes de distribución</p>
               </div>

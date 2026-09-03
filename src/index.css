@@ -1225,4 +1225,127 @@ a:focus:not(:focus-visible) {
 .progress-arc-track { stroke: #e2e8f0; }
 .dark .progress-arc-track { stroke: #1e293b; }
 
+/* =====================================================================
+   UNIFIED DESIGN SYSTEM — migrated from glacersv/jornalizacion + LMS
+   ===================================================================== */
+
+/* ── Dark Hero Banner (estilo jornalización) ─────────────────────── */
+.card-hero-dark {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #1e1b4b 100%);
+  border-radius: 1.25rem;
+  border: 1px solid rgba(51, 65, 85, 0.8);
+  color: #ffffff;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+.card-hero-dark::before {
+  content: '';
+  position: absolute;
+  top: -60px;
+  right: -60px;
+  width: 220px;
+  height: 220px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 9999px;
+  filter: blur(40px);
+  pointer-events: none;
+}
+
+/* ── Upload Method Card (card selector de 3 métodos de jornalización) */
+.upload-method-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  padding: 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  cursor: pointer;
+  transition: border-color 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
+  text-align: left;
+  width: 100%;
+}
+
+.upload-method-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.upload-method-card.active-blue {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.upload-method-card.active-emerald {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.upload-method-card.active-purple {
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* ── Drag & Drop Upload Zone ──────────────────────────────────────── */
+.upload-dropzone {
+  border: 2px dashed #cbd5e1;
+  border-radius: 1rem;
+  background: rgba(248, 250, 252, 0.5);
+  transition: border-color 180ms var(--ease-out), background 180ms var(--ease-out);
+  cursor: pointer;
+}
+
+.upload-dropzone:hover,
+.upload-dropzone.drag-active {
+  border-color: #3b82f6;
+  background: rgba(239, 246, 255, 0.5);
+}
+
+/* ── Vibrant Badge System (6 colores del sidebar de jornalización) ── */
+.badge-jornal {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  border: 1px solid;
+  white-space: nowrap;
+}
+
+.badge-jornal-teal    { background: rgba(20, 184, 166, 0.15); color: #0d9488; border-color: rgba(20, 184, 166, 0.25); }
+.badge-jornal-indigo  { background: rgba(99, 102, 241, 0.15); color: #4f46e5; border-color: rgba(99, 102, 241, 0.25); }
+.badge-jornal-emerald { background: rgba(16, 185, 129, 0.15); color: #059669; border-color: rgba(16, 185, 129, 0.25); }
+.badge-jornal-blue    { background: rgba(59, 130, 246, 0.15); color: #2563eb; border-color: rgba(59, 130, 246, 0.25); }
+.badge-jornal-amber   { background: rgba(245, 158, 11, 0.15); color: #d97706; border-color: rgba(245, 158, 11, 0.25); }
+.badge-jornal-purple  { background: rgba(139, 92, 246, 0.15); color: #7c3aed; border-color: rgba(139, 92, 246, 0.25); }
+
+/* Dark mode overrides for new classes */
+.dark .card-hero-dark {
+  background: linear-gradient(135deg, #020617 0%, #0f172a 50%, #1e1b4b 100%);
+}
+
+.dark .upload-method-card {
+  background: #1e293b;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+.dark .upload-method-card:hover {
+  border-color: #475569;
+}
+
+.dark .upload-dropzone {
+  border-color: #334155;
+  background: rgba(30, 41, 59, 0.5);
+}
+
+.dark .upload-dropzone:hover,
+.dark .upload-dropzone.drag-active {
+  border-color: #3b82f6;
+  background: rgba(30, 58, 138, 0.15);
+}
 

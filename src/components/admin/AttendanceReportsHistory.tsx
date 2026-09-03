@@ -120,7 +120,7 @@ export default function AttendanceReportsHistory() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 flex flex-col sm:flex-row gap-3">
+      <div className="card-crema p-4 flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -128,7 +128,7 @@ export default function AttendanceReportsHistory() {
             placeholder="Buscar por grado, tutor o fecha..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="input pl-9"
+            className="input-crema pl-9"
           />
         </div>
         <div className="flex gap-2">
@@ -163,7 +163,7 @@ export default function AttendanceReportsHistory() {
           <p className="text-xs text-slate-400 mt-1">Intenta ajustar los filtros de búsqueda</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden">
+        <div className="card-crema">
           <div className="divide-y divide-slate-100">
             {filteredReports.map((report, index) => {
               const isExpanded = expandedId === report.id;
