@@ -23,11 +23,13 @@ import {
   UserCheck,
   Cpu,
   GraduationCap,
+  Calendar,
 } from 'lucide-react';
 import { lmsService } from '../../services/lmsService';
 import { LMSModule, LMSActivity, ActionStageKey, MINED_LEVELS, MinedLevel } from '../../types';
 import ProgressRing from './shared/ProgressRing';
 import ActivityItem from './shared/ActivityItem';
+import MDEditor from '@uiw/react-md-editor';
 
 interface LMSCourseDetailProps {
   courseId: string;
@@ -41,7 +43,7 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
   const navigate = useNavigate();
   const [course, setCourse] = useState<LMSModule | undefined>(undefined);
   const [activities, setActivities] = useState<LMSActivity[]>([]);
-  const [activeTab, setActiveTab] = useState<'etapas' | 'proyecto' | 'descriptor' | 'saberes' | 'actividades' | 'calificaciones'>('etapas');
+  const [activeTab, setActiveTab] = useState<'etapas' | 'proyecto' | 'descriptor' | 'saberes' | 'actividades' | 'calificaciones' | 'jornalizacion'>('etapas');
   const [expandedStage, setExpandedStage] = useState<ActionStageKey | null>('informar');
   const [selectedCohortYear, setSelectedCohortYear] = useState<string>('2026');
   const [generatingProject, setGeneratingProject] = useState(false);
@@ -251,6 +253,17 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
           <Award className="w-3.5 h-3.5" />
           <span>Rúbrica y Notas</span>
         </button>
+
+        {(c.jornalizacion && c.jornalizacion.length > 0) && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('jornalizacion')}
+            className={`filter-pill ${activeTab === 'jornalizacion' ? 'filter-pill-active' : ''}`}
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            <span>Jornalización</span>
+          </button>
+        )}
       </div>
 
       {/* 3. TAB 1: 6 ETAPAS DE LA ACCIÓN COMPLETA */}
@@ -270,11 +283,11 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
 
           <div className="space-y-3">
             {(['informar', 'planificar', 'decidir', 'ejecutar', 'controlar', 'valorar'] as ActionStageKey[]).map((stageKey, idx) => {
-              const stage = descriptor.actionStages[stageKey];
+              const stage = descriptor.actionStages?.[stageKey];
               if (!stage) return null;
               const isExpanded = expandedStage === stageKey;
               const stageActs = activities.filter((a) => a.stageKey === stageKey);
-              const stageHours = Math.round((c.hours * stage.hoursPercentage) / 100);
+              const stageHours = Math.round((c.hours * (stage.hoursPercentage || 10)) / 100);
 
               const stageColors: Record<ActionStageKey, { bg: string; text: string; badge: string }> = {
                 informar: { bg: 'bg-blue-500', text: 'text-blue-700', badge: 'bg-blue-50 border-blue-200' },
@@ -285,7 +298,7 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
                 valorar: { bg: 'bg-rose-500', text: 'text-rose-700', badge: 'bg-rose-50 border-rose-200' },
               };
 
-              const colors = stageColors[stageKey];
+              const colors = stageColors[stageKey] || stageColors.informar;
 
               return (
                 <div
@@ -311,7 +324,7 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
                           </span>
                         </div>
                         <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">
-                          {stage.guidingQuestions[0]}
+                          {stage.guidingQuestions?.[0]}
                         </p>
                       </div>
                     </div>
@@ -341,7 +354,7 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
                             Preguntas Guías de la Etapa
                           </h4>
                           <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-slate-600">
-                            {stage.guidingQuestions.map((q: string, qIdx: number) => (
+                            {(stage.guidingQuestions || []).map((q: string, qIdx: number) => (
                               <li key={qIdx} className="flex items-start gap-2 bg-white p-2 rounded-lg border border-slate-200/60">
                                 <span className="text-blue-500 font-bold">•</span>
                                 <span>{q}</span>
@@ -358,7 +371,7 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
                               Actividades del Alumnado
                             </h4>
                             <ul className="space-y-1.5 text-xs text-slate-600">
-                              {stage.studentTasks.map((task: string, tIdx: number) => (
+                              {(stage.studentTasks || []).map((task: string, tIdx: number) => (
                                 <li key={tIdx} className="flex items-start gap-2">
                                   <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
                                   <span>{task}</span>
@@ -373,7 +386,7 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
                               Rol y Acompañamiento del Profesorado
                             </h4>
                             <ul className="space-y-1.5 text-xs text-slate-600">
-                              {stage.teacherTasks.map((task: string, tIdx: number) => (
+                              {(stage.teacherTasks || []).map((task: string, tIdx: number) => (
                                 <li key={tIdx} className="flex items-start gap-2">
                                   <span className="text-blue-500 font-bold">•</span>
                                   <span>{task}</span>
@@ -386,7 +399,7 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
                         {/* Herramientas sugeridas */}
                         <div className="flex flex-wrap items-center gap-2 pt-2 text-xs">
                           <span className="font-bold text-slate-500">Herramientas sugeridas:</span>
-                          {stage.suggestedTools.map((tool: string, toolIdx: number) => (
+                          {(stage.suggestedTools || []).map((tool: string, toolIdx: number) => (
                             <span key={toolIdx} className="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200 font-mono text-[11px]">
                               {tool}
                             </span>
@@ -514,7 +527,7 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
                 Entregables Requeridos
               </h4>
               <ul className="space-y-1.5 text-xs text-slate-600">
-                {currentProject.deliverables.map((item: string, idx: number) => (
+                {(currentProject?.deliverables || []).map((item: string, idx: number) => (
                   <li key={idx} className="flex items-start gap-1.5">
                     <span className="text-emerald-500 font-bold">•</span>
                     <span>{item}</span>
@@ -529,7 +542,7 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
                 Software Especializado
               </h4>
               <div className="flex flex-wrap gap-1.5">
-                {currentProject.suggestedSoftware.map((sw: string, idx: number) => (
+                {(currentProject?.suggestedSoftware || []).map((sw: string, idx: number) => (
                   <span key={idx} className="px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-mono text-xs">
                     {sw}
                   </span>
@@ -543,7 +556,7 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
                 Materiales e Insumos
               </h4>
               <ul className="space-y-1 text-xs text-slate-600">
-                {currentProject.materialsRequired.map((mat: string, idx: number) => (
+                {(currentProject?.materialsRequired || []).map((mat: string, idx: number) => (
                   <li key={idx} className="flex items-start gap-1.5">
                     <span className="text-amber-500 font-bold">•</span>
                     <span>{mat}</span>
@@ -557,7 +570,20 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
 
       {/* 5. TAB 3: DESCRIPTOR TÉCNICO MINED */}
       {activeTab === 'descriptor' && descriptor && (
-        <div className="space-y-6">
+        <div className="space-y-6" data-color-mode="light">
+          {/* If teacher has set a markdown descriptor, show it prominently */}
+          {descriptor.markdownContent && (
+            <div className="card-crema p-6 border border-[#0D71B9]/20 bg-gradient-to-br from-blue-50/60 to-white space-y-3 rounded-3xl shadow-sm">
+              <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                <FileText className="w-5 h-5 text-[#0D71B9]" />
+                <h3 className="font-display font-bold text-slate-900 text-lg">Descriptor del Módulo</h3>
+                <span className="ml-auto text-[11px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-medium">Editado por el docente</span>
+              </div>
+              <div className="wmde-markdown-var prose prose-sm max-w-none text-slate-700">
+                <MDEditor.Markdown source={descriptor.markdownContent} />
+              </div>
+            </div>
+          )}
           <div className="card-crema p-6 border border-slate-200 space-y-4">
             <h3 className="font-display font-bold text-slate-900 text-lg border-b border-slate-100 pb-3 flex items-center gap-2">
               <FileText className="w-5 h-5 text-[#0D71B9]" />
@@ -566,19 +592,19 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
               <div className="p-3 bg-slate-50 rounded-xl">
                 <span className="text-slate-400 block font-bold">Código Oficial:</span>
-                <span className="font-mono font-bold text-slate-900 text-sm">{descriptor.code}</span>
+                <span className="font-mono font-bold text-slate-900 text-sm">{descriptor.code || c.code}</span>
               </div>
               <div className="p-3 bg-slate-50 rounded-xl">
                 <span className="text-slate-400 block font-bold">Carga Horaria:</span>
-                <span className="font-bold text-slate-900 text-sm">{descriptor.hours} Horas ({descriptor.weeks} sem.)</span>
+                <span className="font-bold text-slate-900 text-sm">{descriptor.hours || c.hours} Horas ({descriptor.weeks || c.weeks} sem.)</span>
               </div>
               <div className="p-3 bg-slate-50 rounded-xl">
                 <span className="text-slate-400 block font-bold">Prerrequisito:</span>
-                <span className="font-bold text-slate-900 text-sm">{descriptor.prerequisite}</span>
+                <span className="font-bold text-slate-900 text-sm">{descriptor.prerequisite || 'Noveno grado'}</span>
               </div>
               <div className="p-3 bg-slate-50 rounded-xl">
                 <span className="text-slate-400 block font-bold">Criterio Promoción:</span>
-                <span className="font-bold text-emerald-700 text-sm">Nivel 4 (7.0 Mínimo)</span>
+                <span className="font-bold text-emerald-700 text-sm">{descriptor.promotionCriteria || 'Nivel 4 (7.0 Mínimo)'}</span>
               </div>
             </div>
 
@@ -586,14 +612,14 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
               <div>
                 <h4 className="text-xs font-bold text-slate-700 uppercase">Unidad de Competencia:</h4>
                 <p className="text-xs text-slate-600 mt-1 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-200/60">
-                  {descriptor.competenceGeneral}
+                  {descriptor.competenceGeneral || 'Aplicar procesos técnicos de la especialidad.'}
                 </p>
               </div>
 
               <div>
                 <h4 className="text-xs font-bold text-slate-700 uppercase">Objetivo del Módulo:</h4>
                 <p className="text-xs text-slate-600 mt-1 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-200/60">
-                  {descriptor.moduleObjective}
+                  {descriptor.moduleObjective || descriptor.objective || 'Desarrollar competencias en la especialidad técnica.'}
                 </p>
               </div>
             </div>
@@ -611,7 +637,7 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
                   A. Desarrollo Técnico y Tecnológico (35%)
                 </span>
                 <p className="text-xs text-slate-700 leading-relaxed">
-                  {descriptor.developmentAxes.desarrolloTecnico}
+                  {descriptor.developmentAxes?.desarrolloTecnico || 'Dominio de herramientas técnicas.'}
                 </p>
               </div>
 
@@ -620,7 +646,7 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
                   B. Desarrollo Emprendedor y Productivo (25%)
                 </span>
                 <p className="text-xs text-slate-700 leading-relaxed">
-                  {descriptor.developmentAxes.desarrolloEmprendedor}
+                  {descriptor.developmentAxes?.desarrolloEmprendedor || 'Gestión de proyectos y modelos de negocio.'}
                 </p>
               </div>
 
@@ -629,7 +655,7 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
                   C. Desarrollo Humano y Social (20%)
                 </span>
                 <p className="text-xs text-slate-700 leading-relaxed">
-                  {descriptor.developmentAxes.desarrolloHumanoSocial}
+                  {descriptor.developmentAxes?.desarrolloHumanoSocial || 'Valores cooperativos y ética profesional.'}
                 </p>
               </div>
 
@@ -638,7 +664,7 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
                   D. Desarrollo Académico Aplicado (20%)
                 </span>
                 <p className="text-xs text-slate-700 leading-relaxed">
-                  {descriptor.developmentAxes.desarrolloAcademicoAplicado}
+                  {descriptor.developmentAxes?.desarrolloAcademicoAplicado || 'Racional técnico y comunicación.'}
                 </p>
               </div>
             </div>
@@ -651,7 +677,7 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
                 Criterios de Evaluación Normativos
               </h4>
               <ul className="space-y-2 text-xs text-slate-600">
-                {descriptor.evaluationCriteria.map((crit: string, idx: number) => (
+                {(descriptor.evaluationCriteria || []).map((crit: string, idx: number) => (
                   <li key={idx} className="flex items-start gap-2">
                     <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
                       {idx + 1}
@@ -670,11 +696,11 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
               <div className="space-y-2 text-xs text-slate-600">
                 <p className="font-semibold text-slate-700">Libros de Investigación:</p>
                 <ul className="space-y-1 pl-2">
-                  {descriptor.bibliography.books.map((b: string, idx: number) => (
+                  {(descriptor.bibliography?.books || []).map((b: string, idx: number) => (
                     <li key={idx}>• {b}</li>
                   ))}
                 </ul>
-                {descriptor.bibliography.websites && (
+                {(descriptor.bibliography?.websites || []).length > 0 && (
                   <>
                     <p className="font-semibold text-slate-700 pt-2">Sitios Web Recomendados:</p>
                     <ul className="space-y-1 pl-2">
@@ -685,6 +711,52 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
                   </>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5b. TAB: JORNALIZACIÓN */}
+      {activeTab === 'jornalizacion' && c.jornalizacion && (
+        <div className="space-y-6">
+          <div className="card-crema p-6 border border-slate-200 space-y-4 rounded-3xl shadow-sm">
+            <h3 className="font-display font-bold text-slate-900 text-lg border-b border-slate-100 pb-3 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-[#0D71B9]" />
+              Jornalización del Módulo
+            </h3>
+            <div className="space-y-4">
+              {c.jornalizacion.map((stage: any, idx: number) => {
+                const isLast = idx === c.jornalizacion.length - 1;
+                return (
+                  <div key={idx} className={`p-5 rounded-2xl border flex gap-4 items-start ${
+                    isLast ? 'border-amber-300 bg-amber-50/60' : 'border-slate-200 bg-slate-50/60'
+                  }`}>
+                    <div className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center font-bold text-sm ${
+                      isLast ? 'bg-amber-400 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-700'
+                    }`}>
+                      {idx + 1}
+                    </div>
+                    <div className="flex-1 space-y-1.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-bold text-slate-900 text-sm">{stage.name || stage.stage}</h4>
+                        {isLast && (
+                          <span className="text-[10px] font-bold text-amber-800 bg-amber-200 px-2 py-0.5 rounded-full uppercase tracking-wide">Entrega Final</span>
+                        )}
+                      </div>
+                      {stage.description && <p className="text-xs text-slate-600">{stage.description}</p>}
+                      <div className="flex items-center gap-4 text-xs text-slate-500 mt-2">
+                        {stage.startDate && <span>📅 Inicio: <strong className="text-slate-700">{new Date(stage.startDate + 'T00:00:00').toLocaleDateString('es-SV', { day: 'numeric', month: 'long', year: 'numeric' })}</strong></span>}
+                        {stage.endDate && <span>🏁 Fin: <strong className="text-slate-700">{new Date(stage.endDate + 'T00:00:00').toLocaleDateString('es-SV', { day: 'numeric', month: 'long', year: 'numeric' })}</strong></span>}
+                        {stage.hours > 0 && <span>⏱️ <strong className="text-slate-700">{stage.hours}h</strong></span>}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3 mt-2">
+              <span className="text-amber-500 text-lg">⚠️</span>
+              <p className="text-xs text-amber-800">La entrega del proyecto final se realiza <strong>4 días hábiles (8 horas) antes</strong> de la fecha de cierre del módulo. Verifica con tu docente la fecha exacta.</p>
             </div>
           </div>
         </div>
@@ -720,7 +792,7 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {descriptor.saberesPrevios.map((saber: any, sIdx: number) => (
+                  {(descriptor.saberesPrevios || []).map((saber: any, sIdx: number) => (
                     <tr key={saber.id} className="hover:bg-slate-50">
                       <td className="py-3 px-3 font-bold text-slate-400">{sIdx + 1}</td>
                       <td className="py-3 px-3 text-slate-800 font-medium">{saber.description}</td>
@@ -779,7 +851,7 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
               Resultantes de los saberes evaluados en &quot;Poco&quot; y &quot;Nada&quot; más los aportes en plenaria.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-              {descriptor.saberesNecesarios.map((item: any, idx: number) => (
+              {(descriptor.saberesNecesarios || []).map((item: any, idx: number) => (
                 <div key={item.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-start gap-2.5 text-xs text-slate-700">
                   <span className="w-5 h-5 rounded-full bg-emerald-500 text-white font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
                     {idx + 1}

@@ -1157,7 +1157,18 @@ class LMSService {
   public async updateModule(moduleId: string, data: Partial<LMSModule>): Promise<void> {
     const ref = doc(db, LMS_MODULES_COLLECTION, moduleId);
     await updateDoc(ref, { ...data, updatedAt: new Date().toISOString() });
+    
+    // Sincronizar en memoria con state.courses
+    const idx = this.state.courses.findIndex((c) => c.id === moduleId || c.code === moduleId);
+    if (idx !== -1) {
+      this.state.courses[idx] = {
+        ...this.state.courses[idx],
+        ...(data as any),
+        updatedAt: new Date().toISOString(),
+      };
+    }
     this.saveToLocalStorage();
+    this.notify();
   }
 
   // ==========================================

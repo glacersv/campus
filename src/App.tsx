@@ -64,6 +64,7 @@ import { LMSSubmissionForm } from './components/lms/LMSSubmissionForm';
 // LMS docente components
 import TeacherLMSDashboard from './components/lms/docente/TeacherLMSDashboard';
 import ModuleContentEditor from './components/lms/docente/ModuleContentEditor';
+import TeacherModules from './components/docente/TeacherModules';
 
 import { Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
 
@@ -355,7 +356,12 @@ function AppContent() {
           <Route path="eventos" element={permissions.includes('eventos') ? <EventosView /> : <Navigate to="/docente" replace />} />
           <Route path="avisos" element={permissions.includes('avisos') ? <AvisosView /> : <Navigate to="/docente" replace />} />
 
-          {/* LMS Docente */}
+          {/* LMS Docente (My new route) */}
+          <Route path="modulos" element={
+            permissions.includes('lms') ? <TeacherModules /> : <Navigate to="/docente" replace />
+          } />
+
+          {/* LMS Docente (Old routes) */}
           <Route path="lms" element={
             permissions.includes('lms') ? <TeacherLMSDashboard /> : <Navigate to="/docente" replace />
           } />

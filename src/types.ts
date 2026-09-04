@@ -807,7 +807,16 @@ export interface LMSModule {
     resources?: Record<string, any>;
     prerequisite?: string;
     promotionCriteria?: string;
+    markdownContent?: string; // New: Full WYSIWYG/Markdown content for the descriptor
   };
+  jornalizacion?: Array<{
+    stage: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+    hours: number;
+    description?: string;
+  }>;
   createdAt: string;
   updatedAt: string;
 }
