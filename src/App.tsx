@@ -39,7 +39,7 @@ import RegistroDashboard from './components/registro/RegistroDashboard';
 import EnfermeriaDashboard from './components/enfermeria/EnfermeriaDashboard';
 import PsicopedagogiaDashboard from './components/psicopedagogico/PsicopedagogicoDashboard';
 import TeacherLayout from './components/docente/TeacherLayout';
-import TeacherHome from './components/docente/TeacherHome';
+import DocenteDashboard from './components/docente/DocenteDashboard';
 import ModulePlaceholder from './components/docente/ModulePlaceholder';
 import StudentDashboard from './components/alumno/StudentDashboard';
 import AlumnoAulaVirtual from './components/alumno/aula-virtual/AlumnoAulaVirtual';
@@ -337,7 +337,7 @@ function AppContent() {
     return withStyleWidget(
       <Routes>
         <Route path="/docente" element={<TeacherLayout />}>
-          <Route index element={<TeacherHome />} />
+          <Route index element={<DocenteDashboard />} />
 
           <Route path="proyectos" element={
             permissions.includes('proyectos') ? (
