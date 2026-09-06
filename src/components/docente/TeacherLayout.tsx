@@ -119,6 +119,16 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
                   </button>
                 )}
 
+                {permissions.includes('lms') && (
+                  <button
+                    onClick={() => navigate('/docente/jornalizacion')}
+                    className={`sidebar-item ${currentPath === 'jornalizacion' ? 'active' : ''}`}
+                  >
+                    <Calendar className="w-5 h-5 shrink-0" />
+                    {!sidebarCollapsed && <span>Jornalización</span>}
+                  </button>
+                )}
+
                 {permissions.includes('proyectos') && (
                   <button
                     onClick={() => navigate('/docente/proyectos')}

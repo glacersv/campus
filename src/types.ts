@@ -873,6 +873,45 @@ export interface LMSCalendarEvent {
   createdAt: string;
 }
 
+// ==================== JORNALIZACIÓN / CRONOGRAMA TÉCNICO ====================
+
+export interface ModuloCronograma {
+  moduleId: string;
+  codigo: string;
+  nombre: string;
+  year: string;
+  fechaInicio: string;
+  fechaFin: string;
+  horasTotales: number;
+  semanasTotales: number;
+  diasHabilesNecesarios: number;
+  projectDeliveryDate: string;
+  jornalizacion: Array<{
+    stage: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+    hours: number;
+    description?: string;
+  }>;
+  estado: 'programado' | 'en_ejecucion' | 'pausado' | 'completado';
+}
+
+export interface EjecucionDia {
+  fecha: string;
+  actividades: string[];
+  horasEjecutadas: number;
+  observaciones?: string;
+}
+
+export interface ModuleExecution {
+  moduleId: string;
+  fechaInicioReal: string;
+  fechaFinReal?: string;
+  estado: 'no_iniciado' | 'en_progreso' | 'pausado' | 'completado';
+  historial: EjecucionDia[];
+}
+
 // ==================== CALENDARIO INSTITUCIONAL ====================
 
 export type SuspensionCategory = 'pausa' | 'feriado' | 'institucional' | 'suspension' | 'evaluacion';
