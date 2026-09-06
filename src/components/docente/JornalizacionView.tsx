@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { LMSModule, ModuloCronograma, MonthStats } from '../../types';
-import { generarCronogramaTecnico, agruparPorAno, calcularTotalSemanas } from '../../utils/cronogramaHelper';
+import { generarCronogramaTecnico, calcularTotalSemanas } from '../../utils/cronogramaHelper';
 import { formatDateSpanish } from '../../utils/jornalizacionHelper';
 import { toast } from 'sonner';
 import { Calendar, Play, Pause, CheckCircle2, Clock, ChevronRight, Zap, AlertTriangle } from 'lucide-react';
@@ -310,7 +310,7 @@ export default function JornalizacionView() {
               </div>
 
               <div className="bg-slate-50 rounded-xl p-3 text-sm text-slate-600">
-                <p>Se generarán fechas correlativas para <strong>{modules.length} módulos</strong> starting from {formatDateSpanish(fechaInicio)}.</p>
+                <p>Se generarán fechas correlativas para <strong>{modules.length} módulos</strong> iniciando desde {formatDateSpanish(fechaInicio)}.</p>
                 <p className="text-xs text-slate-400 mt-1">Las fechas se calcularán respetando días hábiles.</p>
               </div>
             </div>

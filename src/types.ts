@@ -811,11 +811,13 @@ export interface LMSModule {
   };
   jornalizacion?: Array<{
     stage: string;
+    stageKey?: 'informar' | 'planificar' | 'decidir' | 'ejecutar' | 'controlar' | 'valorar';
     name: string;
     startDate: string;
     endDate: string;
     hours: number;
     description?: string;
+    isDeliveryMilestone?: boolean;
   }>;
   createdAt: string;
   updatedAt: string;
