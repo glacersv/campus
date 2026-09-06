@@ -8,7 +8,9 @@ import { generarCronogramaTecnico, calcularTotalSemanas, validarCronogramaContra
 import { formatDateSpanish } from '../../utils/jornalizacionHelper';
 import { getInstitutionalCalendar } from '../../lib/calendarFirestore';
 import { toast } from 'sonner';
-import { Calendar, Play, Pause, CheckCircle2, Clock, ChevronRight, Zap, AlertTriangle, Info, Trash2, CalendarOff } from 'lucide-react';
+import { Calendar, Play, Pause, CheckCircle2, Clock, ChevronRight, Zap, AlertTriangle, Info, Trash2, CalendarOff, GanttChart } from 'lucide-react';
+import GanttChartComponent from './GanttChart';
+import AdjustmentPanel from './AdjustmentPanel';
 
 export default function JornalizacionView() {
   const { userProfile } = useAuth();
@@ -28,6 +30,10 @@ export default function JornalizacionView() {
   // Filtros
   const [selectedYears, setSelectedYears] = useState<string[]>(['1', '2', '3']);
   const [anoAcademico, setAnoAcademico] = useState('2026');
+  
+  // Panel de ajuste
+  const [selectedModuleForAdjustment, setSelectedModuleForAdjustment] = useState<ModuloCronograma | null>(null);
+  const [showGantt, setShowGantt] = useState(false);
 
   useEffect(() => {
     if (!userProfile?.uid) return;
@@ -307,6 +313,42 @@ export default function JornalizacionView() {
     }
   };
 
+  // Handler para ajuste manual de módulos
+  const handleUpdateModule = async (moduleId: string, updates: Partial<ModuloCronograma>) => {
+    try {
+      // Actualizar en Firestore
+      const moduleRef = doc(db, 'lms_modules', moduleId);
+      await updateDoc(moduleRef, {
+        jornalizacion: updates.jornalizacion,
+        updatedAt: new Date().toISOString(),
+      });
+
+      // Actualizar estado local
+      setCronograma(prev => {
+        if (!prev) return prev;
+        return prev.map(m => {
+          if (m.moduleId === moduleId) {
+            return { ...m, ...updates };
+          }
+          return m;
+        });
+      });
+
+      // Actualizar allModules
+      setAllModules(prev => prev.map(m => {
+        if (m.id === moduleId && updates.jornalizacion) {
+          return { ...m, jornalizacion: updates.jornalizacion };
+        }
+        return m;
+      }));
+
+      toast.success('Módulo actualizado correctamente');
+    } catch (e) {
+      console.error('Error updating module:', e);
+      toast.error('Error al actualizar el módulo');
+    }
+  };
+
   const getEstadoBadge = (estado: string) => {
     switch (estado) {
       case 'programado':
@@ -354,6 +396,17 @@ export default function JornalizacionView() {
         <div className="flex items-center gap-2">
           {cronograma && cronograma.length > 0 && (
             <>
+              <button
+                onClick={() => setShowGantt(!showGantt)}
+                className={`px-3 py-2.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 ${
+                  showGantt 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100'
+                }`}
+              >
+                <GanttChart size={16} />
+                {showGantt ? 'Ver Tabla' : 'Ver Gantt'}
+              </button>
               <button
                 onClick={handleClearSelectedYears}
                 className="px-3 py-2.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-sm font-bold hover:bg-amber-100 transition-colors flex items-center gap-2"
@@ -463,58 +516,65 @@ export default function JornalizacionView() {
 
       {/* Tabla de cronograma */}
       {modulosConCronograma.length > 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="text-left px-4 py-3 font-bold text-slate-700">Código</th>
-                  <th className="text-left px-4 py-3 font-bold text-slate-700">Módulo</th>
-                  <th className="text-center px-4 py-3 font-bold text-slate-700">Año</th>
-                  <th className="text-center px-4 py-3 font-bold text-slate-700">Horas</th>
-                  <th className="text-center px-4 py-3 font-bold text-slate-700">Semanas</th>
-                  <th className="text-left px-4 py-3 font-bold text-slate-700">Inicio</th>
-                  <th className="text-left px-4 py-3 font-bold text-slate-700">Fin</th>
-                  <th className="text-center px-4 py-3 font-bold text-slate-700">Estado</th>
-                  <th className="text-center px-4 py-3 font-bold text-slate-700">Etapas</th>
-                  <th className="w-10"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {modulosConCronograma.map((mod, idx) => (
-                  <tr
-                    key={mod.moduleId}
-                    className={`border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}
-                    onClick={() => navigate(`/docente/jornalizacion/${mod.moduleId}`)}
-                  >
-                    <td className="px-4 py-3">
-                      <span className="text-xs font-bold text-white px-2 py-1 rounded-md" style={{ backgroundColor: '#0D71B9' }}>
-                        {mod.codigo}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 font-medium text-slate-900">{mod.nombre}</td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded">
-                        {mod.year}°
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-center font-medium text-slate-700">{mod.horasTotales}h</td>
-                    <td className="px-4 py-3 text-center text-slate-600">{mod.semanasTotales} sem</td>
-                    <td className="px-4 py-3 text-slate-600">{formatDateSpanish(mod.fechaInicio)}</td>
-                    <td className="px-4 py-3 text-slate-600">{formatDateSpanish(mod.fechaFin)}</td>
-                    <td className="px-4 py-3 text-center">{getEstadoBadge(mod.estado)}</td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="text-xs font-medium text-slate-500">{mod.jornalizacion.length}/6</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <ChevronRight size={16} className="text-slate-400" />
-                    </td>
+        showGantt ? (
+          <GanttChartComponent 
+            cronograma={modulosConCronograma} 
+            onModuleClick={(mod) => setSelectedModuleForAdjustment(mod)}
+          />
+        ) : (
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="text-left px-4 py-3 font-bold text-slate-700">Código</th>
+                    <th className="text-left px-4 py-3 font-bold text-slate-700">Módulo</th>
+                    <th className="text-center px-4 py-3 font-bold text-slate-700">Año</th>
+                    <th className="text-center px-4 py-3 font-bold text-slate-700">Horas</th>
+                    <th className="text-center px-4 py-3 font-bold text-slate-700">Semanas</th>
+                    <th className="text-left px-4 py-3 font-bold text-slate-700">Inicio</th>
+                    <th className="text-left px-4 py-3 font-bold text-slate-700">Fin</th>
+                    <th className="text-center px-4 py-3 font-bold text-slate-700">Estado</th>
+                    <th className="text-center px-4 py-3 font-bold text-slate-700">Etapas</th>
+                    <th className="w-10"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {modulosConCronograma.map((mod, idx) => (
+                    <tr
+                      key={mod.moduleId}
+                      className={`border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}
+                      onClick={() => navigate(`/docente/jornalizacion/${mod.moduleId}`)}
+                    >
+                      <td className="px-4 py-3">
+                        <span className="text-xs font-bold text-white px-2 py-1 rounded-md" style={{ backgroundColor: '#0D71B9' }}>
+                          {mod.codigo}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 font-medium text-slate-900">{mod.nombre}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded">
+                          {mod.year}°
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center font-medium text-slate-700">{mod.horasTotales}h</td>
+                      <td className="px-4 py-3 text-center text-slate-600">{mod.semanasTotales} sem</td>
+                      <td className="px-4 py-3 text-slate-600">{formatDateSpanish(mod.fechaInicio)}</td>
+                      <td className="px-4 py-3 text-slate-600">{formatDateSpanish(mod.fechaFin)}</td>
+                      <td className="px-4 py-3 text-center">{getEstadoBadge(mod.estado)}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="text-xs font-medium text-slate-500">{mod.jornalizacion.length}/6</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <ChevronRight size={16} className="text-slate-400" />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )
       ) : (
         /* Empty state */
         <div className="p-12 text-center bg-white rounded-3xl border border-dashed border-slate-300">
@@ -673,6 +733,18 @@ export default function JornalizacionView() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Panel de Ajuste Manual */}
+      {selectedModuleForAdjustment && (
+        <AdjustmentPanel
+          cronograma={cronograma || []}
+          selectedModule={selectedModuleForAdjustment}
+          onUpdateModule={handleUpdateModule}
+          onReorderModules={() => {}}
+          onClose={() => setSelectedModuleForAdjustment(null)}
+          schoolYearEnd={getFechaFinFromCalendar()}
+        />
       )}
     </div>
   );
