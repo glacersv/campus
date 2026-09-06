@@ -8,7 +8,7 @@ import { generarCronogramaTecnico, calcularTotalSemanas } from '../../utils/cron
 import { formatDateSpanish } from '../../utils/jornalizacionHelper';
 import { getInstitutionalCalendar } from '../../lib/calendarFirestore';
 import { toast } from 'sonner';
-import { Calendar, Play, Pause, CheckCircle2, Clock, ChevronRight, Zap, AlertTriangle, Info } from 'lucide-react';
+import { Calendar, Play, Pause, CheckCircle2, Clock, ChevronRight, Zap, AlertTriangle, Info, Trash2 } from 'lucide-react';
 
 export default function JornalizacionView() {
   const { userProfile } = useAuth();
@@ -135,6 +135,32 @@ export default function JornalizacionView() {
   // Grados disponibles
   const availableYears = [...new Set(allModules.map(m => m.technicalYear))].sort();
 
+  const handleClearCronograma = async () => {
+    if (!confirm('¿Está seguro de limpiar todo el cronograma? Esta acción no se puede deshacer.')) return;
+
+    try {
+      const q = query(collection(db, 'lms_modules'));
+      const snap = await getDocs(q);
+      
+      for (const d of snap.docs) {
+        const data = d.data();
+        if (data.jornalizacion && data.jornalizacion.length > 0) {
+          await updateDoc(doc(db, 'lms_modules', d.id), {
+            jornalizacion: [],
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      }
+
+      setCronograma(null);
+      setWarnings([]);
+      toast.success('Cronograma limpiado correctamente');
+    } catch (e) {
+      console.error(e);
+      toast.error('Error al limpiar cronograma');
+    }
+  };
+
   const handleGenerate = async () => {
     if (!calendarLoaded) {
       toast.error('No hay calendario institucional cargado. Solicite al administrador que cargue el calendario.');
@@ -159,16 +185,34 @@ export default function JornalizacionView() {
 
     setGenerating(true);
     try {
-      const result = generarCronogramaTecnico({
-        startDate: fechaInicio,
-        endDate: getFechaFinFromCalendar(),
-        year: anoAcademico,
-        modules,
-        suspensiones: calendarMonths,
-      });
+      const allModulos: ModuloCronograma[] = [];
+      const allWarnings: string[] = [];
+
+      // Generar cronograma por año independientemente
+      for (const yearNum of selectedYears) {
+        const yearModules = modules.filter(m => m.technicalYear === yearNum);
+        if (yearModules.length === 0) continue;
+
+        // Calcular fecha inicio para este año: año base + (yearNum - 1)
+        const baseYear = parseInt(anoAcademico);
+        const targetYear = baseYear + (yearNum - 1);
+        const yearStartDate = fechaInicio.replace(`${baseYear}`, `${targetYear}`);
+        const yearEndDate = getFechaFinFromCalendar().replace(`${baseYear}`, `${targetYear}`);
+
+        const result = generarCronogramaTecnico({
+          startDate: yearStartDate,
+          endDate: yearEndDate,
+          year: `${targetYear}`,
+          modules: yearModules,
+          suspensiones: calendarMonths,
+        });
+
+        allModulos.push(...result.modulos);
+        allWarnings.push(...result.warnings);
+      }
 
       // Guardar en Firestore
-      for (const mod of result.modulos) {
+      for (const mod of allModulos) {
         const moduleRef = doc(db, 'lms_modules', mod.moduleId);
         await updateDoc(moduleRef, {
           jornalizacion: mod.jornalizacion,
@@ -176,24 +220,18 @@ export default function JornalizacionView() {
         });
       }
 
-      // Actualizar cronograma local (mantener los de otros años si hay filtrado)
-      if (cronograma) {
-        const otherYearMods = cronograma.filter(c => !result.modulos.some(r => r.moduleId === c.moduleId));
-        setCronograma([...otherYearMods, ...result.modulos]);
-      } else {
-        setCronograma(result.modulos);
-      }
+      setCronograma(allModulos);
 
       // Mostrar advertencias si las hay
-      if (result.warnings.length > 0) {
-        setWarnings(result.warnings);
-        result.warnings.forEach(w => toast.warning(w, { duration: 6000 }));
+      if (allWarnings.length > 0) {
+        setWarnings(allWarnings);
+        allWarnings.forEach(w => toast.warning(w, { duration: 6000 }));
       } else {
         setWarnings([]);
       }
 
       setShowGenerateModal(false);
-      toast.success(`Cronograma generado: ${result.modulos.length} módulos, ${result.totalDias} días hábiles`);
+      toast.success(`Cronograma generado: ${allModulos.length} módulos en ${selectedYears.length} años`);
     } catch (e) {
       console.error(e);
       toast.error('Error al generar cronograma');
@@ -246,13 +284,24 @@ export default function JornalizacionView() {
             Cronograma de módulos y etapas de la acción completa
           </p>
         </div>
-        <button
-          onClick={() => setShowGenerateModal(true)}
-          className="px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors shadow-sm flex items-center gap-2"
-        >
-          <Zap size={16} />
-          Generar Cronograma
-        </button>
+        <div className="flex items-center gap-2">
+          {cronograma && cronograma.length > 0 && (
+            <button
+              onClick={handleClearCronograma}
+              className="px-4 py-2.5 bg-red-50 text-red-700 border border-red-200 rounded-xl text-sm font-bold hover:bg-red-100 transition-colors flex items-center gap-2"
+            >
+              <Trash2 size={16} />
+              Limpiar
+            </button>
+          )}
+          <button
+            onClick={() => setShowGenerateModal(true)}
+            className="px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors shadow-sm flex items-center gap-2"
+          >
+            <Zap size={16} />
+            Generar Cronograma
+          </button>
+        </div>
       </div>
 
       {/* Alerta: sin calendario */}
