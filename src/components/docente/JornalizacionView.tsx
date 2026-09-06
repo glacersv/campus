@@ -8,7 +8,7 @@ import { generarCronogramaTecnico, calcularTotalSemanas } from '../../utils/cron
 import { formatDateSpanish } from '../../utils/jornalizacionHelper';
 import { getInstitutionalCalendar } from '../../lib/calendarFirestore';
 import { toast } from 'sonner';
-import { Calendar, Play, Pause, CheckCircle2, Clock, ChevronRight, Zap, AlertTriangle, Info, Trash2 } from 'lucide-react';
+import { Calendar, Play, Pause, CheckCircle2, Clock, ChevronRight, Zap, AlertTriangle, Info, Trash2, CalendarOff } from 'lucide-react';
 
 export default function JornalizacionView() {
   const { userProfile } = useAuth();
@@ -161,6 +161,34 @@ export default function JornalizacionView() {
     }
   };
 
+  // Vaciar solo los años seleccionados
+  const handleClearSelectedYears = async () => {
+    const yearsLabel = selectedYears.map(y => y + '° Año').join(', ');
+    if (!confirm(`¿Limpiar cronograma de ${yearsLabel}? Los módulos de otros años se mantendrán.`)) return;
+
+    try {
+      const modulesToClear = allModules.filter(m => selectedYears.includes(m.technicalYear));
+      
+      for (const mod of modulesToClear) {
+        await updateDoc(doc(db, 'lms_modules', mod.id), {
+          jornalizacion: [],
+          updatedAt: new Date().toISOString(),
+        });
+      }
+
+      // Actualizar estado local
+      if (cronograma) {
+        const remaining = cronograma.filter(c => !modulesToClear.some(m => m.id === c.moduleId));
+        setCronograma(remaining.length > 0 ? remaining : null);
+      }
+      setWarnings([]);
+      toast.success(`${yearsLabel} limpiado correctamente`);
+    } catch (e) {
+      console.error(e);
+      toast.error('Error al limpiar años seleccionados');
+    }
+  };
+
   const handleGenerate = async () => {
     if (!calendarLoaded) {
       toast.error('No hay calendario institucional cargado. Solicite al administrador que cargue el calendario.');
@@ -188,21 +216,16 @@ export default function JornalizacionView() {
       const allModulos: ModuloCronograma[] = [];
       const allWarnings: string[] = [];
 
-      // Generar cronograma por año independientemente
+      // Todos los años corren en PARALELO dentro del mismo año escolar
+      // Cada año empieza en la misma fecha pero con sus propios módulos
       for (const yearNum of selectedYears) {
         const yearModules = modules.filter(m => m.technicalYear === yearNum);
         if (yearModules.length === 0) continue;
 
-        // Calcular fecha inicio para este año: año base + (yearNum - 1)
-        const baseYear = parseInt(anoAcademico);
-        const targetYear = baseYear + (yearNum - 1);
-        const yearStartDate = fechaInicio.replace(`${baseYear}`, `${targetYear}`);
-        const yearEndDate = getFechaFinFromCalendar().replace(`${baseYear}`, `${targetYear}`);
-
         const result = generarCronogramaTecnico({
-          startDate: yearStartDate,
-          endDate: yearEndDate,
-          year: `${targetYear}`,
+          startDate: fechaInicio,
+          endDate: getFechaFinFromCalendar(),
+          year: anoAcademico,
           modules: yearModules,
           suspensiones: calendarMonths,
         });
@@ -220,7 +243,11 @@ export default function JornalizacionView() {
         });
       }
 
-      setCronograma(allModulos);
+      // Mantener módulos de años no seleccionados
+      const otherYearMods = (cronograma || []).filter(c => 
+        !allModulos.some(r => r.moduleId === c.moduleId)
+      );
+      setCronograma([...otherYearMods, ...allModulos]);
 
       // Mostrar advertencias si las hay
       if (allWarnings.length > 0) {
@@ -286,13 +313,22 @@ export default function JornalizacionView() {
         </div>
         <div className="flex items-center gap-2">
           {cronograma && cronograma.length > 0 && (
-            <button
-              onClick={handleClearCronograma}
-              className="px-4 py-2.5 bg-red-50 text-red-700 border border-red-200 rounded-xl text-sm font-bold hover:bg-red-100 transition-colors flex items-center gap-2"
-            >
-              <Trash2 size={16} />
-              Limpiar
-            </button>
+            <>
+              <button
+                onClick={handleClearSelectedYears}
+                className="px-3 py-2.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-sm font-bold hover:bg-amber-100 transition-colors flex items-center gap-2"
+              >
+                <CalendarOff size={16} />
+                Vaciar Año{selectedYears.length > 1 ? 's' : ''}
+              </button>
+              <button
+                onClick={handleClearCronograma}
+                className="px-3 py-2.5 bg-red-50 text-red-700 border border-red-200 rounded-xl text-sm font-bold hover:bg-red-100 transition-colors flex items-center gap-2"
+              >
+                <Trash2 size={16} />
+                Vaciar Todo
+              </button>
+            </>
           )}
           <button
             onClick={() => setShowGenerateModal(true)}
