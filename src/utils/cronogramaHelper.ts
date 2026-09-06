@@ -108,104 +108,128 @@ function calculateBusinessDaysNeeded(hours: number, technicalYear: string): numb
 
 /**
  * Genera el cronograma completo para módulos técnicos
- * Los módulos pueden ejecutarse en paralelo (varios activos al mismo tiempo)
- * Cada módulo recibe sus propias fechas de inicio/fin según sus horas
+ * Cada año técnico tiene su PROPIO año escolar completo (40 semanas)
+ * Los módulos de cada año se distribuyen en las 40 semanas
+ * Múltiples módulos del MISMO año pueden correr en paralelo
  */
 export function generarCronogramaTecnico(input: CronogramaInput): CronogramaResult {
   const { startDate, endDate, year, modules, suspensiones } = input;
   const suspensionDates = collectSuspensionDates(suspensiones, year);
   const warnings: string[] = [];
 
-  // Ordenar módulos por código
-  const sorted = [...modules].sort((a, b) => {
-    if (a.code < b.code) return -1;
-    if (a.code > b.code) return 1;
-    return 0;
-  });
+  // Agrupar módulos por año técnico
+  const modulesByYear = modules.reduce((acc, mod) => {
+    const y = mod.technicalYear;
+    if (!acc[y]) acc[y] = [];
+    acc[y].push(mod);
+    return acc;
+  }, {} as Record<string, LMSModule[]>);
 
-  const modulos: ModuloCronograma[] = [];
+  const allModulos: ModuloCronograma[] = [];
   let totalDias = 0;
   let totalHoras = 0;
 
-  // Calcular días hábiles totales disponibles
-  const availableDays = calculateBusinessDaysBetween(startDate, endDate, suspensionDates);
+  // Para cada año técnico, distribuir módulos en las 40 semanas
+  for (const [yearNum, yearModules] of Object.entries(modulesByYear)) {
+    // Calcular horas/semana para este año
+    const hoursPerWeek = yearNum === '3' ? 30 : 18;
+    const totalWeeks = 40;
+    const totalDays = totalWeeks * 5; // 200 días hábiles
 
-  // Distribuir módulos en paralelo
-  // Cada módulo empieza cuando hay capacidad disponible
-  // La capacidad es el número de módulos que pueden correr en paralelo
-  const MAX_PARALLEL = 3; // Máximo 3 módulos en paralelo
-  
-  // Agrupar módulos por semanas que necesitan
-  const modulesWithDays = sorted.map(mod => ({
-    mod,
-    daysNeeded: calculateBusinessDaysNeeded(mod.hours, mod.technicalYear),
-    weeksNeeded: Math.ceil(calculateBusinessDaysNeeded(mod.hours, mod.technicalYear) / 5),
-  }));
-
-  // Asignar fechas manteniendo paralelismo limitado
-  let parallelSlots: { endDate: string; count: number }[] = [];
-  
-  for (const { mod, daysNeeded } of modulesWithDays) {
-    // Encontrar el slot más temprano disponible
-    let earliestStart = startDate;
-    
-    // Si hay módulos en paralelo, buscar cuándo termina el primero
-    if (parallelSlots.length >= MAX_PARALLEL) {
-      // Ordenar por fecha de fin y tomar la más temprana
-      parallelSlots.sort((a, b) => a.endDate.localeCompare(b.endDate));
-      const earliestEnd = parallelSlots[0].endDate;
-      earliestStart = addBusinessDaysWithSuspensions(earliestEnd, 1, suspensionDates);
-      parallelSlots.shift();
-    }
-    
-    const fechaInicio = earliestStart;
-    const fechaFin = addBusinessDaysWithSuspensions(fechaInicio, daysNeeded - 1, suspensionDates);
-
-    // Validar que no se pase del fin del año escolar
-    if (endDate && fechaFin > endDate) {
-      warnings.push(
-        `⚠️ El módulo ${mod.code} (${mod.name}) termina el ${fechaFin}, pasándose del fin de año escolar (${endDate}). Considere ajustar horas o fechas.`
-      );
-    }
-
-    // Calcular las 6 etapas MINED para este módulo
-    const jornalizacion = calculateStageJornalizacion(
-      mod.name,
-      mod.hours,
-      fechaInicio,
-      fechaFin
-    );
-
-    const projectDeliveryDate = calculateProjectDeliveryDate(fechaFin);
-
-    modulos.push({
-      moduleId: mod.id,
-      codigo: mod.code,
-      nombre: mod.name,
-      year: mod.technicalYear,
-      fechaInicio,
-      fechaFin,
-      horasTotales: mod.hours,
-      semanasTotales: mod.weeks,
-      diasHabilesNecesarios: daysNeeded,
-      projectDeliveryDate,
-      jornalizacion,
-      estado: 'programado',
+    // Ordenar módulos por código
+    const sorted = [...yearModules].sort((a, b) => {
+      if (a.code < b.code) return -1;
+      if (a.code > b.code) return 1;
+      return 0;
     });
 
-    totalDias += daysNeeded;
-    totalHoras += mod.hours;
-    
-    // Agregar este módulo a los slots paralelos
-    parallelSlots.push({ endDate: fechaFin, count: 1 });
+    // Calcular semanas necesarias por módulo
+    const modulesWithWeeks = sorted.map(mod => ({
+      mod,
+      weeksNeeded: Math.ceil(mod.hours / hoursPerWeek),
+      daysNeeded: Math.ceil(mod.hours / hoursPerWeek) * 5,
+    }));
+
+    // Distribuir módulos en las 40 semanas
+    // Permitir paralelismo: varios módulos pueden empezar en la misma semana
+    let currentWeek = 1; // Semana actual (1-40)
+    let weekAssignments: { mod: LMSModule; startWeek: number; endWeek: number; daysNeeded: number }[] = [];
+
+    for (const { mod, weeksNeeded, daysNeeded } of modulesWithWeeks) {
+      const startWeek = currentWeek;
+      const endWeek = Math.min(startWeek + weeksNeeded - 1, totalWeeks);
+      
+      weekAssignments.push({
+        mod,
+        startWeek,
+        endWeek,
+        daysNeeded,
+      });
+
+      // Avanzar semanas para el siguiente módulo
+      // Si el módulo cabe en las semanas restantes, avanza
+      currentWeek = endWeek + 1;
+      
+      // Si llegamos al final del año, reiniciar desde el inicio (paralelo)
+      if (currentWeek > totalWeeks) {
+        currentWeek = 1; // Reiniciar para módulos restantes (paralelo)
+      }
+    }
+
+    // Convertir semanas a fechas
+    for (const assignment of weekAssignments) {
+      const { mod, startWeek, endWeek, daysNeeded } = assignment;
+      
+      // Calcular fecha de inicio basada en la semana
+      const startDayOffset = (startWeek - 1) * 5; // Días hábiles desde el inicio
+      const fechaInicio = addBusinessDaysWithSuspensions(startDate, startDayOffset, suspensionDates);
+      
+      // Calcular fecha de fin basada en las semanas del módulo
+      const fechaFin = addBusinessDaysWithSuspensions(fechaInicio, daysNeeded - 1, suspensionDates);
+
+      // Validar que no se pase del fin del año escolar
+      if (endDate && fechaFin > endDate) {
+        warnings.push(
+          `⚠️ El módulo ${mod.code} (${mod.name}) termina el ${fechaFin}, pasándose del fin de año escolar (${endDate}).`
+        );
+      }
+
+      // Calcular las 6 etapas MINED para este módulo
+      const jornalizacion = calculateStageJornalizacion(
+        mod.name,
+        mod.hours,
+        fechaInicio,
+        fechaFin
+      );
+
+      const projectDeliveryDate = calculateProjectDeliveryDate(fechaFin);
+
+      allModulos.push({
+        moduleId: mod.id,
+        codigo: mod.code,
+        nombre: mod.name,
+        year: mod.technicalYear,
+        fechaInicio,
+        fechaFin,
+        horasTotales: mod.hours,
+        semanasTotales: mod.weeks,
+        diasHabilesNecesarios: daysNeeded,
+        projectDeliveryDate,
+        jornalizacion,
+        estado: 'programado',
+      });
+
+      totalDias += daysNeeded;
+      totalHoras += mod.hours;
+    }
   }
 
   return {
-    modulos,
+    modulos: allModulos,
     totalDias,
     totalHoras,
     fechaInicio: startDate,
-    fechaFin: modulos.length > 0 ? modulos[modulos.length - 1].fechaFin : startDate,
+    fechaFin: allModulos.length > 0 ? allModulos[allModulos.length - 1].fechaFin : startDate,
     warnings,
   };
 }
