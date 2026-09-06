@@ -210,6 +210,12 @@ service cloud.firestore {
       allow write: if isAdmin() || isDocente();
     }
 
+    // Institutional Calendar (admin creates, docentes read for cronograma)
+    match /institutional_calendar/{year} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
     // Global Catch-All Safety Net (Default Deny)
     match /{document=**} {
       allow read, write: if false;
