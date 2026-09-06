@@ -108,9 +108,8 @@ function calculateBusinessDaysNeeded(hours: number, technicalYear: string): numb
 
 /**
  * Genera el cronograma completo para módulos técnicos
+ * Patrón híbrido: secuencial por defecto, paralelo cuando no alcanza el tiempo
  * Cada año técnico tiene su PROPIO año escolar completo (40 semanas)
- * Los módulos de cada año se distribuyen en las 40 semanas
- * Múltiples módulos del MISMO año pueden correr en paralelo
  */
 export function generarCronogramaTecnico(input: CronogramaInput): CronogramaResult {
   const { startDate, endDate, year, modules, suspensiones } = input;
@@ -129,12 +128,10 @@ export function generarCronogramaTecnico(input: CronogramaInput): CronogramaResu
   let totalDias = 0;
   let totalHoras = 0;
 
-  // Para cada año técnico, distribuir módulos en las 40 semanas
+  // Para cada año técnico, distribuir módulos
   for (const [yearNum, yearModules] of Object.entries(modulesByYear)) {
     // Calcular horas/semana para este año
     const hoursPerWeek = yearNum === '3' ? 30 : 18;
-    const totalWeeks = 40;
-    const totalDays = totalWeeks * 5; // 200 días hábiles
 
     // Ordenar módulos por código
     const sorted = [...yearModules].sort((a, b) => {
@@ -144,47 +141,53 @@ export function generarCronogramaTecnico(input: CronogramaInput): CronogramaResu
     });
 
     // Calcular semanas necesarias por módulo
-    const modulesWithWeeks = sorted.map(mod => ({
+    const modulesWithInfo = sorted.map(mod => ({
       mod,
       weeksNeeded: Math.ceil(mod.hours / hoursPerWeek),
       daysNeeded: Math.ceil(mod.hours / hoursPerWeek) * 5,
     }));
 
-    // Distribuir módulos en las 40 semanas
-    // Permitir paralelismo: varios módulos pueden empezar en la misma semana
-    let currentWeek = 1; // Semana actual (1-40)
-    let weekAssignments: { mod: LMSModule; startWeek: number; endWeek: number; daysNeeded: number }[] = [];
-
-    for (const { mod, weeksNeeded, daysNeeded } of modulesWithWeeks) {
-      const startWeek = currentWeek;
-      const endWeek = Math.min(startWeek + weeksNeeded - 1, totalWeeks);
-      
-      weekAssignments.push({
+    // Algoritmo híbrido: secuencial con posibilidad de paralelo
+    // Primero intentar secuencial
+    let sequentialAssignments: { mod: LMSModule; startDay: number; daysNeeded: number }[] = [];
+    let currentDay = 0; // Día hábil actual (0-199)
+    
+    for (const { mod, daysNeeded } of modulesWithInfo) {
+      sequentialAssignments.push({
         mod,
-        startWeek,
-        endWeek,
+        startDay: currentDay,
         daysNeeded,
       });
+      currentDay += daysNeeded;
+    }
 
-      // Avanzar semanas para el siguiente módulo
-      // Si el módulo cabe en las semanas restantes, avanza
-      currentWeek = endWeek + 1;
+    // Verificar si algún módulo se pasa del año escolar (200 días)
+    const maxDay = Math.max(...sequentialAssignments.map(a => a.startDay + a.daysNeeded));
+    
+    if (maxDay > 200) {
+      // Necesitamos paralelismo: ajustar módulos que se pasan
+      // Encontrar módulos que exceden y buscar espacio anterior
+      const overflow = maxDay - 200;
       
-      // Si llegamos al final del año, reiniciar desde el inicio (paralelo)
-      if (currentWeek > totalWeeks) {
-        currentWeek = 1; // Reiniciar para módulos restantes (paralelo)
+      // Mover módulos tardíos hacia atrás (paralelo con otros)
+      for (let i = sequentialAssignments.length - 1; i >= 0 && sequentialAssignments.some(a => a.startDay + a.daysNeeded > 200); i--) {
+        const assignment = sequentialAssignments[i];
+        if (assignment.startDay + assignment.daysNeeded > 200) {
+          // Calcular cuántos días necesita moverse
+          const excess = (assignment.startDay + assignment.daysNeeded) - 200;
+          assignment.startDay = Math.max(0, assignment.startDay - excess);
+        }
       }
     }
 
-    // Convertir semanas a fechas
-    for (const assignment of weekAssignments) {
-      const { mod, startWeek, endWeek, daysNeeded } = assignment;
+    // Convertir días a fechas
+    for (const assignment of sequentialAssignments) {
+      const { mod, startDay, daysNeeded } = assignment;
       
-      // Calcular fecha de inicio basada en la semana
-      const startDayOffset = (startWeek - 1) * 5; // Días hábiles desde el inicio
-      const fechaInicio = addBusinessDaysWithSuspensions(startDate, startDayOffset, suspensionDates);
+      // Calcular fecha de inicio basada en el día hábil
+      const fechaInicio = addBusinessDaysWithSuspensions(startDate, startDay, suspensionDates);
       
-      // Calcular fecha de fin basada en las semanas del módulo
+      // Calcular fecha de fin
       const fechaFin = addBusinessDaysWithSuspensions(fechaInicio, daysNeeded - 1, suspensionDates);
 
       // Validar que no se pase del fin del año escolar
