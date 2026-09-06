@@ -528,6 +528,29 @@ export default function JornalizacionView() {
         </div>
       )}
 
+      {/* Indicador de ajustes de paralelismo */}
+      {modulosConCronograma.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+          <h4 className="font-bold text-blue-800 text-sm mb-2 flex items-center gap-2">
+            <Info size={16} />
+            Ajustes del Cronograma
+          </h4>
+          <div className="text-xs text-blue-700 space-y-1">
+            <p>• Fórmula MINED: 18h/sem (1° y 2°) / 30h/sem (3°)</p>
+            <p>• Año escolar: {formatDateSpanish(fechaInicioCalendar || '')} → {formatDateSpanish(getFechaFinFromCalendar())}</p>
+            <p>• Módulos ajustados con ejecución paralela para caber en el año escolar</p>
+            {selectedYears.map(y => {
+              const yearMods = modulosConCronograma.filter(m => m.year === y.toString());
+              const totalH = yearMods.reduce((sum, m) => sum + m.horasTotales, 0);
+              const totalD = yearMods.reduce((sum, m) => sum + m.diasHabilesNecesarios, 0);
+              return (
+                <p key={y}>• {y}° Año: {yearMods.length} módulos, {totalH}h, {totalD} días hábiles ({Math.round(totalD/5)} semanas)</p>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Modal Generar Cronograma */}
       {showGenerateModal && (
         <div className="modal-backdrop" onClick={() => setShowGenerateModal(false)}>
