@@ -131,6 +131,20 @@ export default function JornalizacionView() {
 
   // Módulos filtrados por año técnico seleccionado
   const modules = allModules.filter(m => selectedYears.includes(m.technicalYear));
+  
+  // Debug: mostrar módulos cargados
+  useEffect(() => {
+    if (allModules.length > 0) {
+      console.log(`[Jornalización] Total módulos cargados: ${allModules.length}`);
+      console.log(`[Jornalización] Años disponibles: ${availableYears.join(', ')}`);
+      console.log(`[Jornalización] Años seleccionados: ${selectedYears.join(', ')}`);
+      console.log(`[Jornalización] Módulos filtrados: ${modules.length}`);
+      for (const y of selectedYears) {
+        const count = modules.filter(m => m.technicalYear === y).length;
+        console.log(`[Jornalización] ${y}° Año: ${count} módulos`);
+      }
+    }
+  }, [allModules, selectedYears]);
 
   // Grados disponibles
   const availableYears = [...new Set(allModules.map(m => m.technicalYear))].sort();
@@ -220,6 +234,7 @@ export default function JornalizacionView() {
       // Cada año empieza en la misma fecha pero con sus propios módulos
       for (const yearNum of selectedYears) {
         const yearModules = modules.filter(m => m.technicalYear === yearNum);
+        console.log(`[Jornalización] ${yearNum}° Año: ${yearModules.length} módulos encontrados`);
         if (yearModules.length === 0) continue;
 
         const result = generarCronogramaTecnico({
@@ -242,6 +257,8 @@ export default function JornalizacionView() {
           updatedAt: new Date().toISOString(),
         });
       }
+
+      console.log(`[Jornalización] Total módulos generados: ${allModulos.length}`);
 
       // Mantener módulos de años no seleccionados
       const otherYearMods = (cronograma || []).filter(c => 
