@@ -121,10 +121,21 @@ export default function InstitutionalCalendar() {
 
   // Auto-guardado con debounce (5 segundos después del último cambio)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const calendarDataRef = useRef({ months, periodsBasica, periodsMedia, perData });
+  calendarDataRef.current = { months, periodsBasica, periodsMedia, perData };
+
   useEffect(() => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
-      saveInstitutionalCalendar({ year: anoLectivo, institution: institucion, months, periodsBasica, periodsMedia, perData }).catch(console.error);
+      const d = calendarDataRef.current;
+      saveInstitutionalCalendar({
+        year: anoLectivo,
+        institution: institucion,
+        months: d.months,
+        periodsBasica: d.periodsBasica,
+        periodsMedia: d.periodsMedia,
+        perData: d.perData,
+      }).catch(console.error);
     }, 5000);
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, [months, periodsBasica, periodsMedia, perData]);
@@ -527,6 +538,17 @@ export default function InstitutionalCalendar() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Botón Guardar */}
+      <div className="flex justify-end">
+        <button
+          onClick={handleSaveCalendar}
+          className="px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors shadow-sm flex items-center gap-2"
+        >
+          <CheckCircle2 size={16} />
+          Guardar Calendario
+        </button>
       </div>
 
       {/* Section Selector */}
