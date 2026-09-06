@@ -253,3 +253,50 @@ export function calcularAvance(cronograma: CronogramaResult): number {
   const completados = cronograma.modulos.filter(m => m.estado === 'completado').length;
   return Math.round((completados / cronograma.modulos.length) * 100);
 }
+
+/**
+ * Valida que el cronograma no exceda los 200 días hábiles (40 semanas)
+ * Retorna advertencias si se excede
+ */
+export function validarCronogramaContraCalendario(
+  cronograma: CronogramaResult,
+  maxDias: number = 200,
+  maxSemanas: number = 40
+): string[] {
+  const warnings: string[] = [];
+  
+  // Calcular días hábiles totales del cronograma
+  const totalDiasCalendario = cronograma.totalDias;
+  
+  if (totalDiasCalendario > maxDias) {
+    warnings.push(
+      `⚠️ El cronograma usa ${totalDiasCalendario} días hábiles, excediendo el máximo de ${maxDias} días (${maxSemanas} semanas).`
+    );
+  }
+  
+  // Verificar que la fecha fin no exceda el fin del año escolar
+  if (cronograma.fechaFin > '2026-10-16') {
+    warnings.push(
+      `⚠️ El cronograma termina el ${cronograma.fechaFin}, pasándose del fin de año escolar (16 octubre 2026).`
+    );
+  }
+  
+  // Verificar que cada año no exceda 200 días
+  const modulosPorAnio = cronograma.modulos.reduce((acc, mod) => {
+    const year = mod.year;
+    if (!acc[year]) acc[year] = { dias: 0, horas: 0 };
+    acc[year].dias += mod.diasHabilesNecesarios;
+    acc[year].horas += mod.horasTotales;
+    return acc;
+  }, {} as Record<string, { dias: number; horas: number }>);
+  
+  for (const [year, data] of Object.entries(modulosPorAnio)) {
+    if (data.dias > maxDias) {
+      warnings.push(
+        `⚠️ ${year}° Año: ${data.dias} días hábiles (excede ${maxDias} días).`
+      );
+    }
+  }
+  
+  return warnings;
+}

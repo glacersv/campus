@@ -4,7 +4,7 @@ import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/fire
 import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { LMSModule, ModuloCronograma, MonthStats, AcademicPeriod } from '../../types';
-import { generarCronogramaTecnico, calcularTotalSemanas } from '../../utils/cronogramaHelper';
+import { generarCronogramaTecnico, calcularTotalSemanas, validarCronogramaContraCalendario, CronogramaResult } from '../../utils/cronogramaHelper';
 import { formatDateSpanish } from '../../utils/jornalizacionHelper';
 import { getInstitutionalCalendar } from '../../lib/calendarFirestore';
 import { toast } from 'sonner';
@@ -249,10 +249,24 @@ export default function JornalizacionView() {
       );
       setCronograma([...otherYearMods, ...allModulos]);
 
+      // Validar contra calendario (200 días, 40 semanas)
+      const cronogramaResult: CronogramaResult = {
+        modulos: allModulos,
+        totalDias: allModulos.reduce((sum, m) => sum + m.diasHabilesNecesarios, 0),
+        totalHoras: allModulos.reduce((sum, m) => sum + m.horasTotales, 0),
+        fechaInicio: allModulos[0]?.fechaInicio || '',
+        fechaFin: allModulos[allModulos.length - 1]?.fechaFin || '',
+        warnings: [],
+      };
+      const validationWarnings = validarCronogramaContraCalendario(cronogramaResult);
+      
+      // Combinar advertencias de generación y validación
+      const combinedWarnings = [...allWarnings, ...validationWarnings];
+      
       // Mostrar advertencias si las hay
-      if (allWarnings.length > 0) {
-        setWarnings(allWarnings);
-        allWarnings.forEach(w => toast.warning(w, { duration: 6000 }));
+      if (combinedWarnings.length > 0) {
+        setWarnings(combinedWarnings);
+        combinedWarnings.forEach(w => toast.warning(w, { duration: 6000 }));
       } else {
         setWarnings([]);
       }
