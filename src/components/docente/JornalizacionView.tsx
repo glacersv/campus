@@ -3,25 +3,29 @@ import { useNavigate } from 'react-router-dom';
 import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
-import { LMSModule, ModuloCronograma, MonthStats } from '../../types';
+import { LMSModule, ModuloCronograma, MonthStats, AcademicPeriod } from '../../types';
 import { generarCronogramaTecnico, calcularTotalSemanas } from '../../utils/cronogramaHelper';
 import { formatDateSpanish } from '../../utils/jornalizacionHelper';
-import { getCalendarSuspensions } from '../../lib/calendarFirestore';
+import { getInstitutionalCalendar } from '../../lib/calendarFirestore';
 import { toast } from 'sonner';
-import { Calendar, Play, Pause, CheckCircle2, Clock, ChevronRight, Zap, AlertTriangle } from 'lucide-react';
+import { Calendar, Play, Pause, CheckCircle2, Clock, ChevronRight, Zap, AlertTriangle, Info } from 'lucide-react';
 
 export default function JornalizacionView() {
   const { userProfile } = useAuth();
   const navigate = useNavigate();
-  const [modules, setModules] = useState<LMSModule[]>([]);
+  const [allModules, setAllModules] = useState<LMSModule[]>([]);
   const [loading, setLoading] = useState(true);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [cronograma, setCronograma] = useState<ModuloCronograma[] | null>(null);
-  const [calendarSuspensions, setCalendarSuspensions] = useState<MonthStats[]>([]);
 
-  // Form state para generar cronograma
-  const [fechaInicio, setFechaInicio] = useState('2026-01-19');
+  // Calendario
+  const [calendarMonths, setCalendarMonths] = useState<MonthStats[]>([]);
+  const [calendarPeriods, setCalendarPeriods] = useState<AcademicPeriod[]>([]);
+  const [calendarLoaded, setCalendarLoaded] = useState(false);
+
+  // Filtros
+  const [selectedYear, setSelectedYear] = useState<string>('all');
   const [anoAcademico, setAnoAcademico] = useState('2026');
 
   useEffect(() => {
@@ -32,11 +36,36 @@ export default function JornalizacionView() {
 
   const loadCalendarData = async () => {
     try {
-      const suspensions = await getCalendarSuspensions(anoAcademico);
-      setCalendarSuspensions(suspensions);
+      const calendar = await getInstitutionalCalendar(anoAcademico);
+      if (calendar) {
+        setCalendarMonths(calendar.months || []);
+        setCalendarPeriods(calendar.periodsMedia || []);
+        setCalendarLoaded(true);
+      } else {
+        setCalendarLoaded(false);
+      }
     } catch (e) {
       console.error('Error loading calendar:', e);
+      setCalendarLoaded(false);
     }
+  };
+
+  // Obtener fecha de inicio del primer bimestre
+  const getFechaInicioFromCalendar = (): string => {
+    if (calendarPeriods.length === 0) return '';
+    const firstPeriod = calendarPeriods[0];
+    // El formato es "19 enero" — convertir a YYYY-MM-DD
+    const parts = firstPeriod.inicio.split(' ');
+    if (parts.length < 2) return '';
+    const day = parts[0].padStart(2, '0');
+    const monthMap: Record<string, string> = {
+      'enero': '01', 'febrero': '02', 'marzo': '03', 'abril': '04',
+      'mayo': '05', 'junio': '06', 'julio': '07', 'agosto': '08',
+      'septiembre': '09', 'octubre': '10', 'noviembre': '11', 'diciembre': '12',
+    };
+    const monthNum = monthMap[parts[1].toLowerCase()];
+    if (!monthNum) return '';
+    return `${anoAcademico}-${monthNum}-${day}`;
   };
 
   const loadModules = async () => {
@@ -48,12 +77,12 @@ export default function JornalizacionView() {
       if (snap.empty) {
         const allQ = query(collection(db, 'lms_modules'));
         const allSnap = await getDocs(allQ);
-        setModules(allSnap.docs.map(d => ({ id: d.id, ...d.data() } as LMSModule)));
+        setAllModules(allSnap.docs.map(d => ({ id: d.id, ...d.data() } as LMSModule)));
       } else {
-        setModules(snap.docs.map(d => ({ id: d.id, ...d.data() } as LMSModule)));
+        setAllModules(snap.docs.map(d => ({ id: d.id, ...d.data() } as LMSModule)));
       }
 
-      // Cargar cronograma existente si hay
+      // Cargar cronograma existente
       const existingCronograma = snap.empty ? [] : snap.docs
         .map(d => ({ id: d.id, ...d.data() } as LMSModule))
         .filter(m => m.jornalizacion && m.jornalizacion.length > 0)
@@ -82,9 +111,30 @@ export default function JornalizacionView() {
     }
   };
 
+  // Módulos filtrados por año técnico
+  const modules = selectedYear === 'all'
+    ? allModules
+    : allModules.filter(m => m.technicalYear === selectedYear);
+
+  // Grados disponibles
+  const availableYears = [...new Set(allModules.map(m => m.technicalYear))].sort();
+
   const handleGenerate = async () => {
+    if (!calendarLoaded) {
+      toast.error('No hay calendario institucional cargado. Solicite al administrador que cargue el calendario.');
+      return;
+    }
+
+    const fechaInicio = getFechaInicioFromCalendar();
+    if (!fechaInicio) {
+      toast.error('No se pudo determinar la fecha de inicio del año desde el calendario.');
+      return;
+    }
+
     if (modules.length === 0) {
-      toast.error('No hay módulos asignados');
+      toast.error(selectedYear === 'all'
+        ? 'No hay módulos asignados'
+        : `No hay módulos para ${selectedYear}° Año`);
       return;
     }
 
@@ -94,7 +144,7 @@ export default function JornalizacionView() {
         startDate: fechaInicio,
         year: anoAcademico,
         modules,
-        suspensiones: calendarSuspensions,
+        suspensiones: calendarMonths,
       });
 
       // Guardar en Firestore
@@ -106,7 +156,14 @@ export default function JornalizacionView() {
         });
       }
 
-      setCronograma(result.modulos);
+      // Actualizar cronograma local (mantener los de otros años si hay filtrado)
+      if (cronograma) {
+        const otherYearMods = cronograma.filter(c => !result.modulos.some(r => r.moduleId === c.moduleId));
+        setCronograma([...otherYearMods, ...result.modulos]);
+      } else {
+        setCronograma(result.modulos);
+      }
+
       setShowGenerateModal(false);
       toast.success(`Cronograma generado: ${result.modulos.length} módulos, ${result.totalDias} días hábiles`);
     } catch (e) {
@@ -140,11 +197,13 @@ export default function JornalizacionView() {
     );
   }
 
-  const modulosConCronograma = cronograma || [];
+  const modulosConCronograma = (cronograma || []).filter(c => modules.some(m => m.id === c.moduleId));
   const modulosSinCronograma = modules.filter(m => !m.jornalizacion || m.jornalizacion.length === 0);
   const totalSemanas = modulosConCronograma.length > 0
     ? calcularTotalSemanas({ modulos: modulosConCronograma, totalDias: 0, totalHoras: 0, fechaInicio: '', fechaFin: '' })
     : 0;
+
+  const fechaInicioCalendar = getFechaInicioFromCalendar();
 
   return (
     <div className="space-y-6">
@@ -167,6 +226,52 @@ export default function JornalizacionView() {
           Generar Cronograma
         </button>
       </div>
+
+      {/* Alerta: sin calendario */}
+      {!calendarLoaded && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+          <Info className="text-amber-500 shrink-0 mt-0.5" size={18} />
+          <div>
+            <h4 className="font-bold text-amber-800 text-sm">Calendario no disponible</h4>
+            <p className="text-xs text-amber-700 mt-1">
+              El calendario institucional no está cargado. Solicite al administrador que cargue el calendario
+              antes de generar el cronograma.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Filtro por año */}
+      {allModules.length > 0 && (
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium text-slate-600">Año técnico:</span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setSelectedYear('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                selectedYear === 'all'
+                  ? 'bg-primary text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              Todos
+            </button>
+            {availableYears.map(y => (
+              <button
+                key={y}
+                onClick={() => setSelectedYear(y)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                  selectedYear === y
+                    ? 'bg-primary text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {y}° Año
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       {modulosConCronograma.length > 0 && (
@@ -254,14 +359,18 @@ export default function JornalizacionView() {
           </div>
           <h3 className="text-lg font-bold text-slate-900 mb-1">Sin cronograma generado</h3>
           <p className="text-slate-500 mb-4">
-            Genera tu cronograma para asignar fechas a tus módulos técnicos
+            {calendarLoaded
+              ? 'Genera tu cronograma para asignar fechas a tus módulos técnicos'
+              : 'El calendario institucional no está cargado. Solicite al administrador.'}
           </p>
-          <button
-            onClick={() => setShowGenerateModal(true)}
-            className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors"
-          >
-            Generar Cronograma
-          </button>
+          {calendarLoaded && (
+            <button
+              onClick={() => setShowGenerateModal(true)}
+              className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors"
+            >
+              Generar Cronograma
+            </button>
+          )}
         </div>
       )}
 
@@ -291,41 +400,51 @@ export default function JornalizacionView() {
             </h3>
 
             <div className="space-y-4">
+              {/* Año técnico */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Fecha de inicio del año
-                </label>
-                <input
-                  type="date"
-                  value={fechaInicio}
-                  onChange={e => setFechaInicio(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Año académico
+                  Año técnico a generar
                 </label>
                 <select
-                  value={anoAcademico}
-                  onChange={e => setAnoAcademico(e.target.value)}
+                  value={selectedYear}
+                  onChange={e => setSelectedYear(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 >
-                  <option value="2025">2025</option>
-                  <option value="2026">2026</option>
-                  <option value="2027">2027</option>
+                  <option value="all">Todos los años ({allModules.length} módulos)</option>
+                  {availableYears.map(y => (
+                    <option key={y} value={y}>{y}° Año ({allModules.filter(m => m.technicalYear === y).length} módulos)</option>
+                  ))}
                 </select>
               </div>
 
+              {/* Info del calendario */}
+              <div className={`rounded-xl p-3 text-sm ${calendarLoaded ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'}`}>
+                {calendarLoaded ? (
+                  <>
+                    <p className="font-bold">Calendario cargado</p>
+                    <p className="text-xs mt-1">
+                      Fecha inicio: <strong>{fechaInicioCalendar ? formatDateSpanish(fechaInicioCalendar) : 'No disponible'}</strong>
+                    </p>
+                    <p className="text-xs">
+                      Suspensiones: <strong>{calendarMonths.reduce((sum, m) => sum + (m.eventos?.length || 0), 0)} eventos</strong>
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-bold">Sin calendario</p>
+                    <p className="text-xs mt-1">El administrador debe cargar el calendario institucional primero.</p>
+                  </>
+                )}
+              </div>
+
+              {/* Resumen */}
               <div className="bg-slate-50 rounded-xl p-3 text-sm text-slate-600">
-                <p>Se generarán fechas correlativas para <strong>{modules.length} módulos</strong> iniciando desde {formatDateSpanish(fechaInicio)}.</p>
-                {calendarSuspensions.length > 0 && (
-                  <p className="text-xs text-emerald-600 mt-1">
-                    Calendario cargado: {calendarSuspensions.reduce((sum, m) => sum + (m.eventos?.length || 0), 0)} eventos de asueto/suspensión
+                <p>Se generarán fechas correlativas para <strong>{modules.length} módulos</strong>.</p>
+                {fechaInicioCalendar && (
+                  <p className="text-xs text-slate-400 mt-1">
+                    Inicio: {formatDateSpanish(fechaInicioCalendar)}
                   </p>
                 )}
-                <p className="text-xs text-slate-400 mt-1">Las fechas se calcularán respetando días hábiles.</p>
               </div>
             </div>
 
@@ -338,8 +457,8 @@ export default function JornalizacionView() {
               </button>
               <button
                 onClick={handleGenerate}
-                disabled={generating}
-                className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                disabled={generating || !calendarLoaded}
+                className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {generating ? 'Generando...' : 'Generar'}
               </button>
