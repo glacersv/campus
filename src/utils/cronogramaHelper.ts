@@ -106,13 +106,16 @@ function calculateBusinessDaysNeeded(hours: number, technicalYear: string): numb
 
 /**
  * Genera el cronograma completo para módulos técnicos
- * Patrón híbrido: secuencial por defecto, paralelo cuando no alcanza el tiempo
- * Cada año técnico tiene su PROPIO año escolar completo (40 semanas)
+ * Año escolar: Ene 19 → Oct 16 = 195 días hábiles = 39 semanas
+ * Fórmula MINED: 18h/sem → 720h = 40 sem (necesita paralelo para caber en 39 sem)
  */
 export function generarCronogramaTecnico(input: CronogramaInput): CronogramaResult {
   const { startDate, endDate, year, modules, suspensiones } = input;
   const suspensionDates = collectSuspensionDates(suspensiones, year);
   const warnings: string[] = [];
+
+  // Calcular días hábiles disponibles en el año escolar
+  const totalAvailableDays = calculateBusinessDaysBetween(startDate, endDate, suspensionDates);
 
   // Agrupar módulos por año técnico
   const modulesByYear = modules.reduce((acc, mod) => {
@@ -128,7 +131,7 @@ export function generarCronogramaTecnico(input: CronogramaInput): CronogramaResu
 
   // Para cada año técnico, distribuir módulos
   for (const [yearNum, yearModules] of Object.entries(modulesByYear)) {
-    // Fórmula MINED: 18 horas/semana para todos
+    // Fórmula MINED: 18 horas/semana
     const hoursPerWeek = 18;
 
     // Ordenar módulos por código
@@ -138,54 +141,36 @@ export function generarCronogramaTecnico(input: CronogramaInput): CronogramaResu
       return 0;
     });
 
-    // Calcular semanas necesarias por módulo
+    // Calcular días necesarios por módulo
     const modulesWithInfo = sorted.map(mod => ({
       mod,
-      weeksNeeded: Math.ceil(mod.hours / hoursPerWeek),
       daysNeeded: Math.ceil(mod.hours / hoursPerWeek) * 5,
     }));
 
-    // Algoritmo híbrido: secuencial con posibilidad de paralelo
-    // Primero intentar secuencial
-    let sequentialAssignments: { mod: LMSModule; startDay: number; daysNeeded: number }[] = [];
-    let currentDay = 0; // Día hábil actual (0-199)
+    // Calcular total de días necesarios
+    const totalDaysNeeded = modulesWithInfo.reduce((sum, m) => sum + m.daysNeeded, 0);
+    
+    // Si excede, calcular ratio de paralelismo
+    const needsParallel = totalDaysNeeded > totalAvailableDays;
+    const parallelRatio = needsParallel ? totalDaysNeeded / totalAvailableDays : 1;
+
+    // Distribuir módulos
+    let currentDay = 0;
     
     for (const { mod, daysNeeded } of modulesWithInfo) {
-      sequentialAssignments.push({
-        mod,
-        startDay: currentDay,
-        daysNeeded,
-      });
-      currentDay += daysNeeded;
-    }
-
-    // Verificar si algún módulo se pasa del año escolar (200 días)
-    const maxDay = Math.max(...sequentialAssignments.map(a => a.startDay + a.daysNeeded));
-    
-    if (maxDay > 200) {
-      // Necesitamos paralelismo: ajustar módulos que se pasan
-      // Encontrar módulos que exceden y buscar espacio anterior
-      const overflow = maxDay - 200;
+      let startDay: number;
       
-      // Mover módulos tardíos hacia atrás (paralelo con otros)
-      for (let i = sequentialAssignments.length - 1; i >= 0 && sequentialAssignments.some(a => a.startDay + a.daysNeeded > 200); i--) {
-        const assignment = sequentialAssignments[i];
-        if (assignment.startDay + assignment.daysNeeded > 200) {
-          // Calcular cuántos días necesita moverse
-          const excess = (assignment.startDay + assignment.daysNeeded) - 200;
-          assignment.startDay = Math.max(0, assignment.startDay - excess);
-        }
+      if (needsParallel) {
+        // Con paralelismo: distribuir en el tiempo disponible
+        startDay = Math.floor(currentDay / parallelRatio);
+        currentDay += daysNeeded;
+      } else {
+        // Sin paralelismo: secuencial
+        startDay = currentDay;
+        currentDay += daysNeeded;
       }
-    }
 
-    // Convertir días a fechas
-    for (const assignment of sequentialAssignments) {
-      const { mod, startDay, daysNeeded } = assignment;
-      
-      // Calcular fecha de inicio basada en el día hábil
       const fechaInicio = addBusinessDaysWithSuspensions(startDate, startDay, suspensionDates);
-      
-      // Calcular fecha de fin
       const fechaFin = addBusinessDaysWithSuspensions(fechaInicio, daysNeeded - 1, suspensionDates);
 
       // Validar que no se pase del fin del año escolar
