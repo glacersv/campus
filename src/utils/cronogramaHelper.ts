@@ -94,14 +94,14 @@ function addBusinessDaysWithSuspensions(
 /**
  * Calcula los días hábiles necesarios para un módulo según sus horas
  * Fórmula MINED: 5 días hábiles/semana
- * 1° y 2° Año: 18 horas/semana → 720 horas totales
- * 3° Año: 30 horas/semana → 1,200 horas totales
+ * 1° y 2° Año: 14 horas/semana REALES (no 18 teóricas)
+ * 3° Año: 25 horas/semana REALES (no 30 teóricas)
  * Todos: 40 semanas = 200 días hábiles
  */
 function calculateBusinessDaysNeeded(hours: number, technicalYear: string): number {
   if (hours <= 0) return 5;
-  // 3° Año tiene 30 horas/semana, los demás 18
-  const hoursPerWeek = technicalYear === '3' ? 30 : 18;
+  // Horas REALES por semana (no teóricas)
+  const hoursPerWeek = technicalYear === '3' ? 25 : 14;
   const weeks = Math.ceil(hours / hoursPerWeek);
   return weeks * 5;
 }
@@ -130,8 +130,8 @@ export function generarCronogramaTecnico(input: CronogramaInput): CronogramaResu
 
   // Para cada año técnico, distribuir módulos
   for (const [yearNum, yearModules] of Object.entries(modulesByYear)) {
-    // Calcular horas/semana para este año
-    const hoursPerWeek = yearNum === '3' ? 30 : 18;
+    // Horas REALES por semana (no teóricas)
+    const hoursPerWeek = yearNum === '3' ? 25 : 14;
 
     // Ordenar módulos por código
     const sorted = [...yearModules].sort((a, b) => {
