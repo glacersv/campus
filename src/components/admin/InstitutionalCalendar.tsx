@@ -1,4 +1,5 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { toast } from 'sonner';
 import { MonthStats, AcademicPeriod, PERData } from '../../types';
 import { Table1SemanasLaborales } from './Table1SemanasLaborales';
 import { SuspensionesManager } from './SuspensionesManager';
@@ -40,6 +41,7 @@ import {
   generateExcelTemplateWorkbook,
 } from '../../utils/fileImportParsers';
 import { loadDefaultSuspensionEvents } from '../../utils/suspensionesHelper';
+import { saveInstitutionalCalendar, getInstitutionalCalendar } from '../../lib/calendarFirestore';
 import { saveAs } from 'file-saver';
 
 type CalendarSectionPart = 'todas' | 'parte1_semanas' | 'parte2_trimestres' | 'parte3_pausas' | 'parte4_per' | 'importar_exportar';
@@ -81,6 +83,52 @@ export default function InstitutionalCalendar() {
 
   const handleUpdateMonths = (newMonths: MonthStats[]) => setMonths(newMonths);
 
+  // Cargar calendario desde Firestore al montar
+  useEffect(() => {
+    const loadCalendar = async () => {
+      try {
+        const saved = await getInstitutionalCalendar(anoLectivo);
+        if (saved) {
+          if (saved.months?.length > 0) setMonths(saved.months);
+          if (saved.periodsBasica?.length > 0) setPeriodsBasica(saved.periodsBasica);
+          if (saved.periodsMedia?.length > 0) setPeriodsMedia(saved.periodsMedia);
+          if (saved.perData) setPerData(saved.perData);
+        }
+      } catch (e) {
+        console.error('Error loading calendar from Firestore:', e);
+      }
+    };
+    loadCalendar();
+  }, []);
+
+  // Guardar calendario en Firestore
+  const handleSaveCalendar = async () => {
+    try {
+      await saveInstitutionalCalendar({
+        year: anoLectivo,
+        institution: institucion,
+        months,
+        periodsBasica,
+        periodsMedia,
+        perData,
+      });
+      toast.success('Calendario guardado en la nube');
+    } catch (e) {
+      console.error('Error saving calendar:', e);
+      toast.error('Error al guardar calendario');
+    }
+  };
+
+  // Auto-guardado con debounce (5 segundos después del último cambio)
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      saveInstitutionalCalendar({ year: anoLectivo, institution: institucion, months, periodsBasica, periodsMedia, perData }).catch(console.error);
+    }, 5000);
+    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
+  }, [months, periodsBasica, periodsMedia, perData]);
+
   // Helper para asignar períodos importados respetando Básica y Media
   const applyImportedPeriods = useCallback((result: { periods?: AcademicPeriod[]; periodsMedia?: AcademicPeriod[]; periodsBasica?: AcademicPeriod[] }) => {
     if (result.periodsMedia && result.periodsMedia.length > 0) {
@@ -103,7 +151,7 @@ export default function InstitutionalCalendar() {
   }, []);
 
   // Vaciar calendario - pone todos los meses a 0 semanas y 0 días
-  const handleClearCalendar = () => {
+  const handleClearCalendar = async () => {
     const emptyMonths: MonthStats[] = [
       'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
       'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
@@ -125,18 +173,30 @@ export default function InstitutionalCalendar() {
     setShowClearCalendarConfirm(false);
     setImportSuccess('¡Calendario vaciado! Todos los meses ahora tienen 0 semanas y 0 días.');
     setTimeout(() => setImportSuccess(null), 5000);
+    // Auto-guardar en Firestore
+    try {
+      await saveInstitutionalCalendar({ year: anoLectivo, institution: institucion, months: emptyMonths, periodsBasica: [], periodsMedia: [], perData: emptyPER });
+    } catch (e) { console.error(e); }
   };
 
   // Restaurar valores predeterminados
-  const handleResetDefaults = () => {
-    setMonths(JSON.parse(JSON.stringify(monthsData2026)));
+  const handleResetDefaults = async () => {
+    const defMonths = JSON.parse(JSON.stringify(monthsData2026));
+    const defBasica = JSON.parse(JSON.stringify(academicPeriodsBasica2026));
+    const defMedia = JSON.parse(JSON.stringify(academicPeriodsMedia2026));
+    const defPER = JSON.parse(JSON.stringify(recuperacionExtraordinaria2026));
+    setMonths(defMonths);
     setPeriods(JSON.parse(JSON.stringify(academicPeriods2026)));
-    setPeriodsBasica(JSON.parse(JSON.stringify(academicPeriodsBasica2026)));
-    setPeriodsMedia(JSON.parse(JSON.stringify(academicPeriodsMedia2026)));
-    setPerData(JSON.parse(JSON.stringify(recuperacionExtraordinaria2026)));
+    setPeriodsBasica(defBasica);
+    setPeriodsMedia(defMedia);
+    setPerData(defPER);
     setCalendarCleared(false);
     setImportSuccess('¡Calendario restaurado a valores predeterminados!');
     setTimeout(() => setImportSuccess(null), 4000);
+    // Auto-guardar en Firestore
+    try {
+      await saveInstitutionalCalendar({ year: anoLectivo, institution: institucion, months: defMonths, periodsBasica: defBasica, periodsMedia: defMedia, perData: defPER });
+    } catch (e) { console.error(e); }
   };
 
   // Export to Excel (Plantilla completa con hojas por nivel)

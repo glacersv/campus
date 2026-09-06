@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { LMSModule, ModuloCronograma, MonthStats } from '../../types';
 import { generarCronogramaTecnico, calcularTotalSemanas } from '../../utils/cronogramaHelper';
 import { formatDateSpanish } from '../../utils/jornalizacionHelper';
+import { getCalendarSuspensions } from '../../lib/calendarFirestore';
 import { toast } from 'sonner';
 import { Calendar, Play, Pause, CheckCircle2, Clock, ChevronRight, Zap, AlertTriangle } from 'lucide-react';
 
@@ -17,6 +18,7 @@ export default function JornalizacionView() {
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [cronograma, setCronograma] = useState<ModuloCronograma[] | null>(null);
+  const [calendarSuspensions, setCalendarSuspensions] = useState<MonthStats[]>([]);
 
   // Form state para generar cronograma
   const [fechaInicio, setFechaInicio] = useState('2026-01-19');
@@ -25,7 +27,17 @@ export default function JornalizacionView() {
   useEffect(() => {
     if (!userProfile?.uid) return;
     loadModules();
+    loadCalendarData();
   }, [userProfile]);
+
+  const loadCalendarData = async () => {
+    try {
+      const suspensions = await getCalendarSuspensions(anoAcademico);
+      setCalendarSuspensions(suspensions);
+    } catch (e) {
+      console.error('Error loading calendar:', e);
+    }
+  };
 
   const loadModules = async () => {
     setLoading(true);
@@ -78,14 +90,11 @@ export default function JornalizacionView() {
 
     setGenerating(true);
     try {
-      // Placeholder: suspensiones vacías por ahora
-      const suspensiones: MonthStats[] = [];
-
       const result = generarCronogramaTecnico({
         startDate: fechaInicio,
         year: anoAcademico,
         modules,
-        suspensiones,
+        suspensiones: calendarSuspensions,
       });
 
       // Guardar en Firestore
@@ -311,6 +320,11 @@ export default function JornalizacionView() {
 
               <div className="bg-slate-50 rounded-xl p-3 text-sm text-slate-600">
                 <p>Se generarán fechas correlativas para <strong>{modules.length} módulos</strong> iniciando desde {formatDateSpanish(fechaInicio)}.</p>
+                {calendarSuspensions.length > 0 && (
+                  <p className="text-xs text-emerald-600 mt-1">
+                    Calendario cargado: {calendarSuspensions.reduce((sum, m) => sum + (m.eventos?.length || 0), 0)} eventos de asueto/suspensión
+                  </p>
+                )}
                 <p className="text-xs text-slate-400 mt-1">Las fechas se calcularán respetando días hábiles.</p>
               </div>
             </div>
