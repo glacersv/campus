@@ -23,6 +23,7 @@ export interface ModuloCronograma {
 
 export interface CronogramaInput {
   startDate: string;      // Fecha de inicio del año (del calendario institucional)
+  endDate: string;        // Fecha de fin del año escolar (del calendario)
   year: string;           // Año académico (ej: "2026", del calendario)
   modules: LMSModule[];
   suspensiones: MonthStats[];
@@ -34,6 +35,7 @@ export interface CronogramaResult {
   totalHoras: number;
   fechaInicio: string;
   fechaFin: string;
+  warnings: string[];     // Advertencias (ej: módulos no caben en el año)
 }
 
 /**
@@ -106,8 +108,9 @@ function calculateBusinessDaysNeeded(hours: number): number {
  * Los módulos se ordenan por código y se asignan fechas secuenciales
  */
 export function generarCronogramaTecnico(input: CronogramaInput): CronogramaResult {
-  const { startDate, year, modules, suspensiones } = input;
+  const { startDate, endDate, year, modules, suspensiones } = input;
   const suspensionDates = collectSuspensionDates(suspensiones, year);
+  const warnings: string[] = [];
 
   // Ordenar módulos por código (BTVDG1.1, BTVDG1.2, ..., BTVDG2.1, ...)
   const sorted = [...modules].sort((a, b) => {
@@ -125,6 +128,13 @@ export function generarCronogramaTecnico(input: CronogramaInput): CronogramaResu
     const daysNeeded = calculateBusinessDaysNeeded(mod.hours);
     const fechaInicio = currentDate;
     const fechaFin = addBusinessDaysWithSuspensions(fechaInicio, daysNeeded - 1, suspensionDates);
+
+    // Validar que no se pase del fin del año escolar
+    if (endDate && fechaFin > endDate) {
+      warnings.push(
+        `⚠️ El módulo ${mod.code} (${mod.name}) termina el ${fechaFin}, pasándose del fin de año escolar (${endDate}). Considere ajustar horas o fechas.`
+      );
+    }
 
     // Calcular las 6 etapas MINED para este módulo
     const jornalizacion = calculateStageJornalizacion(
@@ -164,6 +174,7 @@ export function generarCronogramaTecnico(input: CronogramaInput): CronogramaResu
     totalHoras,
     fechaInicio: startDate,
     fechaFin: modulos.length > 0 ? modulos[modulos.length - 1].fechaFin : startDate,
+    warnings,
   };
 }
 

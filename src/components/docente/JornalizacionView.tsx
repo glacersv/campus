@@ -18,6 +18,7 @@ export default function JornalizacionView() {
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [cronograma, setCronograma] = useState<ModuloCronograma[] | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
 
   // Calendario
   const [calendarMonths, setCalendarMonths] = useState<MonthStats[]>([]);
@@ -56,6 +57,23 @@ export default function JornalizacionView() {
     const firstPeriod = calendarPeriods[0];
     // El formato es "19 enero" — convertir a YYYY-MM-DD
     const parts = firstPeriod.inicio.split(' ');
+    if (parts.length < 2) return '';
+    const day = parts[0].padStart(2, '0');
+    const monthMap: Record<string, string> = {
+      'enero': '01', 'febrero': '02', 'marzo': '03', 'abril': '04',
+      'mayo': '05', 'junio': '06', 'julio': '07', 'agosto': '08',
+      'septiembre': '09', 'octubre': '10', 'noviembre': '11', 'diciembre': '12',
+    };
+    const monthNum = monthMap[parts[1].toLowerCase()];
+    if (!monthNum) return '';
+    return `${anoAcademico}-${monthNum}-${day}`;
+  };
+
+  // Obtener fecha de fin del año escolar (último bimestre)
+  const getFechaFinFromCalendar = (): string => {
+    if (calendarPeriods.length === 0) return '';
+    const lastPeriod = calendarPeriods[calendarPeriods.length - 1];
+    const parts = lastPeriod.fin.split(' ');
     if (parts.length < 2) return '';
     const day = parts[0].padStart(2, '0');
     const monthMap: Record<string, string> = {
@@ -143,6 +161,7 @@ export default function JornalizacionView() {
     try {
       const result = generarCronogramaTecnico({
         startDate: fechaInicio,
+        endDate: getFechaFinFromCalendar(),
         year: anoAcademico,
         modules,
         suspensiones: calendarMonths,
@@ -163,6 +182,14 @@ export default function JornalizacionView() {
         setCronograma([...otherYearMods, ...result.modulos]);
       } else {
         setCronograma(result.modulos);
+      }
+
+      // Mostrar advertencias si las hay
+      if (result.warnings.length > 0) {
+        setWarnings(result.warnings);
+        result.warnings.forEach(w => toast.warning(w, { duration: 6000 }));
+      } else {
+        setWarnings([]);
       }
 
       setShowGenerateModal(false);
@@ -293,6 +320,19 @@ export default function JornalizacionView() {
             <div className="text-2xl font-bold text-amber-600">{modulosSinCronograma.length}</div>
             <div className="text-xs text-slate-500 font-medium">Sin cronograma</div>
           </div>
+        </div>
+      )}
+
+      {/* Advertencias */}
+      {warnings.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2">
+          <div className="flex items-center gap-2 text-amber-800 font-bold text-sm">
+            <AlertTriangle size={18} />
+            <span>Advertencias del Cronograma</span>
+          </div>
+          {warnings.map((w, i) => (
+            <p key={i} className="text-amber-700 text-sm">{w}</p>
+          ))}
         </div>
       )}
 
