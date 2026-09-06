@@ -107,15 +107,16 @@ function calculateBusinessDaysNeeded(hours: number, technicalYear: string): numb
 }
 
 /**
- * Genera el cronograma completo correlativo para módulos técnicos
- * Los módulos se ordenan por código y se asignan fechas secuenciales
+ * Genera el cronograma completo para módulos técnicos
+ * Los módulos pueden ejecutarse en paralelo (varios activos al mismo tiempo)
+ * Cada módulo recibe sus propias fechas de inicio/fin según sus horas
  */
 export function generarCronogramaTecnico(input: CronogramaInput): CronogramaResult {
   const { startDate, endDate, year, modules, suspensiones } = input;
   const suspensionDates = collectSuspensionDates(suspensiones, year);
   const warnings: string[] = [];
 
-  // Ordenar módulos por código (BTVDG1.1, BTVDG1.2, ..., BTVDG2.1, ...)
+  // Ordenar módulos por código
   const sorted = [...modules].sort((a, b) => {
     if (a.code < b.code) return -1;
     if (a.code > b.code) return 1;
@@ -123,13 +124,41 @@ export function generarCronogramaTecnico(input: CronogramaInput): CronogramaResu
   });
 
   const modulos: ModuloCronograma[] = [];
-  let currentDate = startDate;
   let totalDias = 0;
   let totalHoras = 0;
 
-  for (const mod of sorted) {
-    const daysNeeded = calculateBusinessDaysNeeded(mod.hours, mod.technicalYear);
-    const fechaInicio = currentDate;
+  // Calcular días hábiles totales disponibles
+  const availableDays = calculateBusinessDaysBetween(startDate, endDate, suspensionDates);
+
+  // Distribuir módulos en paralelo
+  // Cada módulo empieza cuando hay capacidad disponible
+  // La capacidad es el número de módulos que pueden correr en paralelo
+  const MAX_PARALLEL = 3; // Máximo 3 módulos en paralelo
+  
+  // Agrupar módulos por semanas que necesitan
+  const modulesWithDays = sorted.map(mod => ({
+    mod,
+    daysNeeded: calculateBusinessDaysNeeded(mod.hours, mod.technicalYear),
+    weeksNeeded: Math.ceil(calculateBusinessDaysNeeded(mod.hours, mod.technicalYear) / 5),
+  }));
+
+  // Asignar fechas manteniendo paralelismo limitado
+  let parallelSlots: { endDate: string; count: number }[] = [];
+  
+  for (const { mod, daysNeeded } of modulesWithDays) {
+    // Encontrar el slot más temprano disponible
+    let earliestStart = startDate;
+    
+    // Si hay módulos en paralelo, buscar cuándo termina el primero
+    if (parallelSlots.length >= MAX_PARALLEL) {
+      // Ordenar por fecha de fin y tomar la más temprana
+      parallelSlots.sort((a, b) => a.endDate.localeCompare(b.endDate));
+      const earliestEnd = parallelSlots[0].endDate;
+      earliestStart = addBusinessDaysWithSuspensions(earliestEnd, 1, suspensionDates);
+      parallelSlots.shift();
+    }
+    
+    const fechaInicio = earliestStart;
     const fechaFin = addBusinessDaysWithSuspensions(fechaInicio, daysNeeded - 1, suspensionDates);
 
     // Validar que no se pase del fin del año escolar
@@ -166,9 +195,9 @@ export function generarCronogramaTecnico(input: CronogramaInput): CronogramaResu
 
     totalDias += daysNeeded;
     totalHoras += mod.hours;
-
-    // El siguiente módulo empieza el día hábil después del fin de este
-    currentDate = addBusinessDaysWithSuspensions(fechaFin, 1, suspensionDates);
+    
+    // Agregar este módulo a los slots paralelos
+    parallelSlots.push({ endDate: fechaFin, count: 1 });
   }
 
   return {
@@ -179,6 +208,31 @@ export function generarCronogramaTecnico(input: CronogramaInput): CronogramaResu
     fechaFin: modulos.length > 0 ? modulos[modulos.length - 1].fechaFin : startDate,
     warnings,
   };
+}
+
+/**
+ * Calcula los días hábiles entre dos fechas excluyendo suspensiones
+ */
+function calculateBusinessDaysBetween(startDate: string, endDate: string, suspensionDates: Set<string>): number {
+  if (!startDate || !endDate) return 0;
+  
+  let count = 0;
+  let current = startDate;
+  
+  while (current <= endDate) {
+    const date = new Date(current + 'T12:00:00');
+    const dayOfWeek = date.getDay();
+    
+    if (dayOfWeek !== 0 && dayOfWeek !== 6 && !suspensionDates.has(current)) {
+      count++;
+    }
+    
+    // Avanzar al siguiente día
+    date.setDate(date.getDate() + 1);
+    current = date.toISOString().split('T')[0];
+  }
+  
+  return count;
 }
 
 /**

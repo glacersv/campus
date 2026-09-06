@@ -574,10 +574,17 @@ export default function JornalizacionView() {
                 {calendarLoaded ? (
                   <>
                     <p className="font-bold">Calendario cargado</p>
-                    <p className="text-xs mt-1">
-                      Fecha inicio: <strong>{fechaInicioCalendar ? formatDateSpanish(fechaInicioCalendar) : 'No disponible'}</strong>
-                    </p>
-                    <p className="text-xs">
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      <div>
+                        <span className="text-[10px] uppercase tracking-wider">Inicio Año Escolar</span>
+                        <p className="font-bold">{fechaInicioCalendar ? formatDateSpanish(fechaInicioCalendar) : 'N/A'}</p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase tracking-wider">Fin Año Escolar</span>
+                        <p className="font-bold">{getFechaFinFromCalendar() ? formatDateSpanish(getFechaFinFromCalendar()) : 'N/A'}</p>
+                      </div>
+                    </div>
+                    <p className="text-xs mt-2">
                       Suspensiones: <strong>{calendarMonths.reduce((sum, m) => sum + (m.eventos?.length || 0), 0)} eventos</strong>
                     </p>
                   </>
