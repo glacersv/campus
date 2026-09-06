@@ -258,6 +258,15 @@ export default function JornalizacionView() {
         });
       }
 
+      // Actualizar estado local con el jornalizacion generado
+      setAllModules(prev => prev.map(m => {
+        const updated = allModulos.find(mod => mod.moduleId === m.id);
+        if (updated) {
+          return { ...m, jornalizacion: updated.jornalizacion };
+        }
+        return m;
+      }));
+
       console.log(`[Jornalización] Total módulos generados: ${allModulos.length}`);
 
       // Mantener módulos de años no seleccionados
