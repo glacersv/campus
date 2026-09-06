@@ -152,31 +152,43 @@ export function generarCronogramaTecnico(input: CronogramaInput): CronogramaResu
     const needsParallel = totalDaysNeeded > totalAvailableDays;
     const parallelRatio = needsParallel ? totalDaysNeeded / totalAvailableDays : 1;
 
-    // Distribuir módulos
+    // Distribuir módulos con paralelismo cuando sea necesario
+    // Primero intentar secuencial
+    let assignments: { mod: LMSModule; startDay: number; daysNeeded: number }[] = [];
     let currentDay = 0;
     
     for (const { mod, daysNeeded } of modulesWithInfo) {
-      let startDay: number;
-      
-      if (needsParallel) {
-        // Con paralelismo: distribuir en el tiempo disponible
-        startDay = Math.floor(currentDay / parallelRatio);
-        currentDay += daysNeeded;
-      } else {
-        // Sin paralelismo: secuencial
-        startDay = currentDay;
-        currentDay += daysNeeded;
+      assignments.push({
+        mod,
+        startDay: currentDay,
+        daysNeeded,
+      });
+      currentDay += daysNeeded;
+    }
+
+    // Verificar si algún módulo se pasa del año escolar
+    const maxDay = Math.max(...assignments.map(a => a.startDay + a.daysNeeded));
+    
+    if (maxDay > totalAvailableDays) {
+      // Ajustar módulos que exceden: moverlos hacia atrás (paralelo)
+      for (let i = assignments.length - 1; i >= 0; i--) {
+        const assignment = assignments[i];
+        const endDay = assignment.startDay + assignment.daysNeeded;
+        
+        if (endDay > totalAvailableDays) {
+          // Calcular cuántos días necesita moverse
+          const excess = endDay - totalAvailableDays;
+          assignment.startDay = Math.max(0, assignment.startDay - excess);
+        }
       }
+    }
+
+    // Convertir días a fechas
+    for (const assignment of assignments) {
+      const { mod, startDay, daysNeeded } = assignment;
 
       const fechaInicio = addBusinessDaysWithSuspensions(startDate, startDay, suspensionDates);
       const fechaFin = addBusinessDaysWithSuspensions(fechaInicio, daysNeeded - 1, suspensionDates);
-
-      // Validar que no se pase del fin del año escolar
-      if (endDate && fechaFin > endDate) {
-        warnings.push(
-          `⚠️ El módulo ${mod.code} (${mod.name}) termina el ${fechaFin}, pasándose del fin de año escolar (${endDate}).`
-        );
-      }
 
       // Calcular las 6 etapas MINED para este módulo
       const jornalizacion = calculateStageJornalizacion(
