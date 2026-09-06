@@ -25,7 +25,7 @@ export default function JornalizacionView() {
   const [calendarLoaded, setCalendarLoaded] = useState(false);
 
   // Filtros
-  const [selectedYear, setSelectedYear] = useState<string>('all');
+  const [selectedYears, setSelectedYears] = useState<string[]>(['1', '2', '3']);
   const [anoAcademico, setAnoAcademico] = useState('2026');
 
   useEffect(() => {
@@ -111,10 +111,8 @@ export default function JornalizacionView() {
     }
   };
 
-  // Módulos filtrados por año técnico
-  const modules = selectedYear === 'all'
-    ? allModules
-    : allModules.filter(m => m.technicalYear === selectedYear);
+  // Módulos filtrados por año técnico seleccionado
+  const modules = allModules.filter(m => selectedYears.includes(m.technicalYear));
 
   // Grados disponibles
   const availableYears = [...new Set(allModules.map(m => m.technicalYear))].sort();
@@ -131,10 +129,13 @@ export default function JornalizacionView() {
       return;
     }
 
+    if (selectedYears.length === 0) {
+      toast.error('Seleccione al menos un año técnico');
+      return;
+    }
+
     if (modules.length === 0) {
-      toast.error(selectedYear === 'all'
-        ? 'No hay módulos asignados'
-        : `No hay módulos para ${selectedYear}° Año`);
+      toast.error(`No hay módulos para ${selectedYears.map(y => y + '°').join(', ')} Año`);
       return;
     }
 
@@ -241,34 +242,32 @@ export default function JornalizacionView() {
         </div>
       )}
 
-      {/* Filtro por año */}
+      {/* Filtro por año — toggle buttons */}
       {allModules.length > 0 && (
         <div className="flex items-center gap-3">
           <span className="text-sm font-medium text-slate-600">Año técnico:</span>
           <div className="flex gap-2">
-            <button
-              onClick={() => setSelectedYear('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                selectedYear === 'all'
-                  ? 'bg-primary text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              Todos
-            </button>
-            {availableYears.map(y => (
-              <button
-                key={y}
-                onClick={() => setSelectedYear(y)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                  selectedYear === y
-                    ? 'bg-primary text-white'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {y}° Año
-              </button>
-            ))}
+            {availableYears.map(y => {
+              const isSelected = selectedYears.includes(y);
+              const count = allModules.filter(m => m.technicalYear === y).length;
+              return (
+                <button
+                  key={y}
+                  onClick={() => {
+                    setSelectedYears(prev =>
+                      isSelected ? prev.filter(x => x !== y) : [...prev, y]
+                    );
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                    isSelected
+                      ? 'bg-primary text-white shadow-sm'
+                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                  }`}
+                >
+                  {y}° Año ({count})
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -400,21 +399,35 @@ export default function JornalizacionView() {
             </h3>
 
             <div className="space-y-4">
-              {/* Año técnico */}
+              {/* Año técnico — toggle buttons */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
                   Año técnico a generar
                 </label>
-                <select
-                  value={selectedYear}
-                  onChange={e => setSelectedYear(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                >
-                  <option value="all">Todos los años ({allModules.length} módulos)</option>
-                  {availableYears.map(y => (
-                    <option key={y} value={y}>{y}° Año ({allModules.filter(m => m.technicalYear === y).length} módulos)</option>
-                  ))}
-                </select>
+                <div className="flex gap-2">
+                  {availableYears.map(y => {
+                    const isSelected = selectedYears.includes(y);
+                    const count = allModules.filter(m => m.technicalYear === y).length;
+                    return (
+                      <button
+                        key={y}
+                        onClick={() => {
+                          setSelectedYears(prev =>
+                            isSelected ? prev.filter(x => x !== y) : [...prev, y]
+                          );
+                        }}
+                        className={`flex-1 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+                          isSelected
+                            ? 'bg-primary text-white shadow-sm ring-2 ring-primary/30'
+                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                        }`}
+                      >
+                        {y}° Año
+                        <span className="block text-[10px] font-normal mt-0.5">{count} módulos</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Info del calendario */}
