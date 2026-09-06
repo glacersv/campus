@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { LMSModule } from '../../types';
 import { calculateProjectDeliveryDate, formatDateSpanish, StageJornalizacionItem } from '../../utils/jornalizacionHelper';
 import { ArrowLeft, Calendar, Clock, AlertTriangle, CheckCircle2, Play, Pause, ChevronRight } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function JornalizacionDetalle() {
   const { moduleId } = useParams<{ moduleId: string }>();
   const navigate = useNavigate();
   const [mod, setMod] = useState<LMSModule | null>(null);
   const [loading, setLoading] = useState(true);
+  const [completedStages, setCompletedStages] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     if (!moduleId) return;
@@ -23,12 +25,61 @@ export default function JornalizacionDetalle() {
       const ref = doc(db, 'lms_modules', moduleId!);
       const snap = await getDoc(ref);
       if (snap.exists()) {
-        setMod({ id: snap.id, ...snap.data() } as LMSModule);
+        const data = snap.data();
+        setMod({ id: snap.id, ...data } as LMSModule);
+        // Cargar etapas completadas
+        if (data.completedStages) {
+          setCompletedStages(new Set(data.completedStages));
+        }
       }
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleStageCompletion = async (stageIndex: number) => {
+    if (!mod) return;
+
+    const newCompleted = new Set(completedStages);
+    if (newCompleted.has(stageIndex)) {
+      newCompleted.delete(stageIndex);
+    } else {
+      newCompleted.add(stageIndex);
+    }
+
+    try {
+      await updateDoc(doc(db, 'lms_modules', mod.id), {
+        completedStages: Array.from(newCompleted),
+        updatedAt: new Date().toISOString(),
+      });
+      setCompletedStages(newCompleted);
+      
+      // Actualizar estado del módulo
+      const totalStages = (mod.jornalizacion as StageJornalizacionItem[])?.length || 6;
+      const completedCount = newCompleted.size;
+      
+      let newStatus = mod.status;
+      if (completedCount === 0) {
+        newStatus = 'active';
+      } else if (completedCount === totalStages) {
+        newStatus = 'completed';
+      } else {
+        newStatus = 'active';
+      }
+
+      if (newStatus !== mod.status) {
+        await updateDoc(doc(db, 'lms_modules', mod.id), {
+          status: newStatus,
+        });
+        setMod({ ...mod, status: newStatus });
+      }
+
+      toast.success(newCompleted.has(stageIndex) ? 'Etapa marcada como completada' : 'Etapa desmarcada');
+    } catch (e) {
+      console.error(e);
+      toast.error('Error al actualizar');
     }
   };
 
@@ -157,20 +208,38 @@ export default function JornalizacionDetalle() {
                             <AlertTriangle size={10} /> Hito Crítico
                           </span>
                         )}
+                        {completedStages.has(idx) && (
+                          <span className="badge-jornal badge-jornal-emerald">
+                            <CheckCircle2 size={10} /> Completada
+                          </span>
+                        )}
                       </div>
                       <h4 className="font-bold text-slate-900 text-sm">{stage.name}</h4>
                       {stage.description && (
                         <p className="text-xs text-slate-600 mt-1">{stage.description}</p>
                       )}
                     </div>
-                    <div className="text-right shrink-0 ml-4">
-                      <div className="text-sm font-bold text-slate-900">{stage.hours}h</div>
-                      <div className="text-[11px] text-slate-500">
-                        {formatDateSpanish(stage.startDate)}
+                    <div className="flex items-center gap-3">
+                      <div className="text-right shrink-0">
+                        <div className="text-sm font-bold text-slate-900">{stage.hours}h</div>
+                        <div className="text-[11px] text-slate-500">
+                          {formatDateSpanish(stage.startDate)}
+                        </div>
+                        <div className="text-[11px] text-slate-400">
+                          → {formatDateSpanish(stage.endDate)}
+                        </div>
                       </div>
-                      <div className="text-[11px] text-slate-400">
-                        → {formatDateSpanish(stage.endDate)}
-                      </div>
+                      <button
+                        onClick={() => toggleStageCompletion(idx)}
+                        className={`p-2 rounded-lg transition-colors ${
+                          completedStages.has(idx)
+                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                        }`}
+                        title={completedStages.has(idx) ? 'Desmarcar' : 'Marcar como completada'}
+                      >
+                        {completedStages.has(idx) ? <CheckCircle2 size={18} /> : <Play size={18} />}
+                      </button>
                     </div>
                   </div>
                 </div>
