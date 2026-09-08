@@ -1098,3 +1098,39 @@ export interface GuionDeClase {
   recursosClase: string;
   tics: string;
 }
+
+// ==================== JORNALIZACION ====================
+
+export interface StageJornalizacionItem {
+  stage: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  hours: number;
+  description?: string;
+  stageKey?: ActionStageKey;
+}
+
+// ==================== DOCUMENTOS DOCENTE (GUIONES + PLANIFICACION) ====================
+
+export interface EtapaAccionCompletaInfo {
+  id: number;
+  etapa: string;
+  nombreCorto: string;
+  tiempo: string;
+  tiempoPorcentajeNum: number;
+  horasEstimadas: number;
+  faseId: 'FASE_I' | 'FASE_II' | 'FASE_III';
+  faseNombre: string;
+  fasePonderacionGlobal: string;
+  fasePonderacionGlobalNum: number;
+  ponderacionInternaFaseTexto: string;
+  ponderacionInternaFaseNum: number;
+  ponderacionGlobalModuloTexto: string;
+  ponderacionGlobalModuloNum: number;
+  ponderacionSugerida: string;
+  ponderacionNum: number;
+  descripcion: string;
+  evidenciasSugeridas: string;
+  instrumentoEvaluacion?: string;
+}

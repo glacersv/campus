@@ -58,6 +58,11 @@ import { StudentLMSDashboard } from './components/lms/LMSModule';
 import { LMSCourseList } from './components/lms/LMSCourseList';
 import { LMSCourseDetail } from './components/lms/LMSCourseDetail';
 import { LMSActivityList } from './components/lms/LMSActivityList';
+
+// Documentos Docente (BTV)
+import GuionDeClaseView from './components/docente/documentos/GuionDeClaseView';
+import PlanificacionDidacticaView from './components/docente/documentos/PlanificacionDidacticaView';
+import { isTeacherBTVByGrade } from './utils/isBTVTeacher';
 import { LMSActivityDetail } from './components/lms/LMSActivityDetail';
 import { LMSProgress } from './components/lms/LMSProgress';
 import { LMSSubmissionForm } from './components/lms/LMSSubmissionForm';
@@ -114,15 +119,27 @@ function getDefaultModulesForRole(role: string): SystemModuleId[] {
 
 function AppContent() {
   const { firebaseUser, userProfile, loading, signOut, userRole, hasPermission, roleConfig } = useAuth();
+  const [isBTVTeacher, setIsBTVTeacher] = useState(false);
 
   useEffect(() => {
     ensureAdminAccount();
     if (userProfile?.role === 'admin') {
       seedInitialData();
-      // Exponer función de seed en consola para el admin
       (window as any).seedProyecto = seedProyectoCultivoBacterias;
     }
   }, [userProfile?.role]);
+
+  useEffect(() => {
+    const checkBTV = async () => {
+      if (userRole === 'docente' && userProfile?.teacherId) {
+        const { getTeacher } = await import('./lib/firestore');
+        const { isTeacherBTVByGrade } = await import('./utils/isBTVTeacher');
+        const teacher = await getTeacher(userProfile.teacherId);
+        setIsBTVTeacher(isTeacherBTVByGrade(teacher));
+      }
+    };
+    checkBTV();
+  }, [userRole, userProfile?.teacherId]);
 
   if (loading) {
     return (
@@ -384,6 +401,14 @@ function AppContent() {
           <Route path="lms/:moduleId/calendario" element={
             permissions.includes('lms') ? <ModulePlaceholder title="Calendario del Módulo" subtitle="Gestión de fechas y eventos del módulo" /> : <Navigate to="/docente" replace />
           } />
+
+          {/* Documentos Docente - Solo BTV */}
+          <Route path="documentos/guiones" element={
+            permissions.includes('lms') && isBTVTeacher ? <GuionDeClaseWrapper /> : <Navigate to="/docente" replace />
+          } />
+          <Route path="documentos/planificacion" element={
+            permissions.includes('lms') && isBTVTeacher ? <PlanificacionDidacticaWrapper /> : <Navigate to="/docente" replace />
+          } />
         </Route>
         <Route path="*" element={<Navigate to="/docente" replace />} />
       </Routes>
@@ -543,6 +568,48 @@ function LMSSubmissionFormRoute() {
   const { activityId } = useParams<{ activityId: string }>();
   if (!activityId) return <Navigate to="/alumno/aula-virtual/actividades" replace />;
   return <LMSSubmissionForm activityId={activityId} />;
+}
+
+function GuionDeClaseWrapper() {
+  const { userProfile } = useAuth();
+  const [modules, setModules] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadModules = async () => {
+      if (!userProfile?.teacherId) return;
+      const { getAllLMSModules } = await import('./lib/firestore');
+      const allModules = await getAllLMSModules();
+      const teacherModules = allModules.filter((m: any) => m.teacherId === userProfile.teacherId);
+      setModules(teacherModules);
+    };
+    loadModules();
+  }, [userProfile?.teacherId]);
+
+  if (modules.length === 0) {
+    return <div className="text-center py-16 text-slate-500">Cargando módulos...</div>;
+  }
+  return <GuionDeClaseView modules={modules} />;
+}
+
+function PlanificacionDidacticaWrapper() {
+  const { userProfile } = useAuth();
+  const [modules, setModules] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadModules = async () => {
+      if (!userProfile?.teacherId) return;
+      const { getAllLMSModules } = await import('./lib/firestore');
+      const allModules = await getAllLMSModules();
+      const teacherModules = allModules.filter((m: any) => m.teacherId === userProfile.teacherId);
+      setModules(teacherModules);
+    };
+    loadModules();
+  }, [userProfile?.teacherId]);
+
+  if (modules.length === 0) {
+    return <div className="text-center py-16 text-slate-500">Cargando módulos...</div>;
+  }
+  return <PlanificacionDidacticaView modules={modules} />;
 }
 
 export default function App() {

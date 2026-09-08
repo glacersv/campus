@@ -2268,3 +2268,41 @@ export async function resetCalificacion(
 export const createEvaluacion = createActividadEvaluada;
 export const getEvaluacionesByProyecto = getActividadesByProyecto;
 export const calificarEvaluacion = calificarActividad;
+
+// ==================== DOCUMENTOS DOCENTE (PLANIFICACION + GUIONES) ====================
+
+import { DidacticPlan, GuionDeClase } from '../types';
+
+export async function getPlanDidactico(moduleId: string): Promise<DidacticPlan | null> {
+  try {
+    const snap = await getDoc(doc(db, 'lms_modules', moduleId, 'docente_docs', 'plan_didactico'));
+    return snap.exists() ? (snap.data() as DidacticPlan) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function savePlanDidactico(moduleId: string, plan: DidacticPlan): Promise<void> {
+  await setDoc(doc(db, 'lms_modules', moduleId, 'docente_docs', 'plan_didactico'), {
+    ...plan,
+    updated_at: serverTimestamp(),
+  });
+}
+
+export async function getGuiones(moduleId: string): Promise<GuionDeClase[]> {
+  try {
+    const snap = await getDoc(doc(db, 'lms_modules', moduleId, 'docente_docs', 'guiones'));
+    if (!snap.exists()) return [];
+    const data = snap.data();
+    return data.guiones || [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveGuiones(moduleId: string, guiones: GuionDeClase[]): Promise<void> {
+  await setDoc(doc(db, 'lms_modules', moduleId, 'docente_docs', 'guiones'), {
+    guiones,
+    updated_at: serverTimestamp(),
+  });
+}

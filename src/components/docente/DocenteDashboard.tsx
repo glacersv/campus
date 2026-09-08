@@ -5,11 +5,13 @@ import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { LMSModule, ModuloCronograma, StageJornalizacionItem } from '../../types';
 import { formatDateSpanish } from '../../utils/jornalizacionHelper';
+import { getTeacher } from '../../lib/firestore';
+import { isTeacherBTVByGrade } from '../../utils/isBTVTeacher';
 import { toast } from 'sonner';
 import { 
   Calendar, Clock, CheckCircle2, Play, Pause, 
   ChevronRight, AlertTriangle, BookOpen, Target,
-  TrendingUp, Award
+  TrendingUp, Award, FileText, ClipboardList
 } from 'lucide-react';
 
 interface TodayTask {
@@ -28,10 +30,19 @@ export default function DocenteDashboard() {
   const [modules, setModules] = useState<LMSModule[]>([]);
   const [loading, setLoading] = useState(true);
   const [todayTasks, setTodayTasks] = useState<TodayTask[]>([]);
+  const [isBTV, setIsBTV] = useState(false);
 
   useEffect(() => {
     loadModules();
+    checkBTV();
   }, []);
+
+  const checkBTV = async () => {
+    if (userProfile?.teacherId) {
+      const teacher = await getTeacher(userProfile.teacherId);
+      setIsBTV(isTeacherBTVByGrade(teacher));
+    }
+  };
 
   const loadModules = async () => {
     setLoading(true);
@@ -255,6 +266,31 @@ export default function DocenteDashboard() {
             <p className="text-sm text-slate-500 mt-1">Administrar contenido LMS</p>
           </button>
         </div>
+
+        {/* Documentos Docente - Solo BTV */}
+        {isBTV && (
+          <div className="mt-4">
+            <h2 className="text-lg font-bold text-slate-900 mb-3">Documentación Docente (BTV)</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button
+                onClick={() => navigate('/docente/documentos/guiones')}
+                className="card-crema p-4 rounded-xl border border-slate-100 hover:border-blue-300 hover:bg-blue-50 transition-all text-left"
+              >
+                <FileText className="text-blue-600 mb-2" size={24} />
+                <h3 className="font-bold text-slate-900">Guiones de Clase</h3>
+                <p className="text-sm text-slate-500 mt-1">Generar guiones por etapa MINED</p>
+              </button>
+              <button
+                onClick={() => navigate('/docente/documentos/planificacion')}
+                className="card-crema p-4 rounded-xl border border-slate-100 hover:border-teal-300 hover:bg-teal-50 transition-all text-left"
+              >
+                <ClipboardList className="text-teal-600 mb-2" size={24} />
+                <h3 className="font-bold text-slate-900">Planificación Didáctica</h3>
+                <p className="text-sm text-slate-500 mt-1">Matriz de planificación por módulo</p>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

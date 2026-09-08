@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   ClipboardCheck,
@@ -12,10 +12,14 @@ import {
   ChevronRight,
   Menu,
   Search,
-  Lock
+  Lock,
+  FileText,
+  ClipboardList,
 } from 'lucide-react';
 import { useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { getTeacher } from '../../lib/firestore';
+import { isTeacherBTVByGrade } from '../../utils/isBTVTeacher';
 import InstitutionLogo from '../shared/InstitutionLogo';
 import ThemeSwitcher from '../shared/ThemeSwitcher';
 import NotificationCenter from '../shared/NotificationCenter';
@@ -29,12 +33,23 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
   const { userProfile, signOut, roleConfig } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isBTV, setIsBTV] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
   const pathParts = location.pathname.split('/');
   const currentPath = pathParts[2] || 'dashboard';
   const permissions = roleConfig?.permissions || [];
+
+  useEffect(() => {
+    const checkBTV = async () => {
+      if (userProfile?.teacherId) {
+        const teacher = await getTeacher(userProfile.teacherId);
+        setIsBTV(isTeacherBTVByGrade(teacher));
+      }
+    };
+    checkBTV();
+  }, [userProfile?.teacherId]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#F0F4F8] dark:bg-[#0b1120]">
@@ -140,6 +155,32 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
                 )}
               </div>
             </div>
+
+            {/* DOCUMENTACIÓN DOCENTE - Solo BTV */}
+            {permissions.includes('lms') && isBTV && (
+              <div>
+                {!sidebarCollapsed && (
+                  <div className="sidebar-section-title">DOCUMENTACIÓN DOCENTE</div>
+                )}
+                <div className="space-y-0.5">
+                  <button
+                    onClick={() => navigate('/docente/documentos/guiones')}
+                    className={`sidebar-item ${currentPath === 'guiones' ? 'active' : ''}`}
+                  >
+                    <FileText className="w-5 h-5 shrink-0" />
+                    {!sidebarCollapsed && <span>Guiones de Clase</span>}
+                  </button>
+
+                  <button
+                    onClick={() => navigate('/docente/documentos/planificacion')}
+                    className={`sidebar-item ${currentPath === 'planificacion' ? 'active' : ''}`}
+                  >
+                    <ClipboardList className="w-5 h-5 shrink-0" />
+                    {!sidebarCollapsed && <span>Planificación Didáctica</span>}
+                  </button>
+                </div>
+              </div>
+            )}
           </nav>
         </div>
 
