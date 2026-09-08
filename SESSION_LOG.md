@@ -143,7 +143,7 @@ Integrar en el admin de campus la mejora de carga de archivos del repo `jornaliz
 
 ## Session Log - 3 Septiembre 2026
 
-### Migraci�n a clases CSS unificadas (Tier 1)
+### Migraci�n a clases CSS unificadas (Tier 1)
 
 #### Card containers ? card-crema
 Migrados 20+ componentes que usaban bg-white rounded-2xl/3xl border border-slate-* hacia la clase CSS unificada .card-crema:
@@ -165,3 +165,120 @@ Migrados 20+ componentes que usaban bg-white rounded-2xl/3xl border border-slate
 #### Verification
 - npx tsc --noEmit ? 0 errors
 - npm run build ? success (11.40s)
+
+---
+
+# Session Log - 8 Septiembre 2026
+
+## Integración de Documentos Docente (Guiones de Clase + Planificación Didáctica)
+
+### Objetivo
+Integrar las funcionalidades de generación de documentos del repo externo `jornalizacion-latest/` hacia la sección **docente** de la app principal, habilitado **únicamente para docentes de Bachillerato Técnico** (grados 10t, 11t, 12t).
+
+### Rama
+- `feature/documentos-docente-btv` (merge a `main`)
+
+### Qué se hizo
+
+#### 1. Tipos (`src/types.ts`)
+- Agregado `EtapaAccionCompletaInfo` interface (15 campos para las 6 etapas de la acción completa)
+- Agregado `StageJornalizacionItem` interface (para jornalización)
+
+#### 2. Helper BTV (`src/utils/isBTVTeacher.ts`) - NUEVO
+- `isTeacherBTVByGrade(teacher)` - Verifica por `guideGradeId` ∈ ['10t', '11t', '12t']
+- `isTeacherBTVByModules(teacherId, modules)` - Verifica por módulos LMS con `gradeId` técnico
+- `isBTBaccalaureateGrade(gradeId)` - Verifica si un gradeId es BTV
+- `isTechnicalGrade(grade)` - Verifica `baccalaureateType === 'tecnico'`
+- `getBTVGrades(grades)` - Retorna grados BTV de una lista
+- `BTV_GRADE_IDS` - Constante ['10t', '11t', '12t']
+
+#### 3. Guiones de Clase (`src/utils/guionDeClaseHelper.ts`) - NUEVO
+- `getSessionWeekAndDates()` - Calcula fechas y semana del módulo
+- `generateModuleGuiones()` - Genera 6 guiones (uno por etapa) con contenido contextualizado
+- `exportGuionesToWord()` - Exporta a Word (.doc) con formato oficial MINED
+- Soporta: Diseño Gráfico, Empaque, 3D, Marca, Editorial, Inglés, Orientación, Genérico
+
+#### 4. Planificación Didáctica (`src/utils/didacticPlanHelper.ts`) - NUEVO
+- `getMonthNumber()` - Convierte nombre mes español a número
+- `formatModuleDateRange()` - Formato "DD/MM/YYYY - DD/MM/YYYY"
+- `getModuleStagesAccionCompleta()` - Genera 6 etapas con horas y ponderaciones
+- `getDefaultDidacticPlan()` - Plan por defecto para cualquier módulo
+- `getGranular6StagesPlan()` - 6 actividades (una por etapa)
+- `exportDidacticPlanToWord()` - Exporta a Word con portada, separador y matriz
+
+#### 5. Firestore CRUD (`src/lib/firestore.ts`)
+- `getPlanDidactico(moduleId)` - Lee plan de Firestore
+- `savePlanDidactico(moduleId, plan)` - Guarda plan en Firestore
+- `getGuiones(moduleId)` - Lee guiones de Firestore
+- `saveGuiones(moduleId, guiones)` - Guarda guiones en Firestore
+- Subcolección: `lms_modules/{moduleId}/docente_docs/`
+
+#### 6. Componente GuionDeClaseView (`src/components/docente/documentos/GuionDeClaseView.tsx`) - NUEVO
+- Selector de módulo
+- Timeline de sesiones (6 guiones)
+- Modo edición/visualización
+- Tabla de datos generales
+- Situaciones de aprendizaje vs evaluación
+- Actividades de evaluación (add/remove/edit)
+- Export Word (sesión actual / todos)
+- Guardar en Firestore
+
+#### 7. Componente PlanificacionDidacticaView (`src/components/docente/documentos/PlanificacionDidacticaView.tsx`) - NUEVO
+- Selector de módulo
+- Guía de 6 etapas
+- Datos generales del módulo
+- Saberes (conceptuales/procedimentales/actitudinales)
+- Actividades de evaluación
+- Recursos, TICs, Bibliografía
+- Export Word con portada y matriz oficial
+
+#### 8. Sidebar (`src/components/docente/TeacherLayout.tsx`)
+- Nueva sección "DOCUMENTACIÓN DOCENTE" (visible solo para BTV)
+- Iconos: `FileText` (guiones), `ClipboardList` (planificación)
+- Gate: `permissions.includes('lms') && isBTV`
+- useEffect para cargar teacher y verificar BTV
+
+#### 9. Rutas (`src/App.tsx`)
+- `/docente/documentos/guiones` → `GuionDeClaseView`
+- `/docente/documentos/planificacion` → `PlanificacionDidacticaView`
+- Gate: `permissions.includes('lms') && isBTVTeacher`
+- Wrapper components para cargar módulos del docente
+
+#### 10. Dashboard (`src/components/docente/DocenteDashboard.tsx`)
+- Tarjetas "Guiones de Clase" y "Planificación Didáctica" (solo BTV)
+- useEffect para verificar BTV al cargar
+
+### Dependencia agregada
+- `file-saver` (ya estaba instalada)
+
+### Verificación
+- `npx tsc --noEmit` → 2 errores pre-existentes (no relacionados)
+- `npm run build` → ✅ success (28s)
+
+### Archivos modificados
+| Archivo | Acción |
+|---------|--------|
+| `src/types.ts` | Modificado (+36 líneas) |
+| `src/App.tsx` | Modificado (+69/-5) |
+| `src/lib/firestore.ts` | Modificado (+40 líneas) |
+| `src/components/docente/TeacherLayout.tsx` | Modificado (+45/-2) |
+| `src/components/docente/DocenteDashboard.tsx` | Modificado (+38/-5) |
+| `src/components/docente/documentos/GuionDeClaseView.tsx` | NUEVO (413 líneas) |
+| `src/components/docente/documentos/PlanificacionDidacticaView.tsx` | NUEVO (339 líneas) |
+| `src/utils/isBTVTeacher.ts` | NUEVO (50 líneas) |
+| `src/utils/guionDeClaseHelper.ts` | NUEVO (428 líneas) |
+| `src/utils/didacticPlanHelper.ts` | NUEVO (750 líneas) |
+
+**Total: 10 archivos, +2203 líneas**
+
+### Cómo funciona
+1. Login como docente BTV → sidebar muestra "Guiones de Clase" y "Planificación Didáctica"
+2. Login como docente NO-BTV → esas opciones NO aparecen
+3. Los datos se guardan en Firestore subcolección `docente_docs`
+4. Exporta a Word (.doc) con formato oficial MINED
+
+### Pendiente (Fase 2)
+- Integrar `PlanificacionDidacticaView` con modo "todos los módulos"
+- Agregar selector de grado (10°, 11°, 12°)
+- Exportación a PDF nativa
+- Historial de versiones de documentos
