@@ -77,7 +77,7 @@ export default function GuionDeClaseView({ modules }: GuionDeClaseViewProps) {
       totalIndicadores: 10,
       unidades: 3,
     };
-    const generated = generateModuleGuiones(modDesc, headerData, anoLectivo);
+    const generated = generateModuleGuiones(modDesc, headerData, anoLectivo, currentModule);
     return generated;
   }, [guionesByModule, currentModule, headerData, anoLectivo]);
 
@@ -103,7 +103,7 @@ export default function GuionDeClaseView({ modules }: GuionDeClaseViewProps) {
         mesInicio: 'enero', diaInicio: 1, mesFin: 'diciembre', diaFin: 15,
         totalIndicadores: 10, unidades: 3,
       };
-      const generated = generateModuleGuiones(modDesc, headerData, anoLectivo);
+      const generated = generateModuleGuiones(modDesc, headerData, anoLectivo, currentModule);
       setGuionesByModule(prev => ({ ...prev, [currentModule.id]: generated }));
       setActiveSessionIndex(0);
       setIsEditing(false);

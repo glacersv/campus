@@ -1,19 +1,30 @@
-import { ModuleDescriptor, InstitutionalHeader, GuionDeClase, GuionEvaluacionRow } from '../types';
+import { ModuleDescriptor, InstitutionalHeader, GuionDeClase, GuionEvaluacionRow, LMSModule } from '../types';
 import { getModuleStagesAccionCompleta } from './didacticPlanHelper';
+import { formatDateSpanish, StageJornalizacionItem } from './jornalizacionHelper';
 
 export function getSessionWeekAndDates(
   module: ModuleDescriptor,
   anoLectivo: string,
   sessionIndex: number,
-  totalSessions: number
+  totalSessions: number,
+  jornalizacion?: StageJornalizacionItem[]
 ): { semanaTexto: string; fechaTexto: string; semanaNumero: number } {
-  const startStr = `${module.diaInicio} de ${module.mesInicio}`;
-  const endStr = `${module.diaFin} de ${module.mesFin}`;
   const semanaNumero = sessionIndex + 1;
   const totalSemanasModulo = module.semanas || totalSessions;
 
   const semanaTexto = `Semana ${semanaNumero} de ${totalSemanasModulo} (Cronograma del Módulo)`;
-  const fechaTexto = `Del ${startStr} al ${endStr} de ${anoLectivo}`;
+
+  let fechaTexto: string;
+  if (jornalizacion && jornalizacion[sessionIndex]) {
+    const stage = jornalizacion[sessionIndex];
+    const startFormatted = formatDateSpanish(stage.startDate);
+    const endFormatted = formatDateSpanish(stage.endDate);
+    fechaTexto = `Del ${startFormatted} al ${endFormatted}`;
+  } else {
+    const startStr = `${module.diaInicio} de ${module.mesInicio}`;
+    const endStr = `${module.diaFin} de ${module.mesFin}`;
+    fechaTexto = `Del ${startStr} al ${endStr} de ${anoLectivo}`;
+  }
 
   return { semanaTexto, fechaTexto, semanaNumero };
 }
@@ -21,7 +32,8 @@ export function getSessionWeekAndDates(
 export function generateModuleGuiones(
   module: ModuleDescriptor,
   headerData: InstitutionalHeader,
-  anoLectivo: string = '2026'
+  anoLectivo: string = '2026',
+  lmsModule?: LMSModule
 ): GuionDeClase[] {
   const stages = getModuleStagesAccionCompleta(module);
   const modNombre = module.nombre || 'Módulo Técnico';
@@ -29,6 +41,7 @@ export function generateModuleGuiones(
   const docente = headerData.docente || 'Profesor Especialista';
   const gradoSeccion = headerData.gradoSeccion || '2° Año Tec. Voc. Diseño Gráfico';
   const totalSemanas = module.semanas || stages.length;
+  const jornalizacion = lmsModule?.jornalizacion as StageJornalizacionItem[] | undefined;
 
   return stages.map((st, idx) => {
     const sesionNumero = idx + 1;
@@ -39,7 +52,8 @@ export function generateModuleGuiones(
       module,
       anoLectivo,
       idx,
-      totalSesiones
+      totalSesiones,
+      jornalizacion
     );
 
     let unidadTitle = `Unidad ${Math.min(module.unidades || 3, Math.ceil((idx + 1) / 2))}: `;

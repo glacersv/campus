@@ -1,5 +1,6 @@
-import { ModuleDescriptor, InstitutionalHeader, DidacticPlan, DidacticEvaluationActivity, EtapaAccionCompletaInfo } from '../types';
+import { ModuleDescriptor, InstitutionalHeader, DidacticPlan, DidacticEvaluationActivity, EtapaAccionCompletaInfo, LMSModule } from '../types';
 import { saveAs } from 'file-saver';
+import { formatDateSpanish, StageJornalizacionItem } from './jornalizacionHelper';
 
 export function getMonthNumber(monthName: string): string {
   const clean = monthName.toLowerCase().trim();
@@ -301,12 +302,30 @@ export const METODOLOGIA_DEFAULT_TEXT = `Metodología por Proyectos · Las 6 Eta
 
 El facilitador debe orientar al grupo de estudiantes durante todas las etapas del módulo para el desarrollo integral de las competencias técnicas, procedimentales y actitudinales de Diseño Gráfico, mediante el desarrollo de proyectos orientados a la acción y estructurando las evidencias en las tres fases oficiales de evaluación: Fase I (FPP 25%), Fase II (FEP 50%) y Fase III (FVP 25%).`;
 
-export function getDefaultDidacticPlan(module: ModuleDescriptor, anoLectivo: string): DidacticPlan {
+export function getDefaultDidacticPlan(
+  module: ModuleDescriptor,
+  anoLectivo: string,
+  lmsModule?: LMSModule
+): DidacticPlan {
   if (module.planDidactico) {
     return module.planDidactico;
   }
 
-  const dateRange = formatModuleDateRange(module, anoLectivo);
+  const jornalizacion = lmsModule?.jornalizacion as StageJornalizacionItem[] | undefined;
+
+  const dateRange = jornalizacion && jornalizacion.length > 0
+    ? `${formatDateSpanish(jornalizacion[0].startDate)} al ${formatDateSpanish(jornalizacion[jornalizacion.length - 1].endDate)}`
+    : formatModuleDateRange(module, anoLectivo);
+
+  // Helper para obtener fecha de etapa desde jornalización
+  const getFechaEtapa = (etapaIds: number[]): string => {
+    if (!jornalizacion || jornalizacion.length === 0) return dateRange;
+    const matching = etapaIds.map(id => jornalizacion[id - 1]).filter(Boolean);
+    if (matching.length === 0) return dateRange;
+    const start = formatDateSpanish(matching[0].startDate);
+    const end = formatDateSpanish(matching[matching.length - 1].endDate);
+    return `${start} al ${end}`;
+  };
 
   if (module.codigo.includes('0') || module.nombre.toLowerCase().includes('orientación')) {
     return {
@@ -340,7 +359,7 @@ export function getDefaultDidacticPlan(module: ModuleDescriptor, anoLectivo: str
             'Realizar investigación documental sobre la ruta de trabajo y aprendizaje en el enfoque de competencias orientadas a la acción y la forma en cómo contribuyen para la obtención de empleo y el auto-empleo.',
           evidencia: 'Informe documental de ruta de formación y plan de trabajo de especialidad.',
           ponderacion: 'FPP (25%)',
-          fecha: dateRange,
+          fecha: getFechaEtapa([1, 2]),
         },
         {
           no: 2,
@@ -351,7 +370,7 @@ export function getDefaultDidacticPlan(module: ModuleDescriptor, anoLectivo: str
             'Exposición creativa de áreas especializadas de la carrera: fotografía, ilustración, publicidad, artes, editorial, multimedia y producción gráfica.',
           evidencia: 'Muestra gráfica preliminar y presentación de especialidad técnica.',
           ponderacion: 'FEP (50%)',
-          fecha: dateRange,
+          fecha: getFechaEtapa([3, 4]),
         },
         {
           no: 3,
@@ -362,7 +381,7 @@ export function getDefaultDidacticPlan(module: ModuleDescriptor, anoLectivo: str
             'Cada equipo de trabajo crítica constructivamente el progreso de trabajo de los otros equipos, evalúa resultados técnicos y reflexiona sobre los aprendizajes.',
           evidencia: 'Ficha de coevaluación reflexiva, lista de cotejo y autoevaluación.',
           ponderacion: 'FVP (25%)',
-          fecha: dateRange,
+          fecha: getFechaEtapa([5, 6]),
         },
       ],
       recursos:
@@ -406,7 +425,7 @@ export function getDefaultDidacticPlan(module: ModuleDescriptor, anoLectivo: str
         actividad: `Fase de Investigación y Planificación Técnica: Análisis del brief, recopilación de información, estudio de referentes visuales y elaboración de cronograma de trabajo con bocetería preliminar para ${module.nombre}.`,
         evidencia: `Brief de requerimientos, árbol de ideas, cronograma Gantt y pliego de bocetos preliminares.`,
         ponderacion: 'FPP (25%)',
-        fecha: dateRange,
+        fecha: getFechaEtapa([1, 2]),
       },
       {
         no: 2,
@@ -416,7 +435,7 @@ export function getDefaultDidacticPlan(module: ModuleDescriptor, anoLectivo: str
         actividad: `Fase de Decisión y Ejecución Técnica: Selección de la propuesta aprobada, vectorización/maquetación digital, aplicación de jerarquía tipográfica y cromática, y elaboración del producto o arte final de ${module.nombre}.`,
         evidencia: `Archivos editables (.AI, .PSD, .INDD), artes finales de prueba y prototipo listo para producción.`,
         ponderacion: 'FEP (50%)',
-        fecha: dateRange,
+        fecha: getFechaEtapa([3, 4]),
       },
       {
         no: 3,
@@ -426,7 +445,7 @@ export function getDefaultDidacticPlan(module: ModuleDescriptor, anoLectivo: str
         actividad: `Fase de Control y Valoración de los Aprendizajes: Verificación de estándares técnicos mediante lista de cotejo, sustentación oral del proyecto gráfico y aplicación de instrumentos de coevaluación y autoevaluación.`,
         evidencia: `Lista de cotejo técnica verificada, rúbrica de sustentación evaluada y portafolio de evidencias.`,
         ponderacion: 'FVP (25%)',
-        fecha: dateRange,
+        fecha: getFechaEtapa([5, 6]),
       },
     ],
     recursos:
@@ -443,29 +462,41 @@ export function getDefaultDidacticPlan(module: ModuleDescriptor, anoLectivo: str
 export function getGranular6StagesPlan(
   module: ModuleDescriptor,
   anoLectivo: string,
-  internalWeightPreset: 'standard' | 'execution_heavy' = 'standard'
+  internalWeightPreset: 'standard' | 'execution_heavy' = 'standard',
+  lmsModule?: LMSModule
 ): DidacticEvaluationActivity[] {
-  const dateRange = formatModuleDateRange(module, anoLectivo);
+  const jornalizacion = lmsModule?.jornalizacion as StageJornalizacionItem[] | undefined;
   const stages = getModuleStagesAccionCompleta(module, internalWeightPreset);
 
-  return stages.map((st) => ({
-    no: st.id,
-    etapa: `${st.etapa} (${st.tiempo} · ${st.horasEstimadas}h | ${st.ponderacionInternaFaseTexto})`,
-    tiempo: `${st.tiempo} (${st.horasEstimadas}h)`,
-    fase: st.faseNombre,
-    actividad: `${st.etapa}: ${st.descripcion}`,
-    evidencia: st.evidenciasSugeridas,
-    ponderacion: st.ponderacionSugerida,
-    fecha: dateRange,
-  }));
+  return stages.map((st) => {
+    let fecha = formatModuleDateRange(module, anoLectivo);
+    if (jornalizacion && jornalizacion[st.id - 1]) {
+      const stageJ = jornalizacion[st.id - 1];
+      fecha = `${formatDateSpanish(stageJ.startDate)} al ${formatDateSpanish(stageJ.endDate)}`;
+    }
+    return {
+      no: st.id,
+      etapa: `${st.etapa} (${st.tiempo} · ${st.horasEstimadas}h | ${st.ponderacionInternaFaseTexto})`,
+      tiempo: `${st.tiempo} (${st.horasEstimadas}h)`,
+      fase: st.faseNombre,
+      actividad: `${st.etapa}: ${st.descripcion}`,
+      evidencia: st.evidenciasSugeridas,
+      ponderacion: st.ponderacionSugerida,
+      fecha,
+    };
+  });
 }
 
 export function exportDidacticPlanToWord(
   headerData: InstitutionalHeader,
-  module: ModuleDescriptor
+  module: ModuleDescriptor,
+  lmsModule?: LMSModule
 ) {
-  const plan = getDefaultDidacticPlan(module, headerData.anoLectivo);
-  const dateRange = formatModuleDateRange(module, headerData.anoLectivo);
+  const plan = getDefaultDidacticPlan(module, headerData.anoLectivo, lmsModule);
+  const jornalizacion = lmsModule?.jornalizacion as StageJornalizacionItem[] | undefined;
+  const dateRange = jornalizacion && jornalizacion.length > 0
+    ? `${formatDateSpanish(jornalizacion[0].startDate)} al ${formatDateSpanish(jornalizacion[jornalizacion.length - 1].endDate)}`
+    : formatModuleDateRange(module, headerData.anoLectivo);
 
   const htmlContent = `
 <!DOCTYPE html>

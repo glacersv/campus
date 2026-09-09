@@ -1133,4 +1133,6 @@ export interface EtapaAccionCompletaInfo {
   descripcion: string;
   evidenciasSugeridas: string;
   instrumentoEvaluacion?: string;
+  fechaInicio?: string;
+  fechaFin?: string;
 }

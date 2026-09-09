@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { LMSModule, InstitutionalHeader, DidacticPlan, DidacticEvaluationActivity } from '../../../types';
 import { getDefaultDidacticPlan, formatModuleDateRange, exportDidacticPlanToWord, getModuleStagesAccionCompleta } from '../../../utils/didacticPlanHelper';
 import { getPlanDidactico, savePlanDidactico } from '../../../lib/firestore';
+import { formatDateSpanish, StageJornalizacionItem } from '../../../utils/jornalizacionHelper';
 import { useAuth } from '../../../contexts/AuthContext';
 import {
   ClipboardList,
@@ -66,7 +67,7 @@ export default function PlanificacionDidacticaView({ modules }: PlanificacionDid
       mesInicio: 'enero', diaInicio: 1, mesFin: 'diciembre', diaFin: 15,
       totalIndicadores: 10, unidades: 3,
     };
-    return getDefaultDidacticPlan(modDesc, anoLectivo);
+    return getDefaultDidacticPlan(modDesc, anoLectivo, currentModule);
   }, [plans, currentModule, anoLectivo]);
 
   const stages = useMemo(() => {
@@ -107,7 +108,7 @@ export default function PlanificacionDidacticaView({ modules }: PlanificacionDid
       actividad: 'Nueva actividad de evaluación',
       evidencia: '',
       ponderacion: '10%',
-      fecha: formatModuleDateRange({ diaInicio: 1, mesInicio: 'enero', diaFin: 15, mesFin: 'diciembre' } as any, anoLectivo),
+      fecha: dateRange,
     };
     handleUpdatePlan({ actividades: [...currentPlan.actividades, newAct] });
   };
@@ -141,9 +142,12 @@ export default function PlanificacionDidacticaView({ modules }: PlanificacionDid
     );
   }
 
-  const dateRange = formatModuleDateRange({
-    diaInicio: 1, mesInicio: 'enero', diaFin: 15, mesFin: 'diciembre',
-  } as any, anoLectivo);
+  const jornalizacion = currentModule?.jornalizacion as StageJornalizacionItem[] | undefined;
+  const dateRange = jornalizacion && jornalizacion.length > 0
+    ? `${formatDateSpanish(jornalizacion[0].startDate)} al ${formatDateSpanish(jornalizacion[jornalizacion.length - 1].endDate)}`
+    : formatModuleDateRange({
+      diaInicio: 1, mesInicio: 'enero', diaFin: 15, mesFin: 'diciembre',
+    } as any, anoLectivo);
 
   return (
     <div className="space-y-6">
@@ -187,7 +191,7 @@ export default function PlanificacionDidacticaView({ modules }: PlanificacionDid
         <button onClick={handleSave} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-green-600 hover:bg-green-700 text-white flex items-center gap-1.5">
           <Save className="w-3.5 h-3.5" /> Guardar
         </button>
-        <button onClick={() => exportDidacticPlanToWord(headerData, { ...currentModule, codigo: currentModule.code || currentModule.id, nombre: currentModule.name, duracionHoras: currentModule.hours || 72, semanas: currentModule.weeks || 12, horasSemanales: 4, totalHoras: currentModule.hours || 72, fechaInicio: '', fechaFin: '', mesInicio: 'enero', diaInicio: 1, mesFin: 'diciembre', diaFin: 15, totalIndicadores: 10, unidades: 3 } as any)} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white flex items-center gap-1.5">
+        <button onClick={() => exportDidacticPlanToWord(headerData, { ...currentModule, codigo: currentModule.code || currentModule.id, nombre: currentModule.name, duracionHoras: currentModule.hours || 72, semanas: currentModule.weeks || 12, horasSemanales: 4, totalHoras: currentModule.hours || 72, fechaInicio: '', fechaFin: '', mesInicio: 'enero', diaInicio: 1, mesFin: 'diciembre', diaFin: 15, totalIndicadores: 10, unidades: 3 } as any, currentModule)} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white flex items-center gap-1.5">
           <Download className="w-3.5 h-3.5" /> Word
         </button>
         <button onClick={() => window.print()} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white flex items-center gap-1.5">
