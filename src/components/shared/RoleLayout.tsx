@@ -175,7 +175,7 @@ export default function RoleLayout({ modules, moduleIcons, moduleColors, childre
       {/* Main Workspace */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header - Glass style with Global Search */}
-        <header className="h-16 flex items-center justify-between shrink-0 border-b border-slate-200/60 bg-white/70 px-6 z-20 gap-4 backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/80">
+        <header className="h-16 flex items-center justify-between shrink-0 border-b border-slate-800 bg-[#0f172a] px-6 z-20 gap-4 dark:border-slate-700/60 dark:bg-slate-900/80">
           {/* Global Search Bar */}
           <div className="flex-1 max-w-lg relative">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -184,7 +184,7 @@ export default function RoleLayout({ modules, moduleIcons, moduleColors, childre
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Buscar módulos, alumnos, grados..."
-              className="w-full pl-9 pr-4 py-2 text-xs font-medium bg-slate-100/70 focus:bg-white border border-transparent focus:border-primary/30 rounded-full focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500"
+              className="w-full pl-9 pr-4 py-2 text-xs font-medium bg-slate-800 text-slate-300 focus:bg-slate-700 border border-transparent focus:border-primary/30 rounded-full focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-500 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500"
             />
           </div>
 
@@ -195,10 +195,10 @@ export default function RoleLayout({ modules, moduleIcons, moduleColors, childre
             <div className="w-px h-5 bg-slate-200 hidden sm:block" />
             <div className="hidden sm:flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
-               <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">San José</span>
+               <span className="text-xs font-semibold text-white dark:text-slate-300">San José</span>
             </div>
             <div className="w-px h-5 bg-slate-200 hidden md:block" />
-            <span className="text-xs font-bold text-primary bg-primary/10 px-3 py-1 rounded-full font-display">
+            <span className="text-xs font-bold bg-[#124D37] text-white px-3 py-1 rounded-full font-display">
               {roleLabel}
             </span>
           </div>

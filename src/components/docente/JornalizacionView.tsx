@@ -358,7 +358,7 @@ export default function JornalizacionView() {
   const modulosConCronograma = (cronograma || []).filter(c => modules.some(m => m.id === c.moduleId));
   const modulosSinCronograma = modules.filter(m => !m.jornalizacion || m.jornalizacion.length === 0);
   const totalSemanas = modulosConCronograma.length > 0
-    ? calcularTotalSemanas({ modulos: modulosConCronograma, totalDias: 0, totalHoras: 0, fechaInicio: '', fechaFin: '' })
+    ? calcularTotalSemanas({ modulos: modulosConCronograma, totalDias: 0, totalHoras: 0, fechaInicio: '', fechaFin: '', warnings: [] })
     : 0;
 
   const fechaInicioCalendar = getFechaInicioFromCalendar();

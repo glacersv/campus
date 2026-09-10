@@ -141,7 +141,7 @@ export default function SubjectsManager() {
     technicalYear: '1' as '1' | '2' | '3',
     hours: 72,
     weeks: 4,
-    status: 'active' as 'active' | 'inactive',
+    status: 'active' as 'active' | 'inactive' | 'completed',
     description: '',
     affineArea: '',
     icon: 'BookOpen',

@@ -338,10 +338,23 @@ h1, h2, h3, h4, h5, h6, .font-display {
   color: var(--color-primary-dark);
   font-weight: 600;
   box-shadow: none;
+  border-left: 3px solid var(--color-primary);
+  padding-left: calc(1rem - 3px);
 }
 
 .sidebar-item.active svg {
   color: var(--color-primary);
+}
+
+.sidebar-badge {
+  margin-left: auto;
+  font-size: 0.625rem;
+  font-weight: 700;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  background: rgba(var(--color-primary-rgb, 37, 133, 90), 0.1);
+  color: var(--color-primary-dark);
+  line-height: 1.4;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -752,6 +765,12 @@ a:focus:not(:focus-visible) {
   display: flex;
   flex-direction: column;
   max-height: 90vh;
+  animation: modalIn 200ms var(--ease-out);
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 /* Modal header */
@@ -892,8 +911,12 @@ a:focus:not(:focus-visible) {
 }
 
 .card-crema:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.card-crema:active {
+  transform: scale(0.985);
 }
 
 /* Colored dot badge for card cycle/type */
@@ -913,7 +936,7 @@ a:focus:not(:focus-visible) {
 }
 
 .table-crema thead tr {
-  background: #F8FAFC;
+  background: #F1F5F9;
   border-bottom: 1px solid #E2E8F0;
 }
 
@@ -922,9 +945,9 @@ a:focus:not(:focus-visible) {
   padding: 0.75rem 1rem;
   font-size: 0.6875rem;
   font-weight: 700;
-  color: #94A3B8;
+  color: #64748b;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.08em;
   white-space: nowrap;
 }
 
@@ -939,6 +962,10 @@ a:focus:not(:focus-visible) {
 
 .table-crema tbody tr:hover {
   background: #F8FAFC;
+}
+
+.table-crema tbody tr:nth-child(even) {
+  background: rgba(248, 250, 252, 0.6);
 }
 
 .table-crema td {
@@ -963,10 +990,10 @@ a:focus:not(:focus-visible) {
   border-radius: 20px;
   border: 1px solid rgba(226, 232, 240, 0.8);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
-  padding: 1rem 1.25rem;
+  padding: 1.25rem 1.5rem;
   display: flex;
   align-items: center;
-  gap: 0.875rem;
+  gap: 1rem;
   transition: transform 200ms var(--ease-out), box-shadow 220ms var(--ease-out);
 }
 
@@ -975,9 +1002,9 @@ a:focus:not(:focus-visible) {
 }
 
 .stat-card-icon {
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 10px;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;

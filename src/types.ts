@@ -767,7 +767,7 @@ export interface LMSModule {
   technicalYear: TechnicalYear;
   hours: number;
   weeks: number;
-  status: 'active' | 'inactive';
+  status: 'active' | 'inactive' | 'completed';
   description?: string;
   icon?: string;
   color?: string;
