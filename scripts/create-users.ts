@@ -101,21 +101,46 @@ const USERS: Record<string, { password: string; displayName: string; role: strin
 async function main() {
   console.log('🔧 Inicializando Firebase Admin...');
 
+  let credential;
+  const credRaw = process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.FIREBASE_CREDENTIALS;
+  if (credRaw) {
+    try {
+      const trimmed = credRaw.trim();
+      if (trimmed.startsWith('{')) {
+        credential = cert(JSON.parse(trimmed));
+      } else {
+        credential = cert(trimmed);
+      }
+    } catch (e: any) {
+      console.warn('⚠️ Error al cargar credencial de servicio:', e.message);
+    }
+  }
+
   if (getApps().length === 0) {
-    initializeApp({ projectId: PROJECT_ID });
+    if (credential) {
+      initializeApp({ credential, projectId: PROJECT_ID });
+    } else {
+      initializeApp({ projectId: PROJECT_ID });
+    }
   }
 
   const auth = getAuth();
   const db = getFirestore();
 
-  console.log(`\n📋 Creando ${Object.keys(USERS).length} usuarios...\n`);
+  console.log(`\n📋 Sincronizando ${Object.keys(USERS).length} usuarios...\n`);
 
   for (const [email, data] of Object.entries(USERS)) {
     try {
       let userRecord;
       try {
         userRecord = await auth.getUserByEmail(email);
-        console.log(`  ⚠️  ${email} ya existe en Auth (uid: ${userRecord.uid})`);
+        console.log(`  🔄 ${email} ya existe en Auth (uid: ${userRecord.uid}), actualizando contraseña...`);
+        await auth.updateUser(userRecord.uid, {
+          password: data.password,
+          displayName: data.displayName,
+          emailVerified: true,
+        });
+        console.log(`  ✅ Auth: ${email} contraseña actualizada`);
       } catch {
         userRecord = await auth.createUser({
           email,
@@ -123,7 +148,7 @@ async function main() {
           displayName: data.displayName,
           emailVerified: true,
         });
-        console.log(`  ✅ Auth: ${email} → uid: ${userRecord.uid}`);
+        console.log(`  ✅ Auth: ${email} creado → uid: ${userRecord.uid}`);
       }
 
       const userRef = db.collection('users').doc(userRecord.uid);
@@ -134,11 +159,17 @@ async function main() {
           email,
           displayName: data.displayName,
           role: data.role,
+          status: 'approved',
           createdAt: new Date().toISOString(),
         });
         console.log(`  ✅ Firestore: users/${userRecord.uid} → role: ${data.role}`);
       } else {
-        console.log(`  ⚠️  Firestore: users/${userRecord.uid} ya existe`);
+        // Asegurarse de que el rol y status estén correctos
+        await userRef.update({
+          role: data.role,
+          status: 'approved',
+        });
+        console.log(`  ✅ Firestore: users/${userRecord.uid} actualizado (role: ${data.role})`);
       }
     } catch (err: any) {
       console.error(`  ❌ Error con ${email}:`, err.message);
@@ -147,26 +178,31 @@ async function main() {
 
   console.log('\n🔍 Verificando jose.marquez@salesianosanjose.edu.sv...');
   try {
+    const adminPass = requireEnv('SEED_ADMIN_PASSWORD');
     const jose = await auth.getUserByEmail('jose.marquez@salesianosanjose.edu.sv');
+    await auth.updateUser(jose.uid, { password: adminPass, emailVerified: true });
+    console.log(`  ✅ Contraseña de jose.marquez actualizada con SEED_ADMIN_PASSWORD`);
     const joseDoc = await db.collection('users').doc(jose.uid).get();
     if (joseDoc.exists) {
-      console.log(`  ✅ Existe: uid=${jose.uid}, role=${joseDoc.data()?.role}`);
+      await db.collection('users').doc(jose.uid).update({ role: 'admin', status: 'approved' });
+      console.log(`  ✅ Firestore actualizado: uid=${jose.uid}, role=admin`);
     } else {
       await db.collection('users').doc(jose.uid).set({
         uid: jose.uid,
         email: 'jose.marquez@salesianosanjose.edu.sv',
         displayName: 'José Marquez',
         role: 'admin',
+        status: 'approved',
         createdAt: new Date().toISOString(),
       });
       console.log(`  ✅ Creado en Firestore: uid=${jose.uid}, role=admin`);
     }
-  } catch {
-    console.log('  ⚠️  Usuario jose.marquez no encontrado en Auth (créalo en Firebase Console)');
+  } catch (err: any) {
+    console.log('  ⚠️  Usuario jose.marquez:', err.message);
   }
 
-  console.log('\n✅ ¡Listo! Usuarios creados.\n');
-  console.log('Nota: Las contraseñas están en .env — nunca se imprimen por seguridad.');
+  console.log('\n✅ ¡Listo! Usuarios y contraseñas sincronizados correctamente.\n');
+  console.log('Nota: Las contraseñas configuradas en .env ya están activas en Firebase Auth.');
 }
 
 main().catch(console.error);

@@ -34,15 +34,23 @@ export default function DocenteDashboard() {
 
   useEffect(() => {
     loadModules();
-    checkBTV();
   }, []);
 
-  const checkBTV = async () => {
-    if (userProfile?.teacherId) {
-      const teacher = await getTeacher(userProfile.teacherId);
-      setIsBTV(isTeacherBTVByGrade(teacher));
-    }
-  };
+  useEffect(() => {
+    const checkBTV = async () => {
+      try {
+        let teacher = userProfile?.teacherId ? await getTeacher(userProfile.teacherId) : null;
+        if (!teacher && userProfile?.email) {
+          const { getTeacherByEmail } = await import('../../lib/firestore');
+          teacher = await getTeacherByEmail(userProfile.email);
+        }
+        setIsBTV(isTeacherBTVByGrade(teacher));
+      } catch (err) {
+        console.error('Error checking BTV status:', err);
+      }
+    };
+    checkBTV();
+  }, [userProfile?.teacherId, userProfile?.email]);
 
   const loadModules = async () => {
     setLoading(true);
@@ -258,7 +266,7 @@ export default function DocenteDashboard() {
             <p className="text-sm text-slate-500 mt-1">Gestionar proyectos estudiantiles</p>
           </button>
           <button
-            onClick={() => navigate('/docente/modules')}
+            onClick={() => navigate('/docente/modulos')}
             className="card-crema p-4 rounded-xl border border-slate-100 hover:border-amber-300 hover:bg-amber-50 transition-all text-left"
           >
             <BookOpen className="text-amber-600 mb-2" size={24} />

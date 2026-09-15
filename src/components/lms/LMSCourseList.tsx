@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { lmsService } from '../../services/lmsService';
 import { LMSCourse, TechnicalYear } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
+import { getStudentTechnicalYearAccess } from '../../utils/studentYearAccess';
 import CourseCard from './shared/CourseCard';
 
 interface LMSCourseListProps {
@@ -30,9 +32,16 @@ export const LMSCourseList: React.FC<LMSCourseListProps> = ({
   onSelectCourse = (_courseId: string) => {},
   onBack = () => {},
 }) => {
+  const { userProfile } = useAuth();
+  const isStudent = userProfile?.role === 'alumno';
+  const yearAccess = getStudentTechnicalYearAccess(userProfile);
+  const allowedYears = isStudent ? yearAccess.allowedYears : ['1', '2', '3'];
+
   const [courses, setCourses] = useState<LMSCourse[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedYearFilter, setSelectedYearFilter] = useState<'all' | TechnicalYear>('all');
+  const [selectedYearFilter, setSelectedYearFilter] = useState<'all' | TechnicalYear>(
+    isStudent ? (yearAccess.currentYear.toString() as TechnicalYear) : 'all'
+  );
   const [selectedAreaFilter, setSelectedAreaFilter] = useState<string>('all');
 
   useEffect(() => {
@@ -120,50 +129,61 @@ export const LMSCourseList: React.FC<LMSCourseListProps> = ({
           <span className="text-xs font-bold text-slate-400 uppercase tracking-wide mr-1 flex items-center gap-1">
             <GraduationCap className="w-3.5 h-3.5" /> Año:
           </span>
-          <button
-            type="button"
-            onClick={() => setSelectedYearFilter('all')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-              selectedYearFilter === 'all'
-                ? 'bg-slate-900 text-white shadow-sm'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            Todos los Años ({courses.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedYearFilter('1')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-              selectedYearFilter === '1'
-                ? 'bg-[#0D71B9] text-white shadow-sm'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            1° Año (720h • 9 Módulos)
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedYearFilter('2')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-              selectedYearFilter === '2'
-                ? 'bg-[#0D71B9] text-white shadow-sm'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            2° Año (720h • 9 Módulos)
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedYearFilter('3')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-              selectedYearFilter === '3'
-                ? 'bg-purple-700 text-white shadow-sm'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            3° Año (1,200h • 9 Módulos)
-          </button>
+          {!isStudent && (
+            <button
+              type="button"
+              onClick={() => setSelectedYearFilter('all')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                selectedYearFilter === 'all'
+                  ? 'bg-slate-900 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              Todos los Años ({courses.length})
+            </button>
+          )}
+
+          {allowedYears.includes('1') && (
+            <button
+              type="button"
+              onClick={() => setSelectedYearFilter('1')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                selectedYearFilter === '1'
+                  ? 'bg-[#0D71B9] text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              1° Año (720h • 9 Módulos)
+            </button>
+          )}
+
+          {allowedYears.includes('2') && (
+            <button
+              type="button"
+              onClick={() => setSelectedYearFilter('2')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                selectedYearFilter === '2'
+                  ? 'bg-[#0D71B9] text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              2° Año (720h • 9 Módulos)
+            </button>
+          )}
+
+          {allowedYears.includes('3') && (
+            <button
+              type="button"
+              onClick={() => setSelectedYearFilter('3')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                selectedYearFilter === '3'
+                  ? 'bg-purple-700 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              3° Año (1,200h • 9 Módulos)
+            </button>
+          )}
         </div>
 
         {/* Total hours indicator */}

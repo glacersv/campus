@@ -13,6 +13,7 @@ import {
 import { lmsService } from '../../../services/lmsService';
 import { LMSCourse, LMSActivity, LMSStudentSummary, TechnicalYear, MINED_LEVELS } from '../../../types';
 import { useAuth } from '../../../contexts/AuthContext';
+import { getStudentTechnicalYearAccess } from '../../../utils/studentYearAccess';
 import WelcomeBanner from '../../shared/WelcomeBanner';
 import CourseCard from '../../lms/shared/CourseCard';
 import ActivityItem from '../../lms/shared/ActivityItem';
@@ -35,9 +36,17 @@ export default function AlumnoAulaVirtual() {
     currentYear: '1',
   });
 
+  const yearAccess = getStudentTechnicalYearAccess(userProfile);
+  const allowedYears = yearAccess.allowedYears; // e.g. ['1'] or ['1', '2'] or ['1', '2', '3']
+
   useEffect(() => {
     const loadData = () => {
-      const activeY = lmsService.getActiveTechnicalYear();
+      let activeY = lmsService.getActiveTechnicalYear();
+      // Ensure the active year is in the allowed list for the student
+      if (allowedYears.length > 0 && !allowedYears.includes(activeY)) {
+        activeY = (yearAccess.currentYear.toString() as TechnicalYear) || allowedYears[allowedYears.length - 1];
+        lmsService.setActiveTechnicalYear(activeY);
+      }
       setSelectedYear(activeY);
       setCourses(lmsService.getCourses(activeY));
       setActivities(lmsService.getActivities(undefined, activeY));
@@ -47,9 +56,12 @@ export default function AlumnoAulaVirtual() {
     loadData();
     const unsubscribe = lmsService.subscribe(loadData);
     return () => unsubscribe();
-  }, []);
+  }, [userProfile?.gradeId, userProfile?.studentId]);
 
   const handleYearChange = (year: TechnicalYear) => {
+    if (allowedYears.length > 0 && !allowedYears.includes(year)) {
+      return; // Not allowed to access future year
+    }
     setSelectedYear(year);
     lmsService.setActiveTechnicalYear(year);
     setCourses(lmsService.getCourses(year));
@@ -92,44 +104,50 @@ export default function AlumnoAulaVirtual() {
         </div>
 
         <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/80 self-start md:self-auto">
-          <button
-            type="button"
-            onClick={() => handleYearChange('1')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-              selectedYear === '1'
-                ? 'bg-white text-[#0D71B9] shadow-sm border border-slate-200/80'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <span>1° Año</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 font-mono">720h</span>
-          </button>
+          {allowedYears.includes('1') && (
+            <button
+              type="button"
+              onClick={() => handleYearChange('1')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                selectedYear === '1'
+                  ? 'bg-white text-[#0D71B9] shadow-sm border border-slate-200/80'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span>1° Año</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 font-mono">720h</span>
+            </button>
+          )}
 
-          <button
-            type="button"
-            onClick={() => handleYearChange('2')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-              selectedYear === '2'
-                ? 'bg-white text-[#0D71B9] shadow-sm border border-slate-200/80'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <span>2° Año</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 font-mono">720h</span>
-          </button>
+          {allowedYears.includes('2') && (
+            <button
+              type="button"
+              onClick={() => handleYearChange('2')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                selectedYear === '2'
+                  ? 'bg-white text-[#0D71B9] shadow-sm border border-slate-200/80'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span>2° Año</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 font-mono">720h</span>
+            </button>
+          )}
 
-          <button
-            type="button"
-            onClick={() => handleYearChange('3')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-              selectedYear === '3'
-                ? 'bg-white text-[#0D71B9] shadow-sm border border-slate-200/80'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <span>3° Año</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-50 text-purple-700 font-mono">1,200h</span>
-          </button>
+          {allowedYears.includes('3') && (
+            <button
+              type="button"
+              onClick={() => handleYearChange('3')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                selectedYear === '3'
+                  ? 'bg-white text-[#0D71B9] shadow-sm border border-slate-200/80'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span>3° Año</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-50 text-purple-700 font-mono">1,200h</span>
+            </button>
+          )}
         </div>
       </div>
 

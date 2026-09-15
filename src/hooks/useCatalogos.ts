@@ -12,9 +12,15 @@ export function useValidadores() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubV = onSnapshot(collection(db, 'validadores'), snap => {
-      setAsignaciones(snap.docs.map(d => ({ id: d.id, ...d.data() } as Validador)));
-    });
+    const unsubV = onSnapshot(
+      collection(db, 'validadores'),
+      (snap) => {
+        setAsignaciones(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Validador));
+      },
+      (err) => {
+        console.warn('validadores onSnapshot warning:', err.message);
+      }
+    );
 
     fetchDocentes();
     return unsubV;
@@ -81,10 +87,17 @@ export function useHistorial(proyectoId: string | null) {
       orderBy('fecha', 'desc')
     );
 
-    const unsub = onSnapshot(q, snap => {
-      setHistorial(snap.docs.map(d => ({ id: d.id, ...d.data() } as HistorialItem)));
-      setLoading(false);
-    });
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setHistorial(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as HistorialItem));
+        setLoading(false);
+      },
+      (err) => {
+        console.warn('historial onSnapshot warning:', err.message);
+        setLoading(false);
+      }
+    );
 
     return unsub;
   }, [proyectoId]);
@@ -98,10 +111,17 @@ export function usePerfiles() {
 
   useEffect(() => {
     const q = query(collection(db, 'users'), orderBy('displayName'));
-    const unsub = onSnapshot(q, snap => {
-      setPerfiles(snap.docs.map(d => ({ uid: d.id, ...d.data() } as User)));
-      setLoading(false);
-    });
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setPerfiles(snap.docs.map((d) => ({ uid: d.id, ...d.data() }) as User));
+        setLoading(false);
+      },
+      (err) => {
+        console.warn('perfiles onSnapshot warning:', err.message);
+        setLoading(false);
+      }
+    );
     return unsub;
   }, []);
 

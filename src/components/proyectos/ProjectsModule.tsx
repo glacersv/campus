@@ -164,7 +164,7 @@ export default function ProjectsModule({ view, compact = false }: Props) {
               : 'Administra los proyectos estudiantiles, aprueba materiales y califica actividades.'}
           </p>
           
-          {(view === 'alumno' || view === 'docente') && activeTab === 'proyectos' && (
+          {view === 'docente' && activeTab === 'proyectos' && (
             <div className="pt-2">
               <button
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-emerald-700 font-bold text-sm hover:bg-emerald-50 transition-all active:scale-95 shadow-md shadow-emerald-900/10 font-display"
@@ -279,8 +279,10 @@ export default function ProjectsModule({ view, compact = false }: Props) {
             {!loading && proyectosFiltrados.length === 0 && (
               <div className="text-center py-12 text-slate-400">
                 <FlaskConical className="w-12 h-12 mx-auto mb-3 opacity-40" />
-                <p className="text-base font-medium">No hay proyectos</p>
-                <p className="text-sm text-slate-300 mt-1">Crea uno para comenzar</p>
+                <p className="text-base font-medium">No hay proyectos registrados</p>
+                <p className="text-sm text-slate-300 mt-1">
+                  {view === 'alumno' ? 'Tu docente asignará los proyectos correspondientes a tu área.' : 'Crea uno para comenzar'}
+                </p>
               </div>
             )}
 

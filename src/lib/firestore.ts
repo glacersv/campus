@@ -1571,7 +1571,7 @@ export async function getStudentByCarnet(carnet: string): Promise<Student | null
 }
 
 export async function isEmailPreAuthorized(email: string): Promise<boolean> {
-  const superAdmins = ['admin@salesianosanjose.edu.sv', 'jose.marquez@salesianosanjose.edu.sv'];
+  const superAdmins = ['admin@salesianosanjose.edu.sv', 'glacersv@gmail.com'];
   if (superAdmins.includes(email.toLowerCase())) return true;
 
   // Check teachers
@@ -1747,7 +1747,7 @@ export async function detectUserRole(email: string): Promise<{ role: UserRole | 
   const lowerEmail = email.toLowerCase();
 
   // Check super admin
-  if (lowerEmail === 'admin@salesianosanjose.edu.sv' || lowerEmail === 'jose.marquez@salesianosanjose.edu.sv') {
+  if (lowerEmail === 'admin@salesianosanjose.edu.sv' || lowerEmail === 'glacersv@gmail.com') {
     return { role: 'admin' };
   }
 

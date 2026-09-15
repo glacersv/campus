@@ -257,53 +257,125 @@ class LMSService {
   private listeners: (() => void)[] = [];
   private unsubscribeFirestore?: Unsubscribe;
   private teachersCache: Map<string, string> = new Map(); // teacherId -> teacherName
+  private currentUserRole: string | null = null;
 
   constructor() {
     this.init();
   }
 
+  public setUserRole(role: string | null) {
+    this.currentUserRole = role;
+  }
+
+  public canWriteLMS(): boolean {
+    const user = auth?.currentUser;
+    if (!user) return false;
+
+    const email = (user.email || '').toLowerCase();
+    if (
+      email === 'admin@salesianosanjose.edu.sv' ||
+      email === 'glacersv@gmail.com' ||
+      email === 'jose.marquez@salesianosanjose.edu.sv' ||
+      email === 'docente@salesianosanjose.edu.sv' ||
+      email === 'coord.academica@salesianosanjose.edu.sv'
+    ) {
+      return true;
+    }
+
+    if (this.currentUserRole) {
+      return (
+        this.currentUserRole === 'admin' ||
+        this.currentUserRole === 'docente' ||
+        this.currentUserRole.startsWith('coordinacion')
+      );
+    }
+
+    return false;
+  }
+
   public async reseedAll(): Promise<void> {
     this.seedInitialData();
-    await this.saveToFirestore();
+    if (this.canWriteLMS()) {
+      await this.saveToFirestore();
+    }
   }
 
   private async init() {
-    // 1. Intentar cargar desde Firestore primero
+    // 1. Cargar desde localStorage inicialmente para arranque rápido e inmediato
+    this.loadFromLocalStorage();
+
+    // 2. Escuchar cambios de auth para conectar Firestore cuando el usuario esté autenticado
+    if (auth) {
+      auth.onAuthStateChanged(async (user) => {
+        if (user) {
+          await this.syncWithFirestore();
+        } else {
+          this.currentUserRole = null;
+          if (this.unsubscribeFirestore) {
+            this.unsubscribeFirestore();
+            this.unsubscribeFirestore = null;
+          }
+        }
+        this.notify();
+      });
+    }
+
+    // Si ya existe usuario autenticado
+    if (auth?.currentUser) {
+      await this.syncWithFirestore();
+    }
+  }
+
+  private async syncWithFirestore() {
+    const user = auth?.currentUser;
+    if (!user) return;
+
+    if (!this.currentUserRole) {
+      try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          this.currentUserRole = userDoc.data()?.role || null;
+        }
+      } catch {
+        // Silencioso en caso de no poder leer users
+      }
+    }
+
     try {
       const snap = await getDoc(LMS_DOC_REF);
       if (snap.exists()) {
         const data = snap.data() as LMSState;
         this.state = { ...DEFAULT_STATE, ...data };
-      } else {
+      } else if (this.canWriteLMS()) {
         this.seedInitialData();
         await this.saveToFirestore();
       }
-    } catch (e) {
-      console.error('Error loading LMS state from Firestore, falling back to localStorage', e);
-      this.loadFromLocalStorage();
+    } catch (e: any) {
+      console.warn('LMS Firestore sync fallback to local storage:', e.message);
     }
 
-    // 2. Sincronizar cambios desde Firestore en tiempo real
-    this.unsubscribeFirestore = onSnapshot(LMS_DOC_REF, (snap) => {
-      if (snap.exists()) {
-        const data = snap.data() as LMSState;
-        const currentActiveYear = this.state.activeYear;
-        this.state = { ...DEFAULT_STATE, ...data };
-        this.state.activeYear = data.activeYear || currentActiveYear || '1';
-        // Resolver nombres de docentes desde Firebase después de cargar cursos
-        this.resolveTeacherNames();
-        this.notify();
+    if (this.unsubscribeFirestore) {
+      this.unsubscribeFirestore();
+      this.unsubscribeFirestore = null;
+    }
+
+    this.unsubscribeFirestore = onSnapshot(
+      LMS_DOC_REF,
+      (snap) => {
+        if (snap.exists()) {
+          const data = snap.data() as LMSState;
+          const currentActiveYear = this.state.activeYear;
+          this.state = { ...DEFAULT_STATE, ...data };
+          this.state.activeYear = data.activeYear || currentActiveYear || '1';
+          this.resolveTeacherNames();
+          this.notify();
+        }
+      },
+      (error) => {
+        console.warn('LMS Firestore snapshot listener warning:', error.message);
       }
-    });
+    );
 
-    // 3. Escuchar cambios de auth para recargar
-    if (auth) {
-      auth.onAuthStateChanged(() => {
-        this.notify();
-      });
-    }
-
-    // 4. Cargar docentes de Firebase para resolver teacherId -> nombre real
     this.loadTeachersFromFirebase();
   }
 
@@ -411,10 +483,12 @@ class LMSService {
     this.state.activeYear = '1';
 
     this.saveToLocalStorage();
-    this.saveToFirestore();
   }
 
   private async saveToFirestore() {
+    if (!this.canWriteLMS()) {
+      return;
+    }
     try {
       const sanitized = JSON.parse(JSON.stringify(this.state));
       await setDoc(LMS_DOC_REF, sanitized);
@@ -454,8 +528,8 @@ class LMSService {
       });
 
       await Promise.all(modulesRefs);
-    } catch (e) {
-      console.error('Failed to save LMS state to Firestore', e);
+    } catch (e: any) {
+      console.warn('LMS state could not be synced to Firestore:', e?.message || e);
     }
   }
 
@@ -645,11 +719,12 @@ class LMSService {
     const actIdx = this.state.activities.findIndex((a) => a.id === activityId);
     if (actIdx === -1) throw new Error('Actividad no encontrada');
 
+    const currentUser = auth?.currentUser;
     const submission: LMSSubmission = {
       id: `sub-${Date.now()}`,
       activityId,
-      studentId: 'student-glacer',
-      studentName: 'Estudiante Salesiano',
+      studentId: currentUser?.uid || 'student-user',
+      studentName: currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Estudiante Salesiano',
       submittedAt: new Date().toISOString(),
       content: submissionData.content,
       attachments: submissionData.attachments,
@@ -666,7 +741,23 @@ class LMSService {
     // Recalcular progreso
     this.recalculateCourseProgress(this.state.activities[actIdx].courseId);
     this.saveToLocalStorage();
-    this.saveToFirestore();
+
+    // Guardar entrega individual en colección lms_submissions en Firestore
+    if (currentUser) {
+      setDoc(doc(db, 'lms_submissions', submission.id), {
+        ...submission,
+        courseId: this.state.activities[actIdx].courseId,
+        activityTitle: this.state.activities[actIdx].title,
+        studentEmail: currentUser.email || '',
+        createdAt: new Date().toISOString(),
+      }).catch((err) => {
+        console.warn('No se pudo guardar la entrega individual en Firestore:', err);
+      });
+    }
+
+    if (this.canWriteLMS()) {
+      this.saveToFirestore();
+    }
     return submission;
   }
 

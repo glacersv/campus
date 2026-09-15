@@ -73,5 +73,10 @@ React 19 + TypeScript + Vite + Tailwind CSS v4 + Firebase (Auth + Firestore)
 - `npm run rules` — firebase deploy firestore:rules
 
 ## Super Admin
-- Email: jose.marquez@salesianosanjose.edu.sv
+- Email: admin@salesianosanjose.edu.sv
 - Rol: admin
+
+## Docente Principal (BTV)
+- Email: jose.marquez@salesianosanjose.edu.sv
+- Nombre: Giovanni Marquez
+- Rol: docente (11° Técnico)

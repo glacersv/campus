@@ -43,13 +43,19 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
 
   useEffect(() => {
     const checkBTV = async () => {
-      if (userProfile?.teacherId) {
-        const teacher = await getTeacher(userProfile.teacherId);
+      try {
+        let teacher = userProfile?.teacherId ? await getTeacher(userProfile.teacherId) : null;
+        if (!teacher && userProfile?.email) {
+          const { getTeacherByEmail } = await import('../../lib/firestore');
+          teacher = await getTeacherByEmail(userProfile.email);
+        }
         setIsBTV(isTeacherBTVByGrade(teacher));
+      } catch (err) {
+        console.error('Error checking BTV in TeacherLayout:', err);
       }
     };
     checkBTV();
-  }, [userProfile?.teacherId]);
+  }, [userProfile?.teacherId, userProfile?.email]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#F0F4F8] dark:bg-[#0b1120]">
@@ -151,6 +157,46 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
                   >
                     <Medal className="w-5 h-5 shrink-0" />
                     {!sidebarCollapsed && <span>Semana Juventud</span>}
+                  </button>
+                )}
+
+                {permissions.includes('clase') && (
+                  <button
+                    onClick={() => navigate('/docente/clase')}
+                    className={`sidebar-item ${currentPath === 'clase' ? 'active' : ''}`}
+                  >
+                    <School className="w-5 h-5 shrink-0" />
+                    {!sidebarCollapsed && <span>Clase</span>}
+                  </button>
+                )}
+
+                {permissions.includes('horario') && (
+                  <button
+                    onClick={() => navigate('/docente/horario')}
+                    className={`sidebar-item ${currentPath === 'horario' ? 'active' : ''}`}
+                  >
+                    <CalendarDays className="w-5 h-5 shrink-0" />
+                    {!sidebarCollapsed && <span>Horario</span>}
+                  </button>
+                )}
+
+                {permissions.includes('eventos') && (
+                  <button
+                    onClick={() => navigate('/docente/eventos')}
+                    className={`sidebar-item ${currentPath === 'eventos' ? 'active' : ''}`}
+                  >
+                    <Calendar className="w-5 h-5 shrink-0" />
+                    {!sidebarCollapsed && <span>Eventos</span>}
+                  </button>
+                )}
+
+                {permissions.includes('avisos') && (
+                  <button
+                    onClick={() => navigate('/docente/avisos')}
+                    className={`sidebar-item ${currentPath === 'avisos' ? 'active' : ''}`}
+                  >
+                    <Bell className="w-5 h-5 shrink-0" />
+                    {!sidebarCollapsed && <span>Avisos</span>}
                   </button>
                 )}
               </div>

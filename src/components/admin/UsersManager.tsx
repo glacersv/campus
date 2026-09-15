@@ -58,7 +58,7 @@ export default function UsersManager() {
   const [activeTab, setActiveTab] = useState<'users' | 'approvals' | 'pending' | 'notifications' | 'reactivate'>('users');
   const [activatingStudent, setActivatingStudent] = useState<string | null>(null);
   const [showBulkActivate, setShowBulkActivate] = useState(false);
-  const [bulkPassword, setBulkPassword] = useState('Alumno2025!');
+  const [bulkPassword, setBulkPassword] = useState('Alumno2026!');
   const [bulkResult, setBulkResult] = useState<{ email: string; password: string; name: string }[]>([]);
   const [studentSearch, setStudentSearch] = useState('');
   const [studentGradeFilter, setStudentGradeFilter] = useState('');
@@ -223,7 +223,7 @@ export default function UsersManager() {
   };
 
   const handleCleanAllUsers = async () => {
-    const protectedEmails = ['admin@salesianosanjose.edu.sv', 'jose.marquez@salesianosanjose.edu.sv'];
+    const protectedEmails = ['admin@salesianosanjose.edu.sv', 'jose.marquez@salesianosanjose.edu.sv', 'glacersv@gmail.com'];
     const usersToDelete = users.filter(u => !protectedEmails.includes(u.email));
     
     if (usersToDelete.length === 0) {
@@ -231,7 +231,7 @@ export default function UsersManager() {
       return;
     }
     
-    if (!confirm(`¿Eliminar ${usersToDelete.length} usuarios? (Se mantendrán admin y jose.marquez)`)) return;
+    if (!confirm(`¿Eliminar ${usersToDelete.length} usuarios? (Se mantendrán las cuentas protegidas)`)) return;
     
     let deleted = 0;
     let errors = 0;
@@ -927,7 +927,7 @@ export default function UsersManager() {
                 <h3 className="text-sm font-bold text-slate-900 mb-3">Credenciales Generadas</h3>
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-3">
                   <p className="text-xs font-bold text-amber-700">Contrasena: <code className="bg-amber-100 px-1.5 py-0.5 rounded">{bulkPassword}</code></p>
-                  <p className="text-[10px] text-amber-600 mt-1">Los alumnos deben ir a Login → Registrarse con su email y esta contrasena.</p>
+                  <p className="text-[10px] text-amber-600 mt-1">Los alumnos deben ir a la pantalla de Login e Iniciar Sesión con su correo institucional y esta contraseña (la cuenta ya queda registrada en el sistema).</p>
                 </div>
                 <div className="max-h-48 overflow-y-auto space-y-1">
                   {bulkResult.map((r, i) => (

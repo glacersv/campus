@@ -1,33 +1,40 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { LogIn, Mail, Lock, AlertTriangle, UserPlus } from 'lucide-react';
+import { LogIn, Mail, Lock, AlertTriangle, UserPlus, Eye, EyeOff, KeyRound } from 'lucide-react';
 import InstitutionLogo from './InstitutionLogo';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'sonner';
 
 export default function Login() {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, resetPassword } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
     try {
       if (isSignUp) {
-        if (!email.endsWith('@salesianosanjose.edu.sv')) {
+        if (!cleanEmail.endsWith('@salesianosanjose.edu.sv')) {
           toast.error('Solo se permiten correos institucionales (@salesianosanjose.edu.sv)');
           setLoading(false);
           return;
         }
-        await signUp(email, password, displayName);
+        await signUp(cleanEmail, cleanPassword, displayName.trim());
         toast.success('Solicitud enviada. Espera la aprobación del administrador.');
         setIsSignUp(false);
       } else {
-        await signIn(email, password);
+        await signIn(cleanEmail, cleanPassword);
       }
     } catch (err: any) {
       console.error('Auth error full:', err);
@@ -46,6 +53,32 @@ export default function Login() {
         toast.error(err.message || 'Error al procesar la solicitud. Intente nuevamente.');
       }
     } finally { setLoading(false); }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanResetEmail = resetEmail.trim().toLowerCase();
+    if (!cleanResetEmail) {
+      toast.error('Ingresa tu correo institucional.');
+      return;
+    }
+    setResetLoading(true);
+    try {
+      await resetPassword(cleanResetEmail);
+      toast.success('Se ha enviado un enlace de restablecimiento a tu correo.');
+      setShowResetModal(false);
+      setResetEmail('');
+    } catch (err: any) {
+      if (err.code === 'auth/user-not-found') {
+        toast.error('No se encontró ninguna cuenta con este correo.');
+      } else if (err.code === 'auth/invalid-email') {
+        toast.error('El formato del correo es inválido.');
+      } else {
+        toast.error('Error al enviar el enlace. Intenta de nuevo.');
+      }
+    } finally {
+      setResetLoading(false);
+    }
   };
 
   return (
@@ -111,10 +144,40 @@ export default function Login() {
             </div>
           </div>
           <div>
-            <label htmlFor="login-password" className="block text-xs font-bold text-[#475569] mb-1.5 uppercase tracking-wider">Contraseña</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label htmlFor="login-password" className="block text-xs font-bold text-[#475569] uppercase tracking-wider">Contraseña</label>
+              {!isSignUp && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResetEmail(email.trim());
+                    setShowResetModal(true);
+                  }}
+                  className="text-[11px] font-semibold text-[#25855A] hover:text-[#124D37] transition-colors"
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
+              )}
+            </div>
             <div className="relative group">
               <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-[#94a3b8] group-focus-within:text-[#25855A] transition-colors"><Lock className="w-4 h-4" /></span>
-              <input id="login-password" type="password" required placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="input-crema pl-9 bg-[#ffffff]/60 focus:bg-white" />
+              <input
+                id="login-password"
+                type={showPassword ? 'text' : 'password'}
+                required
+                placeholder="••••••••"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="input-crema pl-9 pr-10 bg-[#ffffff]/60 focus:bg-white"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#94a3b8] hover:text-[#475569] transition-colors"
+                title={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </div>
           <motion.button 
@@ -129,26 +192,67 @@ export default function Login() {
           </motion.button>
         </form>
 
-        {/* Microsoft Button (placeholder) */}
-        <div className="mt-4">
-          <button disabled className="w-full py-2.5 px-4 border border-[#e2e8f0]/80 rounded-xl text-sm font-medium text-[#94a3b8] bg-[#ffffff]/40 cursor-not-allowed flex items-center justify-center gap-2 opacity-60 backdrop-blur-sm">
-              <svg className="w-4 h-4" viewBox="0 0 21 21">
-                <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
-                <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
-                <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
-                <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
-              </svg>
-              Iniciar con Microsoft (Próximamente)
-            </button>
-          </div>
-
-          <div className="mt-6 pt-4 border-t border-[#e2e8f0]/60 text-center">
-            <button onClick={() => { setIsSignUp(!isSignUp); }} className="text-xs font-bold text-[#25855A] hover:text-[#124D37] transition-colors uppercase tracking-wider">
-              {isSignUp ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate'}
-            </button>
-          </div>
+        <div className="mt-6 pt-4 border-t border-[#e2e8f0]/60 text-center">
+          <button onClick={() => { setIsSignUp(!isSignUp); }} className="text-xs font-bold text-[#25855A] hover:text-[#124D37] transition-colors uppercase tracking-wider">
+            {isSignUp ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate'}
+          </button>
         </div>
+      </div>
       </motion.div>
+
+      {/* Modal para restablecer contraseña */}
+      {showResetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl border border-slate-200"
+          >
+            <div className="flex items-center gap-2 mb-3 text-slate-800">
+              <KeyRound className="w-5 h-5 text-[#25855A]" />
+              <h3 className="font-bold text-base">Restablecer Contraseña</h3>
+            </div>
+            <p className="text-xs text-slate-600 mb-4 leading-relaxed">
+              Ingresa tu correo institucional y te enviaremos un enlace de Firebase para restablecer tu contraseña.
+            </p>
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Correo Electrónico</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                    <Mail className="w-4 h-4" />
+                  </span>
+                  <input
+                    type="email"
+                    required
+                    placeholder="usuario@salesianosanjose.edu.sv"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    className="input-crema pl-9 w-full"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowResetModal(false)}
+                  disabled={resetLoading}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={resetLoading}
+                  className="px-4 py-2 text-xs font-semibold text-white bg-[#25855A] hover:bg-[#124D37] rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {resetLoading ? 'Enviando...' : 'Enviar Enlace'}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
 
       <motion.p initial={{ opacity: 0, y: 5 }} animate={{ opacity: 0.8, y: 0 }} transition={{ delay: 0.4 }}
         className="mt-8 text-sm text-[#64748b] italic text-center max-w-sm relative z-10">

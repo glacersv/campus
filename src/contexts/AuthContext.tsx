@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User as FirebaseUser, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
+import { User as FirebaseUser, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, sendPasswordResetEmail } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { auth, functions } from '../firebase';
 import { getUser, createUser, getRole, isEmailPreAuthorized, getStudentByCarnet, createApprovalRequest, createNewUserNotification, updateUser, getTeacherByEmail, getTeacher, createUserForTeacher, createUserForStudent, getStudent, updateApprovalRequest, getAllRoles, getUserByEmail, getUserByStudentId, deleteUser, fixRolesPermissions } from '../lib/firestore';
 import { User, UserRole, SystemModuleId, RoleConfig, ApprovalRequest } from '../types';
 import { updateRoleLabelsFromFirestore } from '../types';
+import { lmsService } from '../services/lmsService';
 
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
@@ -23,6 +24,7 @@ interface AuthContextType {
   getPendingApprovals: () => Promise<ApprovalRequest[]>;
   getNewUserNotifications: () => Promise<any[]>;
   markNotificationAsNotified: (notificationId: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -51,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           let teacherName: string | undefined;
 
           // Detectar rol y detalles
-          const isSuperAdmin = email === 'admin@salesianosanjose.edu.sv' || email === 'jose.marquez@salesianosanjose.edu.sv';
+          const isSuperAdmin = email === 'admin@salesianosanjose.edu.sv' || email === 'glacersv@gmail.com';
           const teacher = await getTeacherByEmail(email);
           if (isSuperAdmin) {
             detectedRole = 'admin';
@@ -105,7 +107,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           profile = await getUser(user.uid);
         }
 
+        if (profile && profile.role === 'alumno' && (!profile.gradeId || !profile.studentId)) {
+          try {
+            const carnet = (profile.email || user.email || '').split('@')[0];
+            let student = profile.studentId ? await getStudent(profile.studentId) : null;
+            if (!student) {
+              student = await getStudentByCarnet(carnet);
+            }
+            if (student) {
+              profile = {
+                ...profile,
+                studentId: profile.studentId || student.id,
+                studentName: profile.studentName || student.name,
+                gradeId: profile.gradeId || student.gradeId,
+                sectionId: profile.sectionId || student.sectionId,
+              };
+            }
+          } catch (e) {
+            console.warn('[AuthContext] Error enriching student profile:', e);
+          }
+        }
+
         setUserProfile(profile);
+        lmsService.setUserRole(profile?.role || null);
         if (profile?.role) {
           const rc = await getRole(profile.role);
           setRoleConfig(rc);
@@ -128,6 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } else {
         setUserProfile(null);
+        lmsService.setUserRole(null);
         setRoleConfig(null);
       }
       setLoading(false);
@@ -140,7 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signInWithEmailAndPassword(auth, email, password);
     
     // Super admin bypass - siempre permitir acceso
-    if (email === 'admin@salesianosanjose.edu.sv' || email === 'jose.marquez@salesianosanjose.edu.sv') return;
+    if (email === 'admin@salesianosanjose.edu.sv' || email === 'glacersv@gmail.com') return;
     
     // Verificar estado del usuario después del login
     const profile = await getUser(auth.currentUser?.uid || '');
@@ -378,6 +403,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return markNotif(notificationId);
   };
 
+  const resetPassword = async (email: string) => {
+    await sendPasswordResetEmail(auth, email);
+  };
+
   const refreshRole = async () => {
     if (!userProfile?.role) return;
     const rc = await getRole(userProfile.role);
@@ -402,6 +431,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       getPendingApprovals,
       getNewUserNotifications,
       markNotificationAsNotified,
+      resetPassword,
     }}>
       {children}
     </AuthContext.Provider>

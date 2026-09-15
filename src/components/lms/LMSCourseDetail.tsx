@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { lmsService } from '../../services/lmsService';
 import { LMSModule, LMSActivity, ActionStageKey, MINED_LEVELS, MinedLevel } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
 import ProgressRing from './shared/ProgressRing';
 import ActivityItem from './shared/ActivityItem';
 import MDEditor from '@uiw/react-md-editor';
@@ -41,6 +42,8 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
   onBack = () => {},
 }) => {
   const navigate = useNavigate();
+  const { userProfile } = useAuth();
+  const isStudent = userProfile?.role === 'alumno';
   const [course, setCourse] = useState<LMSModule | undefined>(undefined);
   const [activities, setActivities] = useState<LMSActivity[]>([]);
   const [activeTab, setActiveTab] = useState<'etapas' | 'proyecto' | 'descriptor' | 'saberes' | 'actividades' | 'calificaciones' | 'jornalizacion'>('etapas');
@@ -461,27 +464,35 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <select
-                    value={selectedCohortYear}
-                    onChange={(e) => setSelectedCohortYear(e.target.value)}
-                    className="bg-white/10 text-white border border-white/20 rounded-xl px-3 py-1.5 text-xs focus:outline-none"
-                  >
-                    <option value="2025" className="text-slate-900">Cohorte 2025</option>
-                    <option value="2026" className="text-slate-900">Cohorte 2026 (Actual)</option>
-                    <option value="2027" className="text-slate-900">Cohorte 2027 (Próximo)</option>
-                  </select>
+                {!isStudent ? (
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={selectedCohortYear}
+                      onChange={(e) => setSelectedCohortYear(e.target.value)}
+                      className="bg-white/10 text-white border border-white/20 rounded-xl px-3 py-1.5 text-xs focus:outline-none"
+                    >
+                      <option value="2025" className="text-slate-900">Cohorte 2025</option>
+                      <option value="2026" className="text-slate-900">Cohorte 2026 (Actual)</option>
+                      <option value="2027" className="text-slate-900">Cohorte 2027 (Próximo)</option>
+                    </select>
 
-                  <button
-                    type="button"
-                    disabled={generatingProject}
-                    onClick={handleGenerateNewProject}
-                    className="px-3 py-1.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${generatingProject ? 'animate-spin' : ''}`} />
-                    <span>{generatingProject ? 'Generando...' : 'Generar Nuevo Proyecto'}</span>
-                  </button>
-                </div>
+                    <button
+                      type="button"
+                      disabled={generatingProject}
+                      onClick={handleGenerateNewProject}
+                      className="px-3 py-1.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${generatingProject ? 'animate-spin' : ''}`} />
+                      <span>{generatingProject ? 'Generando...' : 'Generar Nuevo Proyecto'}</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-blue-200 bg-white/10 px-3 py-1 rounded-xl border border-white/15">
+                      Asignado por el Docente
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div>

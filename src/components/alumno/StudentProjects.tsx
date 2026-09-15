@@ -1,15 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import InstitutionLogo from '../shared/InstitutionLogo';
 import { useNavigate } from 'react-router-dom';
-
-interface Integrante {
-  uid: string;
-  nombre: string;
-  es_rep: boolean;
-}
+import { Sparkles, BookOpen, Layers, CheckCircle2, Clock } from 'lucide-react';
 
 interface Proyecto {
   id?: string;
@@ -32,70 +27,58 @@ export default function StudentProjects() {
   const { userProfile, firebaseUser } = useAuth();
   const [proyectos, setProyectos] = useState<Proyecto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [nuevoProyecto, setNuevoProyecto] = useState({
-    titulo: '',
-    descripcion: '',
-    grado: '',
-    seccion: '',
-    materia_id: '',
-    integrantes: [{ uid: '', nombre: '', es_rep: true }],
-  });
   const navigate = useNavigate();
 
   const uid = firebaseUser?.uid || '';
-  const nombre = userProfile?.displayName || '';
+  const studentGrade = (userProfile?.gradeId || '').toLowerCase();
+  const studentSection = (userProfile?.sectionId || '').toLowerCase();
 
   useEffect(() => {
-    if (!uid) return;
+    if (!uid) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
-    const q = query(
+
+    // Los alumnos solo ven lo que el docente genere para su área o en lo que han sido asignados
+    const qUser = query(
       collection(db, 'proyectos'),
       where('integrantes', 'array-contains', uid),
       orderBy('fecha_registro', 'desc')
     );
-    const unsub = onSnapshot(q, (snap) => {
-      setProyectos(snap.docs.map(d => ({ id: d.id, ...d.data() } as Proyecto)));
-      setLoading(false);
-    });
+
+    const unsub = onSnapshot(
+      qUser,
+      async (snap) => {
+        const userProjects = snap.docs.map(d => ({ id: d.id, ...d.data() } as Proyecto));
+        
+        // Si no hay asignación directa por UID, consultar si el docente generó proyectos para su grado
+        if (userProjects.length === 0 && studentGrade) {
+          try {
+            const qGrade = query(
+              collection(db, 'proyectos'),
+              where('grado', '==', userProfile?.gradeId || ''),
+              orderBy('fecha_registro', 'desc')
+            );
+            const gradeSnap = await getDocs(qGrade);
+            const gradeProjects = gradeSnap.docs.map(d => ({ id: d.id, ...d.data() } as Proyecto));
+            setProyectos(gradeProjects);
+          } catch {
+            setProyectos([]);
+          }
+        } else {
+          setProyectos(userProjects);
+        }
+        setLoading(false);
+      },
+      (err) => {
+        console.warn('StudentProjects onSnapshot error:', err.message);
+        setLoading(false);
+      }
+    );
+
     return unsub;
-  }, [uid]);
-
-  async function crearProyecto(e: React.FormEvent) {
-    e.preventDefault();
-    if (nuevoProyecto.integrantes.length < 5) return;
-    try {
-      const hoy = new Date().toISOString().slice(0, 10);
-      const materia = { id: nuevoProyecto.materia_id, nombre: '' };
-      await addDoc(collection(db, 'proyectos'), {
-        titulo: nuevoProyecto.titulo,
-        descripcion: nuevoProyecto.descripcion,
-        grado: nuevoProyecto.grado,
-        seccion: nuevoProyecto.seccion,
-        materia_id: nuevoProyecto.materia_id,
-        materia_nombre: materia.nombre,
-        representante_id: uid,
-        representante_nombre: nombre,
-        integrantes: nuevoProyecto.integrantes.map(i => i.uid),
-        estado: 'borrador',
-        intentos_envio: 0,
-        observaciones: null,
-        fecha_registro: hoy,
-      });
-      setNuevoProyecto({ titulo: '', descripcion: '', grado: '', seccion: '', materia_id: '', integrantes: [{ uid: '', nombre: '', es_rep: true }] });
-      setShowForm(false);
-    } catch (err) {
-      console.error('Error creando proyecto:', err);
-    }
-  }
-
-  async function enviarProyecto(id: string) {
-    try {
-      await updateDoc(doc(db, 'proyectos', id), { estado: 'registrado' });
-    } catch (err) {
-      console.error('Error enviando:', err);
-    }
-  }
+  }, [uid, studentGrade, studentSection]);
 
   const getBadgeColor = (estado: string) => {
     switch (estado) {
@@ -124,7 +107,7 @@ export default function StudentProjects() {
             <InstitutionLogo className="w-10 h-10" />
             <div>
               <h1 className="text-lg font-bold text-slate-900">Semana de la Juventud</h1>
-              <p className="text-xs text-slate-400">Mis Proyectos</p>
+              <p className="text-xs text-slate-400">Proyectos y Actividades Asignadas por el Docente</p>
             </div>
           </div>
           <button onClick={() => navigate('/')} className="text-sm text-slate-500 hover:text-slate-900">
@@ -133,74 +116,59 @@ export default function StudentProjects() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto p-6">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900">Mis Proyectos</h2>
-            <p className="text-slate-500 mt-1">{proyectos.length} proyecto(s)</p>
+      <main className="max-w-6xl mx-auto p-6 space-y-6">
+        <div className="card-crema p-6 bg-gradient-to-r from-blue-900 to-indigo-950 text-white rounded-3xl border border-blue-800 shadow-md">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-400 text-slate-950">
+              Área Estudiantil
+            </span>
+            <span className="text-xs text-blue-200">
+              Semana de la Juventud 2026
+            </span>
           </div>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="btn-primary"
-          >
-            {showForm ? 'Cancelar' : '+ Nuevo Proyecto'}
-          </button>
+          <h2 className="text-2xl font-bold font-display">Proyectos Asignados para tu Área</h2>
+          <p className="text-xs md:text-sm text-blue-100/90 mt-1 max-w-2xl">
+            Los proyectos y actividades son definidos por el docente del área técnica. Aquí puedes consultar el progreso, rúbricas y estado de evaluación de los proyectos en los que participas.
+          </p>
         </div>
 
-        {showForm && (
-          <form onSubmit={crearProyecto} className="mb-8 p-6 card-crema space-y-4">
-            <div>
-              <label className="form-label">Título</label>
-              <input type="text" value={nuevoProyecto.titulo} onChange={e => setNuevoProyecto({...nuevoProyecto, titulo: e.target.value})} required className="input-crema" />
-            </div>
-            <div>
-              <label className="form-label">Descripción</label>
-              <textarea value={nuevoProyecto.descripcion} onChange={e => setNuevoProyecto({...nuevoProyecto, descripcion: e.target.value})} required rows={3} className="input-crema min-h-[80px] resize-y" />
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="form-label">Grado</label>
-                <input type="text" value={nuevoProyecto.grado} onChange={e => setNuevoProyecto({...nuevoProyecto, grado: e.target.value})} required className="input-crema" />
-              </div>
-              <div>
-                <label className="form-label">Sección</label>
-                <input type="text" value={nuevoProyecto.seccion} onChange={e => setNuevoProyecto({...nuevoProyecto, seccion: e.target.value})} required className="input-crema" />
-              </div>
-              <div>
-                <label className="form-label">Materia</label>
-                <input type="text" value={nuevoProyecto.materia_id} onChange={e => setNuevoProyecto({...nuevoProyecto, materia_id: e.target.value})} required className="input-crema" />
-              </div>
-            </div>
-            <button type="submit" className="btn-primary">Crear Proyecto</button>
-          </form>
-        )}
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-slate-900">Proyectos Asignados</h3>
+            <p className="text-slate-500 text-xs">{proyectos.length} proyecto(s) registrado(s)</p>
+          </div>
+        </div>
 
         <div className="space-y-4">
           {proyectos.map(proyecto => (
-            <div key={proyecto.id} className="card-crema p-5">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="text-base font-semibold text-slate-900">{proyecto.titulo}</h3>
-                  <p className="text-xs text-slate-400 mt-1">
-                    {proyecto.grado} {proyecto.seccion} · {proyecto.materia_nombre} · {proyecto.integrantes.length} integrantes
+            <div key={proyecto.id} className="card-crema p-5 rounded-2xl border border-slate-200/80 shadow-sm hover:border-[#0D71B9] transition-all">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-slate-900">{proyecto.titulo}</h3>
+                  </div>
+                  <p className="text-xs text-slate-600 line-clamp-2">
+                    {proyecto.descripcion}
+                  </p>
+                  <p className="text-xs text-slate-400 pt-1">
+                    {proyecto.grado} {proyecto.seccion} · {proyecto.materia_nombre || 'Área Técnica'} {proyecto.integrantes ? `· ${proyecto.integrantes.length} integrante(s)` : ''}
                   </p>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${getBadgeColor(proyecto.estado)}`}>
+                <span className={`px-3 py-1 rounded-full text-xs font-medium shrink-0 ${getBadgeColor(proyecto.estado)}`}>
                   {proyecto.estado}
                 </span>
               </div>
-              {proyecto.estado === 'borrador' && (
-                <button
-                  onClick={() => enviarProyecto(proyecto.id!)}
-                  className="mt-3 btn-primary text-xs py-1.5 px-4"
-                >
-                  Enviar para Validación
-                </button>
-              )}
             </div>
           ))}
+
           {proyectos.length === 0 && (
-            <p className="text-center text-slate-400 py-8">No tienes proyectos aún. Crea uno para empezar.</p>
+            <div className="card-crema p-10 text-center text-slate-400 space-y-2">
+              <Clock className="w-10 h-10 mx-auto text-slate-300" />
+              <p className="text-sm font-medium text-slate-600">No tienes proyectos asignados aún</p>
+              <p className="text-xs text-slate-400">
+                Tu docente asignará los proyectos correspondientes a tu área técnica y nivel de formación.
+              </p>
+            </div>
           )}
         </div>
       </main>

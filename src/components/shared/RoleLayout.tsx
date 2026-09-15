@@ -82,34 +82,34 @@ export default function RoleLayout({ modules, moduleIcons, moduleColors, childre
                   <button
                     onClick={() => navigate('/alumno/aula-virtual')}
                     className={`sidebar-item ${currentPath === 'aula-virtual' ? 'active' : ''}`}
-                    title={collapsed ? 'Mi Aula Virtual' : undefined}
+                    title={collapsed ? 'Carga Académica Técnica' : undefined}
                   >
                     <BookOpen className="w-5 h-5 shrink-0" />
-                    {!collapsed && <span>Mi Aula Virtual</span>}
+                    {!collapsed && <span>Carga Académica Técnica</span>}
                   </button>
                   <button
                     onClick={() => navigate('/alumno/aula-virtual/cursos')}
                     className={`sidebar-item ${currentPath === 'cursos' ? 'active' : ''}`}
-                    title={collapsed ? 'Mis Cursos' : undefined}
+                    title={collapsed ? 'Aula Virtual' : undefined}
                   >
                     <School className="w-5 h-5 shrink-0" />
-                    {!collapsed && <span>Mis Cursos</span>}
+                    {!collapsed && <span>Aula Virtual</span>}
                   </button>
                   <button
                     onClick={() => navigate('/alumno/aula-virtual/actividades')}
                     className={`sidebar-item ${currentPath === 'actividades' ? 'active' : ''}`}
-                    title={collapsed ? 'Mis Actividades' : undefined}
+                    title={collapsed ? 'Actividades' : undefined}
                   >
                     <ClipboardCheck className="w-5 h-5 shrink-0" />
-                    {!collapsed && <span>Mis Actividades</span>}
+                    {!collapsed && <span>Actividades</span>}
                   </button>
                   <button
                     onClick={() => navigate('/alumno/aula-virtual/progreso')}
                     className={`sidebar-item ${currentPath === 'progreso' ? 'active' : ''}`}
-                    title={collapsed ? 'Mi Progreso' : undefined}
+                    title={collapsed ? 'Progreso' : undefined}
                   >
                     <CheckCircle2 className="w-5 h-5 shrink-0" />
-                    {!collapsed && <span>Mi Progreso</span>}
+                    {!collapsed && <span>Progreso</span>}
                   </button>
                 </div>
               </div>

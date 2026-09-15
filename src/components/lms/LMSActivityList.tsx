@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { lmsService } from '../../services/lmsService';
 import { LMSActivity, LMSCourse, ActivityStatus } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
+import { getStudentTechnicalYearAccess } from '../../utils/studentYearAccess';
 import ActivityItem from './shared/ActivityItem';
 
 interface LMSActivityListProps {
@@ -27,6 +29,11 @@ export const LMSActivityList: React.FC<LMSActivityListProps> = ({
   onSelectActivity = (_activityId: string) => {},
   onBack = () => {},
 }) => {
+  const { userProfile } = useAuth();
+  const isStudent = userProfile?.role === 'alumno';
+  const yearAccess = getStudentTechnicalYearAccess(userProfile);
+  const allowedYears = isStudent ? yearAccess.allowedYears : ['1', '2', '3'];
+
   const [activities, setActivities] = useState<LMSActivity[]>([]);
   const [courses, setCourses] = useState<LMSCourse[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -35,13 +42,25 @@ export const LMSActivityList: React.FC<LMSActivityListProps> = ({
 
   useEffect(() => {
     const loadData = () => {
-      setActivities(lmsService.getActivities());
-      setCourses(lmsService.getCourses());
+      const allCourses = lmsService.getCourses();
+      const allActs = lmsService.getActivities();
+
+      if (isStudent && allowedYears.length > 0) {
+        // Filter out future year courses & activities
+        const validCourses = allCourses.filter((c) => allowedYears.includes(c.technicalYear));
+        const validCourseIds = new Set(validCourses.map((c) => c.id));
+        const validActs = allActs.filter((a) => !a.courseId || validCourseIds.has(a.courseId));
+        setCourses(validCourses);
+        setActivities(validActs);
+      } else {
+        setCourses(allCourses);
+        setActivities(allActs);
+      }
     };
     loadData();
     const unsub = lmsService.subscribe(loadData);
     return () => unsub();
-  }, []);
+  }, [userProfile?.gradeId, isStudent]);
 
   const filteredActivities = activities.filter((act) => {
     const matchesSearch =

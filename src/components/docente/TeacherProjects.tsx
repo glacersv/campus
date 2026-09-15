@@ -40,10 +40,17 @@ export default function TeacherProjects() {
       where('estado', 'in', ['registrado', 'en_revision_materia', 'reclasificar', 'rechazado_materia']),
       orderBy('fecha_registro', 'desc')
     );
-    const unsub = onSnapshot(q, (snap) => {
-      setProyectos(snap.docs.map(d => ({ id: d.id, ...d.data() } as Proyecto)));
-      setLoading(false);
-    });
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setProyectos(snap.docs.map(d => ({ id: d.id, ...d.data() } as Proyecto)));
+        setLoading(false);
+      },
+      (err) => {
+        console.warn('TeacherProjects onSnapshot error:', err.message);
+        setLoading(false);
+      }
+    );
     return unsub;
   }, []);
 

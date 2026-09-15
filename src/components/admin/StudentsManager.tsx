@@ -51,7 +51,7 @@ export default function StudentsManager() {
     } finally { setLoading(false); }
   };
 
-  const TEST_PASSWORD = 'Alumno2025!';
+  const TEST_PASSWORD = 'Alumno2026!';
 
   const createTestStudents = async () => {
     if (grades.length === 0 || sections.length === 0) {
@@ -512,7 +512,7 @@ export default function StudentsManager() {
               <div className="modal-body space-y-3">
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
                   <p className="text-xs font-bold text-amber-700 mb-1">Contrasena global: <code className="bg-amber-100 px-1.5 py-0.5 rounded text-amber-800">{TEST_PASSWORD}</code></p>
-                  <p className="text-[10px] text-amber-600">Los alumnos deben ir a Login &rarr; Registrarse con este email y contrasena.</p>
+                  <p className="text-[10px] text-amber-600">Los alumnos deben ir a la pantalla de Login e Iniciar Sesión con este correo institucional y contraseña.</p>
                 </div>
                 <div className="max-h-60 overflow-y-auto space-y-2">
                   {testCredentials.map((cred, idx) => (

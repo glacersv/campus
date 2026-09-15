@@ -109,7 +109,7 @@ function getDefaultModulesForRole(role: string): SystemModuleId[] {
     case 'admin':
       return ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'];
     case 'docente':
-      return ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos'];
+      return ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'proyectos', 'lms'];
     case 'alumno':
       return ['formacion', 'notas', 'clase', 'horario', 'eventos', 'avisos', 'semana-juventud', 'lms'];
     default:
@@ -122,8 +122,8 @@ function AppContent() {
   const [isBTVTeacher, setIsBTVTeacher] = useState(false);
 
   useEffect(() => {
-    ensureAdminAccount();
     if (userProfile?.role === 'admin') {
+      ensureAdminAccount();
       seedInitialData();
       (window as any).seedProyecto = seedProyectoCultivoBacterias;
     }
@@ -131,15 +131,22 @@ function AppContent() {
 
   useEffect(() => {
     const checkBTV = async () => {
-      if (userRole === 'docente' && userProfile?.teacherId) {
-        const { getTeacher } = await import('./lib/firestore');
-        const { isTeacherBTVByGrade } = await import('./utils/isBTVTeacher');
-        const teacher = await getTeacher(userProfile.teacherId);
-        setIsBTVTeacher(isTeacherBTVByGrade(teacher));
+      if (userRole === 'docente') {
+        try {
+          const { getTeacher, getTeacherByEmail } = await import('./lib/firestore');
+          let teacher = userProfile?.teacherId ? await getTeacher(userProfile.teacherId) : null;
+          if (!teacher && userProfile?.email) {
+            teacher = await getTeacherByEmail(userProfile.email);
+          }
+          const { isTeacherBTVByGrade } = await import('./utils/isBTVTeacher');
+          setIsBTVTeacher(isTeacherBTVByGrade(teacher));
+        } catch (err) {
+          console.error('Error checking BTV status:', err);
+        }
       }
     };
     checkBTV();
-  }, [userRole, userProfile?.teacherId]);
+  }, [userRole, userProfile?.teacherId, userProfile?.email]);
 
   if (loading) {
     return (
@@ -355,6 +362,12 @@ function AppContent() {
       <Routes>
         <Route path="/docente" element={<TeacherLayout />}>
           <Route index element={<DocenteDashboard />} />
+
+          <Route path="formacion" element={
+            permissions.includes('formacion') ? (
+              <ModulePlaceholder title="Formación Buenos Días" subtitle="Registro de asistencia y disciplina diaria" />
+            ) : <Navigate to="/docente" replace />
+          } />
 
           <Route path="proyectos" element={
             permissions.includes('proyectos') ? (

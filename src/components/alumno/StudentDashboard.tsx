@@ -25,8 +25,8 @@ interface StudentDashboardProps {
 
 const MODULE_CONFIG: Partial<Record<SystemModuleId, { label: string; desc: string; icon: React.ElementType; color: string; path: string }>> = {
   lms: {
-    label: 'Mi Aula Virtual',
-    desc: 'Cursos, actividades, rúbricas y calificaciones',
+    label: 'Carga Académica Técnica',
+    desc: 'Módulos técnicos, competencias y avance curricular',
     icon: BookOpen,
     color: 'bg-indigo-500/10 text-indigo-600 border-indigo-200',
     path: '/alumno/aula-virtual',
@@ -40,7 +40,7 @@ const MODULE_CONFIG: Partial<Record<SystemModuleId, { label: string; desc: strin
   },
   'semana-juventud': {
     label: 'Semana de la Juventud',
-    desc: 'Sube y gestiona tu proyecto estudiantil',
+    desc: 'Proyectos y actividades asignadas por el docente',
     icon: Medal,
     color: 'bg-indigo-500/10 text-indigo-600 border-indigo-200',
     path: '/alumno/semana-juventud',

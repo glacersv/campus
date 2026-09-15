@@ -55,12 +55,48 @@
         }
       },
       "required": ["colegio", "fecha", "grado", "tutor", "modalidad", "estadisticas", "detalles"]
+    },
+    "LMSState": {
+      "title": "LMSState",
+      "description": "Estado global de cursos, descriptores y módulos del LMS para Bachillerato Técnico",
+      "type": "object",
+      "properties": {
+        "courses": { "type": "array" },
+        "modules": { "type": "array" },
+        "activities": { "type": "array" },
+        "rubrics": { "type": "object" },
+        "activeYear": { "type": "string" },
+        "academicCohortYear": { "type": "string" }
+      }
+    },
+    "LMSSubmission": {
+      "title": "LMSSubmission",
+      "description": "Entrega individual de una actividad por parte de un estudiante",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "activityId": { "type": "string" },
+        "studentId": { "type": "string" },
+        "studentName": { "type": "string" },
+        "studentEmail": { "type": "string" },
+        "submittedAt": { "type": "string" },
+        "content": { "type": "string" },
+        "attachments": { "type": "array" }
+      }
     }
   },
   "firestore": {
     "attendance_reports/{reportId}": {
       "schema": "AttendanceReport",
       "description": "Colección de reportes de asistencia y disciplina diaria enviados por los docentes."
+    },
+    "lms_state/{docId}": {
+      "schema": "LMSState",
+      "description": "Documento global con la estructura curricular de cursos y módulos de diseño gráfico."
+    },
+    "lms_submissions/{submissionId}": {
+      "schema": "LMSSubmission",
+      "description": "Colección de entregas de actividades realizadas por los estudiantes."
     }
   }
 }

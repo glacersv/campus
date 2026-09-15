@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { lmsService } from '../../services/lmsService';
 import { LMSCourse, LMSActivity, LMSStudentSummary, TechnicalYear, MINED_LEVELS, MinedLevel } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
+import { getStudentTechnicalYearAccess } from '../../utils/studentYearAccess';
 import ProgressRing from './shared/ProgressRing';
 
 interface LMSProgressProps {
@@ -30,7 +32,14 @@ export const LMSProgress: React.FC<LMSProgressProps> = ({
   onBack = () => {},
   onSelectCourse = (_courseId: string) => {},
 }) => {
-  const [selectedYear, setSelectedYear] = useState<TechnicalYear | 'all'>('1');
+  const { userProfile } = useAuth();
+  const isStudent = userProfile?.role === 'alumno';
+  const yearAccess = getStudentTechnicalYearAccess(userProfile);
+  const allowedYears = isStudent ? yearAccess.allowedYears : ['1', '2', '3'];
+
+  const [selectedYear, setSelectedYear] = useState<TechnicalYear | 'all'>(
+    isStudent ? (yearAccess.currentYear.toString() as TechnicalYear) : '1'
+  );
   const [courses, setCourses] = useState<LMSCourse[]>([]);
   const [activities, setActivities] = useState<LMSActivity[]>([]);
   const [summary, setSummary] = useState<LMSStudentSummary>({
@@ -46,7 +55,12 @@ export const LMSProgress: React.FC<LMSProgressProps> = ({
 
   useEffect(() => {
     const loadData = () => {
-      const yearParam = selectedYear === 'all' ? undefined : selectedYear;
+      let activeY = selectedYear;
+      if (isStudent && activeY !== 'all' && !allowedYears.includes(activeY)) {
+        activeY = yearAccess.currentYear.toString() as TechnicalYear;
+        setSelectedYear(activeY);
+      }
+      const yearParam = activeY === 'all' ? undefined : (activeY as TechnicalYear);
       const c = lmsService.getCourses(yearParam);
       const a = lmsService.getActivities(undefined, yearParam);
       const s = lmsService.getStudentSummary(yearParam);
@@ -57,7 +71,7 @@ export const LMSProgress: React.FC<LMSProgressProps> = ({
     loadData();
     const unsub = lmsService.subscribe(loadData);
     return () => unsub();
-  }, [selectedYear]);
+  }, [selectedYear, userProfile?.gradeId]);
 
   const gradedActivities = activities.filter(
     (a) => a.status === 'calificada' && a.submission?.grade !== undefined
@@ -94,33 +108,39 @@ export const LMSProgress: React.FC<LMSProgressProps> = ({
 
         {/* Year Filter Pill */}
         <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 self-start sm:self-auto">
-          <button
-            type="button"
-            onClick={() => setSelectedYear('1')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-              selectedYear === '1' ? 'bg-[#0D71B9] text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            1° Año (720h)
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedYear('2')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-              selectedYear === '2' ? 'bg-[#0D71B9] text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            2° Año (720h)
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedYear('3')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-              selectedYear === '3' ? 'bg-purple-700 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            3° Año (1,200h)
-          </button>
+          {allowedYears.includes('1') && (
+            <button
+              type="button"
+              onClick={() => setSelectedYear('1')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                selectedYear === '1' ? 'bg-[#0D71B9] text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              1° Año (720h)
+            </button>
+          )}
+          {allowedYears.includes('2') && (
+            <button
+              type="button"
+              onClick={() => setSelectedYear('2')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                selectedYear === '2' ? 'bg-[#0D71B9] text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              2° Año (720h)
+            </button>
+          )}
+          {allowedYears.includes('3') && (
+            <button
+              type="button"
+              onClick={() => setSelectedYear('3')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                selectedYear === '3' ? 'bg-purple-700 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              3° Año (1,200h)
+            </button>
+          )}
         </div>
       </div>
 
