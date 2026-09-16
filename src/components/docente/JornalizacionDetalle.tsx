@@ -57,17 +57,9 @@ export default function JornalizacionDetalle() {
       setCompletedStages(newCompleted);
       
       // Actualizar estado del módulo
-      const totalStages = (mod.jornalizacion as StageJornalizacionItem[])?.length || 6;
-      const completedCount = newCompleted.size;
-      
-      let newStatus = mod.status;
-      if (completedCount === 0) {
-        newStatus = 'active';
-      } else if (completedCount === totalStages) {
-        newStatus = 'completed';
-      } else {
-        newStatus = 'active';
-      }
+      // El avance se guarda en `completedStages`; el estado del módulo solo admite
+      // `active` o `inactive` y debe continuar disponible aunque complete sus etapas.
+      const newStatus: LMSModule['status'] = 'active';
 
       if (newStatus !== mod.status) {
         await updateDoc(doc(db, 'lms_modules', mod.id), {

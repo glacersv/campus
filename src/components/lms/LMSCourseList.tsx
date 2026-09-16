@@ -67,7 +67,7 @@ export const LMSCourseList: React.FC<LMSCourseListProps> = ({
     const matchesSearch =
       course.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       course.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lmsService.getTeacherName(course.teacherId).toLowerCase().includes(searchQuery.toLowerCase()) ||
+      lmsService.getTeacherName(course.teacherId, course.teacherName).toLowerCase().includes(searchQuery.toLowerCase()) ||
       (course.affineArea && course.affineArea.toLowerCase().includes(searchQuery.toLowerCase()));
 
     if (!matchesSearch) return false;

@@ -308,7 +308,7 @@ export default function LMSModuleEditor({ module, onBack, onSaved }: LMSModuleEd
               {name || 'Edición del Módulo'}
             </h1>
             <p className="text-xs text-slate-500 max-w-2xl">
-              Configura todo el contenido que los alumnos visualizarán en su Aula Virtual (Descriptor, 6 Etapas, Proyecto Anual, Saberes y Jornalización).
+              Configura todo el contenido que los alumnos visualizarán en su Aula Virtual (Descriptor, 6 Etapas, Proyecto de Módulo, Saberes y Jornalización).
             </p>
           </div>
         </div>
@@ -352,7 +352,7 @@ export default function LMSModuleEditor({ module, onBack, onSaved }: LMSModuleEd
           className={`filter-pill ${activeTab === 'proyecto' ? 'filter-pill-active' : ''}`}
         >
           <Sparkles className="w-3.5 h-3.5" />
-          <span>3. Proyecto Anual Integrador ({projectAcademicYear})</span>
+          <span>3. Proyecto de Módulo ({projectAcademicYear})</span>
         </button>
 
         <button

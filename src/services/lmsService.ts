@@ -155,7 +155,7 @@ const buildInitialActivities = (courses: LMSCourse[]): LMSActivity[] => {
       moduleId: `mod-${c.id}-planificar`,
       moduleTitle: 'Etapa 2: Planificar',
       stageKey: 'planificar',
-      title: `Plan de Trabajo y Matriz de Decisiones para Proyecto Anual`,
+      title: `Plan de Trabajo y Matriz de Decisiones para Proyecto de Módulo`,
       type: 'delivery',
       maxScore: 10,
       dueDate: '2026-03-24T23:59:00Z',
@@ -411,14 +411,14 @@ class LMSService {
   }
 
   /** Obtiene el nombre del docente desde Firebase (siempre fresco) */
-  public getTeacherName(teacherId?: string): string {
-    if (!teacherId) return 'Sin docente asignado';
+  public getTeacherName(teacherId?: string, fallback?: string): string {
+    if (!teacherId) return fallback || 'Sin docente asignado';
     const fromCache = this.teachersCache.get(teacherId);
     if (fromCache) return fromCache;
     // Fallback: buscar por última parte del ID
     const parts = teacherId.toLowerCase().split('-');
     const lastPart = parts[parts.length - 1];
-    return this.teachersCache.get(lastPart) || 'Sin docente asignado';
+    return this.teachersCache.get(lastPart) || fallback || 'Sin docente asignado';
   }
 
   public resolveTeacherName(teacherId?: string, fallback?: string): string | undefined {
@@ -502,7 +502,7 @@ class LMSService {
           name: c.name,
           code: c.code,
           subjectId: c.subjectId || c.code.toLowerCase().replace(/\s+/g, '-'),
-          teacherId: c.teacherId || 't_1786176116597',
+          teacherId: c.teacherId || 't1786176116597',
           teacherName: resolvedTeacherName || c.teacherName || 'Giovanni Marquez',
           gradeId: c.gradeId || '10',
           gradeName: c.gradeName || '1° Año Técnico',
@@ -770,7 +770,7 @@ class LMSService {
       name: courseData.name,
       code: courseData.code,
       description: courseData.description || '',
-      teacherId: courseData.teacherId || 't_1786176116597',
+      teacherId: courseData.teacherId || 't1786176116597',
       teacherName: courseData.teacherName || 'Giovanni Marquez',
       gradeId: courseData.gradeId || '10',
       gradeName: courseData.gradeName || '1° Año Técnico',
@@ -1110,7 +1110,7 @@ class LMSService {
       name: data.name,
       code: data.code,
       subjectId: data.subjectId,
-      teacherId: data.teacherId || 't_1786176116597',
+      teacherId: data.teacherId || 't1786176116597',
       teacherName: data.teacherName || 'Giovanni Marquez',
       gradeId: data.gradeId || '12',
       gradeName: data.gradeName || '12° Grado',
@@ -1163,7 +1163,7 @@ class LMSService {
             name: c.name,
             code: c.code,
             subjectId: c.subjectId || c.code.toLowerCase().replace(/\s+/g, '-'),
-            teacherId: c.teacherId || 't_1786176116597',
+            teacherId: c.teacherId || 't1786176116597',
             teacherName: c.teacherName || 'Giovanni Marquez',
             gradeId: c.gradeId || '10',
             gradeName: c.gradeName || '1° Año Técnico',

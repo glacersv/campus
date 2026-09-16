@@ -105,7 +105,7 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* 1. Header Banner */}
+      {/* Header Banner */}
       <div className="card-crema p-6 md:p-8 relative overflow-hidden border border-slate-200 shadow-sm">
         <div
           className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl opacity-10 pointer-events-none"
@@ -201,7 +201,7 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
         </div>
       </div>
 
-      {/* 2. Navigation Tabs */}
+      {/* Navigation Tabs */}
       <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto">
         <button
           type="button"
@@ -218,7 +218,7 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
           className={`filter-pill ${activeTab === 'proyecto' ? 'filter-pill-active' : ''}`}
         >
           <Sparkles className="w-3.5 h-3.5" />
-          <span>Proyecto Anual ({currentProject?.academicYear || '2026'})</span>
+          <span>Proyecto de Módulo ({currentProject?.academicYear || '2026'})</span>
         </button>
 
         <button
@@ -269,7 +269,7 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
         )}
       </div>
 
-      {/* 3. TAB 1: 6 ETAPAS DE LA ACCIÓN COMPLETA */}
+      {/* TAB 1: 6 ETAPAS DE LA ACCIÓN COMPLETA */}
       {activeTab === 'etapas' && descriptor && (
         <div className="space-y-4">
           <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200 text-xs text-blue-900 flex items-center justify-between">
@@ -447,7 +447,7 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
         </div>
       )}
 
-      {/* 4. TAB 2: PROYECTO ANUAL ASIGNADO */}
+      {/* TAB 2: PROYECTO ANUAL ASIGNADO */}
       {activeTab === 'proyecto' && currentProject && (
         <div className="space-y-6">
           <div className="card-crema p-6 md:p-8 bg-gradient-to-br from-indigo-900 via-slate-900 to-blue-950 text-white rounded-3xl border border-indigo-700 shadow-lg relative overflow-hidden">
@@ -579,10 +579,9 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
         </div>
       )}
 
-      {/* 5. TAB 3: DESCRIPTOR TÉCNICO MINED */}
+      {/* TAB 3: DESCRIPTOR TÉCNICO MINED */}
       {activeTab === 'descriptor' && descriptor && (
         <div className="space-y-6" data-color-mode="light">
-          {/* If teacher has set a markdown descriptor, show it prominently */}
           {descriptor.markdownContent && (
             <div className="card-crema p-6 border border-[#0D71B9]/20 bg-gradient-to-br from-blue-50/60 to-white space-y-3 rounded-3xl shadow-sm">
               <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
@@ -727,7 +726,7 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
         </div>
       )}
 
-      {/* 5b. TAB: JORNALIZACIÓN */}
+      {/* TAB: JORNALIZACIÓN */}
       {activeTab === 'jornalizacion' && c.jornalizacion && (
         <div className="space-y-6">
           <div className="card-crema p-6 border border-slate-200 space-y-4 rounded-3xl shadow-sm">
@@ -773,7 +772,7 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
         </div>
       )}
 
-      {/* 6. TAB 4: SABERES PREVIOS Y NECESARIOS */}
+      {/* TAB 4: SABERES PREVIOS Y NECESARIOS */}
       {activeTab === 'saberes' && descriptor && (
         <div className="space-y-6">
           <div className="card-crema p-6 border border-slate-200 space-y-4">
@@ -875,7 +874,7 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
         </div>
       )}
 
-      {/* 7. TAB 5: ACTIVIDADES */}
+      {/* TAB 5: ACTIVIDADES */}
       {activeTab === 'actividades' && (
         <div className="space-y-3">
           {activities.length === 0 ? (
@@ -896,7 +895,7 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
         </div>
       )}
 
-      {/* 8. TAB 6: CALIFICACIONES Y RÚBRICA MINED */}
+      {/* TAB 6: CALIFICACIONES Y RÚBRICA MINED */}
       {activeTab === 'calificaciones' && (
         <div className="card-crema p-6 border border-slate-200 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">

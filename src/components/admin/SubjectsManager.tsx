@@ -381,7 +381,7 @@ export default function SubjectsManager() {
         name: moduleForm.name.trim(),
         code: moduleForm.code.trim(),
         subjectId: moduleForm.subjectId || moduleForm.code.toLowerCase().replace(/\s+/g, '-'),
-        teacherId: moduleForm.teacherId || 't_1786176116597',
+        teacherId: moduleForm.teacherId || 't1786176116597',
         teacherName: teacher?.name || moduleForm.teacherName || 'Giovanni Marquez',
         gradeId: moduleForm.gradeId,
         gradeName: grade?.name || moduleForm.gradeName || '',

@@ -156,9 +156,9 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course, onClick, index =
 
         {/* Project snippet if available */}
         {course.descriptor?.currentProject && (
-          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/60 mb-3 text-xs">
+          <div className="p-2.5 rounded-xl bg-indigo-50 border border-indigo-200/80 mb-3 text-xs">
             <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wide flex items-center gap-1">
-              <Sparkles className="w-3 h-3" /> Proyecto {course.descriptor.currentProject.academicYear}:
+              <Sparkles className="w-3 h-3" /> Proyecto de Módulo:
             </span>
             <p className="font-semibold text-slate-800 truncate mt-0.5">
               {course.descriptor.currentProject.title}
@@ -170,7 +170,9 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course, onClick, index =
         <div className="space-y-1.5 pt-2 border-t border-slate-100 text-xs text-slate-600">
           <div className="flex items-center gap-2">
             <Users className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span className="font-medium text-slate-700 truncate">{lmsService.getTeacherName(course.teacherId)}</span>
+            <span className="font-medium text-slate-700 truncate">
+              {lmsService.getTeacherName(course.teacherId, course.teacherName)}
+            </span>
           </div>
           {course.classroom && (
             <div className="flex items-center gap-2">

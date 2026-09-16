@@ -100,8 +100,8 @@ export default function WelcomeBanner({
       <div className="relative z-10 grid items-center gap-6 md:grid-cols-[1fr_auto]">
         <div className="max-w-2xl space-y-3">
           {badge && (
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/15 px-3 py-1 text-xs font-semibold text-amber-300 backdrop-blur-md">
-              <span className="h-2 w-2 animate-ping rounded-full bg-amber-400" />
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-amber-500 px-3 py-1 text-xs font-bold text-white shadow-lg shadow-amber-500/30">
+              <span className="h-2 w-2 animate-ping rounded-full bg-white" />
               {badge}
             </div>
           )}
@@ -111,7 +111,7 @@ export default function WelcomeBanner({
           </h2>
 
           {subtitle && (
-            <p className="text-sm leading-relaxed text-emerald-100/90">{subtitle}</p>
+            <p className="text-sm leading-relaxed text-white/90">{subtitle}</p>
           )}
 
           {showProfile && (

@@ -55,5 +55,12 @@
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.3"
+  },
+  "allowScripts": {
+    "@firebase/util@1.15.2": true,
+    "@google/genai": true,
+    "core-js@3.50.0": true,
+    "esbuild": true,
+    "protobufjs": true
   }
 }

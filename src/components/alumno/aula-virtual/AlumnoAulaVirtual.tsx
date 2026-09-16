@@ -44,7 +44,10 @@ export default function AlumnoAulaVirtual() {
       let activeY = lmsService.getActiveTechnicalYear();
       // Ensure the active year is in the allowed list for the student
       if (allowedYears.length > 0 && !allowedYears.includes(activeY)) {
-        activeY = (yearAccess.currentYear.toString() as TechnicalYear) || allowedYears[allowedYears.length - 1];
+        const currentTechnicalYear = String(yearAccess.currentYear) as TechnicalYear;
+        activeY = (allowedYears.includes(currentTechnicalYear)
+          ? currentTechnicalYear
+          : allowedYears[allowedYears.length - 1]) as TechnicalYear;
         lmsService.setActiveTechnicalYear(activeY);
       }
       setSelectedYear(activeY);
@@ -237,7 +240,7 @@ export default function AlumnoAulaVirtual() {
       </div>
 
       {/* 4. Metodología de las 6 Etapas de la Acción Completa Infographic */}
-      <div className="card-crema p-6 md:p-8 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white rounded-3xl border border-slate-700 shadow-xl overflow-hidden relative">
+      <div className="p-6 md:p-8 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white rounded-3xl border border-slate-700 shadow-xl overflow-hidden relative">
         <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 space-y-4">
