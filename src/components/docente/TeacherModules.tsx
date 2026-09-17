@@ -3,6 +3,8 @@ import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/fire
 import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { LMSModule } from '../../types';
+import { MapPin, Users } from 'lucide-react';
+import { lmsService } from '../../services/lmsService';
 import LMSModuleEditor from './LMSModuleEditor';
 
 export default function TeacherModules() {
@@ -88,6 +90,17 @@ export default function TeacherModules() {
                 <div className="flex flex-col">
                   <span className="font-bold text-slate-700 text-sm">{mod.weeks || 0} sem</span>
                   <span className="text-[10px] uppercase">Semanas</span>
+                </div>
+              </div>
+
+              <div className="space-y-1 text-xs text-slate-600 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100">
+                <div className="flex items-center gap-2">
+                  <Users className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <span className="truncate">Docente: <strong className="text-slate-700">{lmsService.getTeacherName(mod.teacherId, mod.teacherName)}</strong></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <span className="truncate">Salón: <strong className="text-slate-700">{mod.classroom || 'Sin salón asignado'}</strong></span>
                 </div>
               </div>
               

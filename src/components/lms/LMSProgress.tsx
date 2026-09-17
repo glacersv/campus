@@ -297,7 +297,7 @@ export const LMSProgress: React.FC<LMSProgressProps> = ({
                   <td className="py-3 px-3 font-mono font-bold text-slate-900">{c.code}</td>
                   <td className="py-3 px-3 font-semibold text-slate-800">{c.name}</td>
                   <td className="py-3 px-3 text-slate-500">{c.hours}h</td>
-                  <td className="py-3 px-3 text-slate-600">{lmsService.getTeacherName(c.teacherId)}</td>
+                  <td className="py-3 px-3 text-slate-600">{lmsService.getTeacherName(c.teacherId, c.teacherName)}</td>
                   <td className="py-3 px-3 text-center">
                     <span className="px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                       Nivel {c.minedLevel || 4}

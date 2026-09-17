@@ -27,6 +27,7 @@ import {
   BookOpen,
   Users,
   Clock,
+  MapPin,
   ArrowRight,
   Sparkles,
   CheckCircle2,
@@ -174,12 +175,12 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course, onClick, index =
               {lmsService.getTeacherName(course.teacherId, course.teacherName)}
             </span>
           </div>
-          {course.classroom && (
-            <div className="flex items-center gap-2">
-              <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <span className="text-slate-500 truncate">{course.classroom}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <span className="text-slate-500 truncate">
+              {course.classroom ? `Salón: ${course.classroom}` : 'Sin salón asignado'}
+            </span>
+          </div>
         </div>
       </div>
 

@@ -45,11 +45,44 @@ export const LMSCourseList: React.FC<LMSCourseListProps> = ({
   const [selectedAreaFilter, setSelectedAreaFilter] = useState<string>('all');
 
   useEffect(() => {
-    const loadCourses = () => {
-      setCourses(lmsService.getCourses());
+    const loadCourses = async () => {
+      // Primero intentar cargar directo de Firestore (datos reales de docentes/salones)
+      try {
+        const fresh = await lmsService.getAllModules();
+        setCourses(fresh.map(m => ({
+          id: m.id,
+          name: m.name,
+          code: m.code,
+          description: m.description || '',
+          technicalYear: m.technicalYear,
+          hours: m.hours,
+          weeks: m.weeks,
+          affineArea: m.affineArea || '',
+          color: m.color || '#0D71B9',
+          icon: m.icon || 'BookOpen',
+          teacherName: m.teacherName,
+          teacherId: m.teacherId || '',
+          classroom: m.classroom || '',
+          progress: m.progress || 0,
+          minedLevel: (m.minedLevel || 4) as import('../../types').MinedLevel,
+          averageGrade: m.averageGrade,
+          status: m.status as any,
+          gradeId: m.gradeId,
+          gradeName: m.gradeName,
+          sectionId: m.sectionId || '',
+          sectionName: m.sectionName || '',
+          subjectId: m.subjectId,
+          schedule: m.schedule || '',
+          descriptor: m.descriptor as any,
+          unitsCount: 6,
+          activitiesCount: 3,
+        })));
+      } catch {
+        setCourses(lmsService.getCourses());
+      }
     };
     loadCourses();
-    const unsub = lmsService.subscribe(loadCourses);
+    const unsub = lmsService.subscribe(() => loadCourses());
     return () => unsub();
   }, []);
 

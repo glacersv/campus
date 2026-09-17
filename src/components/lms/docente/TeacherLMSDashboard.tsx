@@ -6,7 +6,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { lmsService } from '../../../services/lmsService';
 import { LMSModule, LMSCourse } from '../../../types';
 import { BTV_GRAPHIC_DESIGN_COURSES } from '../../../services/btvCurriculumData';
-import { BookOpen, Plus, Calendar, Users, FileText, Edit, Trash2, GraduationCap, Filter } from 'lucide-react';
+import { BookOpen, Plus, Calendar, Users, FileText, Edit, Trash2, GraduationCap, Filter, MapPin } from 'lucide-react';
 
 export default function TeacherLMSDashboard() {
   const { userProfile } = useAuth();
@@ -179,15 +179,21 @@ export default function TeacherLMSDashboard() {
               </h3>
               <p className="text-xs text-slate-500 mb-4">{mod.code} • {mod.gradeName}</p>
 
-              <div className="flex items-center gap-3 text-[11px] text-slate-500 mb-4">
+              <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 mb-4">
                 <span className="flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-slate-100 shadow-sm">
                   <Calendar className="w-3.5 h-3.5 text-primary" />
                   {mod.hours}h / {mod.weeks} sem
                 </span>
                 <span className="flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-slate-100 shadow-sm truncate">
                   <Users className="w-3.5 h-3.5 text-blue-500" />
-                  <span className="truncate">{lmsService.getTeacherName(mod.teacherId)}</span>
+                  <span className="truncate">{lmsService.getTeacherName(mod.teacherId, mod.teacherName)}</span>
                 </span>
+                {mod.classroom && (
+                  <span className="flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-slate-100 shadow-sm truncate">
+                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                    <span className="truncate">{mod.classroom}</span>
+                  </span>
+                )}
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex items-center gap-2 mt-auto">

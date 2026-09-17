@@ -154,7 +154,7 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
               <div className="flex flex-wrap items-center gap-4 pt-2 text-xs text-slate-600 font-medium">
                 <div className="flex items-center gap-1.5">
                   <UserCheck className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Docente: <strong>{lmsService.getTeacherName(c.teacherId)}</strong></span>
+                  <span>Docente: <strong>{lmsService.getTeacherName(c.teacherId, c.teacherName)}</strong></span>
                 </div>
                 {c.schedule && (
                   <div className="flex items-center gap-1.5">
@@ -162,12 +162,10 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
                     <span>{c.schedule}</span>
                   </div>
                 )}
-                {c.classroom && (
-                  <div className="flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{c.classroom}</span>
-                  </div>
-                )}
+                <div className="flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Salón: <strong>{c.classroom || 'Sin salón asignado'}</strong></span>
+                </div>
               </div>
             </div>
           </div>
@@ -270,24 +268,35 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
       </div>
 
       {/* TAB 1: 6 ETAPAS DE LA ACCIÓN COMPLETA */}
-      {activeTab === 'etapas' && descriptor && (
+      {activeTab === 'etapas' && (
         <div className="space-y-4">
-          <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200 text-xs text-blue-900 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <Layers className="w-4 h-4 text-blue-600 shrink-0" />
-              <span>
-                <strong>Metodología de Proyecto Orientada a la Acción:</strong> El desarrollo del módulo se divide en 6 etapas secuenciales con distribución horaria normativa.
-              </span>
+          {(!descriptor?.actionStages || Object.keys(descriptor.actionStages).length < 6) ? (
+            <div className="card-crema p-10 text-center border border-slate-200">
+              <Layers className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+              <h3 className="font-display font-bold text-slate-800 text-lg">Etapas no disponibles</h3>
+              <p className="text-xs text-slate-500 mt-1 mb-4">
+                Las 6 etapas de la Acción Completa para este módulo aún no han sido configuradas en la malla curricular.
+              </p>
+              <p className="text-[10px] text-slate-400">Contacta al coordinador técnico para completar el descriptor.</p>
             </div>
-            <span className="font-bold text-blue-700 bg-white px-2.5 py-1 rounded-lg border border-blue-200 shadow-2xs shrink-0">
-              Total: {c.hours} Horas
-            </span>
-          </div>
+          ) : (
+            <>
+              <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200 text-xs text-blue-900 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <Layers className="w-4 h-4 text-blue-600 shrink-0" />
+                  <span>
+                    <strong>Metodología de Proyecto Orientada a la Acción:</strong> El desarrollo del módulo se divide en 6 etapas secuenciales con distribución horaria normativa.
+                  </span>
+                </div>
+                <span className="font-bold text-blue-700 bg-white px-2.5 py-1 rounded-lg border border-blue-200 shadow-2xs shrink-0">
+                  Total: {c.hours} Horas
+                </span>
+              </div>
 
-          <div className="space-y-3">
-            {(['informar', 'planificar', 'decidir', 'ejecutar', 'controlar', 'valorar'] as ActionStageKey[]).map((stageKey, idx) => {
-              const stage = descriptor.actionStages?.[stageKey];
-              if (!stage) return null;
+              <div className="space-y-3">
+                {(['informar', 'planificar', 'decidir', 'ejecutar', 'controlar', 'valorar'] as ActionStageKey[]).map((stageKey, idx) => {
+                  const stage = descriptor.actionStages?.[stageKey];
+                  if (!stage) return null;
               const isExpanded = expandedStage === stageKey;
               const stageActs = activities.filter((a) => a.stageKey === stageKey);
               const stageHours = Math.round((c.hours * (stage.hoursPercentage || 10)) / 100);
@@ -444,12 +453,33 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
               );
             })}
           </div>
+            </>
+          )}
         </div>
       )}
 
       {/* TAB 2: PROYECTO ANUAL ASIGNADO */}
-      {activeTab === 'proyecto' && currentProject && (
+      {activeTab === 'proyecto' && (
         <div className="space-y-6">
+          {!currentProject ? (
+            <div className="card-crema p-10 text-center border border-slate-200">
+              <Sparkles className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+              <h3 className="font-display font-bold text-slate-800 text-lg">Proyecto no asignado</h3>
+              <p className="text-xs text-slate-500 mt-1 mb-4">
+                Aún no se ha asignado un Proyecto Integrador de Módulo para este ciclo lectivo.
+              </p>
+              {!isStudent && (
+                <button
+                  type="button"
+                  onClick={handleGenerateNewProject}
+                  className="btn-primary text-xs"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 inline mr-1.5" />
+                  Generar Proyecto Ahora
+                </button>
+              )}
+            </div>
+          ) : (<>
           <div className="card-crema p-6 md:p-8 bg-gradient-to-br from-indigo-900 via-slate-900 to-blue-950 text-white rounded-3xl border border-indigo-700 shadow-lg relative overflow-hidden">
             <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -576,6 +606,8 @@ export const LMSCourseDetail: React.FC<LMSCourseDetailProps> = ({
               </ul>
             </div>
           </div>
+          </>
+          )}
         </div>
       )}
 

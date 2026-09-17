@@ -258,6 +258,8 @@ class LMSService {
   private unsubscribeFirestore?: Unsubscribe;
   private teachersCache: Map<string, string> = new Map(); // teacherId -> teacherName
   private currentUserRole: string | null = null;
+  private buildingsCache: Map<string, { name: string; code: string }> = new Map(); // buildingId -> {name, code}
+  private sectionsCache: Map<string, { buildingId?: string; gradeId?: string }> = new Map(); // sectionId -> {buildingId, gradeId}
 
   constructor() {
     this.init();
@@ -376,7 +378,9 @@ class LMSService {
       }
     );
 
-    this.loadTeachersFromFirebase();
+      this.loadTeachersFromFirebase();
+      this.loadBuildingsAndSections();
+      this.syncCoursesFromFirestoreModules();
   }
 
   private async loadTeachersFromFirebase() {
@@ -385,21 +389,188 @@ class LMSService {
       this.teachersCache.clear();
       snap.docs.forEach((d) => {
         const data = d.data();
-        if (data.name) {
-          this.teachersCache.set(d.id, data.name);
-          this.teachersCache.set(data.name.toLowerCase(), data.name);
+        const teacherName = data.name || data.displayName;
+        if (teacherName) {
+          this.teachersCache.set(d.id, teacherName);
+          this.teachersCache.set(d.id.toLowerCase(), teacherName);
+          this.teachersCache.set(teacherName.toLowerCase(), teacherName);
           const idParts = d.id.toLowerCase().split('-');
           if (idParts.length > 1) {
-            this.teachersCache.set(idParts[idParts.length - 1], data.name);
+            this.teachersCache.set(idParts[idParts.length - 1], teacherName);
+          }
+          if (data.id) {
+            this.teachersCache.set(String(data.id), teacherName);
+            this.teachersCache.set(String(data.id).toLowerCase(), teacherName);
+            const dataParts = String(data.id).toLowerCase().split('-');
+            if (dataParts.length > 1) {
+              this.teachersCache.set(dataParts[dataParts.length - 1], teacherName);
+            }
+          }
+          if (data.email) {
+            this.teachersCache.set(String(data.email).toLowerCase(), teacherName);
           }
         }
       });
+
+      // También indexar usuarios docentes de la colección users
+      try {
+        const usersSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'docente')));
+        usersSnap.docs.forEach((d) => {
+          const uData = d.data();
+          const uName = uData.displayName || uData.name;
+          if (uName) {
+            this.teachersCache.set(d.id, uName);
+            this.teachersCache.set(d.id.toLowerCase(), uName);
+            this.teachersCache.set(uName.toLowerCase(), uName);
+            if (uData.teacherId) {
+              this.teachersCache.set(String(uData.teacherId), uName);
+              this.teachersCache.set(String(uData.teacherId).toLowerCase(), uName);
+            }
+            if (uData.email) {
+              this.teachersCache.set(String(uData.email).toLowerCase(), uName);
+            }
+          }
+        });
+      } catch (_) {}
+
       console.log('📚 Docentes cargados desde Firebase:', Object.fromEntries(this.teachersCache));
       // Resolver nombres en los cursos existentes y notificar cambio
       this.resolveTeacherNames();
       this.notify();
     } catch (e) {
       console.error('Error loading teachers from Firebase:', e);
+    }
+  }
+
+  private async loadBuildingsAndSections() {
+    try {
+      const [buildingsSnap, sectionsSnap] = await Promise.all([
+        getDocs(collection(db, 'buildings')),
+        getDocs(collection(db, 'sections')),
+      ]);
+
+      this.buildingsCache.clear();
+      buildingsSnap.docs.forEach((d) => {
+        const data = d.data();
+        this.buildingsCache.set(d.id, { name: data.name || data.code, code: data.code || d.id });
+      });
+
+      this.sectionsCache.clear();
+      sectionsSnap.docs.forEach((d) => {
+        const data = d.data();
+        const secData = { buildingId: data.buildingId, gradeId: data.gradeId };
+        this.sectionsCache.set(d.id, secData);
+        // También indexar por gradeId para búsqueda directa
+        if (data.gradeId) {
+          this.sectionsCache.set(data.gradeId, secData);
+        }
+      });
+
+      console.log('🏢 Edificios cargados:', Object.fromEntries(this.buildingsCache));
+    } catch (e) {
+      console.warn('No se pudieron cargar edificios/secciones:', e);
+    }
+  }
+
+  /** Asegurar que los caches de edificios/secciones estén cargados */
+  private buildingsLoaded = false;
+  private async ensureBuildingsLoaded() {
+    if (this.buildingsLoaded && this.buildingsCache.size > 0) return;
+    await this.loadBuildingsAndSections();
+    this.buildingsLoaded = true;
+  }
+
+  /** Mapea gradeId del currículum BTV ('10','11','12') al gradeId real de Firestore ('10t','11t','12t') */
+  private mapBtvGradeId(gradeId?: string): string {
+    if (!gradeId) return '11t';
+    const map: Record<string, string> = { '10': '10t', '11': '11t', '12': '12t' };
+    return map[gradeId] || gradeId;
+  }
+
+  /** Resuelve el salón/aula según el edificio asignado al grado/sección en el admin */
+  public resolveClassroom(gradeId?: string, sectionId?: string, fallback?: string): string {
+    if (fallback && fallback.trim() && fallback !== 'Sin salón asignado') return fallback;
+
+    const mappedGradeId = this.mapBtvGradeId(gradeId);
+
+    // 1. Buscar por sectionId directo
+    if (sectionId) {
+      const sec = this.sectionsCache.get(sectionId);
+      if (sec?.buildingId) {
+        const building = this.buildingsCache.get(sec.buildingId);
+        if (building) return building.name;
+      }
+    }
+
+    // 2. Buscar por gradeId mapeado (ej: '11t')
+    const secByGrade = this.sectionsCache.get(mappedGradeId);
+    if (secByGrade?.buildingId) {
+      const building = this.buildingsCache.get(secByGrade.buildingId);
+      if (building) return building.name;
+    }
+
+    // 3. Buscar iterando todas las secciones por gradeId
+    for (const [, sec] of this.sectionsCache) {
+      if (sec.gradeId === mappedGradeId && sec.buildingId) {
+        const building = this.buildingsCache.get(sec.buildingId);
+        if (building) return building.name;
+      }
+    }
+
+    return fallback || 'Sin salón asignado';
+  }
+
+  /** Sincroniza los cursos locales con los datos reales de lms_modules en Firestore */
+  private async syncCoursesFromFirestoreModules() {
+    try {
+      const snap = await getDocs(collection(db, LMS_MODULES_COLLECTION));
+      if (snap.empty) return;
+
+      const modulesByCode = new Map<string, any>();
+      snap.docs.forEach((d) => {
+        const data = d.data();
+        if (data.code) modulesByCode.set(data.code, data);
+        if (data.id) modulesByCode.set(data.id, data);
+      });
+
+      let changed = false;
+      this.state.courses.forEach((c) => {
+        const firestoreModule = modulesByCode.get(c.code) || modulesByCode.get(c.id);
+        if (firestoreModule) {
+          if (firestoreModule.teacherId && firestoreModule.teacherId !== c.teacherId) {
+            c.teacherId = firestoreModule.teacherId;
+            changed = true;
+          }
+          if (firestoreModule.teacherName && firestoreModule.teacherName !== c.teacherName) {
+            c.teacherName = firestoreModule.teacherName;
+            changed = true;
+          }
+          if (firestoreModule.classroom && firestoreModule.classroom !== c.classroom) {
+            c.classroom = firestoreModule.classroom;
+            changed = true;
+          }
+          if (firestoreModule.gradeId && firestoreModule.gradeId !== c.gradeId) {
+            c.gradeId = firestoreModule.gradeId;
+            changed = true;
+          }
+          if (firestoreModule.gradeName && firestoreModule.gradeName !== c.gradeName) {
+            c.gradeName = firestoreModule.gradeName;
+            changed = true;
+          }
+          if (firestoreModule.descriptor) {
+            c.descriptor = firestoreModule.descriptor as any;
+            changed = true;
+          }
+        }
+      });
+
+      if (changed) {
+        this.resolveTeacherNames();
+        this.saveToLocalStorage();
+        this.notify();
+      }
+    } catch (e) {
+      console.warn('No se pudieron sincronizar cursos con lms_modules:', e);
     }
   }
 
@@ -412,29 +583,43 @@ class LMSService {
 
   /** Obtiene el nombre del docente desde Firebase (siempre fresco) */
   public getTeacherName(teacherId?: string, fallback?: string): string {
-    if (!teacherId) return fallback || 'Sin docente asignado';
-    const fromCache = this.teachersCache.get(teacherId);
-    if (fromCache) return fromCache;
-    // Fallback: buscar por última parte del ID
-    const parts = teacherId.toLowerCase().split('-');
-    const lastPart = parts[parts.length - 1];
-    return this.teachersCache.get(lastPart) || fallback || 'Sin docente asignado';
+    if (teacherId) {
+      const fromCache = this.teachersCache.get(teacherId);
+      if (fromCache) return fromCache;
+      const fromCacheLower = this.teachersCache.get(teacherId.toLowerCase());
+      if (fromCacheLower) return fromCacheLower;
+      // Fallback: buscar por última parte del ID
+      const parts = teacherId.toLowerCase().split('-');
+      const lastPart = parts[parts.length - 1];
+      const fromPart = this.teachersCache.get(lastPart);
+      if (fromPart) return fromPart;
+    }
+    // Si hay fallback (nombre directo que viene del curso/módulo)
+    if (fallback && fallback.trim()) {
+      const byName = this.teachersCache.get(fallback.toLowerCase().trim());
+      return byName || fallback;
+    }
+    return 'Sin docente asignado';
   }
 
   public resolveTeacherName(teacherId?: string, fallback?: string): string | undefined {
-    if (!teacherId) return fallback;
-    // 1. Buscar por ID exacto
-    const byId = this.teachersCache.get(teacherId);
-    if (byId) return byId;
-    // 2. Buscar por última parte del ID (ej: 'doc-karla' -> 'karla')
-    const parts = teacherId.toLowerCase().split('-');
-    const lastPart = parts[parts.length - 1];
-    const byPart = this.teachersCache.get(lastPart);
-    if (byPart) return byPart;
+    if (teacherId) {
+      // 1. Buscar por ID exacto
+      const byId = this.teachersCache.get(teacherId);
+      if (byId) return byId;
+      const byIdLower = this.teachersCache.get(teacherId.toLowerCase());
+      if (byIdLower) return byIdLower;
+      // 2. Buscar por última parte del ID (ej: 'doc-karla' -> 'karla')
+      const parts = teacherId.toLowerCase().split('-');
+      const lastPart = parts[parts.length - 1];
+      const byPart = this.teachersCache.get(lastPart);
+      if (byPart) return byPart;
+    }
     // 3. Buscar por nombre exacto en el cache
-    if (fallback) {
-      const byName = this.teachersCache.get(fallback.toLowerCase());
+    if (fallback && fallback.trim()) {
+      const byName = this.teachersCache.get(fallback.toLowerCase().trim());
       if (byName) return byName;
+      return fallback;
     }
     return fallback;
   }
@@ -584,16 +769,50 @@ class LMSService {
   // COURSES / MÓDULOS TÉCNICOS
   // ==========================================
   public getCourses(yearFilter?: TechnicalYear): LMSCourse[] {
-    if (yearFilter) {
-      return this.state.courses.filter((c) => c.technicalYear === yearFilter);
-    }
-    return this.state.courses;
+    const courses = yearFilter
+      ? this.state.courses.filter((c) => c.technicalYear === yearFilter)
+      : this.state.courses;
+
+    // Siempre resolver docente + completar descriptor (proyecto, etapas) desde malla oficial
+    return courses.map((c) => {
+      const resolved = this.resolveTeacherName(c.teacherId, c.teacherName);
+      const course = (resolved && resolved !== c.teacherName) ? { ...c, teacherName: resolved } : { ...c };
+
+      // Completar descriptor si tiene proyecto genérico o incompleto
+      if (course.descriptor) {
+        const d = course.descriptor as any;
+        if (!d.currentProject || !d.currentProject.title || d.currentProject.title === 'Proyecto de Módulo') {
+          const official = getModuleDescriptorData(course.code);
+          if (official.currentProject) d.currentProject = official.currentProject;
+        }
+        const hasActionStages = d.actionStages && typeof d.actionStages === 'object' && Object.keys(d.actionStages).length >= 6;
+        if (!hasActionStages) {
+          const official = getModuleDescriptorData(course.code);
+          d.actionStages = official.actionStages;
+        }
+      } else {
+        course.descriptor = getModuleDescriptorData(course.code);
+      }
+
+      return course;
+    });
   }
 
   public getCourseById(courseId: string): LMSCourse | undefined {
     const c = this.state.courses.find((x) => x.id === courseId || x.code === courseId);
-    if (c && !c.descriptor) {
-      c.descriptor = getModuleDescriptorData(c.code);
+    if (c) {
+      if (!c.descriptor) {
+        c.descriptor = getModuleDescriptorData(c.code);
+      } else {
+        const official = getModuleDescriptorData(c.code);
+        const hasActionStages = c.descriptor.actionStages && typeof c.descriptor.actionStages === 'object' && Object.keys(c.descriptor.actionStages).length >= 6;
+        if (!hasActionStages) {
+          c.descriptor.actionStages = official.actionStages;
+        }
+        if (!c.descriptor.currentProject || !c.descriptor.currentProject.title) {
+          c.descriptor.currentProject = official.currentProject;
+        }
+      }
     }
     return c;
   }
@@ -1145,48 +1364,110 @@ class LMSService {
   public async getModulesByTeacher(teacherId: string): Promise<LMSModule[]> {
     const q = query(collection(db, LMS_MODULES_COLLECTION), where('teacherId', '==', teacherId));
     const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() } as LMSModule));
+    return snap.docs.map(d => this.enrichModule({ id: d.id, ...d.data() } as LMSModule));
+  }
+
+  /** Enriquece un módulo cargado desde Firestore con datos resueltos (docente, salón, descriptor completo) */
+  private enrichModule(module: LMSModule): LMSModule {
+    // Resolver nombre de docente SOLO si el teacherId existe en el cache
+    // Si no, conservar el teacherName que ya viene del módulo en Firestore
+    if (module.teacherId) {
+      const fromCache = this.teachersCache.get(module.teacherId)
+        || this.teachersCache.get(module.teacherId.toLowerCase())
+        || this.teachersCache.get((module.teacherId.toLowerCase().split('-').pop() || ''));
+      if (fromCache) {
+        module.teacherName = fromCache;
+      }
+    }
+
+    // Resolver salón: SIEMPRE intentar desde edificio del admin, preservar el de Firestore si no hay match
+    const resolvedClassroom = this.resolveClassroom(module.gradeId, module.sectionId, '');
+    if (resolvedClassroom && resolvedClassroom !== 'Sin salón asignado') {
+      module.classroom = resolvedClassroom;
+    }
+
+    // Siempre completar el descriptor desde la malla oficial
+    const officialDescriptor = getModuleDescriptorData(module.code);
+    if (!module.descriptor || Object.keys(module.descriptor).length === 0) {
+      module.descriptor = officialDescriptor;
+    } else {
+      const d = module.descriptor as any;
+      const o = officialDescriptor as any;
+      for (const key of Object.keys(o)) {
+        if (d[key] === undefined || d[key] === null || d[key] === '' || d[key] === 0) {
+          d[key] = o[key];
+        }
+      }
+      const hasActionStages = d.actionStages && typeof d.actionStages === 'object' && Object.keys(d.actionStages).length >= 6;
+      if (!hasActionStages) {
+        d.actionStages = o.actionStages;
+      }
+      if (!d.currentProject || !d.currentProject.title) {
+        d.currentProject = o.currentProject;
+      }
+      if (!d.saberesPrevios || d.saberesPrevios.length === 0) {
+        d.saberesPrevios = o.saberesPrevios;
+      }
+      if (!d.saberesNecesarios || d.saberesNecesarios.length === 0) {
+        d.saberesNecesarios = o.saberesNecesarios;
+      }
+    }
+
+    return module;
   }
 
   public async getAllModules(): Promise<LMSModule[]> {
-    const snap = await getDocs(collection(db, LMS_MODULES_COLLECTION));
-    const modules = snap.docs.map(d => ({ id: d.id, ...d.data() } as LMSModule));
+    // Asegurar que edificios y secciones estén cargados para resolver salones
+    await this.ensureBuildingsLoaded();
 
+    const snap = await getDocs(collection(db, LMS_MODULES_COLLECTION));
+    let modules = snap.docs.map(d => this.enrichModule({ id: d.id, ...d.data() } as LMSModule));
+
+    // Si lms_modules está vacío, sembrar desde BTV_GRAPHIC_DESIGN_COURSES
     if (modules.length === 0) {
+      console.log('📦 lms_modules vacío, sembrando desde BTV_GRAPHIC_DESIGN_COURSES...');
+      modules = BTV_GRAPHIC_DESIGN_COURSES.map((c) => {
+        const module: LMSModule = {
+          id: `lms-mod-${c.id}`,
+          name: c.name,
+          code: c.code,
+          subjectId: c.subjectId,
+          teacherId: c.teacherId,
+          teacherName: c.teacherName,
+          gradeId: c.gradeId || '11t',
+          gradeName: c.gradeName || '1° Año Bachillerato Técnico',
+          sectionId: c.sectionId || '11ta',
+          sectionName: c.sectionName || 'A',
+          technicalYear: c.technicalYear,
+          hours: c.hours,
+          weeks: c.weeks,
+          status: c.status === 'active' ? 'active' : 'inactive',
+          description: c.description || '',
+          icon: c.icon,
+          color: c.color,
+          affineArea: c.affineArea || '',
+          schedule: c.schedule || '',
+          classroom: c.classroom || '',
+          progress: c.progress ?? 0,
+          averageGrade: c.averageGrade,
+          minedLevel: c.minedLevel,
+          descriptor: c.descriptor || getModuleDescriptorData(c.code),
+          createdAt: c.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        return this.enrichModule(module);
+      });
+
+      // Guardar en Firestore para que下次 no haga fallback
       try {
-        const stateSnap = await getDoc(LMS_DOC_REF);
-        if (stateSnap.exists()) {
-          const stateData = stateSnap.data() as any;
-          const courses = (stateData?.courses || []) as any[];
-          return courses.map((c) => ({
-            id: c.id,
-            name: c.name,
-            code: c.code,
-            subjectId: c.subjectId || c.code.toLowerCase().replace(/\s+/g, '-'),
-            teacherId: c.teacherId || 't1786176116597',
-            teacherName: c.teacherName || 'Giovanni Marquez',
-            gradeId: c.gradeId || '10',
-            gradeName: c.gradeName || '1° Año Técnico',
-            technicalYear: c.technicalYear || '1',
-            hours: c.hours || 72,
-            weeks: c.weeks || 4,
-            status: c.status || 'active',
-            description: c.description || '',
-            icon: c.icon || 'BookOpen',
-            color: c.color || '#0D71B9',
-            affineArea: c.affineArea || '',
-            schedule: c.schedule || '',
-            classroom: c.classroom || '',
-            sectionId: c.sectionId || '',
-            sectionName: c.sectionName || '',
-            progress: c.progress ?? 0,
-            averageGrade: c.averageGrade,
-            minedLevel: c.minedLevel,
-            descriptor: c.descriptor || getModuleDescriptorData(c.code),
-          } as LMSModule));
-        }
+        const batch = modules.map((m) => {
+          const ref = doc(db, LMS_MODULES_COLLECTION, m.id);
+          return setDoc(ref, m);
+        });
+        await Promise.all(batch);
+        console.log('✅ lms_modules sembrado con', modules.length, 'módulos');
       } catch (e) {
-        console.error('Error loading modules from lms_state fallback:', e);
+        console.warn('No se pudo sembrar lms_modules:', e);
       }
     }
 
@@ -1194,16 +1475,33 @@ class LMSService {
   }
 
   public async getModuleById(moduleId: string): Promise<LMSModule | null> {
-    // 1. Try Firestore first
+    // Asegurar que edificios y secciones estén cargados para resolver salones
+    await this.ensureBuildingsLoaded();
+
+    // 1. Try Firestore first (both direct ID and lms-mod- prefix)
     try {
-      const ref = doc(db, LMS_MODULES_COLLECTION, moduleId);
-      const snap = await getDoc(ref);
+      let ref = doc(db, LMS_MODULES_COLLECTION, moduleId);
+      let snap = await getDoc(ref);
+      if (!snap.exists() && !moduleId.startsWith('lms-mod-')) {
+        ref = doc(db, LMS_MODULES_COLLECTION, `lms-mod-${moduleId}`);
+        snap = await getDoc(ref);
+      }
+
       if (snap.exists()) {
         const module = { id: snap.id, ...snap.data() } as LMSModule;
-        if (!module.descriptor || Object.keys(module.descriptor).length === 0) {
-          module.descriptor = getModuleDescriptorData(module.code);
+        // Buscar datos oficiales de respaldo para asegurar campos esenciales
+        const fallbackCourse = BTV_GRAPHIC_DESIGN_COURSES.find(
+          (c) => c.code === module.code || c.id === moduleId || `lms-mod-${c.id}` === snap.id
+        );
+        if (fallbackCourse) {
+          if (!module.teacherName || module.teacherName === 'Sin docente asignado') module.teacherName = fallbackCourse.teacherName;
+          if (!module.teacherId) module.teacherId = fallbackCourse.teacherId;
+          if (!module.schedule) module.schedule = fallbackCourse.schedule;
+          if (!module.color) module.color = fallbackCourse.color;
+          if (!module.gradeName) module.gradeName = fallbackCourse.gradeName;
+          if (!module.gradeId) module.gradeId = fallbackCourse.gradeId;
         }
-        return module;
+        return this.enrichModule(module);
       }
     } catch (e) {
       console.error('Error loading module from Firestore:', e);
@@ -1212,7 +1510,7 @@ class LMSService {
     // 2. Fallback: search local state (courses seeded from btvCurriculumData)
     const course = this.state.courses.find((c) => c.id === moduleId || c.code === moduleId);
     if (course) {
-      return {
+      const module: LMSModule = {
         id: course.id,
         name: course.name,
         code: course.code,
@@ -1240,6 +1538,7 @@ class LMSService {
         createdAt: course.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       } as LMSModule;
+      return this.enrichModule(module);
     }
 
     return null;

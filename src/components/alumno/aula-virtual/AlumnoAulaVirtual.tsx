@@ -40,7 +40,7 @@ export default function AlumnoAulaVirtual() {
   const allowedYears = yearAccess.allowedYears; // e.g. ['1'] or ['1', '2'] or ['1', '2', '3']
 
   useEffect(() => {
-    const loadData = () => {
+    const loadData = async () => {
       let activeY = lmsService.getActiveTechnicalYear();
       // Ensure the active year is in the allowed list for the student
       if (allowedYears.length > 0 && !allowedYears.includes(activeY)) {
@@ -51,23 +51,98 @@ export default function AlumnoAulaVirtual() {
         lmsService.setActiveTechnicalYear(activeY);
       }
       setSelectedYear(activeY);
-      setCourses(lmsService.getCourses(activeY));
+
+      // Cargar desde Firestore para tener datos reales de docentes/salones
+      try {
+        const allModules = await lmsService.getAllModules();
+        const filtered = allModules
+          .filter(m => m.technicalYear === activeY && m.status === 'active')
+          .map(m => ({
+            id: m.id,
+            name: m.name,
+            code: m.code,
+            description: m.description || '',
+            technicalYear: m.technicalYear,
+            hours: m.hours,
+            weeks: m.weeks,
+            affineArea: m.affineArea || '',
+            color: m.color || '#0D71B9',
+            icon: m.icon || 'BookOpen',
+            teacherName: m.teacherName,
+            teacherId: m.teacherId || '',
+            classroom: m.classroom || '',
+            progress: m.progress || 0,
+            minedLevel: (m.minedLevel || 4) as any,
+            averageGrade: m.averageGrade,
+            status: m.status as any,
+            gradeId: m.gradeId,
+            gradeName: m.gradeName,
+            sectionId: m.sectionId || '',
+            sectionName: m.sectionName || '',
+            subjectId: m.subjectId,
+            schedule: m.schedule || '',
+            descriptor: m.descriptor as any,
+            unitsCount: 6,
+            activitiesCount: 3,
+          }));
+        setCourses(filtered as any);
+      } catch {
+        setCourses(lmsService.getCourses(activeY));
+      }
+
       setActivities(lmsService.getActivities(undefined, activeY));
       setSummary(lmsService.getStudentSummary(activeY));
     };
 
     loadData();
-    const unsubscribe = lmsService.subscribe(loadData);
+    const unsubscribe = lmsService.subscribe(() => loadData());
     return () => unsubscribe();
   }, [userProfile?.gradeId, userProfile?.studentId]);
 
-  const handleYearChange = (year: TechnicalYear) => {
+  const handleYearChange = async (year: TechnicalYear) => {
     if (allowedYears.length > 0 && !allowedYears.includes(year)) {
       return; // Not allowed to access future year
     }
     setSelectedYear(year);
     lmsService.setActiveTechnicalYear(year);
-    setCourses(lmsService.getCourses(year));
+
+    try {
+      const allModules = await lmsService.getAllModules();
+      const filtered = allModules
+        .filter(m => m.technicalYear === year && m.status === 'active')
+        .map(m => ({
+          id: m.id,
+          name: m.name,
+          code: m.code,
+          description: m.description || '',
+          technicalYear: m.technicalYear,
+          hours: m.hours,
+          weeks: m.weeks,
+          affineArea: m.affineArea || '',
+          color: m.color || '#0D71B9',
+          icon: m.icon || 'BookOpen',
+          teacherName: m.teacherName,
+          teacherId: m.teacherId || '',
+          classroom: m.classroom || '',
+          progress: m.progress || 0,
+          minedLevel: (m.minedLevel || 4) as any,
+          averageGrade: m.averageGrade,
+          status: m.status as any,
+          gradeId: m.gradeId,
+          gradeName: m.gradeName,
+          sectionId: m.sectionId || '',
+          sectionName: m.sectionName || '',
+          subjectId: m.subjectId,
+          schedule: m.schedule || '',
+          descriptor: m.descriptor as any,
+          unitsCount: 6,
+          activitiesCount: 3,
+        }));
+      setCourses(filtered as any);
+    } catch {
+      setCourses(lmsService.getCourses(year));
+    }
+
     setActivities(lmsService.getActivities(undefined, year));
     setSummary(lmsService.getStudentSummary(year));
   };
