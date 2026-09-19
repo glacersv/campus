@@ -1,305 +1,257 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
+import React, { useEffect, useState } from 'react';
+import { motion } from 'motion/react';
+import {
+  BookOpen,
+  Users,
+  Medal,
+  ClipboardCheck,
+  TrendingUp,
+  CheckCircle2,
+  AlertTriangle,
+  ArrowUpRight
+} from 'lucide-react';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
-import { LMSModule, ModuloCronograma, StageJornalizacionItem } from '../../types';
-import { formatDateSpanish } from '../../utils/jornalizacionHelper';
-import { getTeacher } from '../../lib/firestore';
-import { isTeacherBTVByGrade } from '../../utils/isBTVTeacher';
-import { toast } from 'sonner';
-import { 
-  Calendar, Clock, CheckCircle2, Play, Pause, 
-  ChevronRight, AlertTriangle, BookOpen, Target,
-  TrendingUp, Award, FileText, ClipboardList
-} from 'lucide-react';
+import ModuleGridDashboard from '../shared/ModuleGridDashboard';
+import WelcomeBanner from '../shared/WelcomeBanner';
 
-interface TodayTask {
-  moduleId: string;
-  moduleCode: string;
-  moduleName: string;
-  moduleColor: string;
-  stage: StageJornalizacionItem | null;
-  stageIndex: number;
-  status: 'hoy' | 'proximo' | 'atrasado';
+interface DocenteStats {
+  gruposAsignados: number;
+  totalAlumnos: number;
+  proyectosActivos: number;
+  formacionesPendientes: number;
+}
+
+interface ProyectoCount {
+  grado: string;
+  seccion: string;
+  count: number;
 }
 
 export default function DocenteDashboard() {
-  const { userProfile } = useAuth();
-  const navigate = useNavigate();
-  const [modules, setModules] = useState<LMSModule[]>([]);
+  const { userProfile, firebaseUser } = useAuth();
+  const [stats, setStats] = useState<DocenteStats>({
+    gruposAsignados: 0,
+    totalAlumnos: 0,
+    proyectosActivos: 0,
+    formacionesPendientes: 0
+  });
+  const [proyectosPorGrado, setProyectosPorGrado] = useState<ProyectoCount[]>([]);
   const [loading, setLoading] = useState(true);
-  const [todayTasks, setTodayTasks] = useState<TodayTask[]>([]);
-  const [isBTV, setIsBTV] = useState(false);
 
   useEffect(() => {
-    loadModules();
-  }, []);
+    if (!firebaseUser) return;
 
-  useEffect(() => {
-    const checkBTV = async () => {
-      try {
-        let teacher = userProfile?.teacherId ? await getTeacher(userProfile.teacherId) : null;
-        if (!teacher && userProfile?.email) {
-          const { getTeacherByEmail } = await import('../../lib/firestore');
-          teacher = await getTeacherByEmail(userProfile.email);
-        }
-        setIsBTV(isTeacherBTVByGrade(teacher));
-      } catch (err) {
-        console.error('Error checking BTV status:', err);
-      }
-    };
-    checkBTV();
-  }, [userProfile?.teacherId, userProfile?.email]);
+    // Escuchar proyectos asignados al docente
+    const q = query(
+      collection(db, 'proyectos'),
+      where('estado', 'in', ['registrado', 'en_revision_materia', 'aprobado_materia'])
+    );
 
-  const loadModules = async () => {
-    setLoading(true);
-    try {
-      const q = query(collection(db, 'lms_modules'));
-      const snap = await getDocs(q);
-      const allMods = snap.docs.map(d => ({ id: d.id, ...d.data() } as LMSModule));
-      setModules(allMods);
-      calculateTodayTasks(allMods);
-    } catch (e) {
-      console.error(e);
-      toast.error('Error al cargar módulos');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const calculateTodayTasks = (allMods: LMSModule[]) => {
-    const today = new Date().toISOString().split('T')[0];
-    const tasks: TodayTask[] = [];
-
-    for (const mod of allMods) {
-      if (!mod.jornalizacion || mod.jornalizacion.length === 0) continue;
-
-      const stages = mod.jornalizacion as StageJornalizacionItem[];
+    const unsub = onSnapshot(q, (snap) => {
+      const proyectos = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
       
-      for (let i = 0; i < stages.length; i++) {
-        const stage = stages[i];
-        if (today >= stage.startDate && today <= stage.endDate) {
-          tasks.push({
-            moduleId: mod.id,
-            moduleCode: mod.code,
-            moduleName: mod.name,
-            moduleColor: mod.color || '#0D71B9',
-            stage,
-            stageIndex: i,
-            status: 'hoy',
+      // Contar proyectos activos
+      const activos = proyectos.length;
+      
+      // Agrupar por grado/sección
+      const grupoMap = new Map<string, { grado: string; seccion: string; count: number; alumnos: number }>();
+      
+      proyectos.forEach(p => {
+        const key = `${p.grado}|${p.seccion}`;
+        const existing = grupoMap.get(key);
+        if (existing) {
+          existing.count += 1;
+          existing.alumnos += (p.integrantes?.length || 0);
+        } else {
+          grupoMap.set(key, {
+            grado: p.grado,
+            seccion: p.seccion,
+            count: 1,
+            alumnos: p.integrantes?.length || 0
           });
-        } else if (today < stage.startDate) {
-          // Próxima etapa
-          const daysUntil = Math.ceil(
-            (new Date(stage.startDate).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24)
-          );
-          if (daysUntil <= 7) {
-            tasks.push({
-              moduleId: mod.id,
-              moduleCode: mod.code,
-              moduleName: mod.name,
-              moduleColor: mod.color || '#0D71B9',
-              stage,
-              stageIndex: i,
-              status: 'proximo',
-            });
-          }
         }
-      }
-    }
+      });
 
-    // Ordenar: hoy primero, luego próximos
-    tasks.sort((a, b) => {
-      if (a.status === 'hoy' && b.status !== 'hoy') return -1;
-      if (a.status !== 'hoy' && b.status === 'hoy') return 1;
-      return 0;
+      const grupos = Array.from(grupoMap.values());
+      const totalAlumnos = grupos.reduce((sum, g) => sum + g.alumnos, 0);
+
+      setStats({
+        gruposAsignados: grupos.length,
+        totalAlumnos: totalAlumnos,
+        proyectosActivos: activos,
+        formacionesPendientes: 0 // TODO: implementar cuando exista módulo de formaciones
+      });
+
+      setProyectosPorGrado(grupos.map(g => ({
+        grado: g.grado,
+        seccion: g.seccion,
+        count: g.count
+      })));
+
+      setLoading(false);
     });
 
-    setTodayTasks(tasks);
-  };
+    return unsub;
+  }, [firebaseUser]);
 
-  // Calcular estadísticas
-  const stats = {
-    totalModules: modules.filter(m => m.jornalizacion && m.jornalizacion.length > 0).length,
-    activeModules: modules.filter(m => m.status === 'active').length,
-    totalHours: modules.reduce((sum, m) => sum + (m.hours || 0), 0),
-    completedStages: modules.reduce((sum, m) => {
-      if (!m.jornalizacion) return sum;
-      const stages = m.jornalizacion as StageJornalizacionItem[];
-      const today = new Date().toISOString().split('T')[0];
-      return sum + stages.filter(s => s.endDate < today).length;
-    }, 0),
-    totalStages: modules.reduce((sum, m) => sum + (m.jornalizacion?.length || 0), 0),
-  };
+  const statCards = [
+    { 
+      label: 'Grupos Asignados', 
+      value: stats.gruposAsignados, 
+      icon: Users, 
+      accent: 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/30' 
+    },
+    { 
+      label: 'Total Alumnos', 
+      value: stats.totalAlumnos, 
+      icon: BookOpen, 
+      accent: 'bg-sky-50 text-sky-600 border-sky-200 dark:bg-sky-500/15 dark:text-sky-400 dark:border-sky-500/30' 
+    },
+    { 
+      label: 'Proyectos Activos', 
+      value: stats.proyectosActivos, 
+      icon: Medal, 
+      accent: 'bg-indigo-50 text-indigo-600 border-indigo-200 dark:bg-indigo-500/15 dark:text-indigo-400 dark:border-indigo-500/30' 
+    },
+    { 
+      label: 'Formaciones', 
+      value: stats.formacionesPendientes, 
+      icon: ClipboardCheck, 
+      accent: 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-500/15 dark:text-amber-400 dark:border-amber-500/30' 
+    },
+  ];
 
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="flex justify-center items-center py-20">
+        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Mi Panel Docente</h1>
-        <p className="text-slate-500 text-sm mt-1">
-          Resumen de actividad docente y progreso de módulos
-        </p>
-      </div>
+    <div className="space-y-8 max-w-7xl mx-auto">
+      {/* Hero Banner contextual para docente */}
+      <WelcomeBanner
+        name={userProfile?.displayName || 'Bienvenido'}
+        role="docente"
+        area="general"
+        subtitle="Gestione sus grupos, proyectos y actividades académicas desde su panel central."
+        badge="Año Escolar 2026"
+        showProfile={true}
+      />
 
-      {/* Estadísticas */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="card-crema p-4 rounded-xl border border-slate-100">
-          <div className="flex items-center gap-2 text-blue-600 mb-2">
-            <BookOpen size={18} />
-            <span className="text-xs font-medium">Módulos</span>
-          </div>
-          <div className="text-2xl font-bold text-slate-900">{stats.totalModules}</div>
-          <div className="text-xs text-slate-500">{stats.activeModules} activos</div>
-        </div>
-        <div className="card-crema p-4 rounded-xl border border-slate-100">
-          <div className="flex items-center gap-2 text-emerald-600 mb-2">
-            <Clock size={18} />
-            <span className="text-xs font-medium">Horas</span>
-          </div>
-          <div className="text-2xl font-bold text-slate-900">{stats.totalHours}h</div>
-          <div className="text-xs text-slate-500">planificadas</div>
-        </div>
-        <div className="card-crema p-4 rounded-xl border border-slate-100">
-          <div className="flex items-center gap-2 text-amber-600 mb-2">
-            <Target size={18} />
-            <span className="text-xs font-medium">Etapas</span>
-          </div>
-          <div className="text-2xl font-bold text-slate-900">{stats.completedStages}/{stats.totalStages}</div>
-          <div className="text-xs text-slate-500">completadas</div>
-        </div>
-        <div className="card-crema p-4 rounded-xl border border-slate-100">
-          <div className="flex items-center gap-2 text-purple-600 mb-2">
-            <TrendingUp size={18} />
-            <span className="text-xs font-medium">Avance</span>
-          </div>
-          <div className="text-2xl font-bold text-slate-900">
-            {stats.totalStages > 0 ? Math.round((stats.completedStages / stats.totalStages) * 100) : 0}%
-          </div>
-          <div className="text-xs text-slate-500">general</div>
-        </div>
-      </div>
+      {/* Stat Cards - Estilo AdminDashboard pero simplificado */}
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+      >
+        {statCards.map((stat, i) => {
+          const Icon = stat.icon;
+          return (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 + i * 0.05 }}
+              className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 dark:border-slate-700 dark:bg-slate-800"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                    {stat.label}
+                  </p>
+                  <p className="mt-1 font-display text-2xl font-black leading-tight text-slate-900 dark:text-white">
+                    {stat.value}
+                  </p>
+                </div>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${stat.accent}`}>
+                  <Icon className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="mt-3 flex items-center gap-1 text-xs font-medium text-slate-400 group-hover:text-primary transition-colors">
+                <span>Ver detalle</span>
+                <ArrowUpRight className="w-3 h-3" />
+              </div>
+            </motion.div>
+          );
+        })}
+      </motion.div>
 
-      {/* Tareas de Hoy */}
-      {todayTasks.length > 0 && (
-        <div>
-          <h2 className="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
-            <Calendar className="text-primary" size={20} />
-            Actividad de Hoy
-          </h2>
+      {/* Proyectos por Grado - Mini insight */}
+      {proyectosPorGrado.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center dark:bg-indigo-500/15">
+              <TrendingUp className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900 font-display">
+                Proyectos por Grupo
+              </h3>
+              <p className="text-xs text-slate-400">
+                Distribución de proyectos activos
+              </p>
+            </div>
+          </div>
+
           <div className="space-y-3">
-            {todayTasks.map(task => (
+            {proyectosPorGrado.slice(0, 5).map((g, i) => (
               <div
-                key={`${task.moduleId}-${task.stageIndex}`}
-                className={`card-crema p-4 rounded-xl border-l-4 ${
-                  task.status === 'hoy' 
-                    ? 'border-l-emerald-500 bg-emerald-50/50' 
-                    : 'border-l-amber-500 bg-amber-50/50'
-                }`}
+                key={`${g.grado}-${g.seccion}`}
+                className="flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors dark:bg-slate-700/50 dark:hover:bg-slate-700"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span
-                      className="text-xs font-bold text-white px-2 py-1 rounded-md"
-                      style={{ backgroundColor: task.moduleColor }}
-                    >
-                      {task.moduleCode}
-                    </span>
-                    <div>
-                      <h3 className="font-bold text-slate-900">{task.moduleName}</h3>
-                      <p className="text-sm text-slate-600">{task.stage?.name}</p>
-                    </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-xs font-bold text-slate-600 shadow-sm dark:bg-slate-800 dark:text-slate-300">
+                    {g.grado.replace(/[^0-9]/g, '')}
                   </div>
-                  <div className="flex items-center gap-2">
-                    {task.status === 'hoy' ? (
-                      <span className="flex items-center gap-1 text-emerald-700 text-sm font-medium">
-                        <CheckCircle2 size={16} />
-                        En curso
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-amber-700 text-sm font-medium">
-                        <Clock size={16} />
-                        Próximamente
-                      </span>
-                    )}
-                    <button
-                      onClick={() => navigate(`/docente/jornalizacion/${task.moduleId}`)}
-                      className="p-2 rounded-lg hover:bg-white/80 transition-colors"
-                    >
-                      <ChevronRight size={16} className="text-slate-400" />
-                    </button>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {g.grado} "{g.seccion}"
+                    </p>
+                    <p className="text-[10px] text-slate-400">
+                      Sección {g.seccion}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-500">
+                    {g.count} proyecto{g.count !== 1 ? 's' : ''}
+                  </span>
+                  <div className="w-16 h-2 rounded-full bg-slate-200 overflow-hidden dark:bg-slate-600">
+                    <div
+                      className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"
+                      style={{ width: `${Math.min(100, (g.count / Math.max(...proyectosPorGrado.map(x => x.count))) * 100)}%` }}
+                    />
                   </div>
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </motion.div>
       )}
 
-      {/* Accesos Rápidos */}
-      <div>
-        <h2 className="text-lg font-bold text-slate-900 mb-3">Accesos Rápidos</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button
-            onClick={() => navigate('/docente/jornalizacion')}
-            className="card-crema p-4 rounded-xl border border-slate-100 hover:border-primary/30 hover:bg-primary/5 transition-all text-left"
-          >
-            <Calendar className="text-primary mb-2" size={24} />
-            <h3 className="font-bold text-slate-900">Cronograma</h3>
-            <p className="text-sm text-slate-500 mt-1">Ver y generar cronograma de módulos</p>
-          </button>
-          <button
-            onClick={() => navigate('/docente/proyectos')}
-            className="card-crema p-4 rounded-xl border border-slate-100 hover:border-emerald-300 hover:bg-emerald-50 transition-all text-left"
-          >
-            <Award className="text-emerald-600 mb-2" size={24} />
-            <h3 className="font-bold text-slate-900">Proyectos</h3>
-            <p className="text-sm text-slate-500 mt-1">Gestionar proyectos estudiantiles</p>
-          </button>
-          <button
-            onClick={() => navigate('/docente/modulos')}
-            className="card-crema p-4 rounded-xl border border-slate-100 hover:border-amber-300 hover:bg-amber-50 transition-all text-left"
-          >
-            <BookOpen className="text-amber-600 mb-2" size={24} />
-            <h3 className="font-bold text-slate-900">Módulos</h3>
-            <p className="text-sm text-slate-500 mt-1">Administrar contenido LMS</p>
-          </button>
-        </div>
-
-        {/* Documentos Docente - Solo BTV */}
-        {isBTV && (
-          <div className="mt-4">
-            <h2 className="text-lg font-bold text-slate-900 mb-3">Documentación Docente (BTV)</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <button
-                onClick={() => navigate('/docente/documentos/guiones')}
-                className="card-crema p-4 rounded-xl border border-slate-100 hover:border-blue-300 hover:bg-blue-50 transition-all text-left"
-              >
-                <FileText className="text-blue-600 mb-2" size={24} />
-                <h3 className="font-bold text-slate-900">Guiones de Clase</h3>
-                <p className="text-sm text-slate-500 mt-1">Generar guiones por etapa MINED</p>
-              </button>
-              <button
-                onClick={() => navigate('/docente/documentos/planificacion')}
-                className="card-crema p-4 rounded-xl border border-slate-100 hover:border-teal-300 hover:bg-teal-50 transition-all text-left"
-              >
-                <ClipboardList className="text-teal-600 mb-2" size={24} />
-                <h3 className="font-bold text-slate-900">Planificación Didáctica</h3>
-                <p className="text-sm text-slate-500 mt-1">Matriz de planificación por módulo</p>
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Grid de Módulos - Reutilizando componente compartido */}
+      <ModuleGridDashboard
+        title="Módulos Disponibles"
+        subtitle=""
+        basePath="/docente"
+        showMondayNotice={true}
+        exclude={['formacion']}
+        bannerArea="general"
+        showProfile={false}
+      >
+        {/* Contenido adicional personalizado si se necesita */}
+      </ModuleGridDashboard>
     </div>
   );
 }
