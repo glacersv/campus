@@ -12,7 +12,7 @@ interface StudentHistoryProps {
 export default function StudentHistory({ student, grades, sections, onClose }: StudentHistoryProps) {
   const getSectionName = (id: string) => {
     const section = sections.find(s => s.id === id);
-    return section ? `Sección ${section.name}` : '—';
+    return section ? `Sección ${section.name}` : '';
   };
 
   const getStatusColor = (status: string) => {
@@ -33,10 +33,26 @@ export default function StudentHistory({ student, grades, sections, onClose }: S
     }
   };
 
-  // Ordenar el historial cronológicamente
-  const sortedHistory = [...(student.enrollmentHistory || [])]
-    .sort((a, b) => a.year - b.year)
-    .filter((record, index, self) => index === self.findIndex(r => r.year === record.year));
+  // Obtener año actual
+  const currentYear = new Date().getFullYear();
+  
+  // Filtrar y ordenar el historial: solo años válidos (desde año de ingreso hasta año actual+1)
+  const validHistory = (student.enrollmentHistory || [])
+    .filter(record => {
+      const year = record.year;
+      // Filtrar años inválidos (muy antiguos o muy futuros)
+      return year >= (currentYear - 10) && year <= (currentYear + 1);
+    })
+    .sort((a, b) => a.year - b.year);
+
+  // Eliminar duplicados por año, manteniendo el más reciente
+  const sortedHistory = validHistory.filter(
+    (record, index, self) => index === self.findIndex(r => r.year === record.year)
+  );
+
+  // Calcular años cursados (solo los finalizados)
+  const yearsCompleted = sortedHistory.filter(r => r.status === 'FINALIZADO' || r.status === 'RETIRADO').length;
+  const currentEnrollment = sortedHistory.find(r => r.status === 'EN_CURSO');
 
   return (
     <div className="modal-backdrop">
@@ -93,12 +109,12 @@ export default function StudentHistory({ student, grades, sections, onClose }: S
           <div className="pt-4 border-t border-slate-100">
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center">
-                <div className="text-2xl font-extrabold text-slate-900">{sortedHistory.length}</div>
+                <div className="text-2xl font-extrabold text-slate-900">{yearsCompleted}</div>
                 <div className="text-xs text-slate-500">Años cursados</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-extrabold text-emerald-600">
-                  {sortedHistory.filter(r => r.status === 'EN_CURSO').length}
+                  {currentEnrollment ? currentEnrollment.year : '—'}
                 </div>
                 <div className="text-xs text-slate-500">Año actual</div>
               </div>

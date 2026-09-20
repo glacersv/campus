@@ -1292,16 +1292,26 @@ export async function startSchoolYear(year: number, sectionConfig?: YearSectionC
   activeStudents.forEach(s => {
     const ref = doc(db, STUDENTS_COLLECTION, s.id);
     const history = s.enrollmentHistory || [];
-    const dest = getNextGradeId(s.gradeId, grades, baccalaureateTypes);
-    const updatedHistory = history.map(record =>
-      record.year === previousYear ? { ...record, status: 'FINALIZADO' as const } : record
+    
+    // Filtrar historial previo: solo mantener años anteriores al nuevo año y marcar como FINALIZADO
+    const updatedHistory = history
+      .filter(record => record.year < year)
+      .map(record =>
+        record.year === previousYear ? { ...record, status: 'FINALIZADO' as const } : record
+      );
+    
+    // Eliminar duplicados por año en el historial existente
+    const uniqueHistory = updatedHistory.filter((record, index, self) =>
+      index === self.findIndex(r => r.year === record.year)
     );
+
+    const dest = getNextGradeId(s.gradeId, grades, baccalaureateTypes);
 
     // Graduación: el alumno egresa y no continúa al siguiente grado
     if (!dest) {
       studentUpdates.push(
         updateDoc(ref, {
-          enrollmentHistory: updatedHistory,
+          enrollmentHistory: uniqueHistory,
           status: 'GRADUADO',
           updatedAt: serverTimestamp()
         })
@@ -1316,8 +1326,7 @@ export async function startSchoolYear(year: number, sectionConfig?: YearSectionC
       status: 'EN_CURSO' as const
     };
 
-    const fullHistory = [...updatedHistory, newRecord];
-    if (fullHistory.filter(r => r.year === year).length > 1) return;
+    const fullHistory = [...uniqueHistory, newRecord];
 
     studentUpdates.push(
       updateDoc(ref, {
