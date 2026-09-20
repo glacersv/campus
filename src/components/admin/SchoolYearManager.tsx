@@ -62,6 +62,10 @@ export default function SchoolYearManager() {
 
   // Filtering and view state
   const [selectedCycle, setSelectedCycle] = useState<Cycle | 'all'>('all');
+  
+  // New state for manual year input
+  const [manualYear, setManualYear] = useState<string>('');
+  const [yearWarning, setYearWarning] = useState<{ type: 'error' | 'warning' | 'info'; message: string } | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -75,6 +79,12 @@ export default function SchoolYearManager() {
       setStudents(stud);
       setCurrentYear(cy);
       setRows(buildMigrationRows(stud, gra, sec, bts, cy));
+      // Set default manual year to next year
+      if (cy) {
+        setManualYear(String(cy + 1));
+      } else {
+        setManualYear(String(new Date().getFullYear()));
+      }
     } catch (err) {
       console.error(err);
       toast.error('Error al cargar los datos de planificación');
@@ -87,7 +97,64 @@ export default function SchoolYearManager() {
     loadData();
   }, [loadData]);
 
-  const nextYear = currentYear ? currentYear + 1 : 2026;
+  // Validate year input and show warnings
+  useEffect(() => {
+    const yearInt = parseInt(manualYear, 10);
+    if (!manualYear || isNaN(yearInt)) {
+      setYearWarning({ type: 'error', message: 'Ingrese un año válido' });
+      return;
+    }
+
+    const now = new Date();
+    const currentCalendarYear = now.getFullYear();
+    
+    if (currentYear === null) {
+      // No year initialized yet
+      if (yearInt < currentCalendarYear) {
+        setYearWarning({ 
+          type: 'error', 
+          message: `⚠️ El año ${yearInt} es anterior al año actual (${currentCalendarYear}). Se recomienda iniciar con el año en curso o próximo.` 
+        });
+      } else if (yearInt > currentCalendarYear + 1) {
+        setYearWarning({ 
+          type: 'warning', 
+          message: `⚠️ El año ${yearInt} está más de un año adelante. Asegúrese de que esto sea intencional.` 
+        });
+      } else if (yearInt === currentCalendarYear) {
+        setYearWarning({ 
+          type: 'info', 
+          message: `ℹ️ Iniciando año lectivo ${yearInt} (año en curso)` 
+        });
+      } else {
+        setYearWarning({ 
+          type: 'info', 
+          message: `✓ Año ${yearInt} seleccionado correctamente` 
+        });
+      }
+    } else {
+      // Year already initialized
+      if (yearInt <= currentYear) {
+        setYearWarning({ 
+          type: 'error', 
+          message: `⚠️ El año ${yearInt} es igual o anterior al año lectivo actual (${currentYear}). No se puede retroceder en el tiempo.` 
+        });
+      } else if (yearInt > currentYear + 1) {
+        setYearWarning({ 
+          type: 'warning', 
+          message: `⚠️ Está saltando de ${currentYear} a ${yearInt}. Se omitirán ${yearInt - currentYear - 1} año(s) lectivo(s).` 
+        });
+      } else if (yearInt === currentYear + 1) {
+        setYearWarning({ 
+          type: 'info', 
+          message: `✓ Próximo año lectivo (${yearInt}) seleccionado correctamente` 
+        });
+      } else {
+        setYearWarning(null);
+      }
+    }
+  }, [manualYear, currentYear]);
+
+  const targetYear = parseInt(manualYear, 10) || (currentYear ? currentYear + 1 : 2026);
 
   const updateCount = (gradeId: string, count: number) => {
     const c = Math.max(1, Math.min(6, count));
@@ -134,10 +201,30 @@ export default function SchoolYearManager() {
 
   const handleStart = async () => {
     if (submitting) return;
-    const year = nextYear;
+    
+    // Validate year input
+    const yearInt = parseInt(manualYear, 10);
+    if (isNaN(yearInt)) {
+      toast.error('Por favor ingrese un año válido');
+      return;
+    }
+
+    // Block if error warning
+    if (yearWarning?.type === 'error') {
+      toast.error(yearWarning.message);
+      return;
+    }
+
+    // Extra confirmation for warnings
+    if (yearWarning?.type === 'warning') {
+      if (!confirm(`ADVERTENCIA: ${yearWarning.message}\n\n¿Está seguro de continuar?`)) {
+        return;
+      }
+    }
+
     if (
       !confirm(
-        `¿Confirmas el inicio del año escolar ${year}? \n\nEsta operación promoverá automáticamente a los estudiantes activos e inicializará el nuevo período lectivo.`
+        `¿Confirmas el inicio del año escolar ${yearInt}? \n\nEsta operación promoverá automáticamente a los estudiantes activos e inicializará el nuevo período lectivo.`
       )
     )
       return;
@@ -151,8 +238,8 @@ export default function SchoolYearManager() {
 
     setSubmitting(true);
     try {
-      await startSchoolYear(year, config);
-      toast.success(`¡Año escolar ${year} iniciado exitosamente!`);
+      await startSchoolYear(yearInt, config);
+      toast.success(`¡Año escolar ${yearInt} iniciado exitosamente!`);
       setLoading(true);
       await loadData();
     } catch (err) {
@@ -406,9 +493,14 @@ export default function SchoolYearManager() {
                   </span>
                   <ArrowRight className="w-3.5 h-3.5 text-tertiary" />
                   <span>Planificación próximo año:</span>
-                  <span className="font-extrabold text-accent font-mono bg-accent/10 border border-accent/20 px-2.5 py-0.5 rounded-md">
-                    {nextYear}
-                  </span>
+                  <input
+                    type="number"
+                    value={manualYear}
+                    onChange={(e) => setManualYear(e.target.value)}
+                    className="w-24 font-extrabold text-accent font-mono bg-accent/10 border border-accent/20 px-2.5 py-0.5 rounded-md focus:outline-none focus:ring-2 focus:ring-accent/50 text-center"
+                    min={currentYear ? currentYear + 1 : new Date().getFullYear()}
+                    max={new Date().getFullYear() + 10}
+                  />
                 </>
               ) : (
                 <span className="text-secondary font-bold flex items-center gap-1.5">
@@ -425,6 +517,26 @@ export default function SchoolYearManager() {
           </span>
         </div>
       </div>
+
+      {/* Year Warning Banner */}
+      {yearWarning && (
+        <div className={`rounded-xl p-4 border-2 flex items-start gap-3 ${
+          yearWarning.type === 'error' 
+            ? 'bg-red-50 border-red-200 text-red-800' 
+            : yearWarning.type === 'warning'
+            ? 'bg-amber-50 border-amber-200 text-amber-800'
+            : 'bg-blue-50 border-blue-200 text-blue-800'
+        }`}>
+          {yearWarning.type === 'error' ? (
+            <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+          ) : yearWarning.type === 'warning' ? (
+            <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+          ) : (
+            <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" />
+          )}
+          <span className="text-sm font-medium">{yearWarning.message}</span>
+        </div>
+      )}
 
       {/* Premium KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -495,7 +607,7 @@ export default function SchoolYearManager() {
               Estructura de Promoción y Aulas
             </h3>
             <p className="text-xs text-secondary mt-1">
-              Configure las secciones que estarán disponibles para el período lectivo {nextYear}. El sistema distribuirá de forma óptima a los alumnos.
+              Configure las secciones que estarán disponibles para el período lectivo {targetYear}. El sistema distribuirá de forma óptima a los alumnos.
             </p>
           </div>
           <span className="text-xs font-bold text-secondary font-mono card-crema px-4 py-2 self-start sm:self-auto">
@@ -618,7 +730,7 @@ export default function SchoolYearManager() {
                             <div className="bg-slate-50/50 p-3 rounded-xl border border-slate-100 space-y-2">
                               <div className="flex items-center justify-between">
                                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                                  Aulas Planificadas ({nextYear})
+                                  Aulas Planificadas ({targetYear})
                                 </span>
                                 {isReconfigured && (
                                   <span className="text-[9px] font-black uppercase text-accent bg-accent/10 border border-accent/20 px-1.5 py-0.5 rounded">
@@ -716,7 +828,7 @@ export default function SchoolYearManager() {
               Políticas de Preservación Histórica
             </h4>
             <p className="text-xs text-secondary mt-1 leading-relaxed">
-              Toda la información académica de ciclos lectivos anteriores (secciones, directores, registros de control, asistencias y reportes) queda estrictamente salvaguardada en almacenamiento histórico aislado. Al iniciar el período, el sistema estructurará el año <span className="font-extrabold text-primary font-mono">{nextYear}</span> de forma completamente limpia.
+              Toda la información académica de ciclos lectivos anteriores (secciones, directores, registros de control, asistencias y reportes) queda estrictamente salvaguardada en almacenamiento histórico aislado. Al iniciar el período, el sistema estructurará el año <span className="font-extrabold text-primary font-mono">{targetYear}</span> de forma completamente limpia.
             </p>
           </div>
         </div>
@@ -733,7 +845,7 @@ export default function SchoolYearManager() {
           ) : (
             <>
               <Save className="w-4.5 h-4.5" />
-              <span>Aperturar Año Escolar {nextYear}</span>
+              <span>Aperturar Año Escolar {targetYear}</span>
             </>
           )}
         </button>
@@ -885,7 +997,7 @@ export default function SchoolYearManager() {
 
 interface GradeMigrationCardProps {
   r: MigrationPlanRow;
-  nextYear: number;
+  targetYear: number;
   getDistribution: (r: MigrationPlanRow) => Record<string, number>;
   updateCount: (gradeId: string, count: number) => void;
   updateName: (gradeId: string, index: number, value: string) => void;
@@ -893,7 +1005,7 @@ interface GradeMigrationCardProps {
 
 function GradeMigrationCard({
   r,
-  nextYear,
+  targetYear,
   getDistribution,
   updateCount,
   updateName
@@ -985,7 +1097,7 @@ function GradeMigrationCard({
         <div className="space-y-2.5 pt-3 border-t border-slate-100">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-              Aulas Planificadas ({nextYear})
+              Aulas Planificadas ({targetYear})
             </span>
             {isReconfigured && (
               <span className="text-[9px] font-black uppercase text-amber-600 bg-amber-50 border border-amber-100/60 px-1.5 py-0.5 rounded">
