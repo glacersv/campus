@@ -1,0 +1,1 @@
+Nothing should be output as the added file is only `.gitignore` itself and there are no other file changes indicating any build artifacts, dependencies, or temporary files that need to be ignored.
