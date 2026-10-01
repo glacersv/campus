@@ -111,10 +111,11 @@ export default function SubjectsManager() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isModuleTab, setIsModuleTab] = useState(false);
 
-  // Search & Filter States
   const [selectedGradeId, setSelectedGradeId] = useState<string>('');
   const [selectedType, setSelectedType] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'all' | 'mined' | 'institutional' | 'technical'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCycle, setSelectedCycle] = useState<Cycle | 'all'>('all');
 
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -512,6 +513,11 @@ export default function SubjectsManager() {
       (activeTab === 'mined' && isMinedOrBasica) ||
       (activeTab === 'institutional' && s.type === 'INSTITUCIONAL');
 
+    const matchSearch = !searchQuery.trim() ||
+      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (s.code && s.code.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (s.description && s.description.toLowerCase().includes(searchQuery.toLowerCase()));
+
     // Direct check in s.gradeId or s.gradeIds list
     let matchGrade = true;
     if (selectedGradeId) {
@@ -522,20 +528,37 @@ export default function SubjectsManager() {
         : [];
 
       matchGrade = subjectGradeIds.includes(selectedGradeId) || subjectGradeIds.length === 0;
+    } else if (selectedCycle !== 'all') {
+      const gradesInCycle = grades.filter(g => g.cycle === selectedCycle).map(g => g.id);
+      const subjectGradeIds = (s as any).gradeIds && Array.isArray((s as any).gradeIds)
+        ? (s as any).gradeIds
+        : s.gradeId
+        ? [s.gradeId]
+        : [];
+      matchGrade = subjectGradeIds.length === 0 || subjectGradeIds.some(gid => gradesInCycle.includes(gid));
     }
 
-    return matchType && matchGrade && matchTab;
+    return matchType && matchGrade && matchTab && matchSearch;
   });
 
   const filteredModules = lmsModules.filter(m => {
+    const matchSearch = !searchQuery.trim() ||
+      m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (m.code && m.code.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (m.teacherName && m.teacherName.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    let matchGrade = true;
     if (selectedGradeId) {
       const selectedGrade = grades.find(g => g.id === selectedGradeId);
       const gradeName = selectedGrade?.name || '';
       const matchGradeId = m.gradeId === selectedGradeId;
       const matchTechYear = m.technicalYear === selectedGradeId || gradeName.includes(`${m.technicalYear}°`);
-      return matchGradeId || matchTechYear;
+      matchGrade = matchGradeId || matchTechYear;
+    } else if (selectedCycle !== 'all') {
+      matchGrade = selectedCycle === '4'; // Los módulos técnicos pertenecen al ciclo de bachillerato (ciclo 4)
     }
-    return true;
+
+    return matchGrade && matchSearch;
   });
 
   const getSubSubjects = (parentId: string) => {
@@ -560,221 +583,288 @@ export default function SubjectsManager() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="module-header">
-        <div className="module-title-group">
-          <div className="module-icon bg-slate-100 border border-slate-200">
-            <BookMarked className="w-5 h-5 text-slate-600" />
+      {/* Hero Banner Estilo Calendario Institucional */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white p-6 sm:p-8 border border-slate-800 shadow-xl">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
+        <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 space-y-6">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30 text-xs font-bold uppercase tracking-wider">
+                <BookMarked className="w-3.5 h-3.5 text-blue-400" />
+                <span>MALLA CURRICULAR Y ESPECIALIDADES 2026</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight font-display">
+                {isModuleTab ? 'Módulos Técnicos BTV' : 'Plan de Materias Académicas'}
+              </h1>
+              <p className="text-sm text-slate-300 max-w-3xl leading-relaxed">
+                Gestión curricular de <strong>Colegio Salesiano San José</strong>. Plan de asignaturas oficiales MINED,
+                especialidades institucionales internas y módulos del Bachillerato Técnico Vocacional.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 shrink-0">
+              {isModuleTab && (
+                <button
+                  onClick={handleReseedModules}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-amber-400/40 bg-amber-500/20 text-amber-200 hover:bg-amber-500/30 font-bold text-xs transition-all shadow-sm cursor-pointer"
+                  title="Re-sincronizar los 26 módulos BTV oficiales con grados técnicos"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Sincronizar BTV</span>
+                </button>
+              )}
+              <button
+                onClick={() => { setShowForm(true); isModuleTab ? resetModuleForm() : resetForm(); }}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-extrabold text-xs transition-all shadow-md hover:shadow-lg cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{isModuleTab ? 'Nuevo Módulo' : 'Nueva Materia'}</span>
+              </button>
+            </div>
           </div>
-          <div>
-            <h1 className="module-title">{isModuleTab ? 'Módulos Técnicos' : 'Plan de Materias'}</h1>
-            <p className="module-subtitle">{isModuleTab ? 'Configuración de módulos técnicos por año/grado' : 'Configuración oficial MINED y asignaciones institucionales integradas'}</p>
+
+          {/* Tarjetas de Métricas en Tiempo Real */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-slate-800/80 text-xs">
+            <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800/90 shadow-inner">
+              <span className="text-slate-400 block text-[11px] font-semibold">Oficiales MINED:</span>
+              <div className="flex items-baseline gap-2 mt-1">
+                <strong className="text-xl text-emerald-400 font-black font-display">
+                  {subjects.filter(s => (s.type || 'MINED') === 'MINED').length}
+                </strong>
+                <span className="text-[10px] text-slate-500 uppercase tracking-wide">Asignaturas</span>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800/90 shadow-inner">
+              <span className="text-slate-400 block text-[11px] font-semibold">Sub-materias Internas:</span>
+              <div className="flex items-baseline gap-2 mt-1">
+                <strong className="text-xl text-sky-400 font-black font-display">
+                  {subjects.filter(s => s.type === 'INSTITUCIONAL').length}
+                </strong>
+                <span className="text-[10px] text-slate-500 uppercase tracking-wide">Especialidades</span>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800/90 shadow-inner">
+              <span className="text-slate-400 block text-[11px] font-semibold">Módulos Técnicos BTV:</span>
+              <div className="flex items-baseline gap-2 mt-1">
+                <strong className="text-xl text-indigo-400 font-black font-display">
+                  {lmsModules.length}
+                </strong>
+                <span className="text-[10px] text-slate-500 uppercase tracking-wide">En 3 Años</span>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800/90 shadow-inner">
+              <span className="text-slate-400 block text-[11px] font-semibold">Total Carga Horaria:</span>
+              <div className="flex items-baseline gap-2 mt-1">
+                <strong className="text-xl text-amber-400 font-black font-display">
+                  {subjects.reduce((sum, s) => sum + (s.weeklyHours || 0), 0)}h
+                </strong>
+                <span className="text-[10px] text-slate-500 uppercase tracking-wide">Horas / Sem</span>
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {isModuleTab && (
-            <button
-              onClick={handleReseedModules}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 transition-colors cursor-pointer"
-              title="Re-sincronizar los 27 módulos BTV oficiales con grados técnicos correctos"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Sincronizar BTV
-            </button>
-          )}
-          <button onClick={() => { setShowForm(true); isModuleTab ? resetModuleForm() : resetForm(); }} className="btn-primary">
-            <Plus className="w-4 h-4" /> {isModuleTab ? 'Nuevo Módulo' : 'Nueva Materia'}
-          </button>
         </div>
       </div>
 
-      {/* Button-Pills-Only Grayscale Filtering Dashboard (Ultra Clean) */}
-      <div className="card-crema p-5 space-y-4">
-
-        {/* Tabs Navigation */}
-        <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/60">
-          <button
-            onClick={() => { setActiveTab('all'); setIsModuleTab(false); }}
-            className={`flex-1 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
-              activeTab === 'all' && !isModuleTab
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            Todas
-          </button>
-          <button
-            onClick={() => { setActiveTab('mined'); setIsModuleTab(false); }}
-            className={`flex-1 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
-              activeTab === 'mined' && !isModuleTab
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            Materias
-          </button>
-          <button
-            onClick={() => { setActiveTab('institutional'); setIsModuleTab(false); }}
-            className={`flex-1 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
-              activeTab === 'institutional' && !isModuleTab
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            Sub-materias
-          </button>
-          <button
-            onClick={() => { setActiveTab('technical'); setIsModuleTab(true); }}
-            className={`flex-1 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
-              isModuleTab
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            Módulos Técnicos
-          </button>
-        </div>
-
-        {/* Search & Type Select */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-
-          {/* Grayscale Pills: Type Select */}
-          <div className="flex flex-wrap items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-200/60">
+      {/* Panel de Filtros y Navegación Segmentada */}
+      <div className="card-crema p-5 space-y-4 border border-slate-200/80 shadow-sm bg-white dark:bg-slate-900">
+        {/* Pestañas Principales Segmentadas */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200/70 dark:border-slate-700/60 max-w-xl">
             <button
-              onClick={() => setSelectedType('')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
-                selectedType === ''
-                  ? 'bg-primary text-white shadow-xs'
-                  : 'text-slate-600 hover:bg-slate-200/50'
+              onClick={() => { setActiveTab('all'); setIsModuleTab(false); }}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border-0 ${
+                activeTab === 'all' && !isModuleTab
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
               }`}
             >
-              Todos los Tipos
+              Todo ({subjects.length})
             </button>
             <button
-              onClick={() => setSelectedType('MINED')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
-                selectedType === 'MINED'
-                  ? 'bg-primary text-white shadow-xs'
-                  : 'text-slate-600 hover:bg-slate-200/50'
+              onClick={() => { setActiveTab('mined'); setIsModuleTab(false); }}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border-0 ${
+                activeTab === 'mined' && !isModuleTab
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-700/50'
               }`}
             >
-              Oficiales MINED
+              📘 Materias MINED
             </button>
             <button
-              onClick={() => setSelectedType('INSTITUCIONAL')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
-                selectedType === 'INSTITUCIONAL'
-                  ? 'bg-primary text-white shadow-xs'
-                  : 'text-slate-600 hover:bg-slate-200/50'
+              onClick={() => { setActiveTab('institutional'); setIsModuleTab(false); }}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border-0 ${
+                activeTab === 'institutional' && !isModuleTab
+                  ? 'bg-sky-600 text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-700/50'
               }`}
             >
-              Institucionales
+              🏛️ Sub-materias
+            </button>
+            <button
+              onClick={() => { setActiveTab('technical'); setIsModuleTab(true); }}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border-0 ${
+                isModuleTab
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-700/50'
+              }`}
+            >
+              🎓 Módulos BTV ({lmsModules.length})
             </button>
           </div>
 
-        {/* Grade Pills List - Elegantly Grouped Chronologically by Cycle (Compact & Clean) */}
-        <div className="space-y-3 pt-3 border-t border-slate-100">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-tertiary uppercase tracking-wider block">Filtrar por Grado / Nivel:</span>
-            {selectedGradeId && (
-              <button
-                onClick={() => setSelectedGradeId('')}
-                className="text-[10px] font-bold text-secondary hover:text-slate-900 underline border-0 cursor-pointer bg-transparent"
-              >
-                Limpiar filtro de grado
-              </button>
-            )}
-          </div>
-
-          <div className="space-y-2.5">
-            {/* General Switch */}
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => setSelectedGradeId('')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
-                  selectedGradeId === ''
-                    ? 'bg-slate-800 text-white border-slate-800 shadow-xs'
-                    : 'bg-slate-50 hover:bg-slate-100 border-slate-200/80 text-slate-600'
-                }`}
-              >
-                Todos los Grados
-              </button>
-            </div>
-
-            {/* Cycles horizontal alignment */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-              {(Object.keys(CYCLE_NAMES) as Cycle[]).map(cycleKey => {
-                const cycleGrades = gradesByCycle[cycleKey] || [];
-                if (cycleGrades.length === 0) return null;
-                return (
-                  <div key={cycleKey} className="bg-white p-2.5 rounded-xl border border-slate-200/50 space-y-1.5">
-                    <span className="text-[9px] font-black text-tertiary uppercase tracking-wider block border-b border-slate-200/60 pb-1">
-                      {CYCLE_NAMES[cycleKey]}
-                    </span>
-                    <div className="flex flex-wrap gap-1">
-                      {cycleGrades.map(g => (
-                        <button
-                          key={g.id}
-                          onClick={() => setSelectedGradeId(g.id)}
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer border ${
-                            selectedGradeId === g.id
-                              ? 'bg-slate-800 text-white border-slate-800 shadow-sm'
-                              : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-600'
-                          }`}
-                        >
-                          {g.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Bulk action buttons & view selector */}
-        { (selected.size > 0 || viewMode) && (
-          <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-            <div>
-              {selected.size > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl"
-                >
-                  <span className="text-xs text-slate-700 font-bold">{selected.size} seleccionada(s)</span>
-                  <button onClick={handleBulkDelete} className="p-1 hover:bg-slate-200 rounded-lg border-0 cursor-pointer bg-transparent">
-                    <Trash className="w-3.5 h-3.5 text-slate-600" />
-                  </button>
-                  <button onClick={() => setSelected(new Set())} className="p-1 hover:bg-slate-200 rounded-lg border-0 cursor-pointer bg-transparent">
-                    <X className="w-3.5 h-3.5 text-slate-600" />
-                  </button>
-                </motion.div>
-              )}
-            </div>
-
-            <div className="flex border border-slate-200 rounded-lg overflow-hidden shrink-0">
+          {/* Selector de Modo de Vista (Tarjetas / Lista) */}
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <div className="flex border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shrink-0 bg-slate-50 dark:bg-slate-800 p-0.5">
               <button
                 onClick={() => setViewMode('card')}
-                className={`p-2 transition-colors border-0 cursor-pointer ${
-                  viewMode === 'card' ? 'bg-slate-800 text-white' : 'bg-white text-secondary hover:bg-slate-50'
+                className={`p-1.5 rounded-lg transition-colors border-0 cursor-pointer ${
+                  viewMode === 'card' ? 'bg-white dark:bg-slate-900 text-primary shadow-xs font-bold' : 'text-slate-400 hover:text-slate-700'
                 }`}
+                title="Vista en Tarjetas"
               >
                 <LayoutGrid className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`p-2 transition-colors border-0 cursor-pointer ${
-                  viewMode === 'list' ? 'bg-slate-800 text-white' : 'bg-white text-secondary hover:bg-slate-50'
+                className={`p-1.5 rounded-lg transition-colors border-0 cursor-pointer ${
+                  viewMode === 'list' ? 'bg-white dark:bg-slate-900 text-primary shadow-xs font-bold' : 'text-slate-400 hover:text-slate-700'
                 }`}
+                title="Vista en Tabla"
               >
                 <List className="w-4 h-4" />
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Buscador Rápido y Filtro por Ciclo Educativo */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+          {/* Buscador */}
+          <div className="relative md:col-span-1">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Buscar materia o código..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full pl-9.5 pr-4 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 border-0 bg-transparent cursor-pointer p-0.5"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Carrusel de Ciclos Educativos */}
+          <div className="md:col-span-2 flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1">
+              Ciclo:
+            </span>
+            <button
+              onClick={() => { setSelectedCycle('all'); setSelectedGradeId(''); }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border whitespace-nowrap cursor-pointer ${
+                selectedCycle === 'all' && !selectedGradeId
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-xs dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              Todos los Ciclos
+            </button>
+            {(Object.keys(CYCLE_NAMES) as Cycle[]).map(cKey => (
+              <button
+                key={cKey}
+                onClick={() => { setSelectedCycle(cKey); setSelectedGradeId(''); }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border whitespace-nowrap cursor-pointer ${
+                  selectedCycle === cKey && !selectedGradeId
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                {CYCLE_NAMES[cKey]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Desglose de Grados si se selecciona un ciclo específico */}
+        {selectedCycle !== 'all' && gradesByCycle[selectedCycle] && (
+          <motion.div
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex-wrap"
+          >
+            <span className="text-[10px] font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+              Grados de {CYCLE_NAMES[selectedCycle]}:
+            </span>
+            <button
+              onClick={() => setSelectedGradeId('')}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                selectedGradeId === ''
+                  ? 'bg-blue-50 text-blue-700 border-blue-300 font-extrabold dark:bg-blue-900/40 dark:text-blue-300'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-blue-200'
+              }`}
+            >
+              Ver Todo el Ciclo
+            </button>
+            {gradesByCycle[selectedCycle].map(g => (
+              <button
+                key={g.id}
+                onClick={() => setSelectedGradeId(g.id)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                  selectedGradeId === g.id
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                }`}
+              >
+                {g.name}
+              </button>
+            ))}
+          </motion.div>
         )}
-      </div>
+
+        {/* Notificación de resultados y acciones en lote */}
+        <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
+          <div className="text-slate-500 font-medium">
+            Mostrando <strong className="text-slate-900 dark:text-white font-bold">{isModuleTab ? filteredModules.length : filtered.length}</strong> {isModuleTab ? 'módulos técnicos' : 'materias'}
+            {selectedGradeId && (
+              <span> en <strong className="text-blue-600 font-semibold">{getGradeName(selectedGradeId)}</strong></span>
+            )}
+            {searchQuery && (
+              <span> para "<strong className="text-slate-800 dark:text-slate-200">{searchQuery}</strong>"</span>
+            )}
+          </div>
+
+          {selected.size > 0 && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-800 px-3 py-1 rounded-xl text-xs font-bold"
+            >
+              <span>{selected.size} seleccionada(s)</span>
+              <button
+                onClick={handleBulkDelete}
+                className="px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[11px] transition-colors border-0 cursor-pointer"
+              >
+                Eliminar
+              </button>
+              <button
+                onClick={() => setSelected(new Set())}
+                className="text-red-500 hover:text-red-700 border-0 bg-transparent cursor-pointer p-0.5"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </motion.div>
+          )}
+        </div>
       </div>
 
       {/* Hierarchy Info Box */}

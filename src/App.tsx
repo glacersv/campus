@@ -4,6 +4,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { DarkModeProvider } from './contexts/DarkModeContext';
 import { NotificationsProvider } from './contexts/NotificationsContext';
 import Login from './components/shared/Login';
+import PendingApprovalScreen from './components/shared/PendingApprovalScreen';
 import AdminLayout from './components/admin/AdminLayout';
 import AdminDashboard from './components/admin/AdminDashboard';
 import TeachersManager from './components/admin/TeachersManager';
@@ -164,7 +165,14 @@ function AppContent() {
   }
 
   if (userProfile.status === 'pending' || userProfile.status === 'rejected') {
-    return <Login />;
+    return (
+      <PendingApprovalScreen
+        status={userProfile.status}
+        rejectionReason={userProfile.rejectionReason}
+        email={userProfile.email}
+        displayName={userProfile.displayName || userProfile.email.split('@')[0]}
+      />
+    );
   }
 
   const getModules = () => {

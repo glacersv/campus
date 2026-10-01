@@ -6,16 +6,37 @@ import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'sonner';
 
 export default function Login() {
-  const { signIn, signUp, resetPassword } = useAuth();
+  const { signIn, signInWithMicrosoft, signUp, resetPassword } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [microsoftLoading, setMicrosoftLoading] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
+
+  const handleMicrosoftSignIn = async () => {
+    setMicrosoftLoading(true);
+    try {
+      await signInWithMicrosoft();
+    } catch (err: any) {
+      console.error('Microsoft login error:', err);
+      if (err.code === 'auth/popup-closed-by-user') {
+        toast.info('Ventana de inicio de sesión cerrada.');
+      } else if (err.code === 'auth/cancelled-popup-request') {
+        // Ignorar si se abrió otra ventana
+      } else if (err.message?.includes('Solo se admiten cuentas institucionales')) {
+        toast.error(err.message);
+      } else {
+        toast.error(err.message || 'Error al conectar con Office 365.');
+      }
+    } finally {
+      setMicrosoftLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,7 +203,7 @@ export default function Login() {
           </div>
           <motion.button 
             type="submit" 
-            disabled={loading} 
+            disabled={loading || microsoftLoading} 
             className="btn-primary w-full justify-center py-3 rounded-full disabled:opacity-50"
             whileTap={{ scale: 0.97 }}
             transition={{ type: 'spring', stiffness: 400, damping: 17 }}
@@ -192,9 +213,60 @@ export default function Login() {
           </motion.button>
         </form>
 
-        <div className="mt-6 pt-4 border-t border-[#e2e8f0]/60 text-center">
-          <button onClick={() => { setIsSignUp(!isSignUp); }} className="text-xs font-bold text-[#25855A] hover:text-[#124D37] transition-colors uppercase tracking-wider">
+        {/* Separador institucional */}
+        <div className="relative my-6 text-center">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-slate-200 dark:border-slate-700" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase tracking-wider">
+            <span className="bg-white/80 dark:bg-slate-900 px-3 text-slate-400 font-semibold text-[10px]">
+              o accede con tu cuenta escolar
+            </span>
+          </div>
+        </div>
+
+        {/* Botón Office 365 institucional */}
+        <motion.button
+          type="button"
+          onClick={handleMicrosoftSignIn}
+          disabled={loading || microsoftLoading}
+          whileTap={{ scale: 0.98 }}
+          className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-xs font-bold text-xs transition-all hover:shadow-md disabled:opacity-50"
+        >
+          {microsoftLoading ? (
+            <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <svg className="w-4 h-4 shrink-0" viewBox="0 0 23 23">
+              <rect fill="#F25022" x="1" y="1" width="10" height="10" />
+              <rect fill="#7FBA00" x="12" y="1" width="10" height="10" />
+              <rect fill="#00A4EF" x="1" y="12" width="10" height="10" />
+              <rect fill="#FFB900" x="12" y="12" width="10" height="10" />
+            </svg>
+          )}
+          <span>
+            {microsoftLoading ? 'Conectando con Office 365...' : 'Iniciar Sesión con Office 365'}
+          </span>
+        </motion.button>
+        <p className="text-[10px] text-center text-slate-400 mt-2">
+          Exclusivo para cuentas <strong>@salesianosanjose.edu.sv</strong>
+        </p>
+
+        <div className="mt-6 pt-4 border-t border-[#e2e8f0]/60 text-center space-y-2">
+          <button onClick={() => { setIsSignUp(!isSignUp); }} className="text-xs font-bold text-[#25855A] hover:text-[#124D37] transition-colors uppercase tracking-wider block mx-auto">
             {isSignUp ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate'}
+          </button>
+
+          {/* Acceso Rápido Modo Desarrollo */}
+          <button
+            type="button"
+            onClick={() => {
+              setEmail('admin@salesianosanjose.edu.sv');
+              setPassword('12345');
+              toast.info('Credenciales de Admin cargadas (admin@salesianosanjose.edu.sv / 12345)');
+            }}
+            className="text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors inline-flex items-center gap-1 font-mono pt-1"
+          >
+            <span>🛠️ Cargar Admin Dev (12345)</span>
           </button>
         </div>
       </div>

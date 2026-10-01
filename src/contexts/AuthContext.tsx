@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User as FirebaseUser, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, sendPasswordResetEmail } from 'firebase/auth';
+import { User as FirebaseUser, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, sendPasswordResetEmail, OAuthProvider, signInWithPopup } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { auth, functions } from '../firebase';
 import { getUser, createUser, getRole, isEmailPreAuthorized, getStudentByCarnet, createApprovalRequest, createNewUserNotification, updateUser, getTeacherByEmail, getTeacher, createUserForTeacher, createUserForStudent, getStudent, updateApprovalRequest, getAllRoles, getUserByEmail, getUserByStudentId, deleteUser, fixRolesPermissions } from '../lib/firestore';
@@ -12,6 +12,7 @@ interface AuthContextType {
   userProfile: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithMicrosoft: () => Promise<void>;
   signUp: (email: string, password: string, displayName: string, role?: UserRole) => Promise<void>;
   signOut: () => Promise<void>;
   userRole: UserRole | null;
@@ -42,8 +43,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         let profile = await getUser(user.uid);
         if (!profile) {
           // SELF-HEALING FLOW: El usuario está en Auth pero no tiene registro en Firestore (Cuenta Huérfana)
-          console.log('[Self-Healing] Inicializando perfil en Firestore para usuario:', user.uid);
-          const email = user.email || '';
+          const email = (
+            user.email ||
+            user.providerData?.[0]?.email ||
+            ''
+          ).trim().toLowerCase();
           let detectedRole: UserRole | null = null;
           let studentId: string | undefined;
           let studentName: string | undefined;
@@ -77,8 +81,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             uid: user.uid,
             email,
             displayName: user.displayName || email.split('@')[0],
-            role: detectedRole,
-            status: detectedRole ? 'approved' : 'pending',
+            role: isSuperAdmin ? 'admin' : null,
+            status: isSuperAdmin ? 'approved' : 'pending',
             requestedRole: detectedRole || null,
             ...(teacherId ? { teacherId } : {}),
             ...(studentId ? { studentId } : {}),
@@ -133,16 +137,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (profile?.role) {
           const rc = await getRole(profile.role);
           setRoleConfig(rc);
-          
+
           // Cargar roles dinámicos desde Firestore
           const allRoles = await getAllRoles();
           updateRoleLabelsFromFirestore(allRoles);
-          
+
           // Fix incorrect module IDs in roles (fire-and-forget) - solo admin
           if (profile.role === 'admin') {
             fixRolesPermissions().catch(console.error);
           }
-          
+
           // Exponer función para corregir permisos manualmente desde consola (solo admin)
           if (profile.role === 'admin') {
             (window as any).fixRolesPermissions = fixRolesPermissions;
@@ -161,12 +165,78 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, []);
 
+  const signInWithMicrosoft = async () => {
+    const provider = new OAuthProvider('microsoft.com');
+    provider.setCustomParameters({
+      prompt: 'select_account',
+      tenant: 'salesianosanjose.edu.sv',
+    });
+
+    const result = await signInWithPopup(auth, provider);
+    console.log('[Microsoft Login] Raw User Result:', {
+      email: result.user.email,
+      providerData: result.user.providerData,
+      displayName: result.user.displayName,
+    });
+
+    const email = (
+      result.user.email ||
+      result.user.providerData?.[0]?.email ||
+      ''
+    ).trim().toLowerCase();
+
+    console.log('[Microsoft Login] Detected Email:', email);
+
+    // Validar dominio institucional salesianosanjose.edu.sv
+    const isSuperAdmin = email === 'admin@salesianosanjose.edu.sv' || email === 'glacersv@gmail.com';
+    if (!email.endsWith('@salesianosanjose.edu.sv') && !isSuperAdmin) {
+      await firebaseSignOut(auth);
+      throw new Error(`Acceso restringido. Correo detectado: "${email || 'sin correo'}". Solo se admiten cuentas institucionales (@salesianosanjose.edu.sv).`);
+    }
+
+    // Verificar si ya existe perfil
+    const profile = await getUser(result.user.uid);
+    if (!profile) {
+      // Perfil recién creado por el listener onAuthStateChanged
+      // Si el status es pending, notificar al usuario
+      return;
+    }
+
+    if (profile.status === 'rejected') {
+      await firebaseSignOut(auth);
+      throw new Error('Tu solicitud de acceso fue rechazada. Contacta al administrador para más información.');
+    }
+  };
+
   const signIn = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email, password);
-    
-    // Super admin bypass - siempre permitir acceso
-    if (email === 'admin@salesianosanjose.edu.sv' || email === 'glacersv@gmail.com') return;
-    
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    // Bypass de desarrollo para Super Admin
+    if (cleanEmail === 'admin@salesianosanjose.edu.sv') {
+      try {
+        await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
+      } catch (err: any) {
+        // En caso de que la contraseña en Auth sea 12345 o 123456
+        if (cleanPassword === '12345' || cleanPassword === '123456') {
+          const alternatePass = cleanPassword === '12345' ? '123456' : '12345';
+          try {
+            await signInWithEmailAndPassword(auth, cleanEmail, alternatePass);
+          } catch {
+            throw err;
+          }
+        } else {
+          throw err;
+        }
+      }
+      return;
+    }
+
+    await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
+
+    // Bypass para otros super admins
+    if (cleanEmail === 'glacersv@gmail.com') return;
+
     // Verificar estado del usuario después del login
     const profile = await getUser(auth.currentUser?.uid || '');
     if (profile?.status === 'pending') {
@@ -247,7 +317,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       userData.requestedRole = undefined;
       userData.studentId = studentId;
       // Eliminar el doc viejo (con ID del alumno como key)
-      await deleteUser(existingApprovedUser.uid).catch(() => {});
+      await deleteUser(existingApprovedUser.uid).catch(() => { });
     }
     await createUser(userData);
     console.log('[signUp] User creado');
@@ -419,6 +489,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       userProfile,
       loading,
       signIn,
+      signInWithMicrosoft,
       signUp,
       signOut,
       userRole,
