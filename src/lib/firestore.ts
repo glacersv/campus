@@ -656,12 +656,17 @@ export async function getAllLMSModules(): Promise<LMSModule[]> {
     console.warn('No se pudieron cargar grados/secciones de Firestore, usando nombres por defecto:', e);
   }
 
-  // Mapeo de gradeId del currículum BTV a los IDs reales del sistema Firestore
-  // btvCurriculumData usa '10','11','12' pero Firestore usa '10t','11t','12t' para técnico
+  // Mapeo de gradeId del currículum BTV a los IDs reales del sistema Firestore ('10t', '11t', '12t')
   const btv2FirestoreGradeId = (year: string): string => {
+    if (year === '1') return '10t';
+    if (year === '2') return '11t';
+    if (year === '3') return '12t';
     return '11t';
   };
   const btv2SectionId = (year: string): string => {
+    if (year === '1') return '10ta';
+    if (year === '2') return '11ta';
+    if (year === '3') return '12ta';
     return '11ta';
   };
 
@@ -753,7 +758,12 @@ export async function reseedLMSModules(): Promise<LMSModule[]> {
     console.warn('Error cargando grados/secciones para reseed:', e);
   }
 
-  const btv2Id = (year: string) => '11t';
+  const btv2Id = (year: string) => {
+    if (year === '1') return '10t';
+    if (year === '2') return '11t';
+    if (year === '3') return '12t';
+    return '11t';
+  };
   const btv2Sec = (year: string) => year === '1' ? '10ta' : year === '2' ? '11ta' : '12ta';
 
   const modules: LMSModule[] = BTV_GRAPHIC_DESIGN_COURSES.map(course => {

@@ -120,29 +120,8 @@ const buildInitialActivities = (courses: LMSCourse[]): LMSActivity[] => {
       maxScore: 10,
       dueDate: '2026-03-10T23:59:00Z',
       instructions: `1. Completa el Cuestionario Diagnóstico de Saberes Previos (clasifica en MUCHO, POCO, NADA).\n2. Desarrolla una investigación bibliográfica sobre los fundamentos de ${c.name}.\n3. Elabora un mapa mental o fichas técnicas con los términos clave.`,
-      status: c.technicalYear === '1' ? 'calificada' : 'pendiente',
-      submission:
-        c.technicalYear === '1'
-          ? {
-              id: `sub-${c.id}-info`,
-              activityId: `act-${c.id}-info`,
-              studentId: 'student-glacer',
-              studentName: 'Estudiante Salesiano',
-              submittedAt: '2026-02-18T14:30:00Z',
-              content: `Entrega completada con diagnóstico de saberes previos y marco teórico estructurado para ${c.name}.`,
-              attachments: [{ name: 'Diagnostico_Saberes_Previos.pdf', size: '1.2 MB' }],
-              grade: 9.0,
-              minedLevel: 5,
-              feedback: 'Excelente investigación y contextualización al marco teórico oficial.',
-              gradedAt: '2026-02-20T10:00:00Z',
-              axisLevels: {
-                tecnico: 5,
-                emprendedor: 4,
-                humanoSocial: 5,
-                academico: 5,
-              },
-            }
-          : undefined,
+      status: 'pendiente',
+      submission: undefined,
     });
 
     // Actividad 2: Plan de Trabajo y Decisiones (Etapas Planificar / Decidir)
@@ -160,29 +139,8 @@ const buildInitialActivities = (courses: LMSCourse[]): LMSActivity[] => {
       maxScore: 10,
       dueDate: '2026-03-24T23:59:00Z',
       instructions: `Estructura en equipo el plan de acción bajo marco lógico:\n- Definición del problema y objetivo general.\n- Cronograma de ruta crítica con fechas de entrega.\n- Formulario de Decisiones: asignación de roles (¿Quiénes? ¿Con qué? ¿Dónde? Tiempo).`,
-      status: c.technicalYear === '1' ? 'calificada' : 'pendiente',
-      submission:
-        c.technicalYear === '1'
-          ? {
-              id: `sub-${c.id}-plan`,
-              activityId: `act-${c.id}-plan`,
-              studentId: 'student-glacer',
-              studentName: 'Estudiante Salesiano',
-              submittedAt: '2026-02-25T16:00:00Z',
-              content: 'Plan de trabajo y cronograma de ruta crítica validado con el docente técnico.',
-              attachments: [{ name: 'Plan_Trabajo_Ruta_Critica.pdf', size: '2.4 MB' }],
-              grade: 8.5,
-              minedLevel: 4,
-              feedback: 'Muy buena distribución de responsabilidades en el equipo cooperativo.',
-              gradedAt: '2026-02-28T09:00:00Z',
-              axisLevels: {
-                tecnico: 4,
-                emprendedor: 4,
-                humanoSocial: 5,
-                academico: 4,
-              },
-            }
-          : undefined,
+      status: 'pendiente',
+      submission: undefined,
     });
 
     // Actividad 3: Proyecto Final con Rúbrica Oficial MINED (Etapas Ejecutar, Controlar, Valorar)
@@ -202,32 +160,8 @@ const buildInitialActivities = (courses: LMSCourse[]): LMSActivity[] => {
       maxScore: 10,
       dueDate: '2026-04-15T23:59:00Z',
       instructions: `Presentación final del proyecto anual ante jurado evaluador:\n- Bocetería y justificación en Racional Creativo.\n- Artes finales digitales e impresos a escala real.\n- Evidencias de bitácora y control FODA.\n- Evaluación criterial en los 4 Ejes (Técnico, Emprendedor, Humano-Social, Académico). Nivel mínimo de aprobación: 4 (7.0).`,
-      status: c.technicalYear === '1' && c.code === 'BTVDG1.0' ? 'calificada' : 'pendiente',
-      submission:
-        c.technicalYear === '1' && c.code === 'BTVDG1.0'
-          ? {
-              id: `sub-${c.id}-proj`,
-              activityId: `act-${c.id}-proj`,
-              studentId: 'student-glacer',
-              studentName: 'Estudiante Salesiano',
-              submittedAt: '2026-03-05T11:00:00Z',
-              content: 'Entrega final del proyecto integrador con memorias técnicas y artes finales adjuntos.',
-              attachments: [
-                { name: 'Proyecto_Final_Artes.pdf', size: '14.5 MB' },
-                { name: 'Racional_Creativo.pdf', size: '1.8 MB' },
-              ],
-              grade: 9.5,
-              minedLevel: 5,
-              feedback: 'Desempeño destacado. Cumplió con creces todos los criterios del Nivel 5.',
-              gradedAt: '2026-03-08T15:00:00Z',
-              axisLevels: {
-                tecnico: 5,
-                emprendedor: 5,
-                humanoSocial: 5,
-                academico: 4,
-              },
-            }
-          : undefined,
+      status: 'pendiente',
+      submission: undefined,
     });
   });
 
@@ -1111,8 +1045,8 @@ class LMSService {
       act.submission = {
         id: `sub-${Date.now()}`,
         activityId,
-        studentId: 'student-glacer',
-        studentName: 'Estudiante Salesiano',
+        studentId: 'student-aula',
+        studentName: 'Estudiante en Aula',
         submittedAt: new Date().toISOString(),
         content: 'Entrega en aula',
         attachments: [],
@@ -1188,8 +1122,8 @@ class LMSService {
       act.submission = {
         id: `sub-${Date.now()}`,
         activityId,
-        studentId: 'student-glacer',
-        studentName: 'Estudiante Salesiano',
+        studentId: 'student-aula',
+        studentName: 'Estudiante en Aula',
         submittedAt: new Date().toISOString(),
         content: 'Entrega registrada en aula',
         attachments: [],
@@ -1434,9 +1368,9 @@ class LMSService {
           subjectId: c.subjectId,
           teacherId: c.teacherId,
           teacherName: c.teacherName,
-          gradeId: c.gradeId || '11t',
-          gradeName: c.gradeName || '1° Año Bachillerato Técnico',
-          sectionId: c.sectionId || '11ta',
+          gradeId: c.gradeId || (c.technicalYear === '1' ? '10t' : c.technicalYear === '2' ? '11t' : '12t'),
+          gradeName: c.gradeName || (c.technicalYear + '° Año Bachillerato Técnico'),
+          sectionId: c.sectionId || (c.technicalYear === '1' ? '10ta' : c.technicalYear === '2' ? '11ta' : '12ta'),
           sectionName: c.sectionName || 'A',
           technicalYear: c.technicalYear,
           hours: c.hours,
