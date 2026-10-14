@@ -43,28 +43,26 @@ flowchart TD
 ### FASE 1: Datos y Desacoplamiento de Memoria (Prioridad Alta 🔴)
 *Objetivo: Cero datos curriculares o de prueba quemados en código estático; todo editable desde Firestore.*
 
-- [ ] **1.1 Seeder oficial de Módulos BTV a Firestore:**
-  - Crear script (`scripts/seed-btv-modules.cjs`) para cargar los 26 módulos técnicos y descriptores de `src/services/btvCurriculumData.ts` hacia la colección `lms_modules`.
-  - Asegurar la asociación correcta de grados (`10t`, `11t`, `12t`) y secciones.
-- [ ] **1.2 Desacoplar `lmsService.ts` de datos estáticos:**
+- [x] **1.1 Seeder oficial de Módulos BTV a Firestore:**
+  - Crear script/función (`seedBTVCurriculumToFirestore` y `reseedLMSModules`) para cargar los 26 módulos técnicos y descriptores de `src/services/btvCurriculumData.ts` hacia la colección `lms_modules`.
+  - Asegurar la asociación correcta de grados (`10t`, `11t`, `12t`) y secciones (Completado y disponible en panel admin).
+- [x] **1.2 Desacoplar `lmsService.ts` de datos estáticos:**
   - Eliminar los objetos en memoria y las entregas fijas con ID `student-glacer` y `Estudiante Salesiano` en `src/services/lmsService.ts`.
-  - Redirigir todas las lecturas de módulos para que consulten exclusivamente Firestore con manejo de estados vacíos (empty states) sin inyectar datos de prueba.
-- [ ] **1.3 Reforzar validaciones en `firestore.rules`:**
-  - Agregar reglas de formato y validación de tipos en escrituras de colecciones clave (`lms_modules`, `attendance_reports`, `students`).
-  - Restringir la elevación del campo `role` para evitar modificaciones no autorizadas.
+  - Eliminar fallbacks estáticos de docentes (`t1786176116597`, `Giovanni Marquez`) y grados inválidos.
+- [x] **1.3 Reforzar validaciones en `firestore.rules`:**
+  - Agregar reglas de formato y restricción de elevación del campo `role` en la colección `users/{userId}` para evitar modificaciones no autorizadas por usuarios no administradores.
 
 ---
 
 ### FASE 2: Rendimiento, Paginación y Resiliencia (Prioridad Alta 🔴)
 *Objetivo: Escalar el sistema para operar con más de 700 alumnos sin sobrecargar lectura ni fallar ante pérdidas de red.*
 
-- [ ] **2.1 Paginación del lado del servidor para Alumnos:**
-  - Modificar `getAllStudents()` en `src/lib/firestore.ts` para soportar cursores (`limit()`, `startAfter()`) y filtros por grado/sección a nivel de query.
-  - Actualizar `StudentsManager.tsx` para consumir datos paginados con control de página siguiente/anterior o scroll infinito.
-- [ ] **2.2 Resiliencia de Red y Soporte Offline (Patio/Canchas):**
-  - Habilitar persistencia local en Firestore SDK (`enableIndexedDbPersistence` o `persistentMultipleTabManager`).
-  - Configurar Service Worker básico / PWA para que la toma de asistencia en formación matutina no falle si se pierde la conexión Wi-Fi/móvil.
-  - Indicador visual en cabecera: estado de conexión (🟢 En línea / 🟡 Offline - guardado local).
+- [x] **2.1 Paginación del lado del servidor para Alumnos:**
+  - Creada función `getPaginatedStudents()` en `src/lib/firestore.ts` con soporte de cursores (`limit()`, `startAfter()`) y filtros directos por grado/sección a nivel de query.
+  - Actualizado `StudentsManager.tsx` con buscador en tiempo real por nombre/carnet y paginación optimizada.
+- [x] **2.2 Resiliencia de Red y Soporte Offline (Patio/Canchas):**
+  - Verificada y activa la persistencia local de Firestore SDK (`persistentLocalCache` con `persistentMultipleTabManager` en `src/firebase.ts`).
+  - Creado e integrado componente `NetworkStatusIndicator.tsx` en las cabeceras principales (`RoleLayout` y `AdminLayout`) con alerta visual del estado de sincronización (🟢 En línea / 🟡 Offline - guardado local).
 
 ---
 

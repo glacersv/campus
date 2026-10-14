@@ -31,6 +31,7 @@ import InstitutionLogo from '../shared/InstitutionLogo';
 import ThemeSwitcher from '../shared/ThemeSwitcher';
 import NotificationCenter from '../shared/NotificationCenter';
 import QuickStatsSidebar from '../shared/QuickStatsSidebar';
+import NetworkStatusIndicator from '../shared/NetworkStatusIndicator';
 
 interface AdminLayoutProps {
   children?: React.ReactNode;
@@ -190,6 +191,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <NetworkStatusIndicator />
+            <div className="w-px h-5 bg-slate-200 mx-1 dark:bg-slate-700" />
             <NotificationCenter />
             <div className="w-px h-5 bg-slate-200 mx-1 dark:bg-slate-700" />
             <ThemeSwitcher />

@@ -7,6 +7,7 @@ import InstitutionLogo from './InstitutionLogo';
 import ThemeSwitcher from './ThemeSwitcher';
 import NotificationCenter from './NotificationCenter';
 import QuickStatsSidebar from './QuickStatsSidebar';
+import NetworkStatusIndicator from './NetworkStatusIndicator';
 
 interface RoleLayoutProps {
   modules: SystemModuleId[];
@@ -189,6 +190,8 @@ export default function RoleLayout({ modules, moduleIcons, moduleColors, childre
           </div>
 
           <div className="flex items-center gap-3">
+            <NetworkStatusIndicator />
+            <div className="w-px h-5 bg-slate-700 hidden sm:block" />
             <NotificationCenter />
             <div className="w-px h-5 bg-slate-200 dark:bg-slate-700" />
             <ThemeSwitcher />

@@ -22,6 +22,7 @@ export default function StudentsManager() {
   const [form, setForm] = useState({ firstName: '', lastName: '', carnet: '', gender: 'M' as 'M' | 'F', gradeId: '', sectionId: '', enrollmentYear: new Date().getFullYear() });
   const [filterGrade, setFilterGrade] = useState('all');
   const [filterSection, setFilterSection] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [testCredentials, setTestCredentials] = useState<{ email: string; password: string; name: string }[]>([]);
   const [showCredentials, setShowCredentials] = useState(false);
@@ -34,7 +35,7 @@ export default function StudentsManager() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterGrade, filterSection]);
+  }, [filterGrade, filterSection, searchTerm]);
 
   const loadData = async () => {
     try {
@@ -234,7 +235,12 @@ export default function StudentsManager() {
       const studentSec = sections.find(sec => sec.id === s.sectionId);
       return studentSec?.name.trim().toUpperCase() === filterSection.trim().toUpperCase();
     })();
-    return matchGrade && matchTest && matchSection;
+    const term = searchTerm.trim().toLowerCase();
+    const matchSearch = !term || (
+      (s.name && s.name.toLowerCase().includes(term)) ||
+      (s.carnet && s.carnet.toLowerCase().includes(term))
+    );
+    return matchGrade && matchTest && matchSection && matchSearch;
   });
 
   const itemsPerPage = 20;
@@ -280,8 +286,27 @@ export default function StudentsManager() {
         </div>
       </div>
 
-      {/* Filtros */}
+      {/* Filtros y Búsqueda */}
       <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative min-w-[240px]">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Buscar por nombre o carnet..."
+            className="input-crema pl-9 text-xs py-1.5 w-full"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
         <div className="flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-xl border border-slate-200">
           <button onClick={() => { setFilterGrade('all'); setFilterSection('all'); }}
             className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${

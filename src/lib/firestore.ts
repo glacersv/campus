@@ -12,7 +12,11 @@ import {
   serverTimestamp,
   Timestamp,
   addDoc,
-  arrayUnion
+  arrayUnion,
+  limit,
+  startAfter,
+  QueryDocumentSnapshot,
+  DocumentData
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { BTV_GRAPHIC_DESIGN_COURSES, getModuleDescriptorData, GENERATE_ANNUAL_PROJECT } from '../services/btvCurriculumData';
@@ -912,6 +916,55 @@ export async function deleteStudent(id: string): Promise<void> {
 export async function deleteUser(uid: string): Promise<void> {
   const ref = doc(db, USERS_COLLECTION, uid);
   await deleteDoc(ref);
+}
+
+export interface PaginatedStudentsResult {
+  students: Student[];
+  lastDoc: QueryDocumentSnapshot<DocumentData> | null;
+  hasMore: boolean;
+  totalCount?: number;
+}
+
+export async function getPaginatedStudents(options: {
+  pageSize?: number;
+  lastDoc?: QueryDocumentSnapshot<DocumentData> | null;
+  gradeId?: string;
+  sectionId?: string;
+  searchTerm?: string;
+}): Promise<PaginatedStudentsResult> {
+  const { pageSize = 25, lastDoc, gradeId, sectionId } = options;
+
+  let constraints: any[] = [];
+
+  if (gradeId && gradeId !== 'all' && gradeId !== 'test') {
+    constraints.push(where('gradeId', '==', gradeId));
+  }
+  if (sectionId && sectionId !== 'all') {
+    constraints.push(where('sectionId', '==', sectionId));
+  }
+
+  constraints.push(orderBy('name', 'asc'));
+
+  if (lastDoc) {
+    constraints.push(startAfter(lastDoc));
+  }
+
+  constraints.push(limit(pageSize + 1));
+
+  const q = query(collection(db, STUDENTS_COLLECTION), ...constraints);
+  const snapshot = await getDocs(q);
+
+  const hasMore = snapshot.docs.length > pageSize;
+  const docs = hasMore ? snapshot.docs.slice(0, pageSize) : snapshot.docs;
+  const newLastDoc = docs.length > 0 ? docs[docs.length - 1] : null;
+
+  const students = docs.map(d => ({ id: d.id, ...d.data() } as Student));
+
+  return {
+    students,
+    lastDoc: newLastDoc,
+    hasMore,
+  };
 }
 
 export async function getAllStudents(): Promise<Student[]> {
