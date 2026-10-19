@@ -472,55 +472,73 @@ export default function SchoolYearManager() {
   });
 
   return (
-    <div className="space-y-8 fade-in max-w-7xl mx-auto pb-12">
-      {/* Premium Header */}
-      <div className="relative card-crema p-6 md:p-8 overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all hover:border-slate-300">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full pointer-events-none" />
-        <div className="flex items-center gap-5 relative z-10">
-          <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-secondary shadow-inner transition-transform hover:scale-105 duration-300">
-            <CalendarDays className="w-7 h-7 text-primary" />
+    <div className="space-y-6 fade-in max-w-7xl mx-auto pb-12">
+      {/* Standardized Module Header */}
+      <div className="module-header flex-wrap gap-4">
+        <div className="module-title-group">
+          <div className="module-icon">
+            <CalendarDays className="w-5 h-5 text-slate-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-slate-900 font-display tracking-tight leading-tight">
-              Apertura del Período Lectivo
-            </h1>
-            <p className="text-xs text-secondary mt-1 flex flex-wrap items-center gap-2">
-              {currentYear ? (
-                <>
-                  <span>Lectivo actual:</span>
-                  <span className="font-extrabold text-primary font-mono bg-primary/10 px-2.5 py-0.5 rounded-md">
-                    {currentYear}
-                  </span>
-                  <ArrowRight className="w-3.5 h-3.5 text-tertiary" />
-                  <span>Planificación próximo año:</span>
-                  <input
-                    type="number"
-                    value={manualYear}
-                    onChange={(e) => setManualYear(e.target.value)}
-                    className="w-24 font-extrabold text-accent font-mono bg-accent/10 border border-accent/20 px-2.5 py-0.5 rounded-md focus:outline-none focus:ring-2 focus:ring-accent/50 text-center"
-                    min={currentYear ? currentYear + 1 : new Date().getFullYear()}
-                    max={new Date().getFullYear() + 10}
-                  />
-                </>
-              ) : (
-                <span className="text-secondary font-bold flex items-center gap-1.5">
-                  <AlertTriangle className="w-4 h-4" />
-                  Sin año lectivo activo. Por favor, inicialice el sistema.
-                </span>
-              )}
+            <h1 className="module-title">Iniciar Año Escolar</h1>
+            <p className="module-subtitle">
+              Apertura y planificación del nuevo período lectivo
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 self-start md:self-auto relative z-10">
-          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-primary/5 via-accent/5 to-secondary/10 border border-primary/20 rounded-full text-xs font-bold text-primary shadow-sm">
-            Planificación en Vivo
-          </span>
+
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 bg-white px-3.5 py-1.5 rounded-xl border border-slate-200 shadow-3xs">
+            <span className="text-xs text-slate-500 font-medium">Lectivo actual:</span>
+            <span className="font-extrabold text-primary font-mono text-xs bg-primary/10 px-2 py-0.5 rounded-md">
+              {currentYear || 'Sin iniciar'}
+            </span>
+            <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-xs text-slate-500 font-medium">Próximo año:</span>
+            <input
+              type="number"
+              value={manualYear}
+              onChange={(e) => setManualYear(e.target.value)}
+              className="w-20 font-extrabold text-primary font-mono text-xs bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/30 text-center"
+              min={currentYear ? currentYear + 1 : new Date().getFullYear()}
+              max={new Date().getFullYear() + 10}
+            />
+          </div>
         </div>
+      </div>
+
+      {/* Filter by Educational Cycle */}
+      <div className="flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-xl border border-slate-200 flex-wrap">
+        <button
+          type="button"
+          onClick={() => setSelectedCycle('all')}
+          className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            selectedCycle === 'all'
+              ? 'bg-primary text-white shadow-xs'
+              : 'text-slate-600 hover:bg-slate-200/50'
+          }`}
+        >
+          Todos
+        </button>
+        {CYCLE_KEYS.map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => setSelectedCycle(c)}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              selectedCycle === c
+                ? 'bg-primary text-white shadow-xs'
+                : 'text-slate-600 hover:bg-slate-200/50'
+            }`}
+          >
+            {CYCLE_LABEL[c] || c}
+          </button>
+        ))}
       </div>
 
       {/* Year Warning Banner */}
       {yearWarning && (
-        <div className={`rounded-xl p-4 border-2 flex items-start gap-3 ${
+        <div className={`rounded-xl p-4 border flex items-start gap-3 ${
           yearWarning.type === 'error' 
             ? 'bg-red-50 border-red-200 text-red-800' 
             : yearWarning.type === 'warning'
@@ -534,67 +552,46 @@ export default function SchoolYearManager() {
           ) : (
             <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" />
           )}
-          <span className="text-sm font-medium">{yearWarning.message}</span>
+          <span className="text-xs font-semibold">{yearWarning.message}</span>
         </div>
       )}
 
-      {/* Premium KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+      {/* Standardized KPI Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Card 1: Alumnos a promover */}
-        <div className="group stat-card relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-1.5 h-full bg-primary rounded-l-2xl transition-all duration-300 group-hover:w-2" />
-          <div className="stat-card-icon bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
-            <Users className="w-6 h-6" />
+        <div className="stat-card">
+          <div className="stat-card-icon bg-slate-50 border border-slate-200/60 text-primary">
+            <Users className="w-5 h-5 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <span className="stat-card-label">
-              Alumnos a Promover
-            </span>
-            <span className="block text-xs text-secondary mt-0.5 font-medium">
-              Padrón activo para próximo ciclo
-            </span>
+            <span className="stat-card-label">Alumnos a Promover</span>
+            <span className="block text-[11px] text-slate-400 font-medium truncate">Padrón activo para próximo ciclo</span>
           </div>
-          <div className="stat-card-value">
-            {totalIncoming}
-          </div>
+          <div className="stat-card-value">{totalIncoming}</div>
         </div>
 
         {/* Card 2: Graduaciones */}
-        <div className="group stat-card relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-1.5 h-full bg-secondary rounded-l-2xl transition-all duration-300 group-hover:w-2" />
-          <div className="stat-card-icon bg-secondary/10 text-secondary group-hover:bg-secondary/20 transition-colors">
-            <GraduationCap className="w-6 h-6" />
+        <div className="stat-card">
+          <div className="stat-card-icon bg-slate-50 border border-slate-200/60 text-slate-600">
+            <GraduationCap className="w-5 h-5 text-slate-600" />
           </div>
           <div className="flex-1 min-w-0">
-            <span className="stat-card-label">
-              Egresados a Graduar
-            </span>
-            <span className="block text-xs text-secondary mt-0.5 font-medium">
-              Saldrán del sistema (11G / 12T)
-            </span>
+            <span className="stat-card-label">Egresados a Graduar</span>
+            <span className="block text-[11px] text-slate-400 font-medium truncate">Saldrán del sistema (11G / 12T)</span>
           </div>
-          <div className="stat-card-value text-slate-700">
-            {totalGraduates}
-          </div>
+          <div className="stat-card-value">{totalGraduates}</div>
         </div>
 
         {/* Card 3: Secciones Nuevas */}
-        <div className="group stat-card relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-1.5 h-full bg-accent rounded-l-2xl transition-all duration-300 group-hover:w-2" />
-          <div className="stat-card-icon bg-accent/10 text-accent group-hover:bg-accent/20 transition-colors">
-            <Layers className="w-6 h-6" />
+        <div className="stat-card">
+          <div className="stat-card-icon bg-slate-50 border border-slate-200/60 text-accent">
+            <Layers className="w-5 h-5 text-accent" />
           </div>
           <div className="flex-1 min-w-0">
-            <span className="stat-card-label">
-              Nuevas Secciones
-            </span>
-            <span className="block text-xs text-secondary mt-0.5 font-medium">
-              Aulas virtuales a generar
-            </span>
+            <span className="stat-card-label">Nuevas Secciones</span>
+            <span className="block text-[11px] text-slate-400 font-medium truncate">Aulas virtuales a generar</span>
           </div>
-          <div className="stat-card-value text-slate-700">
-            {totalSections}
-          </div>
+          <div className="stat-card-value">{totalSections}</div>
         </div>
       </div>
 
@@ -622,197 +619,40 @@ export default function SchoolYearManager() {
           </div>
         ) : (
           <div className="space-y-8">
-            {activeCycles.map(cycleKey => {
-              const cycleRows = groupedRows[cycleKey];
-              return (
-                <div key={cycleKey} className="space-y-4">
-                  {/* Elegant cycle header divider with count badge */}
-                  <div className="flex items-center gap-3 pt-2">
-                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 font-display flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-primary" />
-                      {CYCLE_LABEL[cycleKey] || cycleKey}
-                    </h4>
-                    <span className="px-2.5 py-0.5 bg-slate-200/60 border border-slate-300/30 text-slate-700 text-[10px] font-black rounded-full font-mono">
-                      {cycleRows.length} {cycleRows.length === 1 ? 'Grado' : 'Grados'}
-                    </span>
-                    <div className="flex-1 h-px bg-slate-200" />
-                  </div>
+            {activeCycles
+              .filter(cycleKey => selectedCycle === 'all' || selectedCycle === cycleKey)
+              .map(cycleKey => {
+                const cycleRows = groupedRows[cycleKey];
+                return (
+                  <div key={cycleKey} className="space-y-4">
+                    {/* Cycle header divider with count badge */}
+                    <div className="flex items-center gap-3 pt-2">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 font-display flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-primary" />
+                        {CYCLE_LABEL[cycleKey] || cycleKey}
+                      </h4>
+                      <span className="px-2.5 py-0.5 bg-slate-200/60 border border-slate-300/30 text-slate-700 text-[10px] font-black rounded-full font-mono">
+                        {cycleRows.length} {cycleRows.length === 1 ? 'Grado' : 'Grados'}
+                      </span>
+                      <div className="flex-1 h-px bg-slate-200" />
+                    </div>
 
-                  {/* Responsive grid of interactive cards */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                    {cycleRows.map((r, rowIndex) => {
-                      const dist = getDistribution(r);
-                      const isReconfigured =
-                        r.currentSectionNames.length !==
-                        r.newSectionNames.filter(n => n.trim()).length;
-                      return (
-                        <motion.div
+                    {/* Grid of interactive GradeMigrationCards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                      {cycleRows.map((r) => (
+                        <GradeMigrationCard
                           key={r.gradeId}
-                          initial={{ opacity: 0, y: 15 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: rowIndex * 0.02 }}
-                          className="card-crema p-5 flex flex-col justify-between transition-all duration-300 relative group/card overflow-hidden min-h-[380px]"
-                        >
-                          {/* Subtle top-border gradient gradient to allow natural expansion */}
-                          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/10 via-primary/30 to-primary/10" />
-
-                          <div className="space-y-4">
-                            {/* Header: Grade & Cycle */}
-                            <div className="flex items-start justify-between gap-2 min-w-0">
-                              <div className="min-w-0 flex-1">
-                                <h4 className="text-sm font-black text-slate-900 font-display group-hover/card:text-primary transition-colors leading-tight truncate" title={r.gradeName}>
-                                  {r.gradeName}
-                                </h4>
-                                <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-md text-[9px] font-bold border ${
-                                  r.cycle === 'parvularia' ? 'bg-pink-50 text-pink-700 border-pink-100' :
-                                  r.cycle === '1' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                                  r.cycle === '2' ? 'bg-sky-50 text-sky-700 border-sky-100' :
-                                  r.cycle === '3' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
-                                  'bg-orange-50 text-orange-700 border-orange-100'
-                                }`}>
-                                  {CYCLE_LABEL[r.cycle] || r.cycle}
-                                </span>
-                              </div>
-
-                              <div className="shrink-0">
-                                {r.nextGradeId === null ? (
-                                  <span className="inline-flex items-center gap-1 text-[9px] font-black text-secondary bg-slate-50 border border-slate-200 px-2 py-1 rounded-full uppercase tracking-wider">
-                                    <GraduationCap className="w-3 h-3" />
-                                    Egreso
-                                  </span>
-                                ) : (
-                                  <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider bg-slate-100 px-2 py-1 rounded-md block max-w-[85px] truncate" title={r.nextGradeName}>
-                                    {r.nextGradeName}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Enrollment flow - styled as a visual 'Matrícula Entrante' vs 'Padrón Saliente' comparison */}
-                            <div className="space-y-1.5 bg-slate-50 border border-slate-100 rounded-xl p-2.5">
-                              <div className="flex justify-between items-center text-[10px] font-bold text-slate-400">
-                                <span className="uppercase tracking-wider">Flujo de Alumnos</span>
-                              </div>
-                              <div className="flex justify-between items-center text-xs">
-                                <span className="text-slate-500 font-medium">Ingreso (+{r.incomingCount}):</span>
-                                <span className="font-bold text-primary truncate max-w-[85px]" title={r.sourceGradeName}>{r.sourceGradeName}</span>
-                              </div>
-                              <div className="flex justify-between items-center text-xs border-t border-slate-100/60 pt-1.5 mt-1">
-                                <span className="text-slate-500 font-medium">Egreso ({r.outgoingCount}):</span>
-                                <span className="font-bold text-slate-700 truncate max-w-[85px]" title={r.nextGradeName === 'Graduación' ? 'Egreso' : r.nextGradeName}>{r.nextGradeName === 'Graduación' ? 'Egreso' : r.nextGradeName}</span>
-                              </div>
-                            </div>
-
-                            {/* Aulas en Curso (Año actual) */}
-                            <div className="space-y-1.5">
-                              <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                                Aulas en Curso
-                              </div>
-                              {r.currentSectionNames.length > 0 ? (
-                                <div className="flex flex-wrap gap-1.5">
-                                  {r.currentSectionNames.map(n => (
-                                    <span
-                                      key={n}
-                                      className="px-2.5 py-0.5 bg-slate-100 border border-slate-200/80 rounded-md text-slate-600 font-black font-mono text-[11px] shadow-sm"
-                                    >
-                                      {n}
-                                    </span>
-                                  ))}
-                                </div>
-                              ) : (
-                                <span className="text-[11px] text-slate-400 font-medium italic">
-                                  Sin aulas asignadas
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Next-year planned section inputs grouped inside a cohesive bg-slate-50/50 block */}
-                            <div className="bg-slate-50/50 p-3 rounded-xl border border-slate-100 space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                                  Aulas Planificadas ({targetYear})
-                                </span>
-                                {isReconfigured && (
-                                  <span className="text-[9px] font-black uppercase text-accent bg-accent/10 border border-accent/20 px-1.5 py-0.5 rounded">
-                                    Modificado
-                                  </span>
-                                )}
-                              </div>
-
-                              <div className="flex items-center gap-2">
-                                <div className="inline-flex items-center bg-white border border-slate-200 rounded-lg p-0.5 shadow-xs shrink-0">
-                                  <button
-                                    type="button"
-                                    onClick={() => updateCount(r.gradeId, r.newSectionNames.length - 1)}
-                                    disabled={r.newSectionNames.length <= 1}
-                                    className="w-5.5 h-5.5 rounded-md flex items-center justify-center text-slate-500 hover:bg-primary hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all font-bold cursor-pointer"
-                                  >
-                                    <Minus className="w-3 h-3" />
-                                  </button>
-                                  <span className="w-6 text-center text-xs font-black text-slate-800 font-mono">
-                                    {r.newSectionNames.length}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => updateCount(r.gradeId, r.newSectionNames.length + 1)}
-                                    disabled={r.newSectionNames.length >= 6}
-                                    className="w-5.5 h-5.5 rounded-md flex items-center justify-center text-slate-500 hover:bg-primary hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all font-bold cursor-pointer"
-                                  >
-                                    <Plus className="w-3 h-3" />
-                                  </button>
-                                </div>
-
-                                {/* Interactive inputs for section letters */}
-                                <div className="flex flex-wrap gap-1 items-center">
-                                  {r.newSectionNames.map((n, i) => (
-                                    <input
-                                      key={i}
-                                      value={n}
-                                      onChange={e => updateName(r.gradeId, i, e.target.value)}
-                                      maxLength={2}
-                                      placeholder="A"
-                                      title="Identificador de la sección"
-                                      className="w-8 h-8 text-center text-xs font-black uppercase input-crema bg-white text-primary p-0 rounded-lg border-slate-200"
-                                    />
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Live projections use neutral badges with primary-colored highlights to minimize visual noise */}
-                            <div className="space-y-1.5 pt-1">
-                              <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                                Distribución Proyectada
-                              </div>
-                              <div className="flex flex-wrap gap-1.5">
-                                {Object.entries(dist).map(([name, count]) => (
-                                  <span
-                                    key={name}
-                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 shadow-xs hover:scale-105 hover:bg-slate-200/80 transition-all duration-200 cursor-default"
-                                  >
-                                    <span className="text-[9px] text-slate-400 uppercase font-black tracking-wider">
-                                      Secc. {name}
-                                    </span>
-                                    <span className="text-primary font-black font-mono text-[11px]">
-                                      {count}
-                                    </span>
-                                  </span>
-                                ))}
-                                {Object.keys(dist).length === 0 && (
-                                  <span className="text-[10px] text-slate-400 italic">
-                                    Sin alumnos proyectados
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
+                          r={r}
+                          targetYear={targetYear}
+                          getDistribution={getDistribution}
+                          updateCount={updateCount}
+                          updateName={updateName}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
           </div>
         )}
       </div>
