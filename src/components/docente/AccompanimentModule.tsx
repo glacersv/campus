@@ -93,15 +93,22 @@ export default function AccompanimentModule() {
           teacher = await getTeacherByEmail(userProfile.email);
         }
 
+        let initialGradeId = '';
+        let initialSectionId = '';
+
         if (teacher?.guideGradeId && teacher?.guideSectionId) {
-          setSelectedGradeId(teacher.guideGradeId);
-          setSelectedSectionId(teacher.guideSectionId);
-        } else if (gradesData.length > 0 && sectionsData.length > 0) {
-          // BTV default: buscar 11° o 10° si existe
-          const btvGrade = gradesData.find(g => g.name.toLowerCase().includes('11') || g.name.toLowerCase().includes('10')) || gradesData[0];
-          setSelectedGradeId(btvGrade.id);
-          setSelectedSectionId(sectionsData[0].id);
+          initialGradeId = teacher.guideGradeId;
+          initialSectionId = teacher.guideSectionId;
+        } else if (gradesData.length > 0) {
+          // BTV default: buscar 11° técnico o 10° técnico si existe
+          const btvGrade = gradesData.find(g => g.id === '11t' || g.id === '10t' || g.name.toLowerCase().includes('técnico')) || gradesData[0];
+          initialGradeId = btvGrade.id;
+          const matchingSections = sectionsData.filter(s => s.gradeId === btvGrade.id);
+          initialSectionId = matchingSections.length > 0 ? matchingSections[0].id : (sectionsData[0]?.id || '');
         }
+
+        setSelectedGradeId(initialGradeId);
+        setSelectedSectionId(initialSectionId);
       } catch (err) {
         console.error('Error al inicializar acompañamiento:', err);
         setMessage({ type: 'error', text: 'Error al cargar configuración de acompañamiento.' });
@@ -111,6 +118,20 @@ export default function AccompanimentModule() {
     };
     initData();
   }, [userProfile]);
+
+  // Secciones filtradas por el grado seleccionado
+  const availableSections = sections.filter(s => s.gradeId === selectedGradeId);
+
+  // Manejador de cambio de grado con actualización de sección automática
+  const handleGradeChange = (gradeId: string) => {
+    setSelectedGradeId(gradeId);
+    const matchingSections = sections.filter(s => s.gradeId === gradeId);
+    if (matchingSections.length > 0) {
+      setSelectedSectionId(matchingSections[0].id);
+    } else {
+      setSelectedSectionId('');
+    }
+  };
 
   // Cargar estudiantes y calificaciones cada vez que cambia grado, sección o periodo
   useEffect(() => {
@@ -297,7 +318,7 @@ export default function AccompanimentModule() {
             </label>
             <select
               value={selectedGradeId}
-              onChange={(e) => setSelectedGradeId(e.target.value)}
+              onChange={(e) => handleGradeChange(e.target.value)}
               className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             >
               {grades.map(g => (
@@ -316,9 +337,13 @@ export default function AccompanimentModule() {
               onChange={(e) => setSelectedSectionId(e.target.value)}
               className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             >
-              {sections.map(s => (
-                <option key={s.id} value={s.id}>Sección {s.name}</option>
-              ))}
+              {availableSections.length > 0 ? (
+                availableSections.map(s => (
+                  <option key={s.id} value={s.id}>Sección {s.name}</option>
+                ))
+              ) : (
+                <option value="">Sin secciones para este grado</option>
+              )}
             </select>
           </div>
 
