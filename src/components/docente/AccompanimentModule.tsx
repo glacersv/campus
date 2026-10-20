@@ -653,10 +653,10 @@ export default function AccompanimentModule() {
                   {displayedIndicators.map((ind) => (
                     <th
                       key={ind.id}
-                      className="p-3 text-center min-w-[130px] font-semibold border-l border-slate-200 dark:border-slate-700 leading-tight"
+                      className="p-3 text-center min-w-[140px] font-semibold border-l border-slate-200 dark:border-slate-700 leading-tight"
                       title={ind.name}
                     >
-                      <div className="font-bold text-slate-800 dark:text-slate-200">{ind.name}</div>
+                      <div className="font-bold text-slate-800 dark:text-slate-200 text-xs">{ind.name}</div>
                       {ind.areaName && activeAreaTab === 'all' && (
                         <div className="text-[10px] text-slate-400 font-normal uppercase mt-0.5">{ind.areaName}</div>
                       )}
@@ -709,26 +709,57 @@ export default function AccompanimentModule() {
                         return (
                           <td
                             key={ind.id}
-                            className="p-2 text-center border-l border-slate-100 dark:border-slate-800/60"
+                            className="p-1.5 text-center border-l border-slate-100 dark:border-slate-800/60"
                           >
-                            <select
-                              value={scoreValue}
-                              onChange={(e) =>
-                                handleScoreChange(
-                                  student.id,
-                                  studentFullName,
-                                  ind.id,
-                                  e.target.value as AccompanimentGradeScale
-                                )
-                              }
-                              className={`w-full max-w-[90px] mx-auto py-1.5 px-2 rounded-xl text-center font-bold text-xs border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 ${badgeColor}`}
-                            >
-                              <option value="" className="bg-white text-slate-700 dark:bg-slate-900 dark:text-slate-200 font-normal">- Sin asignar -</option>
-                              <option value="E" className="bg-white text-emerald-700 dark:bg-slate-900 dark:text-emerald-400 font-bold">E - Excelente</option>
-                              <option value="MB" className="bg-white text-blue-700 dark:bg-slate-900 dark:text-blue-400 font-bold">MB - Muy Bueno</option>
-                              <option value="B" className="bg-white text-amber-700 dark:bg-slate-900 dark:text-amber-400 font-bold">B - Bueno</option>
-                              <option value="NM" className="bg-white text-rose-700 dark:bg-slate-900 dark:text-rose-400 font-bold">NM - Necesita Mejorar</option>
-                            </select>
+                            <div className="inline-flex items-center justify-center p-0.5 bg-slate-100 dark:bg-slate-800/90 rounded-xl border border-slate-200/80 dark:border-slate-700/80 gap-0.5 shadow-inner">
+                              {(['E', 'MB', 'B', 'NM'] as AccompanimentGradeScale[]).map((gradeOpt) => {
+                                const isSelected = scoreValue === gradeOpt;
+
+                                let activeClass = '';
+                                if (gradeOpt === 'E') {
+                                  activeClass = 'bg-emerald-500 text-white font-extrabold shadow-sm shadow-emerald-500/40 ring-1 ring-emerald-600';
+                                } else if (gradeOpt === 'MB') {
+                                  activeClass = 'bg-blue-600 text-white font-extrabold shadow-sm shadow-blue-600/40 ring-1 ring-blue-700';
+                                } else if (gradeOpt === 'B') {
+                                  activeClass = 'bg-amber-500 text-white font-extrabold shadow-sm shadow-amber-500/40 ring-1 ring-amber-600';
+                                } else if (gradeOpt === 'NM') {
+                                  activeClass = 'bg-rose-500 text-white font-extrabold shadow-sm shadow-rose-500/40 ring-1 ring-rose-600';
+                                }
+
+                                const inactiveClass = scoreValue
+                                  ? 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 opacity-60 hover:opacity-100'
+                                  : 'text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-white';
+
+                                return (
+                                  <button
+                                    key={gradeOpt}
+                                    type="button"
+                                    onClick={() =>
+                                      handleScoreChange(
+                                        student.id,
+                                        studentFullName,
+                                        ind.id,
+                                        isSelected ? ('' as any) : gradeOpt
+                                      )
+                                    }
+                                    title={`${gradeOpt} - ${
+                                      gradeOpt === 'E'
+                                        ? 'Excelente'
+                                        : gradeOpt === 'MB'
+                                        ? 'Muy Bueno'
+                                        : gradeOpt === 'B'
+                                        ? 'Bueno'
+                                        : 'Necesita Mejorar'
+                                    }${isSelected ? ' (Clic para desmarcar)' : ''}`}
+                                    className={`px-1.5 py-1 text-[11px] rounded-lg transition-all cursor-pointer font-bold select-none leading-none min-w-[24px] ${
+                                      isSelected ? activeClass : inactiveClass
+                                    }`}
+                                  >
+                                    {gradeOpt}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </td>
                         );
                       })}
