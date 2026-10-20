@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           let teacherName: string | undefined;
 
           // Detectar rol y detalles
-          const isSuperAdmin = email === 'admin@salesianosanjose.edu.sv' || email === 'glacersv@gmail.com';
+          const isSuperAdmin = email === 'admin@salesianosanjose.edu.sv' || email === 'glacersv@gmail.com' || email === 'me01003@ues.edu.sv';
           const teacher = await getTeacherByEmail(email);
           if (isSuperAdmin) {
             detectedRole = 'admin';

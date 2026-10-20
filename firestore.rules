@@ -17,7 +17,8 @@ service cloud.firestore {
       return isAuthenticated() && (
         getUserRole() == 'admin' ||
         request.auth.token.email == 'admin@salesianosanjose.edu.sv' ||
-        request.auth.token.email == 'glacersv@gmail.com'
+        request.auth.token.email == 'glacersv@gmail.com' ||
+        request.auth.token.email == 'me01003@ues.edu.sv'
       );
     }
 
