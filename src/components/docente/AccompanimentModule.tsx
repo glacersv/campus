@@ -32,6 +32,7 @@ import {
   seedAccompanimentDefaultAreas,
   getAllGrades,
   getAllSections,
+  getAllStudents,
   getStudentsBySection,
   getTeacher,
   getTeacherByEmail,
@@ -135,13 +136,30 @@ export default function AccompanimentModule() {
 
   // Cargar estudiantes y calificaciones cada vez que cambia grado, sección o periodo
   useEffect(() => {
-    if (!selectedGradeId || !selectedSectionId) return;
+    if (!selectedGradeId) return;
 
     const loadStudentsAndRecord = async () => {
       setLoadingStudents(true);
       try {
-        // Cargar alumnos de la sección
-        const studentsList = await getStudentsBySection(selectedGradeId, selectedSectionId);
+        const all = await getAllStudents();
+        const selectedSec = sections.find(sec => sec.id === selectedSectionId);
+
+        const studentsList = all.filter(s => {
+          if (s.gradeId !== selectedGradeId) return false;
+          if (!selectedSectionId) return true;
+          // Coincidencia por ID directo
+          if (s.sectionId === selectedSectionId) return true;
+          // Coincidencia por nombre de sección (ej: "A")
+          if (selectedSec) {
+            const studentSec = sections.find(sec => sec.id === s.sectionId);
+            if (studentSec?.name.trim().toUpperCase() === selectedSec.name.trim().toUpperCase()) return true;
+            // Coincidencia si el sectionId termina con la letra
+            const letter = selectedSec.name.trim().toUpperCase();
+            if (s.sectionId?.toUpperCase().endsWith(letter.toLowerCase()) || s.sectionId?.toUpperCase().endsWith(letter)) return true;
+          }
+          return false;
+        });
+
         // Ordenar alfabéticamente por apellido / nombre
         studentsList.sort((a, b) => {
           const nameA = (a.lastName || a.name || '').toLowerCase();
@@ -153,7 +171,7 @@ export default function AccompanimentModule() {
         // Cargar récord de notas de acompañamiento
         const existingRecord = await getAccompanimentRecord(
           selectedGradeId,
-          selectedSectionId,
+          selectedSectionId || 'all',
           selectedPeriod,
           selectedYear
         );
@@ -172,7 +190,7 @@ export default function AccompanimentModule() {
     };
 
     loadStudentsAndRecord();
-  }, [selectedGradeId, selectedSectionId, selectedPeriod, selectedYear]);
+  }, [selectedGradeId, selectedSectionId, selectedPeriod, selectedYear, sections]);
 
   // Manejar cambio de valor de un indicador
   const handleScoreChange = (studentId: string, studentName: string, indicatorId: string, value: AccompanimentGradeScale) => {
