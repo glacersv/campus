@@ -1164,12 +1164,22 @@ export interface AccompanimentArea {
 
 export type AccompanimentPeriod = 'PI' | 'PII' | 'PIII' | 'PIV';
 
+export interface StudentSubjectConductNote {
+  id: string;
+  subjectName: string;
+  type: 'positivo' | 'negativo' | 'observacion';
+  description: string;
+  date: string;
+  teacherName?: string;
+}
+
 export interface AccompanimentStudentScore {
   studentId: string;
   studentName?: string;
   carnet?: string;
   scores: Record<string, AccompanimentGradeScale>; // indicatorId -> 'E' | 'MB' | 'B' | 'NM'
   observations?: string;
+  conductNotes?: StudentSubjectConductNote[];
   updatedAt?: Timestamp;
 }
 
