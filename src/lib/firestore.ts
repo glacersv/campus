@@ -1071,15 +1071,45 @@ export async function getStudentsByGrade(gradeId: string): Promise<Student[]> {
 }
 
 export async function getStudentsBySection(gradeId: string, sectionId: string): Promise<Student[]> {
-  const q = query(
-    collection(db, STUDENTS_COLLECTION),
-    where('gradeId', '==', gradeId),
-    where('sectionId', '==', sectionId)
-  );
-  const snapshot = await getDocs(q);
-  const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Student));
-  list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-  return list;
+  try {
+    // Consultar todos los alumnos del grado
+    const q = query(
+      collection(db, STUDENTS_COLLECTION),
+      where('gradeId', '==', gradeId)
+    );
+    const snapshot = await getDocs(q);
+    const allGradeStudents = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Student));
+
+    // Si no se especificó sectionId o está vacía, devolver todos
+    if (!sectionId) {
+      allGradeStudents.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      return allGradeStudents;
+    }
+
+    // Extraer la letra de la sección objetivo (ej: de '11ta', '2026-11t-a', 'sec-a' -> 'A')
+    const targetLetter = sectionId.slice(-1).toUpperCase();
+
+    // Filtrar con coincidencia flexible:
+    // 1. Exact match con s.sectionId === sectionId
+    // 2. O la sección del estudiante termina con la misma letra (ej: '11ta' vs 'sec-a')
+    // 3. O contiene la letra
+    const filtered = allGradeStudents.filter(s => {
+      if (!s.sectionId) return false;
+      if (s.sectionId === sectionId) return true;
+      const studentLetter = s.sectionId.slice(-1).toUpperCase();
+      if (studentLetter === targetLetter) return true;
+      if (s.sectionId.toUpperCase().includes(targetLetter)) return true;
+      return false;
+    });
+
+    // Si el filtro específico encuentra alumnos, devolverlos; de lo contrario, si hay alumnos en el grado, devolver los del grado
+    const result = filtered.length > 0 ? filtered : allGradeStudents;
+    result.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    return result;
+  } catch (error) {
+    console.error('Error fetching students by section:', error);
+    return [];
+  }
 }
 
 // ==================== GRADE/SECTION TOGGLE ====================
