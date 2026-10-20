@@ -1074,11 +1074,12 @@ export async function getStudentsBySection(gradeId: string, sectionId: string): 
   const q = query(
     collection(db, STUDENTS_COLLECTION),
     where('gradeId', '==', gradeId),
-    where('sectionId', '==', sectionId),
-    orderBy('name', 'asc')
+    where('sectionId', '==', sectionId)
   );
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Student));
+  const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Student));
+  list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  return list;
 }
 
 // ==================== GRADE/SECTION TOGGLE ====================
