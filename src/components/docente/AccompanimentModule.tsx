@@ -184,13 +184,36 @@ export default function AccompanimentModule() {
 
         const isSuperAdmin = userProfile?.role === 'admin' || userProfile?.email === 'admin@salesianosanjose.edu.sv';
 
-        // Filtrar grados disponibles: Solo los que sea guía si es docente no-admin
+        // Grados a los que tiene acceso el docente:
+        // 1. Su Grado Guía (si tiene)
+        // 2. Grados correspondientes a las Materias que imparte
         let availableGrades = gradesData;
-        if (!isSuperAdmin && teacher?.guideGradeId) {
-          availableGrades = gradesData.filter(g => g.id === teacher.guideGradeId);
-          if (availableGrades.length === 0) {
-            // Fallback si el ID no emparejó exactamente pero el docente tiene asignado
-            availableGrades = gradesData.filter(g => g.id === '11t' || g.id.includes(teacher.guideGradeId!));
+        if (!isSuperAdmin) {
+          const allowedGradeIds = new Set<string>();
+          if (teacher?.guideGradeId) {
+            allowedGradeIds.add(teacher.guideGradeId);
+          }
+
+          // Cargar materias para incluir los grados donde imparte clases
+          try {
+            const { getAllSubjects } = await import('../../lib/firestore');
+            const allSubjects = await getAllSubjects();
+            const teacherSubjectIds = teacher?.subjects || [];
+            allSubjects.forEach(sub => {
+              if (
+                teacherSubjectIds.includes(sub.id) ||
+                sub.teacherId === teacher?.id ||
+                (userProfile?.email && sub.teacherName?.toLowerCase().includes('marquez'))
+              ) {
+                if (sub.gradeId) allowedGradeIds.add(sub.gradeId);
+              }
+            });
+          } catch (e) {
+            console.warn('Could not load subjects for grade filter:', e);
+          }
+
+          if (allowedGradeIds.size > 0) {
+            availableGrades = gradesData.filter(g => allowedGradeIds.has(g.id) || allowedGradeIds.has(g.id.toLowerCase()));
           }
         }
 

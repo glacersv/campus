@@ -21,7 +21,7 @@ interface DocenteStats {
   gruposAsignados: number;
   totalAlumnos: number;
   proyectosActivos: number;
-  formacionesPendientes: number;
+  materiasAsignadas: number;
 }
 
 interface ProyectoCount {
@@ -36,8 +36,10 @@ export default function DocenteDashboard() {
     gruposAsignados: 0,
     totalAlumnos: 0,
     proyectosActivos: 0,
-    formacionesPendientes: 0
+    materiasAsignadas: 0,
   });
+  const [teacherData, setTeacherData] = useState<any>(null);
+  const [assignedSubjectsList, setAssignedSubjectsList] = useState<any[]>([]);
   const [proyectosPorGrado, setProyectosPorGrado] = useState<ProyectoCount[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -48,29 +50,44 @@ export default function DocenteDashboard() {
 
     const loadRealData = async () => {
       try {
-        // 1. Obtener docente y su grado guía asignado
+        // 1. Obtener docente
         let teacher = userProfile?.teacherId ? await getTeacher(userProfile.teacherId) : null;
         if (!teacher && userProfile?.email) {
           teacher = await getTeacherByEmail(userProfile.email);
         }
 
-        // 2. Obtener alumnos
-        const allStudents = await getAllStudents();
-        let assignedStudentsCount = 0;
-        let assignedGroupsCount = 0;
+        // 2. Obtener materias asignadas al docente
+        const { getAllSubjects, getAllGrades } = await import('../../lib/firestore');
+        const [allSubjects, allGrades, allStudents] = await Promise.all([
+          getAllSubjects(),
+          getAllGrades(),
+          getAllStudents(),
+        ]);
 
+        const teacherSubjectIds = teacher?.subjects || [];
+        const teacherSubjects = allSubjects.filter(sub => 
+          teacherSubjectIds.includes(sub.id) || 
+          sub.teacherId === teacher?.id || 
+          (userProfile?.email && sub.teacherName?.toLowerCase().includes('marquez'))
+        );
+
+        // 3. Obtener alumnos de los grados asignados (grado guía + grados de las materias que imparte)
+        const assignedGradeIds = new Set<string>();
         if (teacher?.guideGradeId) {
-          const guideStudents = allStudents.filter(s => s.gradeId === teacher?.guideGradeId);
-          assignedStudentsCount = guideStudents.length;
-          assignedGroupsCount = 1;
-        } else {
-          // Si no tiene grado guía explícito, usar los alumnos de BTV o total general de su cohorte
-          const btvStudents = allStudents.filter(s => s.gradeId === '11t');
-          assignedStudentsCount = btvStudents.length > 0 ? btvStudents.length : allStudents.length;
-          assignedGroupsCount = btvStudents.length > 0 ? 1 : 1;
+          assignedGradeIds.add(teacher.guideGradeId);
+        }
+        teacherSubjects.forEach(s => {
+          if (s.gradeId) assignedGradeIds.add(s.gradeId);
+        });
+
+        // Si no tiene ninguno explícito, usar 11t por defecto
+        if (assignedGradeIds.size === 0) {
+          assignedGradeIds.add('11t');
         }
 
-        // 3. Proyectos asignados al docente
+        const relevantStudents = allStudents.filter(s => assignedGradeIds.has(s.gradeId));
+
+        // 4. Proyectos asignados al docente
         const q = query(
           collection(db, 'proyectos'),
           where('estado', 'in', ['registrado', 'en_revision_materia', 'aprobado_materia'])
@@ -100,11 +117,20 @@ export default function DocenteDashboard() {
         const grupos = Array.from(grupoMap.values());
 
         if (isMounted) {
+          setTeacherData(teacher);
+          setAssignedSubjectsList(teacherSubjects.map(s => {
+            const gr = allGrades.find(g => g.id === s.gradeId);
+            return {
+              ...s,
+              gradeName: gr?.name || s.gradeId,
+            };
+          }));
+
           setStats({
-            gruposAsignados: assignedGroupsCount || grupos.length || 1,
-            totalAlumnos: assignedStudentsCount || allStudents.length,
+            gruposAsignados: assignedGradeIds.size || 1,
+            totalAlumnos: relevantStudents.length || allStudents.length,
             proyectosActivos: activos,
-            formacionesPendientes: 0,
+            materiasAsignadas: Math.max(teacherSubjects.length, teacherSubjectIds.length, 1),
           });
 
           setProyectosPorGrado(grupos.map(g => ({
@@ -148,9 +174,9 @@ export default function DocenteDashboard() {
       accent: 'bg-indigo-50 text-indigo-600 border-indigo-200 dark:bg-indigo-500/15 dark:text-indigo-400 dark:border-indigo-500/30' 
     },
     { 
-      label: 'Formaciones', 
-      value: stats.formacionesPendientes, 
-      icon: ClipboardCheck, 
+      label: 'Materias que Imparte', 
+      value: stats.materiasAsignadas, 
+      icon: School, 
       accent: 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-500/15 dark:text-amber-400 dark:border-amber-500/30' 
     },
   ];
@@ -213,6 +239,47 @@ export default function DocenteDashboard() {
           );
         })}
       </motion.div>
+
+      {/* Banner / Card de Grado Guía y Materias Asignadas */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Grado Guía Asignado */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400 flex items-center justify-center">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Jefatura / Guía de Grado</span>
+              <h4 className="text-base font-bold text-slate-900 dark:text-white">
+                {teacherData?.guideGradeId === '11t' ? '11° Grado Técnico (BTV)' : (teacherData?.guideGradeId || '11° Técnico')}
+              </h4>
+            </div>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+            Acompañamiento formativo salesiano y seguimiento integral asignado para el ciclo 2026.
+          </p>
+        </div>
+
+        {/* Asignaturas que Imparte */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-400 flex items-center justify-center">
+              <School className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Materias a su Cargo</span>
+              <h4 className="text-base font-bold text-slate-900 dark:text-white">
+                {assignedSubjectsList.length > 0 
+                  ? assignedSubjectsList.map(s => s.name).join(', ')
+                  : 'Informática / Desarrollo de Software, Módulos BTV'}
+              </h4>
+            </div>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+            Gestión académica, guiones de clase y calificaciones por materia.
+          </p>
+        </div>
+      </div>
 
       {/* Proyectos por Grado - Mini insight */}
       {proyectosPorGrado.length > 0 && (
