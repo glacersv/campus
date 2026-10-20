@@ -10,9 +10,10 @@ import {
   AlertTriangle,
   ArrowUpRight
 } from 'lucide-react';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
+import { getTeacher, getTeacherByEmail, getAllStudents } from '../../lib/firestore';
 import ModuleGridDashboard from '../shared/ModuleGridDashboard';
 import WelcomeBanner from '../shared/WelcomeBanner';
 
@@ -43,58 +44,89 @@ export default function DocenteDashboard() {
   useEffect(() => {
     if (!firebaseUser) return;
 
-    // Escuchar proyectos asignados al docente
-    const q = query(
-      collection(db, 'proyectos'),
-      where('estado', 'in', ['registrado', 'en_revision_materia', 'aprobado_materia'])
-    );
+    let isMounted = true;
 
-    const unsub = onSnapshot(q, (snap) => {
-      const proyectos = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
-      
-      // Contar proyectos activos
-      const activos = proyectos.length;
-      
-      // Agrupar por grado/sección
-      const grupoMap = new Map<string, { grado: string; seccion: string; count: number; alumnos: number }>();
-      
-      proyectos.forEach(p => {
-        const key = `${p.grado}|${p.seccion}`;
-        const existing = grupoMap.get(key);
-        if (existing) {
-          existing.count += 1;
-          existing.alumnos += (p.integrantes?.length || 0);
-        } else {
-          grupoMap.set(key, {
-            grado: p.grado,
-            seccion: p.seccion,
-            count: 1,
-            alumnos: p.integrantes?.length || 0
-          });
+    const loadRealData = async () => {
+      try {
+        // 1. Obtener docente y su grado guía asignado
+        let teacher = userProfile?.teacherId ? await getTeacher(userProfile.teacherId) : null;
+        if (!teacher && userProfile?.email) {
+          teacher = await getTeacherByEmail(userProfile.email);
         }
-      });
 
-      const grupos = Array.from(grupoMap.values());
-      const totalAlumnos = grupos.reduce((sum, g) => sum + g.alumnos, 0);
+        // 2. Obtener alumnos
+        const allStudents = await getAllStudents();
+        let assignedStudentsCount = 0;
+        let assignedGroupsCount = 0;
 
-      setStats({
-        gruposAsignados: grupos.length,
-        totalAlumnos: totalAlumnos,
-        proyectosActivos: activos,
-        formacionesPendientes: 0 // TODO: implementar cuando exista módulo de formaciones
-      });
+        if (teacher?.guideGradeId) {
+          const guideStudents = allStudents.filter(s => s.gradeId === teacher?.guideGradeId);
+          assignedStudentsCount = guideStudents.length;
+          assignedGroupsCount = 1;
+        } else {
+          // Si no tiene grado guía explícito, usar los alumnos de BTV o total general de su cohorte
+          const btvStudents = allStudents.filter(s => s.gradeId === '11t');
+          assignedStudentsCount = btvStudents.length > 0 ? btvStudents.length : allStudents.length;
+          assignedGroupsCount = btvStudents.length > 0 ? 1 : 1;
+        }
 
-      setProyectosPorGrado(grupos.map(g => ({
-        grado: g.grado,
-        seccion: g.seccion,
-        count: g.count
-      })));
+        // 3. Proyectos asignados al docente
+        const q = query(
+          collection(db, 'proyectos'),
+          where('estado', 'in', ['registrado', 'en_revision_materia', 'aprobado_materia'])
+        );
 
-      setLoading(false);
-    });
+        const snap = await getDocs(q);
+        const proyectos = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+        const activos = proyectos.length;
 
-    return unsub;
-  }, [firebaseUser]);
+        const grupoMap = new Map<string, { grado: string; seccion: string; count: number; alumnos: number }>();
+        proyectos.forEach(p => {
+          const key = `${p.grado}|${p.seccion}`;
+          const existing = grupoMap.get(key);
+          if (existing) {
+            existing.count += 1;
+            existing.alumnos += (p.integrantes?.length || 0);
+          } else {
+            grupoMap.set(key, {
+              grado: p.grado,
+              seccion: p.seccion,
+              count: 1,
+              alumnos: p.integrantes?.length || 0
+            });
+          }
+        });
+
+        const grupos = Array.from(grupoMap.values());
+
+        if (isMounted) {
+          setStats({
+            gruposAsignados: assignedGroupsCount || grupos.length || 1,
+            totalAlumnos: assignedStudentsCount || allStudents.length,
+            proyectosActivos: activos,
+            formacionesPendientes: 0,
+          });
+
+          setProyectosPorGrado(grupos.map(g => ({
+            grado: g.grado,
+            seccion: g.seccion,
+            count: g.count
+          })));
+
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('Error loading docente dashboard stats:', err);
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    loadRealData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [firebaseUser, userProfile]);
 
   const statCards = [
     { 
@@ -240,15 +272,17 @@ export default function DocenteDashboard() {
         </motion.div>
       )}
 
-      {/* Grid de Módulos - Reutilizando componente compartido */}
+      {/* Grid de Módulos - Reutilizando componente compartido sin duplicar banner ni stats */}
       <ModuleGridDashboard
-        title="Módulos Disponibles"
+        title="Módulos del Sistema"
         subtitle=""
         basePath="/docente"
         showMondayNotice={true}
         exclude={['formacion']}
         bannerArea="general"
         showProfile={false}
+        showBanner={false}
+        showStats={false}
       >
         {/* Contenido adicional personalizado si se necesita */}
       </ModuleGridDashboard>

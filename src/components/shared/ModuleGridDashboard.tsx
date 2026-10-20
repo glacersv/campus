@@ -27,6 +27,8 @@ interface ModuleGridDashboardProps {
   exclude?: string[];
   bannerArea?: string;
   showProfile?: boolean;
+  showBanner?: boolean;
+  showStats?: boolean;
 }
 
 const moduleIcons: Record<SystemModuleId, React.ElementType> = {
@@ -70,6 +72,8 @@ export default function ModuleGridDashboard({
   exclude,
   bannerArea,
   showProfile = true,
+  showBanner = true,
+  showStats = true,
 }: ModuleGridDashboardProps) {
   const navigate = useNavigate();
   const { userProfile, hasPermission } = useAuth();
@@ -95,49 +99,53 @@ export default function ModuleGridDashboard({
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       {/* Hero Banner ilustrado y contextual (temas por área, estilo diseno) */}
-      <WelcomeBanner
-        name={userProfile?.displayName || 'Bienvenido'}
-        role={userProfile?.role || undefined}
-        area={bannerArea ?? availableModules[0]?.id ?? 'general'}
-        subtitle={subtitle || 'Gestione la asistencia, calificaciones y convivencia escolar desde su panel central.'}
-        badge="Sistema Integrado Salesiano • 2026"
-        ctaLabel={availableModules[0] ? 'Comenzar' : undefined}
-        onCta={() => availableModules[0] && handleModuleClick(availableModules[0].id)}
-        showProfile={showProfile}
-      />
+      {showBanner && (
+        <WelcomeBanner
+          name={userProfile?.displayName || 'Bienvenido'}
+          role={userProfile?.role || undefined}
+          area={bannerArea ?? availableModules[0]?.id ?? 'general'}
+          subtitle={subtitle || 'Gestione la asistencia, calificaciones y convivencia escolar desde su panel central.'}
+          badge="Sistema Integrado Salesiano • 2026"
+          ctaLabel={availableModules[0] ? 'Comenzar' : undefined}
+          onCta={() => availableModules[0] && handleModuleClick(availableModules[0].id)}
+          showProfile={showProfile}
+        />
+      )}
 
       {/* Overview Stat Badges Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="stat-card">
-          <div className="stat-card-icon bg-emerald-50 text-emerald-600">
-            <Users className="w-5 h-5" />
+      {showStats && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="stat-card">
+            <div className="stat-card-icon bg-emerald-50 text-emerald-600">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="stat-card-label">Total Alumnos</span>
+              <div className="stat-card-value">156</div>
+            </div>
           </div>
-          <div>
-            <span className="stat-card-label">Total Alumnos</span>
-            <div className="stat-card-value">156</div>
-          </div>
-        </div>
 
-        <div className="stat-card">
-          <div className="stat-card-icon bg-sky-50 text-sky-600">
-            <GraduationCap className="w-5 h-5" />
+          <div className="stat-card">
+            <div className="stat-card-icon bg-sky-50 text-sky-600">
+              <GraduationCap className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="stat-card-label">Grados Activos</span>
+              <div className="stat-card-value">6 Secciones</div>
+            </div>
           </div>
-          <div>
-            <span className="stat-card-label">Grados Activos</span>
-            <div className="stat-card-value">6 Secciones</div>
-          </div>
-        </div>
 
-        <div className="stat-card">
-          <div className="stat-card-icon bg-amber-50 text-amber-600">
-            <CheckCircle2 className="w-5 h-5" />
-          </div>
-          <div>
-            <span className="stat-card-label">Estado Sistema</span>
-            <div className="stat-card-value">Al Día</div>
+          <div className="stat-card">
+            <div className="stat-card-icon bg-amber-50 text-amber-600">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="stat-card-label">Estado Sistema</span>
+              <div className="stat-card-value">Al Día</div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Monday Notice */}
       {showMondayNotice && isMonday && (
