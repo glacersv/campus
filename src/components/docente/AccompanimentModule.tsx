@@ -13,6 +13,12 @@ import {
   Printer,
   ChevronRight,
   Info,
+  Sparkles,
+  Heart,
+  BookOpen,
+  UserCheck,
+  Target,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -30,10 +36,10 @@ import {
   getAccompanimentRecord,
   saveAccompanimentRecord,
   seedAccompanimentDefaultAreas,
+  seedAccompanimentScoresFromExcel,
   getAllGrades,
   getAllSections,
   getAllStudents,
-  getStudentsBySection,
   getTeacher,
   getTeacherByEmail,
 } from '../../lib/firestore';
@@ -53,16 +59,58 @@ export default function AccompanimentModule() {
   const [selectedPeriod, setSelectedPeriod] = useState<AccompanimentPeriod>('PI');
   const [selectedYear, setSelectedYear] = useState<number>(2026);
 
+  // Tab activo de dimensión: 'all' o el id del área (ej: 'evangelizacion-catequesis')
+  const [activeAreaTab, setActiveAreaTab] = useState<string>('');
+
   // Matriz de evaluación
   const [evaluations, setEvaluations] = useState<Record<string, AccompanimentStudentScore>>({});
   const [loading, setLoading] = useState<boolean>(true);
   const [loadingStudents, setLoadingStudents] = useState<boolean>(false);
   const [saving, setSaving] = useState<boolean>(false);
+  const [seedingExcel, setSeedingExcel] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Escala de calificación disponible
-  const GRADE_OPTIONS: AccompanimentGradeScale[] = ['E', 'MB', 'B', 'NM'];
+  // Iconos e info visual para las dimensiones salesianas
+  const getAreaMeta = (areaId: string) => {
+    switch (areaId) {
+      case 'evangelizacion-catequesis':
+        return {
+          icon: Heart,
+          badgeColor: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800',
+          activeTabClass: 'bg-rose-600 text-white shadow-md shadow-rose-600/25',
+          chipColor: 'bg-rose-500/10 text-rose-600 border-rose-200',
+        };
+      case 'educativa-cultural':
+        return {
+          icon: BookOpen,
+          badgeColor: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800',
+          activeTabClass: 'bg-blue-600 text-white shadow-md shadow-blue-600/25',
+          chipColor: 'bg-blue-500/10 text-blue-600 border-blue-200',
+        };
+      case 'asociativa':
+        return {
+          icon: UserCheck,
+          badgeColor: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800',
+          activeTabClass: 'bg-amber-600 text-white shadow-md shadow-amber-600/25',
+          chipColor: 'bg-amber-500/10 text-amber-600 border-amber-200',
+        };
+      case 'vocacional':
+        return {
+          icon: Target,
+          badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
+          activeTabClass: 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25',
+          chipColor: 'bg-emerald-500/10 text-emerald-600 border-emerald-200',
+        };
+      default:
+        return {
+          icon: Layers,
+          badgeColor: 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800',
+          activeTabClass: 'bg-indigo-600 text-white shadow-md shadow-indigo-600/25',
+          chipColor: 'bg-indigo-500/10 text-indigo-600 border-indigo-200',
+        };
+    }
+  };
 
   // Carga inicial de áreas, grados y secciones
   useEffect(() => {
@@ -75,11 +123,14 @@ export default function AccompanimentModule() {
             await seedAccompanimentDefaultAreas();
             areasData = await getAllAccompanimentAreas();
           } catch (seedErr) {
-            console.warn('Could not auto-seed accompaniment areas to Firestore, using defaults:', seedErr);
-            areasData = DEFAULT_ACCOMPANIMENT_AREAS as any;
+            console.warn('Could not auto-seed accompaniment areas to Firestore:', seedErr);
           }
         }
-        setAreas(areasData.filter(a => a.status === 'ACTIVO'));
+        const activeAreas = areasData.filter(a => a.status === 'ACTIVO');
+        setAreas(activeAreas);
+        if (activeAreas.length > 0 && !activeAreaTab) {
+          setActiveAreaTab(activeAreas[0].id);
+        }
 
         const [gradesData, sectionsData] = await Promise.all([
           getAllGrades(),
@@ -134,61 +185,60 @@ export default function AccompanimentModule() {
     }
   };
 
+  // Función para recargar estudiantes y récord
+  const loadStudentsAndRecord = async () => {
+    if (!selectedGradeId) return;
+    setLoadingStudents(true);
+    try {
+      const all = await getAllStudents();
+      const selectedSec = sections.find(sec => sec.id === selectedSectionId);
+
+      const studentsList = all.filter(s => {
+        if (s.gradeId !== selectedGradeId) return false;
+        if (!selectedSectionId) return true;
+        // Coincidencia por ID directo
+        if (s.sectionId === selectedSectionId) return true;
+        // Coincidencia por nombre de sección (ej: "A")
+        if (selectedSec) {
+          const studentSec = sections.find(sec => sec.id === s.sectionId);
+          if (studentSec?.name.trim().toUpperCase() === selectedSec.name.trim().toUpperCase()) return true;
+          const letter = selectedSec.name.trim().toUpperCase();
+          if (s.sectionId?.toUpperCase().endsWith(letter.toLowerCase()) || s.sectionId?.toUpperCase().endsWith(letter)) return true;
+        }
+        return false;
+      });
+
+      // Ordenar alfabéticamente por apellido / nombre
+      studentsList.sort((a, b) => {
+        const nameA = (a.lastName || a.name || '').toLowerCase();
+        const nameB = (b.lastName || b.name || '').toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+      setStudents(studentsList);
+
+      // Cargar récord de notas de acompañamiento
+      const existingRecord = await getAccompanimentRecord(
+        selectedGradeId,
+        selectedSectionId || 'all',
+        selectedPeriod,
+        selectedYear
+      );
+
+      if (existingRecord?.evaluations) {
+        setEvaluations(existingRecord.evaluations);
+      } else {
+        setEvaluations({});
+      }
+    } catch (err) {
+      console.error('Error loading students or accompaniment record:', err);
+      setMessage({ type: 'error', text: 'Error al cargar los alumnos del grado.' });
+    } finally {
+      setLoadingStudents(false);
+    }
+  };
+
   // Cargar estudiantes y calificaciones cada vez que cambia grado, sección o periodo
   useEffect(() => {
-    if (!selectedGradeId) return;
-
-    const loadStudentsAndRecord = async () => {
-      setLoadingStudents(true);
-      try {
-        const all = await getAllStudents();
-        const selectedSec = sections.find(sec => sec.id === selectedSectionId);
-
-        const studentsList = all.filter(s => {
-          if (s.gradeId !== selectedGradeId) return false;
-          if (!selectedSectionId) return true;
-          // Coincidencia por ID directo
-          if (s.sectionId === selectedSectionId) return true;
-          // Coincidencia por nombre de sección (ej: "A")
-          if (selectedSec) {
-            const studentSec = sections.find(sec => sec.id === s.sectionId);
-            if (studentSec?.name.trim().toUpperCase() === selectedSec.name.trim().toUpperCase()) return true;
-            // Coincidencia si el sectionId termina con la letra
-            const letter = selectedSec.name.trim().toUpperCase();
-            if (s.sectionId?.toUpperCase().endsWith(letter.toLowerCase()) || s.sectionId?.toUpperCase().endsWith(letter)) return true;
-          }
-          return false;
-        });
-
-        // Ordenar alfabéticamente por apellido / nombre
-        studentsList.sort((a, b) => {
-          const nameA = (a.lastName || a.name || '').toLowerCase();
-          const nameB = (b.lastName || b.name || '').toLowerCase();
-          return nameA.localeCompare(nameB);
-        });
-        setStudents(studentsList);
-
-        // Cargar récord de notas de acompañamiento
-        const existingRecord = await getAccompanimentRecord(
-          selectedGradeId,
-          selectedSectionId || 'all',
-          selectedPeriod,
-          selectedYear
-        );
-
-        if (existingRecord?.evaluations) {
-          setEvaluations(existingRecord.evaluations);
-        } else {
-          setEvaluations({});
-        }
-      } catch (err) {
-        console.error('Error loading students or accompaniment record:', err);
-        setMessage({ type: 'error', text: 'Error al cargar los alumnos del grado.' });
-      } finally {
-        setLoadingStudents(false);
-      }
-    };
-
     loadStudentsAndRecord();
   }, [selectedGradeId, selectedSectionId, selectedPeriod, selectedYear, sections]);
 
@@ -252,6 +302,34 @@ export default function AccompanimentModule() {
     }
   };
 
+  // Acción para cargar los datos del Excel 2026 directamente a los alumnos
+  const handleLoadExcelData = async () => {
+    if (!selectedGradeId || !selectedSectionId) {
+      setMessage({ type: 'error', text: 'Por favor selecciona el grado y la sección.' });
+      return;
+    }
+
+    const confirm = window.confirm(
+      '¿Deseas precargar las calificaciones del archivo oficial "Cuadro de acompañamiento 2026.xlsx" para los 8 alumnos de Bachillerato Técnico? Se cargarán los 4 periodos (PI a PIV).'
+    );
+    if (!confirm) return;
+
+    setSeedingExcel(true);
+    try {
+      await seedAccompanimentScoresFromExcel(selectedGradeId, selectedSectionId);
+      await loadStudentsAndRecord();
+      setMessage({
+        type: 'success',
+        text: '¡Calificaciones del Excel 2026 cargadas exitosamente para los alumnos!',
+      });
+    } catch (err) {
+      console.error('Error al cargar datos de Excel:', err);
+      setMessage({ type: 'error', text: 'Error al importar las calificaciones del Excel.' });
+    } finally {
+      setSeedingExcel(false);
+    }
+  };
+
   // Filtrado de alumnos por buscador
   const filteredStudents = students.filter(s => {
     const fullName = `${s.lastName || ''} ${s.firstName || s.name || ''}`.toLowerCase();
@@ -260,14 +338,20 @@ export default function AccompanimentModule() {
     return fullName.includes(query) || carnet.includes(query);
   });
 
-  // Lista plana de todos los indicadores activos para las columnas de la tabla
-  const allIndicators = areas.flatMap(area => 
+  // Indicadores a mostrar según la pestaña activa
+  const displayedAreas = activeAreaTab === 'all'
+    ? areas
+    : areas.filter(a => a.id === activeAreaTab);
+
+  const displayedIndicators = displayedAreas.flatMap(area =>
     (area.indicators || []).map(ind => ({
       ...ind,
       areaId: area.id,
       areaName: area.name,
     }))
   );
+
+  const currentTabArea = areas.find(a => a.id === activeAreaTab);
 
   return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-6">
@@ -283,14 +367,23 @@ export default function AccompanimentModule() {
               Seguimiento Formativo Salesiano
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-3">
-              Cuadro de Acompañamiento
+              Cuadro de Acompañamiento 2026
             </h1>
             <p className="text-sm text-slate-300 mt-1 max-w-2xl">
-              Registro periódico de dimensiones humanas, cristianas y vocacionales salesianas para tus estudiantes.
+              Evaluación organizada por dimensiones: Evangelización, Educativa-Cultural, Asociativa y Vocacional.
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              onClick={handleLoadExcelData}
+              disabled={seedingExcel || loadingStudents}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600/90 hover:bg-emerald-600 text-white border border-emerald-500/50 text-sm font-semibold transition-all shadow-sm hover:shadow-emerald-600/30 disabled:opacity-50"
+              title="Cargar las notas que vienen del archivo Excel 2026 para los alumnos"
+            >
+              <FileSpreadsheet className={`w-4 h-4 ${seedingExcel ? 'animate-spin' : ''}`} />
+              {seedingExcel ? 'Cargando Excel...' : 'Cargar Notas de Excel'}
+            </button>
             <button
               onClick={() => window.print()}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 border border-slate-700 text-sm font-medium transition-all shadow-sm"
@@ -313,7 +406,7 @@ export default function AccompanimentModule() {
 
       {/* Alerta de notificación */}
       {message && (
-        <div className={`p-4 rounded-xl flex items-center gap-3 border ${
+        <div className={`p-4 rounded-xl flex items-center gap-3 border transition-all ${
           message.type === 'success' 
             ? 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800' 
             : 'bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800'
@@ -437,6 +530,88 @@ export default function AccompanimentModule() {
         </div>
       </div>
 
+      {/* Selector de Pestañas / Tabs por Categoría / Dimensión */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+            <Layers className="w-3.5 h-3.5 text-indigo-500" />
+            Selecciona una Categoría / Dimensión:
+          </span>
+          <span className="text-xs text-slate-400">
+            Cada pestaña organiza los criterios en una vista limpia y espaciosa
+          </span>
+        </div>
+
+        <div className="flex flex-wrap gap-2 p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700">
+          {areas.map((area, idx) => {
+            const meta = getAreaMeta(area.id);
+            const IconComponent = meta.icon;
+            const isActive = activeAreaTab === area.id;
+            const count = area.indicators?.length || 0;
+
+            return (
+              <button
+                key={area.id}
+                onClick={() => setActiveAreaTab(area.id)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all cursor-pointer ${
+                  isActive
+                    ? meta.activeTabClass
+                    : 'text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700'
+                }`}
+              >
+                <IconComponent className="w-4 h-4 shrink-0" />
+                <span>{area.name}</span>
+                <span className={`ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                  isActive ? 'bg-white/25 text-white' : 'bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-200'
+                }`}>
+                  {count} {count === 1 ? 'criterio' : 'criterios'}
+                </span>
+              </button>
+            );
+          })}
+
+          {/* Pestaña adicional para ver todas las dimensiones juntas */}
+          <button
+            onClick={() => setActiveAreaTab('all')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all cursor-pointer ${
+              activeAreaTab === 'all'
+                ? 'bg-slate-900 text-white shadow-md shadow-slate-900/30'
+                : 'text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700'
+            }`}
+          >
+            <Layers className="w-4 h-4 shrink-0" />
+            <span>Ver Todas (Matriz Completa)</span>
+            <span className={`ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+              activeAreaTab === 'all' ? 'bg-white/25 text-white' : 'bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-200'
+            }`}>
+              14
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* Encabezado descriptivo de la pestaña activa */}
+      {currentTabArea && activeAreaTab !== 'all' && (
+        <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className={`p-2 rounded-lg ${getAreaMeta(currentTabArea.id).badgeColor}`}>
+              {React.createElement(getAreaMeta(currentTabArea.id).icon, { className: 'w-4 h-4' })}
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                Dimensión: {currentTabArea.name}
+              </h3>
+              <p className="text-xs text-slate-500">
+                {currentTabArea.description || 'Evaluación de criterios e indicadores específicos de esta área formativa.'}
+              </p>
+            </div>
+          </div>
+          <div className="text-xs font-semibold text-slate-500 flex items-center gap-2">
+            <span>Periodo activo: <strong className="text-indigo-600 dark:text-indigo-400">{selectedPeriod} - {selectedYear}</strong></span>
+          </div>
+        </div>
+      )}
+
       {/* Matriz / Tabla de Acompañamiento */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
         {loading || loadingStudents ? (
@@ -453,16 +628,16 @@ export default function AccompanimentModule() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
-              {/* Encabezado Fila 1: Dimensiones Salesianas */}
+              {/* Encabezado Fila 1: Dimensiones */}
               <thead>
                 <tr className="bg-slate-900 text-white border-b border-slate-800">
                   <th className="p-3 text-center w-12 font-bold sticky left-0 z-20 bg-slate-900">#</th>
-                  <th className="p-3 min-w-[220px] font-bold sticky left-12 z-20 bg-slate-900">ESTUDIANTE</th>
-                  {areas.map(area => (
+                  <th className="p-3 min-w-[240px] font-bold sticky left-12 z-20 bg-slate-900">ESTUDIANTE</th>
+                  {displayedAreas.map(area => (
                     <th
                       key={area.id}
                       colSpan={area.indicators?.length || 1}
-                      className="p-3 text-center font-bold tracking-wide border-l border-slate-800 uppercase text-[11px] bg-slate-950/70"
+                      className="p-3 text-center font-bold tracking-wide border-l border-slate-800 uppercase text-xs bg-slate-950/80"
                     >
                       {area.name}
                     </th>
@@ -470,16 +645,21 @@ export default function AccompanimentModule() {
                 </tr>
 
                 {/* Encabezado Fila 2: Indicadores / Criterios */}
-                <tr className="bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700 text-[10px]">
-                  <th className="p-2 text-center sticky left-0 z-20 bg-slate-100 dark:bg-slate-800">Nº</th>
-                  <th className="p-2 sticky left-12 z-20 bg-slate-100 dark:bg-slate-800 uppercase font-bold">Apellidos y Nombres</th>
-                  {allIndicators.map((ind) => (
+                <tr className="bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700 text-xs">
+                  <th className="p-2.5 text-center sticky left-0 z-20 bg-slate-100 dark:bg-slate-800 font-bold">Nº</th>
+                  <th className="p-2.5 sticky left-12 z-20 bg-slate-100 dark:bg-slate-800 uppercase font-bold text-slate-800 dark:text-slate-200">
+                    Apellidos y Nombres
+                  </th>
+                  {displayedIndicators.map((ind) => (
                     <th
                       key={ind.id}
-                      className="p-2 text-center min-w-[95px] max-w-[120px] font-semibold border-l border-slate-200 dark:border-slate-700 leading-tight"
+                      className="p-3 text-center min-w-[130px] font-semibold border-l border-slate-200 dark:border-slate-700 leading-tight"
                       title={ind.name}
                     >
-                      <div className="line-clamp-2">{ind.name}</div>
+                      <div className="font-bold text-slate-800 dark:text-slate-200">{ind.name}</div>
+                      {ind.areaName && activeAreaTab === 'all' && (
+                        <div className="text-[10px] text-slate-400 font-normal uppercase mt-0.5">{ind.areaName}</div>
+                      )}
                     </th>
                   ))}
                 </tr>
@@ -499,24 +679,24 @@ export default function AccompanimentModule() {
                       className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group"
                     >
                       {/* Número correlativo */}
-                      <td className="p-2.5 text-center font-bold text-slate-500 sticky left-0 z-10 bg-white dark:bg-slate-900 group-hover:bg-slate-50 dark:group-hover:bg-slate-800/40">
+                      <td className="p-3 text-center font-bold text-slate-500 sticky left-0 z-10 bg-white dark:bg-slate-900 group-hover:bg-slate-50 dark:group-hover:bg-slate-800/40">
                         {index + 1}
                       </td>
 
                       {/* Nombre del Alumno */}
-                      <td className="p-2.5 font-medium text-slate-900 dark:text-white sticky left-12 z-10 bg-white dark:bg-slate-900 group-hover:bg-slate-50 dark:group-hover:bg-slate-800/40 border-r border-slate-200 dark:border-slate-800">
-                        <div className="truncate max-w-[220px]" title={studentFullName}>
+                      <td className="p-3 font-medium text-slate-900 dark:text-white sticky left-12 z-10 bg-white dark:bg-slate-900 group-hover:bg-slate-50 dark:group-hover:bg-slate-800/40 border-r border-slate-200 dark:border-slate-800">
+                        <div className="truncate max-w-[240px] font-semibold" title={studentFullName}>
                           {studentFullName}
                         </div>
                         {student.carnet && (
-                          <span className="text-[10px] text-slate-400 font-normal">
-                            {student.carnet}
-                          </span>
+                          <div className="text-[11px] text-slate-400 font-mono">
+                            Carnet: {student.carnet}
+                          </div>
                         )}
                       </td>
 
                       {/* Celdas de Calificación para cada Indicador */}
-                      {allIndicators.map((ind) => {
+                      {displayedIndicators.map((ind) => {
                         const scoreValue = currentScores[ind.id] || '';
 
                         // Estilos condicionales según el valor
@@ -529,7 +709,7 @@ export default function AccompanimentModule() {
                         return (
                           <td
                             key={ind.id}
-                            className="p-1.5 text-center border-l border-slate-100 dark:border-slate-800/60"
+                            className="p-2 text-center border-l border-slate-100 dark:border-slate-800/60"
                           >
                             <select
                               value={scoreValue}
@@ -541,13 +721,13 @@ export default function AccompanimentModule() {
                                   e.target.value as AccompanimentGradeScale
                                 )
                               }
-                              className={`w-full py-1 px-1 rounded-lg text-center font-bold text-xs border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 ${badgeColor}`}
+                              className={`w-full max-w-[90px] mx-auto py-1.5 px-2 rounded-xl text-center font-bold text-xs border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 ${badgeColor}`}
                             >
-                              <option value="" className="bg-white text-slate-700 dark:bg-slate-900 dark:text-slate-200 font-normal">-</option>
-                              <option value="E" className="bg-white text-emerald-700 dark:bg-slate-900 dark:text-emerald-400 font-bold">E</option>
-                              <option value="MB" className="bg-white text-blue-700 dark:bg-slate-900 dark:text-blue-400 font-bold">MB</option>
-                              <option value="B" className="bg-white text-amber-700 dark:bg-slate-900 dark:text-amber-400 font-bold">B</option>
-                              <option value="NM" className="bg-white text-rose-700 dark:bg-slate-900 dark:text-rose-400 font-bold">NM</option>
+                              <option value="" className="bg-white text-slate-700 dark:bg-slate-900 dark:text-slate-200 font-normal">- Sin asignar -</option>
+                              <option value="E" className="bg-white text-emerald-700 dark:bg-slate-900 dark:text-emerald-400 font-bold">E - Excelente</option>
+                              <option value="MB" className="bg-white text-blue-700 dark:bg-slate-900 dark:text-blue-400 font-bold">MB - Muy Bueno</option>
+                              <option value="B" className="bg-white text-amber-700 dark:bg-slate-900 dark:text-amber-400 font-bold">B - Bueno</option>
+                              <option value="NM" className="bg-white text-rose-700 dark:bg-slate-900 dark:text-rose-400 font-bold">NM - Necesita Mejorar</option>
                             </select>
                           </td>
                         );
@@ -563,14 +743,17 @@ export default function AccompanimentModule() {
 
       {/* Botón flotante inferior para guardar cómodamente */}
       {filteredStudents.length > 0 && (
-        <div className="flex justify-end pt-2">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
+          <div className="text-xs text-slate-500">
+            Mostrando dimensión: <strong className="text-slate-700 dark:text-slate-300">{activeAreaTab === 'all' ? 'Todas las dimensiones' : currentTabArea?.name}</strong> con {displayedIndicators.length} indicadores.
+          </div>
           <button
             onClick={handleSave}
             disabled={saving || loadingStudents}
             className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-all shadow-lg shadow-indigo-600/30 disabled:opacity-50"
           >
             <Save className={`w-4 h-4 ${saving ? 'animate-spin' : ''}`} />
-            {saving ? 'Guardando...' : `Guardar Evaluaciones (${selectedPeriod})`}
+            {saving ? 'Guardando...' : `Guardar Evaluaciones (${selectedPeriod} - ${selectedYear})`}
           </button>
         </div>
       )}

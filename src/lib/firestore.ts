@@ -2545,4 +2545,111 @@ export async function saveAccompanimentRecord(record: AccompanimentRecord): Prom
     id: recordId,
     updatedAt: serverTimestamp(),
   }, { merge: true });
-}
+}
+
+// Datos precargados del Excel Cuadro de acompañamiento 2026.xlsx
+export const EXCEL_ACCOMPANIMENT_PRELOAD: Record<AccompanimentPeriod, Array<{ name: string; scores: Record<string, AccompanimentGradeScale> }>> = {
+  PI: [
+    { name: 'Contreras Flores Joyce Denisse', scores: { 'amor-a-dios': 'B', 'caridad-con-el-projimo': 'B', 'apertura-a-la-oracion': 'B', 'espiritu-de-familia': 'B', 'salesianidad': 'E', 'respetuoso': 'MB', 'disposicion-al-estudio': 'MB', 'cuidado-orden-limpieza': 'NM', 'liderazgo': 'B', 'participacion': 'B', 'integridad': 'B', 'humildad': 'B', 'servicio': 'MB', 'proyecto-de-vida': 'B' } },
+    { name: 'González Ramos Luis Alfonso', scores: { 'amor-a-dios': 'MB', 'caridad-con-el-projimo': 'MB', 'apertura-a-la-oracion': 'MB', 'espiritu-de-familia': 'B', 'salesianidad': 'E', 'respetuoso': 'MB', 'disposicion-al-estudio': 'B', 'cuidado-orden-limpieza': 'B', 'liderazgo': 'B', 'participacion': 'B', 'integridad': 'MB', 'humildad': 'MB', 'servicio': 'B', 'proyecto-de-vida': 'B' } },
+    { name: 'Henríquez Lucha Francisco David', scores: { 'amor-a-dios': 'E', 'caridad-con-el-projimo': 'E', 'apertura-a-la-oracion': 'E', 'espiritu-de-familia': 'E', 'salesianidad': 'E', 'respetuoso': 'E', 'disposicion-al-estudio': 'MB', 'cuidado-orden-limpieza': 'MB', 'liderazgo': 'MB', 'participacion': 'E', 'integridad': 'E', 'humildad': 'E', 'servicio': 'E', 'proyecto-de-vida': 'B' } },
+    { name: 'Hernández Zelada Génesis Natalia', scores: { 'amor-a-dios': 'B', 'caridad-con-el-projimo': 'B', 'apertura-a-la-oracion': 'B', 'espiritu-de-familia': 'B', 'salesianidad': 'E', 'respetuoso': 'MB', 'disposicion-al-estudio': 'B', 'cuidado-orden-limpieza': 'NM', 'liderazgo': 'B', 'participacion': 'B', 'integridad': 'B', 'humildad': 'B', 'servicio': 'B', 'proyecto-de-vida': 'B' } },
+    { name: 'Melara Flores Anthony Stanley', scores: { 'amor-a-dios': 'B', 'caridad-con-el-projimo': 'B', 'apertura-a-la-oracion': 'B', 'espiritu-de-familia': 'B', 'salesianidad': 'E', 'respetuoso': 'MB', 'disposicion-al-estudio': 'MB', 'cuidado-orden-limpieza': 'B', 'liderazgo': 'B', 'participacion': 'MB', 'integridad': 'MB', 'humildad': 'B', 'servicio': 'MB', 'proyecto-de-vida': 'B' } },
+    { name: 'Osorio Morán Juan Pablo', scores: { 'amor-a-dios': 'B', 'caridad-con-el-projimo': 'B', 'apertura-a-la-oracion': 'B', 'espiritu-de-familia': 'B', 'salesianidad': 'E', 'respetuoso': 'E', 'disposicion-al-estudio': 'E', 'cuidado-orden-limpieza': 'B', 'liderazgo': 'B', 'participacion': 'B', 'integridad': 'MB', 'humildad': 'MB', 'servicio': 'B', 'proyecto-de-vida': 'B' } },
+    { name: 'Pérez Escobar Daniela Alejandra', scores: { 'amor-a-dios': 'MB', 'caridad-con-el-projimo': 'MB', 'apertura-a-la-oracion': 'MB', 'espiritu-de-familia': 'B', 'salesianidad': 'E', 'respetuoso': 'MB', 'disposicion-al-estudio': 'E', 'cuidado-orden-limpieza': 'E', 'liderazgo': 'B', 'participacion': 'MB', 'integridad': 'B', 'humildad': 'B', 'servicio': 'MB', 'proyecto-de-vida': 'B' } },
+    { name: 'Ramírez Jeniffer Larissa', scores: { 'amor-a-dios': 'MB', 'caridad-con-el-projimo': 'MB', 'apertura-a-la-oracion': 'MB', 'espiritu-de-familia': 'B', 'salesianidad': 'E', 'respetuoso': 'MB', 'disposicion-al-estudio': 'B', 'cuidado-orden-limpieza': 'NM', 'liderazgo': 'B', 'participacion': 'MB', 'integridad': 'B', 'humildad': 'B', 'servicio': 'B', 'proyecto-de-vida': 'B' } },
+  ],
+  PII: [
+    { name: 'Contreras Flores Joyce Denisse', scores: { 'amor-a-dios': 'B', 'caridad-con-el-projimo': 'B', 'apertura-a-la-oracion': 'B', 'espiritu-de-familia': 'B', 'salesianidad': 'E', 'respetuoso': 'MB', 'disposicion-al-estudio': 'MB', 'cuidado-orden-limpieza': 'NM', 'liderazgo': 'B', 'participacion': 'B', 'integridad': 'B', 'humildad': 'B', 'servicio': 'MB', 'proyecto-de-vida': 'B' } },
+    { name: 'González Ramos Luis Alfonso', scores: { 'amor-a-dios': 'MB', 'caridad-con-el-projimo': 'MB', 'apertura-a-la-oracion': 'MB', 'espiritu-de-familia': 'B', 'salesianidad': 'E', 'respetuoso': 'MB', 'disposicion-al-estudio': 'B', 'cuidado-orden-limpieza': 'B', 'liderazgo': 'B', 'participacion': 'B', 'integridad': 'MB', 'humildad': 'MB', 'servicio': 'B', 'proyecto-de-vida': 'B' } },
+    { name: 'Henríquez Lucha Francisco David', scores: { 'amor-a-dios': 'E', 'caridad-con-el-projimo': 'E', 'apertura-a-la-oracion': 'E', 'espiritu-de-familia': 'E', 'salesianidad': 'E', 'respetuoso': 'E', 'disposicion-al-estudio': 'MB', 'cuidado-orden-limpieza': 'MB', 'liderazgo': 'MB', 'participacion': 'E', 'integridad': 'E', 'humildad': 'E', 'servicio': 'E', 'proyecto-de-vida': 'B' } },
+    { name: 'Hernández Zelada Génesis Natalia', scores: { 'amor-a-dios': 'B', 'caridad-con-el-projimo': 'B', 'apertura-a-la-oracion': 'B', 'espiritu-de-familia': 'B', 'salesianidad': 'E', 'respetuoso': 'MB', 'disposicion-al-estudio': 'B', 'cuidado-orden-limpieza': 'NM', 'liderazgo': 'B', 'participacion': 'B', 'integridad': 'B', 'humildad': 'B', 'servicio': 'B', 'proyecto-de-vida': 'B' } },
+    { name: 'Melara Flores Anthony Stanley', scores: { 'amor-a-dios': 'B', 'caridad-con-el-projimo': 'B', 'apertura-a-la-oracion': 'B', 'espiritu-de-familia': 'B', 'salesianidad': 'E', 'respetuoso': 'MB', 'disposicion-al-estudio': 'MB', 'cuidado-orden-limpieza': 'B', 'liderazgo': 'B', 'participacion': 'MB', 'integridad': 'MB', 'humildad': 'B', 'servicio': 'MB', 'proyecto-de-vida': 'B' } },
+    { name: 'Osorio Morán Juan Pablo', scores: { 'amor-a-dios': 'B', 'caridad-con-el-projimo': 'B', 'apertura-a-la-oracion': 'B', 'espiritu-de-familia': 'B', 'salesianidad': 'E', 'respetuoso': 'E', 'disposicion-al-estudio': 'E', 'cuidado-orden-limpieza': 'B', 'liderazgo': 'B', 'participacion': 'B', 'integridad': 'MB', 'humildad': 'MB', 'servicio': 'B', 'proyecto-de-vida': 'B' } },
+    { name: 'Pérez Escobar Daniela Alejandra', scores: { 'amor-a-dios': 'MB', 'caridad-con-el-projimo': 'MB', 'apertura-a-la-oracion': 'MB', 'espiritu-de-familia': 'B', 'salesianidad': 'E', 'respetuoso': 'MB', 'disposicion-al-estudio': 'E', 'cuidado-orden-limpieza': 'E', 'liderazgo': 'B', 'participacion': 'MB', 'integridad': 'B', 'humildad': 'B', 'servicio': 'MB', 'proyecto-de-vida': 'B' } },
+    { name: 'Ramírez Jeniffer Larissa', scores: { 'amor-a-dios': 'MB', 'caridad-con-el-projimo': 'MB', 'apertura-a-la-oracion': 'MB', 'espiritu-de-familia': 'B', 'salesianidad': 'E', 'respetuoso': 'MB', 'disposicion-al-estudio': 'B', 'cuidado-orden-limpieza': 'NM', 'liderazgo': 'B', 'participacion': 'MB', 'integridad': 'B', 'humildad': 'B', 'servicio': 'B', 'proyecto-de-vida': 'B' } },
+  ],
+  PIII: [
+    { name: 'Contreras Flores Joyce Denisse', scores: { 'amor-a-dios': 'B', 'caridad-con-el-projimo': 'B', 'apertura-a-la-oracion': 'B', 'espiritu-de-familia': 'B', 'salesianidad': 'E', 'respetuoso': 'B', 'disposicion-al-estudio': 'B', 'cuidado-orden-limpieza': 'B', 'liderazgo': 'B', 'participacion': 'B', 'integridad': 'MB', 'humildad': 'MB', 'servicio': 'MB', 'proyecto-de-vida': 'E' } },
+    { name: 'González Ramos Luis Alfonso', scores: { 'amor-a-dios': 'MB', 'caridad-con-el-projimo': 'MB', 'apertura-a-la-oracion': 'MB', 'espiritu-de-familia': 'MB', 'salesianidad': 'E', 'respetuoso': 'MB', 'disposicion-al-estudio': 'E', 'cuidado-orden-limpieza': 'B', 'liderazgo': 'B', 'participacion': 'B', 'integridad': 'MB', 'humildad': 'MB', 'servicio': 'MB', 'proyecto-de-vida': 'E' } },
+    { name: 'Henríquez Lucha Francisco David', scores: { 'amor-a-dios': 'E', 'caridad-con-el-projimo': 'E', 'apertura-a-la-oracion': 'E', 'espiritu-de-familia': 'E', 'salesianidad': 'MB', 'respetuoso': 'E', 'disposicion-al-estudio': 'E', 'cuidado-orden-limpieza': 'MB', 'liderazgo': 'MB', 'participacion': 'MB', 'integridad': 'E', 'humildad': 'E', 'servicio': 'E', 'proyecto-de-vida': 'E' } },
+    { name: 'Hernández Zelada Génesis Natalia', scores: { 'amor-a-dios': 'MB', 'caridad-con-el-projimo': 'MB', 'apertura-a-la-oracion': 'MB', 'espiritu-de-familia': 'MB', 'salesianidad': 'MB', 'respetuoso': 'MB', 'disposicion-al-estudio': 'MB', 'cuidado-orden-limpieza': 'B', 'liderazgo': 'B', 'participacion': 'B', 'integridad': 'MB', 'humildad': 'MB', 'servicio': 'MB', 'proyecto-de-vida': 'E' } },
+    { name: 'Melara Flores Anthony Stanley', scores: { 'amor-a-dios': 'MB', 'caridad-con-el-projimo': 'MB', 'apertura-a-la-oracion': 'MB', 'espiritu-de-familia': 'MB', 'salesianidad': 'MB', 'respetuoso': 'MB', 'disposicion-al-estudio': 'MB', 'cuidado-orden-limpieza': 'MB', 'liderazgo': 'B', 'participacion': 'MB', 'integridad': 'MB', 'humildad': 'MB', 'servicio': 'MB', 'proyecto-de-vida': 'E' } },
+    { name: 'Osorio Morán Juan Pablo', scores: { 'amor-a-dios': 'MB', 'caridad-con-el-projimo': 'MB', 'apertura-a-la-oracion': 'MB', 'espiritu-de-familia': 'MB', 'salesianidad': 'E', 'respetuoso': 'MB', 'disposicion-al-estudio': 'E', 'cuidado-orden-limpieza': 'E', 'liderazgo': 'NM', 'participacion': 'NM', 'integridad': 'MB', 'humildad': 'MB', 'servicio': 'MB', 'proyecto-de-vida': 'E' } },
+    { name: 'Pérez Escobar Daniela Alejandra', scores: { 'amor-a-dios': 'MB', 'caridad-con-el-projimo': 'MB', 'apertura-a-la-oracion': 'MB', 'espiritu-de-familia': 'MB', 'salesianidad': 'E', 'respetuoso': 'MB', 'disposicion-al-estudio': 'E', 'cuidado-orden-limpieza': 'E', 'liderazgo': 'MB', 'participacion': 'MB', 'integridad': 'MB', 'humildad': 'MB', 'servicio': 'MB', 'proyecto-de-vida': 'E' } },
+    { name: 'Ramírez Jeniffer Larissa', scores: { 'amor-a-dios': 'MB', 'caridad-con-el-projimo': 'MB', 'apertura-a-la-oracion': 'MB', 'espiritu-de-familia': 'MB', 'salesianidad': 'NM', 'respetuoso': 'MB', 'disposicion-al-estudio': 'E', 'cuidado-orden-limpieza': 'B', 'liderazgo': 'B', 'participacion': 'B', 'integridad': 'MB', 'humildad': 'MB', 'servicio': 'MB', 'proyecto-de-vida': 'E' } },
+  ],
+  PIV: [
+    { name: 'Contreras Flores Joyce Denisse', scores: { 'amor-a-dios': 'B', 'caridad-con-el-projimo': 'B', 'apertura-a-la-oracion': 'B', 'espiritu-de-familia': 'B', 'salesianidad': 'E', 'respetuoso': 'B', 'disposicion-al-estudio': 'B', 'cuidado-orden-limpieza': 'B', 'liderazgo': 'B', 'participacion': 'B', 'integridad': 'MB', 'humildad': 'MB', 'servicio': 'MB', 'proyecto-de-vida': 'E' } },
+    { name: 'González Ramos Luis Alfonso', scores: { 'amor-a-dios': 'MB', 'caridad-con-el-projimo': 'MB', 'apertura-a-la-oracion': 'MB', 'espiritu-de-familia': 'MB', 'salesianidad': 'E', 'respetuoso': 'MB', 'disposicion-al-estudio': 'E', 'cuidado-orden-limpieza': 'B', 'liderazgo': 'B', 'participacion': 'B', 'integridad': 'MB', 'humildad': 'MB', 'servicio': 'MB', 'proyecto-de-vida': 'E' } },
+    { name: 'Henríquez Lucha Francisco David', scores: { 'amor-a-dios': 'E', 'caridad-con-el-projimo': 'E', 'apertura-a-la-oracion': 'E', 'espiritu-de-familia': 'E', 'salesianidad': 'MB', 'respetuoso': 'E', 'disposicion-al-estudio': 'E', 'cuidado-orden-limpieza': 'MB', 'liderazgo': 'MB', 'participacion': 'MB', 'integridad': 'E', 'humildad': 'E', 'servicio': 'E', 'proyecto-de-vida': 'E' } },
+    { name: 'Hernández Zelada Génesis Natalia', scores: { 'amor-a-dios': 'MB', 'caridad-con-el-projimo': 'MB', 'apertura-a-la-oracion': 'MB', 'espiritu-de-familia': 'MB', 'salesianidad': 'MB', 'respetuoso': 'MB', 'disposicion-al-estudio': 'MB', 'cuidado-orden-limpieza': 'B', 'liderazgo': 'B', 'participacion': 'B', 'integridad': 'MB', 'humildad': 'MB', 'servicio': 'MB', 'proyecto-de-vida': 'E' } },
+    { name: 'Melara Flores Anthony Stanley', scores: { 'amor-a-dios': 'MB', 'caridad-con-el-projimo': 'MB', 'apertura-a-la-oracion': 'MB', 'espiritu-de-familia': 'MB', 'salesianidad': 'MB', 'respetuoso': 'MB', 'disposicion-al-estudio': 'MB', 'cuidado-orden-limpieza': 'MB', 'liderazgo': 'B', 'participacion': 'MB', 'integridad': 'MB', 'humildad': 'MB', 'servicio': 'MB', 'proyecto-de-vida': 'E' } },
+    { name: 'Osorio Morán Juan Pablo', scores: { 'amor-a-dios': 'MB', 'caridad-con-el-projimo': 'MB', 'apertura-a-la-oracion': 'MB', 'espiritu-de-familia': 'MB', 'salesianidad': 'E', 'respetuoso': 'MB', 'disposicion-al-estudio': 'E', 'cuidado-orden-limpieza': 'E', 'liderazgo': 'NM', 'participacion': 'NM', 'integridad': 'MB', 'humildad': 'MB', 'servicio': 'MB', 'proyecto-de-vida': 'E' } },
+    { name: 'Pérez Escobar Daniela Alejandra', scores: { 'amor-a-dios': 'MB', 'caridad-con-el-projimo': 'MB', 'apertura-a-la-oracion': 'MB', 'espiritu-de-familia': 'MB', 'salesianidad': 'E', 'respetuoso': 'MB', 'disposicion-al-estudio': 'E', 'cuidado-orden-limpieza': 'E', 'liderazgo': 'MB', 'participacion': 'MB', 'integridad': 'MB', 'humildad': 'MB', 'servicio': 'MB', 'proyecto-de-vida': 'E' } },
+    { name: 'Ramírez Jeniffer Larissa', scores: { 'amor-a-dios': 'MB', 'caridad-con-el-projimo': 'MB', 'apertura-a-la-oracion': 'MB', 'espiritu-de-familia': 'MB', 'salesianidad': 'NM', 'respetuoso': 'MB', 'disposicion-al-estudio': 'E', 'cuidado-orden-limpieza': 'B', 'liderazgo': 'B', 'participacion': 'B', 'integridad': 'MB', 'humildad': 'MB', 'servicio': 'MB', 'proyecto-de-vida': 'E' } },
+  ],
+};
+
+const EXCEL_STUDENTS_EXACT_MAP: Record<string, { id: string; carnet: string; name: string }> = {
+  'Contreras Flores Joyce Denisse': { id: 'mig_20160122', carnet: '20160122', name: 'JOYCE DENISSE CONTRERAS FLORES' },
+  'González Ramos Luis Alfonso': { id: 'mig_20253108', carnet: '20253108', name: 'LUIS ALFONSO GONZALEZ RAMOS' },
+  'Henríquez Lucha Francisco David': { id: 'mig_20220702', carnet: '20220702', name: 'FRANCISCO DAVID HENRIQUEZ LUCHA' },
+  'Hernández Zelada Génesis Natalia': { id: 'mig_20253105', carnet: '20253105', name: 'GENESIS NATALIA HERNANDEZ ZELADA' },
+  'Melara Flores Anthony Stanley': { id: 'mig_20240901', carnet: '20240901', name: 'ANTHONY STANLEY MELARA FLORES' },
+  'Osorio Morán Juan Pablo': { id: 'mig_20253103', carnet: '20253103', name: 'JUAN PABLO OSORIO MORAN' },
+  'Pérez Escobar Daniela Alejandra': { id: 'mig_20253106', carnet: '20253106', name: 'DANIELA ALEJANDRA PEREZ ESCOBAR' },
+  'Ramírez Jeniffer Larissa': { id: 'mig_20253101', carnet: '20253101', name: 'JENIFFER LARISSA RAMIREZ' },
+};
+
+export async function seedAccompanimentScoresFromExcel(gradeId: string, sectionId: string): Promise<void> {
+  const allStudents = await getAllStudents();
+
+  for (const period of ['PI', 'PII', 'PIII', 'PIV'] as AccompanimentPeriod[]) {
+    const periodData = EXCEL_ACCOMPANIMENT_PRELOAD[period];
+    const evaluations: Record<string, any> = {};
+
+    for (const item of periodData) {
+      const exact = EXCEL_STUDENTS_EXACT_MAP[item.name];
+      let studentId = exact?.id;
+      let studentName = exact?.name || item.name;
+      let carnet = exact?.carnet || '';
+
+      if (!studentId) {
+        // Fallback por coincidencia de nombre si no está en el mapa exacto
+        const match = allStudents.find(s => {
+          const sFullName = `${s.lastName || ''} ${s.firstName || ''} ${s.name || ''}`.toLowerCase();
+          const parts = item.name.toLowerCase().split(' ');
+          const matchesCount = parts.filter(p => p.length > 2 && sFullName.includes(p)).length;
+          return matchesCount >= 2;
+        });
+        if (match) {
+          studentId = match.id;
+          studentName = match.name;
+          carnet = match.carnet || '';
+        } else {
+          studentId = `excel_${item.name.replace(/\s+/g, '_').toLowerCase()}`;
+        }
+      }
+
+      evaluations[studentId] = {
+        studentId,
+        studentName,
+        carnet,
+        scores: item.scores,
+      };
+    }
+
+    const record: AccompanimentRecord = {
+      id: `${gradeId}_${sectionId}_${period}_2026`,
+      gradeId,
+      sectionId,
+      period,
+      year: 2026,
+      evaluations,
+    };
+
+    await saveAccompanimentRecord(record);
+  }
+}
+
