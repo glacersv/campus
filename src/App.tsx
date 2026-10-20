@@ -24,6 +24,8 @@ import ConvivenciaPanel from './components/admin/ConvivenciaPanel';
 import AttendanceReportsHistory from './components/admin/AttendanceReportsHistory';
 import EstadisticasDashboard from './components/admin/EstadisticasDashboard';
 import InstitutionalCalendar from './components/admin/InstitutionalCalendar';
+import AccompanimentManager from './components/admin/AccompanimentManager';
+import AccompanimentModule from './components/docente/AccompanimentModule';
 import NotasView from './components/notas/NotasView';
 import HorarioView from './components/horario/HorarioView';
 import ClaseView from './components/clase/ClaseView';
@@ -77,10 +79,11 @@ import JornalizacionDetalle from './components/docente/JornalizacionDetalle';
 import { Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
 
 // Icons for role layouts
-import { ClipboardCheck, BookOpen, School, Calendar, CalendarDays, Bell, Medal, GraduationCap } from 'lucide-react';
+import { ClipboardCheck, BookOpen, School, Calendar, CalendarDays, Bell, Medal, GraduationCap, Compass as CompassIcon } from 'lucide-react';
 
 const roleModuleIcons: Record<SystemModuleId, React.ElementType> = {
   formacion: ClipboardCheck,
+  acompanamiento: CompassIcon,
   notas: BookOpen,
   clase: School,
   horario: Calendar,
@@ -94,6 +97,7 @@ const roleModuleIcons: Record<SystemModuleId, React.ElementType> = {
 
 const roleModuleColors: Record<SystemModuleId, string> = {
   formacion: 'bg-primary',
+  acompanamiento: 'bg-indigo-600',
   notas: 'bg-accent',
   clase: 'bg-secondary',
   horario: 'bg-purple-500',
@@ -212,6 +216,7 @@ function AppContent() {
           <Route path="estadisticas" element={<EstadisticasDashboard />} />
           <Route path="school-year" element={<SchoolYearManager />} />
           <Route path="calendar" element={<InstitutionalCalendar />} />
+          <Route path="accompaniment" element={<AccompanimentManager />} />
           <Route path="proyectos" element={<ProjectsModule view="admin" />} />
         </Route>
         <Route path="*" element={<Navigate to="/admin" replace />} />
@@ -376,6 +381,8 @@ function AppContent() {
               <ModulePlaceholder title="Formación Buenos Días" subtitle="Registro de asistencia y disciplina diaria" />
             ) : <Navigate to="/docente" replace />
           } />
+
+          <Route path="acompanamiento" element={<AccompanimentModule />} />
 
           <Route path="proyectos" element={
             permissions.includes('proyectos') ? (

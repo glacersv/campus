@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { SYSTEM_MODULES, SystemModuleId } from '../../types';
-import { ClipboardCheck, BookOpen, School, Calendar, CalendarDays, Bell, Medal, ArrowUpRight, Users, GraduationCap, CheckCircle2 } from 'lucide-react';
+import { ClipboardCheck, BookOpen, School, Calendar, CalendarDays, Bell, Medal, ArrowUpRight, Users, GraduationCap, CheckCircle2, Compass } from 'lucide-react';
 import WelcomeBanner from './WelcomeBanner';
 
 interface ModuleCard {
@@ -31,6 +31,7 @@ interface ModuleGridDashboardProps {
 
 const moduleIcons: Record<SystemModuleId, React.ElementType> = {
   formacion: ClipboardCheck,
+  acompanamiento: Compass,
   notas: BookOpen,
   clase: School,
   horario: Calendar,
@@ -44,6 +45,7 @@ const moduleIcons: Record<SystemModuleId, React.ElementType> = {
 
 const moduleColors: Record<SystemModuleId, string> = {
   formacion: 'bg-emerald-500/10 text-emerald-600 border-emerald-200',
+  acompanamiento: 'bg-indigo-500/10 text-indigo-600 border-indigo-200',
   notas: 'bg-sky-500/10 text-sky-600 border-sky-200',
   clase: 'bg-amber-500/10 text-amber-600 border-amber-200',
   horario: 'bg-purple-500/10 text-purple-600 border-purple-200',

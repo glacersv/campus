@@ -88,13 +88,25 @@ flowchart TD
 
 ---
 
-### FASE 5: Inteligencia Artificial Contextual (Prioridad Baja 🟢)
-*Objetivo: Habilitar el router híbrido de IA para asistencia pedagógica.*
+### FASE 5: Inteligencia Artificial Contextual (Pospuesta para Etapa Futura ⏳)
+*Objetivo: Integración de asistencia pedagógica asistida por IA (planificada para una fase posterior acorde a la infraestructura tecnológica).*
 
-- [ ] **5.1 Router Híbrido (Ollama Local / Gemini Cloud):**
-  - Implementar `src/ai/router.ts` con selección automática según complejidad y fallback automático si Ollama local está inaccesible.
-- [ ] **5.2 Asistente Pedagógico Contextual:**
-  - Integrar botón de sugerencias IA para redacción de actividades en la planificación docente y análisis predictivo de inasistencias en el panel de convivencia.
+- [ ] **5.1 Router Híbrido (Ollama Local / Gemini Cloud):** *(Pospuesto)*
+  - Implementar en una etapa futura según disponibilidad de infraestructura y servidores locales.
+- [ ] **5.2 Asistente Pedagógico Contextual:** *(Pospuesto)*
+  - Integrar sugerencias IA en planificación y análisis de convivencia en una etapa futura.
+
+---
+
+### FASE 6: Cuadro de Acompañamiento Salesiano (Implementada ✅)
+*Objetivo: Evaluación cualitativa de dimensiones humanas, cristianas y vocacionales salesianas (E, MB, B, NM) en todos los niveles.*
+
+- [x] **6.1 Configuración de Dimensiones y Criterios en Admin:**
+  - Componente `AccompanimentManager.tsx` con soporte para crear, editar y sembrar con 1 clic las 4 dimensiones y 14 criterios oficiales del Excel 2026.
+- [x] **6.2 Matriz de Evaluación Docente por Periodo:**
+  - Componente `AccompanimentModule.tsx` con selección de Grado, Sección, Periodo (PI, PII, PIII, PIV), buscador en tiempo real, escala cualitativa y guardado en Firestore.
+- [x] **6.3 Modelo de Datos y Seguridad:**
+  - Tipos en `src/types.ts`, CRUD en `src/lib/firestore.ts` y reglas de seguridad en `firestore.rules`.
 
 ---
 
@@ -102,8 +114,10 @@ flowchart TD
 
 | # | Tarea | Componente / Archivo | Esfuerzo Estimado |
 |---|---|---|---|
-| **1** | Seeder de 26 módulos BTV a Firestore | `scripts/seed-btv-modules.cjs` | 2 - 3 horas |
-| **2** | Limpieza de `student-glacer` y fallback en memoria | `src/services/lmsService.ts` | 1 - 2 horas |
-| **3** | Paginación server-side de alumnos (728+) | `src/lib/firestore.ts`, `StudentsManager.tsx` | 3 - 4 horas |
-| **4** | Hero Banner y métricas en Dashboards de Coordinación | `src/components/coordinacion/` | 2 - 3 horas |
-| **5** | Exportación PDF de reportes de formación | `src/components/docente/SummaryModal.tsx` | 2 - 3 horas |
+| **1** | Seeder de 26 módulos BTV a Firestore | `scripts/seed-btv-modules.cjs` | ✅ Completado |
+| **2** | Limpieza de `student-glacer` y fallback en memoria | `src/services/lmsService.ts` | ✅ Completado |
+| **3** | Paginación server-side de alumnos (728+) | `src/lib/firestore.ts`, `StudentsManager.tsx` | ✅ Completado |
+| **4** | Cuadro de Acompañamiento (Admin & Docente) | `AccompanimentManager.tsx`, `AccompanimentModule.tsx` | ✅ Completado |
+| **5** | Hero Banner y métricas en Dashboards de Coordinación | `src/components/coordinacion/` | 2 - 3 horas |
+| **6** | Exportación PDF de reportes de formación | `src/components/docente/SummaryModal.tsx` | 2 - 3 horas |
+

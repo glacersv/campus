@@ -22,7 +22,8 @@ import {
   FileText,
   BarChart3,
   Search,
-  Medal
+  Medal,
+  Compass,
 } from 'lucide-react';
 import { useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -62,6 +63,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       { id: 'sections', label: 'Secciones', icon: Layers },
       { id: 'grade-section-assignment', label: 'Asignar Edificios', icon: GitBranch },
       { id: 'subjects', label: 'Materias', icon: BookMarked },
+      { id: 'accompaniment', label: 'Acompañamiento', icon: Compass },
     ]},
     { title: 'CONVIVENCIA', items: [
       { id: 'convivencia', label: 'Panel Convivencia', icon: Handshake },

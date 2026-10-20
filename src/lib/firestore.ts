@@ -2378,3 +2378,140 @@ export async function saveGuiones(moduleId: string, guiones: GuionDeClase[]): Pr
     updated_at: serverTimestamp(),
   });
 }
+
+// ==================== ACOMPAÑAMIENTO SALESIANO ====================
+
+import { AccompanimentArea, AccompanimentRecord, AccompanimentPeriod } from '../types';
+
+const ACCOMPANIMENT_AREAS_COLLECTION = 'accompaniment_areas';
+const ACCOMPANIMENT_RECORDS_COLLECTION = 'accompaniment_records';
+
+export const DEFAULT_ACCOMPANIMENT_AREAS: Omit<AccompanimentArea, 'createdAt' | 'updatedAt'>[] = [
+  {
+    id: 'evangelizacion-catequesis',
+    name: 'EVANGELIZACIÓN Y CATEQUESIS',
+    description: 'Vivencia de la fe, oración y espíritu de familia salesiano',
+    order: 1,
+    status: 'ACTIVO',
+    applicableLevels: ['parvularia', 'primaria', 'tercer_ciclo', 'bachillerato_general', 'bachillerato_tecnico'],
+    indicators: [
+      { id: 'amor-a-dios', name: 'Amor a Dios', order: 1 },
+      { id: 'caridad-con-el-projimo', name: 'Caridad con el prójimo', order: 2 },
+      { id: 'apertura-a-la-oracion', name: 'Apertura a la oración', order: 3 },
+      { id: 'salesianidad', name: 'Salesianidad', order: 4 },
+      { id: 'espiritu-de-familia', name: 'Espíritu de familia', order: 5 },
+    ],
+  },
+  {
+    id: 'educativa-cultural',
+    name: 'EDUCATIVA - CULTURAL',
+    description: 'Compromiso académico, respeto y convivencia armónica',
+    order: 2,
+    status: 'ACTIVO',
+    applicableLevels: ['parvularia', 'primaria', 'tercer_ciclo', 'bachillerato_general', 'bachillerato_tecnico'],
+    indicators: [
+      { id: 'respetuoso', name: 'Respetuoso', order: 1 },
+      { id: 'disposicion-al-estudio', name: 'Disposición al estudio', order: 2 },
+      { id: 'cuidado-orden-limpieza', name: 'Cuidado del orden y la limpieza', order: 3 },
+    ],
+  },
+  {
+    id: 'asociativa',
+    name: 'ASOCIATIVA',
+    description: 'Liderazgo juvenil, trabajo cooperativo e integridad',
+    order: 3,
+    status: 'ACTIVO',
+    applicableLevels: ['parvularia', 'primaria', 'tercer_ciclo', 'bachillerato_general', 'bachillerato_tecnico'],
+    indicators: [
+      { id: 'liderazgo', name: 'Liderazgo', order: 1 },
+      { id: 'participacion', name: 'Participación', order: 2 },
+      { id: 'integridad', name: 'Integridad', order: 3 },
+      { id: 'humildad', name: 'Humildad', order: 4 },
+      { id: 'servicio', name: 'Servicio', order: 5 },
+    ],
+  },
+  {
+    id: 'vocacional',
+    name: 'VOCACIONAL',
+    description: 'Claridad en metas, discernimiento y proyección a futuro',
+    order: 4,
+    status: 'ACTIVO',
+    applicableLevels: ['parvularia', 'primaria', 'tercer_ciclo', 'bachillerato_general', 'bachillerato_tecnico'],
+    indicators: [
+      { id: 'proyecto-de-vida', name: 'Proyecto de vida', order: 1 },
+    ],
+  },
+];
+
+export async function getAllAccompanimentAreas(): Promise<AccompanimentArea[]> {
+  try {
+    const q = query(collection(db, ACCOMPANIMENT_AREAS_COLLECTION), orderBy('order', 'asc'));
+    const snap = await getDocs(q);
+    if (snap.empty) {
+      return [];
+    }
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as AccompanimentArea));
+  } catch (error) {
+    console.error('Error getting accompaniment areas:', error);
+    return [];
+  }
+}
+
+export async function saveAccompanimentArea(area: AccompanimentArea): Promise<void> {
+  const ref = doc(db, ACCOMPANIMENT_AREAS_COLLECTION, area.id);
+  const cleanData = Object.fromEntries(
+    Object.entries(area).filter(([, v]) => v !== undefined)
+  );
+  await setDoc(ref, {
+    ...cleanData,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+}
+
+export async function deleteAccompanimentArea(id: string): Promise<void> {
+  await deleteDoc(doc(db, ACCOMPANIMENT_AREAS_COLLECTION, id));
+}
+
+export async function seedAccompanimentDefaultAreas(): Promise<void> {
+  for (const area of DEFAULT_ACCOMPANIMENT_AREAS) {
+    const ref = doc(db, ACCOMPANIMENT_AREAS_COLLECTION, area.id);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
+      await setDoc(ref, {
+        ...area,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    }
+  }
+}
+
+export async function getAccompanimentRecord(
+  gradeId: string,
+  sectionId: string,
+  period: AccompanimentPeriod,
+  year: number
+): Promise<AccompanimentRecord | null> {
+  const recordId = `${gradeId}_${sectionId}_${period}_${year}`;
+  try {
+    const snap = await getDoc(doc(db, ACCOMPANIMENT_RECORDS_COLLECTION, recordId));
+    if (!snap.exists()) return null;
+    return { id: snap.id, ...snap.data() } as AccompanimentRecord;
+  } catch (error) {
+    console.error('Error fetching accompaniment record:', error);
+    return null;
+  }
+}
+
+export async function saveAccompanimentRecord(record: AccompanimentRecord): Promise<void> {
+  const recordId = `${record.gradeId}_${record.sectionId}_${record.period}_${record.year}`;
+  const ref = doc(db, ACCOMPANIMENT_RECORDS_COLLECTION, recordId);
+  const cleanData = Object.fromEntries(
+    Object.entries(record).filter(([, v]) => v !== undefined)
+  );
+  await setDoc(ref, {
+    ...cleanData,
+    id: recordId,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+}

@@ -81,10 +81,12 @@ export type SystemModuleId =
   | 'proyectos'
   | 'semana-juventud'
   | 'semana-juventud-admin'
-  | 'lms';
+  | 'lms'
+  | 'acompanamiento';
 
 export const SYSTEM_MODULES: { id: SystemModuleId; label: string; desc: string }[] = [
   { id: 'formacion', label: 'Formación Buenos Días', desc: 'Registro de asistencia y disciplina' },
+  { id: 'acompanamiento', label: 'Cuadro de Acompañamiento', desc: 'Evaluación formativa y dimensiones salesianas' },
   { id: 'notas', label: 'Notas', desc: 'Calificaciones y evaluaciones' },
   { id: 'clase', label: 'Clase', desc: 'Control de clases del día' },
   { id: 'horario', label: 'Horario', desc: 'Horarios de clases' },
@@ -1135,4 +1137,53 @@ export interface EtapaAccionCompletaInfo {
   instrumentoEvaluacion?: string;
   fechaInicio?: string;
   fechaFin?: string;
+}
+
+// ==================== ACOMPAÑAMIENTO SALESIANO ====================
+
+export type AccompanimentGradeScale = 'E' | 'MB' | 'B' | 'NM';
+
+export interface AccompanimentIndicator {
+  id: string;
+  name: string;
+  description?: string;
+  order: number;
+}
+
+export interface AccompanimentArea {
+  id: string;
+  name: string;
+  description?: string;
+  order: number;
+  applicableLevels?: string[]; // e.g., ['parvularia', 'primaria', 'tercer_ciclo', 'bachillerato_general', 'bachillerato_tecnico']
+  indicators: AccompanimentIndicator[];
+  status: 'ACTIVO' | 'INACTIVO';
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+}
+
+export type AccompanimentPeriod = 'PI' | 'PII' | 'PIII' | 'PIV';
+
+export interface AccompanimentStudentScore {
+  studentId: string;
+  studentName?: string;
+  carnet?: string;
+  scores: Record<string, AccompanimentGradeScale>; // indicatorId -> 'E' | 'MB' | 'B' | 'NM'
+  observations?: string;
+  updatedAt?: Timestamp;
+}
+
+export interface AccompanimentRecord {
+  id: string; // `${gradeId}_${sectionId}_${period}_${year}`
+  gradeId: string;
+  gradeName?: string;
+  sectionId: string;
+  sectionName?: string;
+  period: AccompanimentPeriod;
+  year: number;
+  teacherId?: string;
+  teacherName?: string;
+  evaluations: Record<string, AccompanimentStudentScore>; // studentId -> AccompanimentStudentScore
+  updatedAt?: Timestamp;
+  createdAt?: Timestamp;
 }

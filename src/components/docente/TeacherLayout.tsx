@@ -15,6 +15,7 @@ import {
   Lock,
   FileText,
   ClipboardList,
+  Compass,
 } from 'lucide-react';
 import { useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -119,6 +120,14 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
                     {!sidebarCollapsed && <span className="truncate">Formación Buenos Días</span>}
                   </button>
                 )}
+
+                <button
+                  onClick={() => navigate('/docente/acompanamiento')}
+                  className={`sidebar-item ${currentPath === 'acompanamiento' ? 'active' : ''}`}
+                >
+                  <Compass className="w-5 h-5 shrink-0 text-indigo-500" />
+                  {!sidebarCollapsed && <span className="truncate">Acompañamiento</span>}
+                </button>
 
                 {permissions.includes('notas') && (
                   <button

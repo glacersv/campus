@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { initializeAuth, indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, serverTimestamp, getDocs, query, orderBy, limit, where, QueryConstraint, Timestamp, deleteDoc, doc } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
 import firebaseConfig from '../firebase-applet-config.json';
@@ -15,7 +15,10 @@ export const db = initializeFirestore(app, {
   }),
 });
 
-export const auth = getAuth(app);
+// Initialize Auth with explicit multi-tier persistence (IndexedDB -> LocalStorage fallback)
+export const auth = initializeAuth(app, {
+  persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence],
+});
 export const functions = getFunctions(app);
 
 // Operation types for standard error tracking (per skill instructions)

@@ -266,6 +266,18 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Accompaniment Areas (Acompañamiento Salesiano)
+    match /accompaniment_areas/{areaId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isDocente() || isCoordinacion();
+    }
+
+    // Accompaniment Records (Evaluaciones por grado/sección/periodo)
+    match /accompaniment_records/{recordId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isDocente() || isCoordinacion();
+    }
+
     // Global Catch-All Safety Net (Default Deny)
     match /{document=**} {
       allow read, write: if false;
