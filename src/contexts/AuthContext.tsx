@@ -167,9 +167,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithMicrosoft = async () => {
     const provider = new OAuthProvider('microsoft.com');
+    provider.addScope('email');
+    provider.addScope('profile');
+    provider.addScope('openid');
     provider.setCustomParameters({
       prompt: 'select_account',
-      tenant: 'salesianosanjose.edu.sv',
+      tenant: 'organizations',
     });
 
     const result = await signInWithPopup(auth, provider);
