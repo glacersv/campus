@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { initializeAuth, indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
+import { initializeAuth, indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence, browserPopupRedirectResolver } from 'firebase/auth';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, serverTimestamp, getDocs, query, orderBy, limit, where, QueryConstraint, Timestamp, deleteDoc, doc } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
 import firebaseConfig from '../firebase-applet-config.json';
@@ -15,9 +15,10 @@ export const db = initializeFirestore(app, {
   }),
 });
 
-// Initialize Auth with explicit multi-tier persistence (IndexedDB -> LocalStorage fallback)
+// Initialize Auth with explicit multi-tier persistence and browser popup/redirect resolver
 export const auth = initializeAuth(app, {
   persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence],
+  popupRedirectResolver: browserPopupRedirectResolver,
 });
 export const functions = getFunctions(app);
 
