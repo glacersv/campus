@@ -49,13 +49,13 @@ async function createAuthAccount(email: string, password: string, displayName: s
 
 export async function ensureAdminAccount(): Promise<void> {
   const adminEmail = 'admin@salesianosanjose.edu.sv';
-  
+
   // Check if admin already exists in Firestore
   try {
     const users = await getAllUsers();
     if (users.some(u => u.email === adminEmail && u.role === 'admin')) return;
   } catch { return; }
-  
+
   // Only create if missing
   try {
     const result = await createAuthAccount(adminEmail, '123456', 'Administrador');
@@ -113,7 +113,7 @@ export function sanitizePayload<T extends Record<string, any>>(obj: T): T {
 export async function createUser(userData: Omit<User, 'createdAt'>): Promise<void> {
   // Validate input data
   validate(userData, validateUser);
-  
+
   const userRef = doc(db, USERS_COLLECTION, userData.uid);
   const cleanData = sanitizePayload(userData);
   await setDoc(userRef, { ...cleanData, createdAt: serverTimestamp() });
@@ -162,7 +162,7 @@ export async function getUserByStudentId(studentId: string): Promise<User | null
 export async function createRole(data: Omit<RoleConfig, 'createdAt'>): Promise<void> {
   // Validate input data
   validate(data, validateRoleConfig);
-  
+
   const ref = doc(db, ROLES_COLLECTION, data.id);
   await setDoc(ref, { ...data, createdAt: serverTimestamp() });
 }
@@ -224,7 +224,7 @@ export async function getAllRoles(): Promise<RoleConfig[]> {
 export async function createGrade(data: Omit<Grade, 'createdAt'>): Promise<void> {
   // Validate input data
   validate(data, validateGrade);
-  
+
   const ref = doc(db, GRADES_COLLECTION, data.id);
   const cleanData = Object.fromEntries(
     Object.entries(data).filter(([, v]) => v !== undefined)
@@ -398,7 +398,7 @@ export async function seedBTVCurriculumToFirestore(): Promise<number> {
 export async function createBaccalaureateType(data: Omit<BaccalaureateTypeDoc, 'createdAt'>): Promise<void> {
   // Validate input data
   validate(data, validateBaccalaureateType);
-  
+
   const ref = doc(db, BACCALAUREATE_TYPES_COLLECTION, data.id);
   await setDoc(ref, { ...data, createdAt: serverTimestamp() });
 }
@@ -431,7 +431,7 @@ export async function getAllBaccalaureateTypes(): Promise<BaccalaureateTypeDoc[]
 export async function createBuilding(data: Omit<Building, 'createdAt'>): Promise<void> {
   // Validate input data
   validate(data, validateBuilding);
-  
+
   const ref = doc(db, BUILDINGS_COLLECTION, data.id);
   await setDoc(ref, { ...data, createdAt: serverTimestamp() });
 }
@@ -464,7 +464,7 @@ export async function getAllBuildings(): Promise<Building[]> {
 export async function createComputerLab(data: Omit<ComputerLab, 'createdAt'>): Promise<void> {
   // Validate input data
   validate(data, validateComputerLab);
-  
+
   const ref = doc(db, COMPUTER_LABS_COLLECTION, data.id);
   await setDoc(ref, { ...data, createdAt: serverTimestamp() });
 }
@@ -497,7 +497,7 @@ export async function getAllComputerLabs(): Promise<ComputerLab[]> {
 export async function createSection(data: Omit<Section, 'createdAt'>): Promise<void> {
   // Validate input data
   validate(data, validateSection);
-  
+
   const ref = doc(db, SECTIONS_COLLECTION, data.id);
   await setDoc(ref, { ...data, createdAt: serverTimestamp() });
 }
@@ -536,7 +536,7 @@ export async function getSectionsByGrade(gradeId: string): Promise<Section[]> {
 export async function createSubject(data: Omit<Subject, 'createdAt'>): Promise<void> {
   // Validate input data
   validate(data, validateSubject);
-  
+
   const ref = doc(db, SUBJECTS_COLLECTION, data.id);
   await setDoc(ref, { ...data, createdAt: serverTimestamp() });
 }
@@ -723,7 +723,7 @@ export async function getAllLMSModules(): Promise<LMSModule[]> {
   return seedModules;
 }
 
-/** 
+/**
  * Fuerza la re-sincronización de todos los módulos BTV oficiales en Firestore
  * corrigiendo gradeId a los IDs técnicos reales ('10t','11t','12t').
  * Usar desde Admin cuando los módulos muestren datos incorrectos.
@@ -824,7 +824,7 @@ export async function reseedLMSModules(): Promise<LMSModule[]> {
 export async function createTeacher(data: Omit<Teacher, 'createdAt'>): Promise<void> {
   // Validate input data
   validate(data, validateTeacher);
-  
+
   const ref = doc(db, TEACHERS_COLLECTION, data.id);
   await setDoc(ref, { ...data, createdAt: serverTimestamp() });
 }
@@ -865,14 +865,14 @@ export async function getTeacherByGrade(gradeId: string): Promise<Teacher | null
 export async function createStudent(data: Omit<Student, 'createdAt' | 'updatedAt'>): Promise<void> {
   // Validate input data
   validate(data, validateStudent);
-  
+
   const ref = doc(db, STUDENTS_COLLECTION, data.id);
   await setDoc(ref, { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
 
   // Auto-create approval request for pre-registered students
   const carnet = data.carnet || data.id;
   const email = carnet.includes('@') ? carnet : `${carnet}@salesianosanjose.edu.sv`;
-  
+
   try {
     await createApprovalRequest({
       id: `approval_${Date.now()}_${data.id}`,
@@ -982,18 +982,18 @@ export async function getAvailableStudentsBySection(
   // The grade format from the form is "11°" but student gradeId is "11t" or "11"
   // The section format from the form is "A" but student sectionId is "11ta" (ends with letter)
   const allStudents = await getAllStudents();
-  
+
   const cleanGrade = grade.replace('°', '');
-  
+
   const students = allStudents.filter(s => {
     // Match grade: student gradeId should contain the grade number
     const studentGradeNum = s.gradeId.replace(/[^0-9]/g, '');
     if (studentGradeNum !== cleanGrade) return false;
-    
+
     // Match section: student sectionId should end with the section letter
     const studentSectionLetter = s.sectionId?.slice(-1)?.toUpperCase();
     if (studentSectionLetter !== section.toUpperCase()) return false;
-    
+
     return true;
   });
 
@@ -1001,7 +1001,7 @@ export async function getAvailableStudentsBySection(
   const proyectosRef = collection(db, 'proyectos');
   const proyectosSnap = await getDocs(proyectosRef);
   const activeStudentUids = new Set<string>();
-  
+
   for (const doc of proyectosSnap.docs) {
     const proyecto = doc.data();
     // Only exclude students from active projects (not rejected ones)
@@ -1024,7 +1024,7 @@ export async function getStudentsWithoutAccounts(): Promise<Student[]> {
 export async function activateStudent(student: Student, password: string): Promise<{ email: string; password: string }> {
   const carnet = student.carnet || student.id;
   const email = carnet.includes('@') ? carnet : `${carnet.toLowerCase()}@salesianosanjose.edu.sv`;
-  
+
   // Crear cuenta de Firebase Auth via REST API
   let authUid: string;
   try {
@@ -1386,14 +1386,14 @@ export async function startSchoolYear(year: number, sectionConfig?: YearSectionC
   activeStudents.forEach(s => {
     const ref = doc(db, STUDENTS_COLLECTION, s.id);
     const history = s.enrollmentHistory || [];
-    
+
     // Filtrar historial previo: solo mantener años anteriores al nuevo año y marcar como FINALIZADO
     const updatedHistory = history
       .filter(record => record.year < year)
       .map(record =>
         record.year === previousYear ? { ...record, status: 'FINALIZADO' as const } : record
       );
-    
+
     // Eliminar duplicados por año en el historial existente
     const uniqueHistory = updatedHistory.filter((record, index, self) =>
       index === self.findIndex(r => r.year === record.year)
@@ -1447,12 +1447,12 @@ export async function startSchoolYear(year: number, sectionConfig?: YearSectionC
 export async function migrateRolesToLowerCase(): Promise<void> {
   const roles = await getAllRoles();
   const users = await getAllUsers();
-  
+
   for (const role of roles) {
     if (role.id !== role.id.toLowerCase()) {
       const lowerId = role.id.toLowerCase();
       console.log(`[Migration] Migrando rol "${role.id}" → "${lowerId}"`);
-      
+
       // Crear nuevo rol con ID minúscula
       await createRole({
         id: lowerId,
@@ -1461,14 +1461,14 @@ export async function migrateRolesToLowerCase(): Promise<void> {
         permissions: role.permissions,
         isSystem: role.isSystem,
       });
-      
+
       // Actualizar usuarios con este rol
       const affectedUsers = users.filter(u => u.role === role.id);
       for (const user of affectedUsers) {
         await updateUserRole(user.uid, lowerId);
         console.log(`[Migration] Usuario ${user.email}: rol "${role.id}" → "${lowerId}"`);
       }
-      
+
       // Eliminar rol con ID en mayúsculas
       await deleteRole(role.id);
     }
@@ -1642,7 +1642,7 @@ export async function seedInitialData(): Promise<void> {
 
   console.log('Seed completed: 7 roles, 12 grades, 22 sections, 16 subjects, 10 teachers, 30 students');
   }
-  
+
   // Migrar roles existentes a minúsculas
   await migrateRolesToLowerCase();
 }
@@ -2133,14 +2133,14 @@ export async function getProyectosAprobadosByDocente(docenteId: string): Promise
   );
   const snapshot = await getDocs(q);
   const proyectos = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Proyecto));
-  
+
   // Filtrar proyectos donde el docente tiene materias asignadas
   const teacher = await getTeacher(docenteId);
   if (!teacher?.subjects || teacher.subjects.length === 0) {
     return proyectos;
   }
-  
-  return proyectos.filter(p => 
+
+  return proyectos.filter(p =>
     teacher.subjects.includes(p.materia_id) ||
     p.materias_secundarias?.some(m => teacher.subjects.includes(m))
   );
@@ -2170,7 +2170,7 @@ export async function createActividadEvaluada(
   actividad: Omit<ActividadEvaluada, 'id' | 'created_at' | 'updated_at'>
 ): Promise<string> {
   const now = new Date().toISOString();
-  
+
   // Filtrar valores undefined/undefined para Firestore
   const filterUndefined = (obj: Record<string, any>): Record<string, any> => {
     const filtered: Record<string, any> = {};
@@ -2245,7 +2245,7 @@ export async function updateActividadEvaluada(
   updates: Partial<ActividadEvaluada>
 ): Promise<void> {
   const now = new Date().toISOString();
-  
+
   // Filtrar valores undefined/undefined para Firestore
   const filteredUpdates: Record<string, any> = {};
   Object.entries(updates).forEach(([key, value]) => {
@@ -2412,7 +2412,7 @@ export async function saveGuiones(moduleId: string, guiones: GuionDeClase[]): Pr
 
 // ==================== ACOMPAÑAMIENTO SALESIANO ====================
 
-import { AccompanimentArea, AccompanimentRecord, AccompanimentPeriod } from '../types';
+import { AccompanimentArea, AccompanimentRecord, AccompanimentPeriod, AccompanimentGradeScale } from '../types';
 
 const ACCOMPANIMENT_AREAS_COLLECTION = 'accompaniment_areas';
 const ACCOMPANIMENT_RECORDS_COLLECTION = 'accompaniment_records';
