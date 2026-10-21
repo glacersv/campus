@@ -473,6 +473,21 @@ export default function AccompanimentModule() {
     ? (currentStudent.lastName ? `${currentStudent.lastName}, ${currentStudent.firstName || currentStudent.name}` : currentStudent.name)
     : '';
 
+  // Helper para obtener foto institucional del estudiante (por foto en perfil, por carnet en public/students, o avatar dinámico)
+  const getStudentPhoto = (student?: Student | null) => {
+    if (!student) return '';
+    if (student.photoUrl) return student.photoUrl;
+    if (student.carnet) return `/students/${student.carnet}.png`;
+    const fullName = student.lastName ? `${student.lastName}, ${student.firstName || student.name}` : student.name;
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=4F46E5&color=fff&size=256&bold=true`;
+  };
+
+  const getStudentAvatarFallback = (student?: Student | null) => {
+    if (!student) return '';
+    const fullName = student.lastName ? `${student.lastName}, ${student.firstName || student.name}` : student.name;
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=4F46E5&color=fff&size=256&bold=true`;
+  };
+
   // Indicadores a mostrar según la pestaña activa
   const displayedAreas = activeAreaTab === 'all'
     ? areas
@@ -836,9 +851,16 @@ export default function AccompanimentModule() {
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm text-center relative overflow-hidden">
                   <div className="w-28 h-28 mx-auto rounded-2xl overflow-hidden border-4 border-indigo-100 dark:border-indigo-900/50 shadow-md mb-4 bg-slate-100 dark:bg-slate-800 relative group">
                     <img
-                      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(currentStudentFullName)}&background=4F46E5&color=fff&size=256&bold=true`}
+                      src={getStudentPhoto(currentStudent)}
                       alt={currentStudentFullName}
                       className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        const fallback = getStudentAvatarFallback(currentStudent);
+                        if (target.src !== fallback) {
+                          target.src = fallback;
+                        }
+                      }}
                     />
                     <div className="absolute bottom-1 right-1 bg-emerald-500 w-4 h-4 rounded-full border-2 border-white dark:border-slate-900" title="Activo"></div>
                   </div>
@@ -1194,14 +1216,30 @@ export default function AccompanimentModule() {
 
                         {/* Nombre del Alumno */}
                         <td className="p-3 font-medium text-slate-900 dark:text-white sticky left-12 z-10 bg-white dark:bg-slate-900 group-hover:bg-slate-50 dark:group-hover:bg-slate-800/40 border-r border-slate-200 dark:border-slate-800">
-                          <div className="truncate max-w-[240px] font-semibold" title={studentFullName}>
-                            {studentFullName}
-                          </div>
-                          {student.carnet && (
-                            <div className="text-[11px] text-slate-400 font-mono">
-                              Carnet: {student.carnet}
+                          <div className="flex items-center gap-2.5">
+                            <img
+                              src={getStudentPhoto(student)}
+                              alt={studentFullName}
+                              className="w-8 h-8 rounded-lg object-cover border border-slate-200 dark:border-slate-700 shrink-0 bg-slate-100 dark:bg-slate-800"
+                              onError={(e) => {
+                                const target = e.currentTarget;
+                                const fallback = getStudentAvatarFallback(student);
+                                if (target.src !== fallback) {
+                                  target.src = fallback;
+                                }
+                              }}
+                            />
+                            <div className="min-w-0">
+                              <div className="truncate max-w-[220px] font-semibold text-xs sm:text-sm" title={studentFullName}>
+                                {studentFullName}
+                              </div>
+                              {student.carnet && (
+                                <div className="text-[10px] text-slate-400 font-mono">
+                                  {student.carnet}
+                                </div>
+                              )}
                             </div>
-                          )}
+                          </div>
                         </td>
 
                         {/* Celdas de Calificación para cada Indicador */}

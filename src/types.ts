@@ -248,6 +248,7 @@ export interface Student {
   enrollmentYear?: number;
   status?: 'ACTIVO' | 'INACTIVO' | 'GRADUADO';
   enrollmentHistory?: EnrollmentRecord[];
+  photoUrl?: string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }
