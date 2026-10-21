@@ -19,8 +19,10 @@ import {
   TrendingUp,
   Filter,
   Check,
-  X
+  X,
+  Sparkles
 } from 'lucide-react';
+import ResetDemonstrationModal from './ResetDemonstrationModal';
 import { toast } from 'sonner';
 import {
   getAllStudents,
@@ -59,6 +61,7 @@ export default function SchoolYearManager() {
   const [students, setStudents] = useState<Student[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [maintenanceOpen, setMaintenanceOpen] = useState(false);
+  const [showDemoResetModal, setShowDemoResetModal] = useState(false);
 
   // Filtering and view state
   const [selectedCycle, setSelectedCycle] = useState<Cycle | 'all'>('all');
@@ -511,8 +514,16 @@ export default function SchoolYearManager() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 self-start md:self-auto relative z-10">
-          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-primary/5 via-accent/5 to-secondary/10 border border-primary/20 rounded-full text-xs font-bold text-primary shadow-sm">
+        <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto relative z-10">
+          <button
+            type="button"
+            onClick={() => setShowDemoResetModal(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+          >
+            <Sparkles className="w-4 h-4 text-amber-200" />
+            <span>Calibrar para Coordinación</span>
+          </button>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 shadow-2xs">
             Planificación en Vivo
           </span>
         </div>
@@ -991,6 +1002,16 @@ export default function SchoolYearManager() {
         )}
         </AnimatePresence>
       </div>
+
+      {/* Modal interactivo de calibración para coordinaciones */}
+      <ResetDemonstrationModal
+        isOpen={showDemoResetModal}
+        onClose={() => setShowDemoResetModal(false)}
+        onSuccess={() => {
+          loadData();
+        }}
+        targetSchoolYear={2026}
+      />
     </div>
   );
 }
