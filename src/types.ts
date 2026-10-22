@@ -1142,7 +1142,7 @@ export interface EtapaAccionCompletaInfo {
 
 // ==================== ACOMPAÑAMIENTO SALESIANO ====================
 
-export type AccompanimentGradeScale = 'E' | 'MB' | 'B' | 'NM';
+export type AccompanimentGradeScale = 'E' | 'MB' | 'B' | 'NM' | 'NI';
 
 export interface AccompanimentIndicator {
   id: string;
@@ -1178,7 +1178,7 @@ export interface AccompanimentStudentScore {
   studentId: string;
   studentName?: string;
   carnet?: string;
-  scores: Record<string, AccompanimentGradeScale>; // indicatorId -> 'E' | 'MB' | 'B' | 'NM'
+  scores: Record<string, AccompanimentGradeScale>; // indicatorId -> 'E' | 'MB' | 'B' | 'NM' | 'NI'
   observations?: string;
   conductNotes?: StudentSubjectConductNote[];
   updatedAt?: Timestamp;

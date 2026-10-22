@@ -765,7 +765,8 @@ export default function AccompanimentModule() {
             <span className="inline-flex items-center gap-1"><strong className="text-emerald-600 font-bold">E:</strong> Excelente</span>
             <span className="inline-flex items-center gap-1"><strong className="text-blue-600 font-bold">MB:</strong> Muy Bueno</span>
             <span className="inline-flex items-center gap-1"><strong className="text-amber-600 font-bold">B:</strong> Bueno</span>
-            <span className="inline-flex items-center gap-1"><strong className="text-rose-600 font-bold">NM:</strong> Necesita Mejorar</span>
+            <span className="inline-flex items-center gap-1"><strong className="text-orange-500 font-bold">NM:</strong> Necesita Mejorar</span>
+            <span className="inline-flex items-center gap-1"><strong className="text-rose-600 font-bold">NI:</strong> No Muestra Interés</span>
           </div>
 
           <div className="flex items-center gap-2 text-slate-500">
@@ -1049,7 +1050,7 @@ export default function AccompanimentModule() {
 
                           {/* Botones Toggle Segmentados */}
                           <div className="inline-flex items-center p-0.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 gap-1 shadow-xs shrink-0">
-                            {(['E', 'MB', 'B', 'NM'] as AccompanimentGradeScale[]).map((gradeOpt) => {
+                            {(['E', 'MB', 'B', 'NM', 'NI'] as AccompanimentGradeScale[]).map((gradeOpt) => {
                               const isSelected = scoreValue === gradeOpt;
 
                               let activeClass = '';
@@ -1060,7 +1061,9 @@ export default function AccompanimentModule() {
                               } else if (gradeOpt === 'B') {
                                 activeClass = 'bg-amber-500 text-white font-extrabold shadow-sm shadow-amber-500/40 ring-1 ring-amber-600 scale-105';
                               } else if (gradeOpt === 'NM') {
-                                activeClass = 'bg-rose-500 text-white font-extrabold shadow-sm shadow-rose-500/40 ring-1 ring-rose-600 scale-105';
+                                activeClass = 'bg-orange-500 text-white font-extrabold shadow-sm shadow-orange-500/40 ring-1 ring-orange-600 scale-105';
+                              } else if (gradeOpt === 'NI') {
+                                activeClass = 'bg-rose-600 text-white font-extrabold shadow-sm shadow-rose-600/40 ring-1 ring-rose-700 scale-105';
                               }
 
                               const inactiveClass = scoreValue
@@ -1086,9 +1089,11 @@ export default function AccompanimentModule() {
                                       ? 'Muy Bueno'
                                       : gradeOpt === 'B'
                                       ? 'Bueno'
-                                      : 'Necesita Mejorar'
+                                      : gradeOpt === 'NM'
+                                      ? 'Necesita Mejorar'
+                                      : 'No Muestra Interés'
                                   }${isSelected ? ' (Clic para desmarcar)' : ''}`}
-                                  className={`px-2.5 py-1 text-xs rounded-lg transition-all cursor-pointer font-bold select-none leading-none min-w-[28px] ${
+                                  className={`px-2 py-1 text-xs rounded-lg transition-all cursor-pointer font-bold select-none leading-none min-w-[26px] ${
                                     isSelected ? activeClass : inactiveClass
                                   }`}
                                 >
@@ -1316,7 +1321,7 @@ export default function AccompanimentModule() {
                               className="p-1.5 text-center border-l border-slate-100 dark:border-slate-800/60"
                             >
                               <div className="inline-flex items-center justify-center p-0.5 bg-slate-100 dark:bg-slate-800/90 rounded-xl border border-slate-200/80 dark:border-slate-700/80 gap-0.5 shadow-inner">
-                                {(['E', 'MB', 'B', 'NM'] as AccompanimentGradeScale[]).map((gradeOpt) => {
+                                {(['E', 'MB', 'B', 'NM', 'NI'] as AccompanimentGradeScale[]).map((gradeOpt) => {
                                   const isSelected = scoreValue === gradeOpt;
 
                                   let activeClass = '';
@@ -1327,7 +1332,9 @@ export default function AccompanimentModule() {
                                   } else if (gradeOpt === 'B') {
                                     activeClass = 'bg-amber-500 text-white font-extrabold shadow-sm shadow-amber-500/40 ring-1 ring-amber-600';
                                   } else if (gradeOpt === 'NM') {
-                                    activeClass = 'bg-rose-500 text-white font-extrabold shadow-sm shadow-rose-500/40 ring-1 ring-rose-600';
+                                    activeClass = 'bg-orange-500 text-white font-extrabold shadow-sm shadow-orange-500/40 ring-1 ring-orange-600';
+                                  } else if (gradeOpt === 'NI') {
+                                    activeClass = 'bg-rose-600 text-white font-extrabold shadow-sm shadow-rose-600/40 ring-1 ring-rose-700';
                                   }
 
                                   const inactiveClass = scoreValue
@@ -1353,9 +1360,11 @@ export default function AccompanimentModule() {
                                           ? 'Muy Bueno'
                                           : gradeOpt === 'B'
                                           ? 'Bueno'
-                                          : 'Necesita Mejorar'
+                                          : gradeOpt === 'NM'
+                                          ? 'Necesita Mejorar'
+                                          : 'No Muestra Interés'
                                       }${isSelected ? ' (Clic para desmarcar)' : ''}`}
-                                      className={`px-1.5 py-1 text-[11px] rounded-lg transition-all cursor-pointer font-bold select-none leading-none min-w-[24px] ${
+                                      className={`px-1.5 py-1 text-[11px] rounded-lg transition-all cursor-pointer font-bold select-none leading-none min-w-[22px] ${
                                         isSelected ? activeClass : inactiveClass
                                       }`}
                                     >
