@@ -68,6 +68,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     ]},
     { title: 'CONVIVENCIA', items: [
       { id: 'conducta-indicadores', label: 'Indicadores de Conducta', icon: ShieldAlert },
+      { id: 'reporte-conducta', label: 'Reporte de Conducta (PDF)', icon: FileText },
       { id: 'convivencia', label: 'Panel Convivencia', icon: Handshake },
     ]},
     { title: 'PROYECTOS', items: [

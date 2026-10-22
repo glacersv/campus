@@ -70,7 +70,7 @@ export async function ensureAdminAccount(): Promise<void> {
     }
   } catch { /* Auth account already exists or will be created manually */ }
 }
-import { User, Grade, Section, Subject, Teacher, Student, BaccalaureateTypeDoc, Building, ComputerLab, RoleConfig, UserRole, UserStatus, ApprovalRequest, NewUserNotification, Proyecto, ActividadEvaluada, EvaluacionProyecto, LMSModule, BehaviorIndicator, StudentConductIncident } from '../types';
+import { User, Grade, Section, Subject, Teacher, Student, BaccalaureateTypeDoc, Building, ComputerLab, RoleConfig, UserRole, UserStatus, ApprovalRequest, NewUserNotification, Proyecto, ActividadEvaluada, EvaluacionProyecto, LMSModule, BehaviorIndicator, StudentConductIncident, StudentConductSummary } from '../types';
 import {
   validateUser,
   validateGrade,
@@ -2916,4 +2916,84 @@ export async function getSectionConductIncidents(
 export async function deleteStudentConductIncident(incidentId: string): Promise<void> {
   await deleteDoc(doc(db, STUDENT_CONDUCT_INCIDENTS_COLLECTION, incidentId));
 }
+
+const STUDENT_CONDUCT_RECORDS_COLLECTION = 'student_conduct_records';
+
+export async function saveStudentConductSummary(summary: StudentConductSummary): Promise<void> {
+  const docId = `${summary.studentId}_${summary.period}_${summary.year}`;
+  const ref = doc(db, STUDENT_CONDUCT_RECORDS_COLLECTION, docId);
+  const cleanData = Object.fromEntries(
+    Object.entries(summary).filter(([, v]) => v !== undefined)
+  );
+  await setDoc(ref, {
+    ...cleanData,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+}
+
+export async function getStudentConductSummary(
+  studentId: string,
+  period: AccompanimentPeriod,
+  year: number
+): Promise<StudentConductSummary | null> {
+  const docId = `${studentId}_${period}_${year}`;
+  try {
+    const snap = await getDoc(doc(db, STUDENT_CONDUCT_RECORDS_COLLECTION, docId));
+    if (!snap.exists()) return null;
+    return { ...snap.data() } as StudentConductSummary;
+  } catch (error) {
+    console.error('Error fetching student conduct summary:', error);
+    return null;
+  }
+}
+
+// Estudiantes oficiales del Reporte de indicadores de conducta 2026 (Segundo Técnico A)
+export const TECHNICIAN_STUDENTS_CONDUCT_2026 = [
+  { name: 'Contreras Flores, Joyce Denisse', carnet: '20160122', photoUrl: '/students/20160122.png', baseScore: 8.5, finalScore: 8.5 },
+  { name: 'González Ramos, Luis Alfonso', carnet: '20253108', photoUrl: '/students/20253108.png', baseScore: 8.5, finalScore: 8.5 },
+  { name: 'Henríquez Lucha, Francisco David', carnet: '20220702', photoUrl: '/students/20220702.png', baseScore: 8.5, finalScore: 8.5 },
+  { name: 'Hernández Zelada, Génesis Natalia', carnet: '20253105', photoUrl: '/students/20253105.png', baseScore: 8.5, finalScore: 8.5 },
+  { name: 'Melara Flores, Anthony Stanley', carnet: '20240901', photoUrl: '/students/20240901.png', baseScore: 8.5, finalScore: 8.5 },
+  { name: 'Osorio Morán, Juan Pablo', carnet: '20253103', photoUrl: '/students/20253103.png', baseScore: 8.5, finalScore: 8.5 },
+  { name: 'Pérez Escobar, Daniela Alejandra', carnet: '20253106', photoUrl: '/students/20253106.png', baseScore: 8.5, finalScore: 8.5 },
+  { name: 'Ramírez, Jeniffer Larissa', carnet: '20253101', photoUrl: '/students/20253101.png', baseScore: 8.5, finalScore: 8.5 },
+];
+
+export async function seedTechnicianConductFromPdf(gradeId = '11t', sectionId = 'sec_11t_a', period: AccompanimentPeriod = 'PIV', year = 2026): Promise<void> {
+  const allStudents = await getAllStudents();
+
+  for (const item of TECHNICIAN_STUDENTS_CONDUCT_2026) {
+    let studentId = '';
+    const match = allStudents.find(s => {
+      if (s.carnet && s.carnet === item.carnet) return true;
+      const sFull = `${s.lastName || ''} ${s.firstName || ''} ${s.name || ''}`.toLowerCase();
+      const parts = item.name.toLowerCase().replace(/,/g, '').split(' ');
+      return parts.filter(p => p.length > 2 && sFull.includes(p)).length >= 2;
+    });
+
+    if (match) {
+      studentId = match.id;
+    } else {
+      studentId = `tech_${item.carnet}`;
+    }
+
+    const summary: StudentConductSummary = {
+      studentId,
+      studentName: item.name,
+      carnet: item.carnet,
+      gradeName: 'Segundo Técnico A',
+      sectionName: 'A',
+      period,
+      year,
+      baseScore: item.baseScore,
+      finalScore: item.finalScore,
+      totalPositives: 0,
+      totalNegatives: 0,
+      incidents: [],
+    };
+
+    await saveStudentConductSummary(summary);
+  }
+}
+
 
