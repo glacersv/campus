@@ -831,63 +831,10 @@ export default function AccompanimentModule() {
       </div>
 
       {/* ========================================================================= */}
-      {/* VISTA 1: FICHA INDIVIDUAL 360° (FOTO + ACOMPAÑAMIENTO + CONDUCTA/MATERIAS) */}
+      {/* VISTA 1: FICHA INDIVIDUAL 360° SEGÚN DISEÑO */}
       {/* ========================================================================= */}
       {viewMode === 'card' && (
-        <div className="space-y-4">
-          {/* Barra de Navegación Rápida entre Alumnos con Flechas y Selector de Lista */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setSelectedStudentIndex(prev => Math.max(0, prev - 1))}
-                disabled={selectedStudentIndex <= 0}
-                className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none transition-all"
-                title="Alumno anterior"
-              >
-                <ChevronLeft className="w-5 h-5 text-slate-700 dark:text-slate-300" />
-              </button>
-
-              <div className="text-center sm:text-left">
-                <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
-                  Alumno {filteredStudents.length > 0 ? selectedStudentIndex + 1 : 0} de {filteredStudents.length}
-                </span>
-                <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
-                  {currentStudentFullName || 'Sin alumnos'}
-                </h2>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setSelectedStudentIndex(prev => Math.min(filteredStudents.length - 1, prev + 1))}
-                disabled={selectedStudentIndex >= filteredStudents.length - 1}
-                className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none transition-all"
-                title="Siguiente alumno"
-              >
-                <ChevronRight className="w-5 h-5 text-slate-700 dark:text-slate-300" />
-              </button>
-            </div>
-
-            {/* Selector rápido tipo pastillas de lista de números de alumnos */}
-            <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pb-1 sm:pb-0">
-              {filteredStudents.map((st, idx) => (
-                <button
-                  key={st.id}
-                  type="button"
-                  onClick={() => setSelectedStudentIndex(idx)}
-                  className={`w-8 h-8 rounded-xl font-bold text-xs transition-all shrink-0 ${
-                    selectedStudentIndex === idx
-                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30 scale-105'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-                  }`}
-                  title={`${st.lastName || st.name}`}
-                >
-                  {idx + 1}
-                </button>
-              ))}
-            </div>
-          </div>
-
+        <div className="space-y-6">
           {loading || loadingStudents ? (
             <div className="flex flex-col justify-center items-center py-24 space-y-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
@@ -900,280 +847,347 @@ export default function AccompanimentModule() {
               <p className="text-xs text-slate-500 mt-1">Verifica los filtros de grado y sección.</p>
             </div>
           ) : (
-            /* Layout Principal de 3 Columnas */
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-              {/* Columna Izquierda (3 cols): Perfil, Foto Institucional y Datos del Alumno */}
-              <div className="lg:col-span-3 space-y-4">
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm text-center relative overflow-hidden">
-                  <div className="w-28 h-28 mx-auto rounded-2xl overflow-hidden border-4 border-indigo-100 dark:border-indigo-900/50 shadow-md mb-4 bg-slate-100 dark:bg-slate-800 relative group">
-                    <img
-                      src={getStudentPhoto(currentStudent)}
-                      alt={currentStudentFullName}
-                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                      onError={(e) => {
-                        const target = e.currentTarget;
-                        const fallback = getStudentAvatarFallback(currentStudent);
-                        if (target.src !== fallback) {
-                          target.src = fallback;
-                        }
-                      }}
-                    />
-                    <div className="absolute bottom-1 right-1 bg-emerald-500 w-4 h-4 rounded-full border-2 border-white dark:border-slate-900" title="Activo"></div>
-                  </div>
+            <>
+              {/* FILA SUPERIOR: 3 COLUMNAS (PERFIL, CRITERIOS, NAVEGACIÓN DE ALUMNOS) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5 items-stretch">
+                {/* 1. Columna Izquierda (~3.5 cols): Perfil del Alumno */}
+                <div className="lg:col-span-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm text-center flex flex-col justify-between">
+                  <div>
+                    <div className="w-24 h-24 mx-auto rounded-2xl overflow-hidden border-2 border-indigo-100 dark:border-indigo-900/50 shadow-md mb-3 bg-slate-100 dark:bg-slate-800 relative group">
+                      <img
+                        src={getStudentPhoto(currentStudent)}
+                        alt={currentStudentFullName}
+                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          const fallback = getStudentAvatarFallback(currentStudent);
+                          if (target.src !== fallback) {
+                            target.src = fallback;
+                          }
+                        }}
+                      />
+                      <div className="absolute bottom-1 right-1 bg-emerald-500 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-900" title="Activo"></div>
+                    </div>
 
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white leading-snug">
-                    {currentStudentFullName}
-                  </h3>
-                  <p className="text-xs font-mono text-indigo-600 dark:text-indigo-400 font-semibold mt-1">
-                    Carnet: {currentStudent.carnet || currentStudent.id}
-                  </p>
+                    <h3 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase leading-snug tracking-tight">
+                      {currentStudentFullName}
+                    </h3>
+                    <p className="text-xs font-mono text-indigo-600 dark:text-indigo-400 font-bold mt-0.5">
+                      Carnet: {currentStudent.carnet || currentStudent.id}
+                    </p>
 
-                  <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 text-left space-y-2 text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Grado:</span>
-                      <span className="font-semibold text-slate-700 dark:text-slate-300">
-                        {grades.find(g => g.id === currentStudent.gradeId)?.name || currentStudent.gradeId}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Sección:</span>
-                      <span className="font-semibold text-slate-700 dark:text-slate-300">
-                        {sections.find(s => s.id === currentStudent.sectionId)?.name || 'A'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Año / Cohorte:</span>
-                      <span className="font-semibold text-slate-700 dark:text-slate-300">
-                        {currentStudent.enrollmentYear || selectedYear}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Estado:</span>
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400">
-                        {currentStudent.status || 'ACTIVO'}
-                      </span>
+                    <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-left space-y-2 text-xs">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">Grado:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300 text-right">
+                          {grades.find(g => g.id === currentStudent.gradeId)?.name || currentStudent.gradeId}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">Sección:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                          {sections.find(s => s.id === currentStudent.sectionId)?.name || 'A'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">Año / Cohorte:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                          {currentStudent.enrollmentYear || selectedYear}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">Estado:</span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400">
+                          {currentStudent.status || 'ACTIVO'}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
                   {/* Resumen de Conducta y Méritos Compacto */}
-                  <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-3 gap-1.5 text-center">
-                    <div className="py-1.5 px-2 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/70 dark:border-emerald-900/40">
+                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-3 gap-1.5 text-center">
+                    <div className="py-1.5 px-1 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-900/40">
                       <div className="flex items-center justify-center gap-1">
                         <ThumbsUp className="w-3 h-3 text-emerald-600" />
                         <span className="text-xs font-black text-emerald-700 dark:text-emerald-300">
                           {positivosCount}
                         </span>
                       </div>
-                      <div className="text-[9px] font-bold text-emerald-600/80 uppercase tracking-tight mt-0.5">Positivos</div>
+                      <div className="text-[9px] font-bold text-emerald-600/90 uppercase tracking-tight mt-0.5">Positivos</div>
                     </div>
-                    <div className="py-1.5 px-2 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200/70 dark:border-rose-900/40">
+                    <div className="py-1.5 px-1 rounded-xl bg-rose-50/80 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-900/40">
                       <div className="flex items-center justify-center gap-1">
                         <ThumbsDown className="w-3 h-3 text-rose-600" />
                         <span className="text-xs font-black text-rose-700 dark:text-rose-300">
                           {negativosCount}
                         </span>
                       </div>
-                      <div className="text-[9px] font-bold text-rose-600/80 uppercase tracking-tight mt-0.5">Negativos</div>
+                      <div className="text-[9px] font-bold text-rose-600/90 uppercase tracking-tight mt-0.5">Negativos</div>
                     </div>
-                    <div className="py-1.5 px-2 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/70 dark:border-indigo-900/40">
+                    <div className="py-1.5 px-1 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/60 dark:border-indigo-900/40">
                       <div className="flex items-center justify-center gap-1">
                         <Award className="w-3 h-3 text-indigo-600" />
                         <span className="text-xs font-black text-indigo-700 dark:text-indigo-300">
                           {observacionesCount}
                         </span>
                       </div>
-                      <div className="text-[9px] font-bold text-indigo-600/80 uppercase tracking-tight mt-0.5">Notas</div>
+                      <div className="text-[9px] font-bold text-indigo-600/90 uppercase tracking-tight mt-0.5">Notas</div>
                     </div>
                   </div>
                 </div>
 
-                {/* Accesos rápidos de navegación */}
-                <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedStudentIndex(prev => Math.max(0, prev - 1))}
-                    disabled={selectedStudentIndex <= 0}
-                    className="flex-1 py-2 px-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-100 disabled:opacity-40 transition-all text-center"
-                  >
-                    ← Anterior
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedStudentIndex(prev => Math.min(filteredStudents.length - 1, prev + 1))}
-                    disabled={selectedStudentIndex >= filteredStudents.length - 1}
-                    className="flex-1 py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-sm disabled:opacity-40 transition-all text-center"
-                  >
-                    Siguiente →
-                  </button>
-                </div>
-              </div>
-
-              {/* Columna Central (4 cols): Calificación de Criterios con Botones Toggles */}
-              <div className="lg:col-span-4 space-y-4">
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                        <Compass className="w-4 h-4 text-indigo-600" />
-                        Criterios de Acompañamiento
-                      </h3>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        {activeAreaTab === 'all' ? 'Todas las dimensiones' : currentTabArea?.name} ({selectedPeriod} - {selectedYear})
-                      </p>
-                    </div>
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                      {displayedIndicators.length} criterios
-                    </span>
-                  </div>
-
-                  {/* Lista de Criterios con Botones Toggles E | MB | B | NM */}
-                  <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
-                    {displayedIndicators.map((ind) => {
-                      const studentScores = evaluations[currentStudent.id]?.scores || {};
-                      const scoreValue = studentScores[ind.id] || '';
-
-                      return (
-                        <div
-                          key={ind.id}
-                          className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-slate-200 dark:hover:border-slate-700 transition-colors"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
-                              {ind.name}
-                            </div>
-                            {ind.areaName && activeAreaTab === 'all' && (
-                              <div className="text-[10px] text-slate-400 font-medium uppercase mt-0.5">
-                                {ind.areaName}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Botones Toggle Segmentados */}
-                          <div className="inline-flex items-center p-0.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 gap-1 shadow-xs shrink-0">
-                            {(['E', 'MB', 'B', 'NM', 'NI'] as AccompanimentGradeScale[]).map((gradeOpt) => {
-                              const isSelected = scoreValue === gradeOpt;
-
-                              let activeClass = '';
-                              if (gradeOpt === 'E') {
-                                activeClass = 'bg-emerald-500 text-white font-extrabold shadow-sm shadow-emerald-500/40 ring-1 ring-emerald-600 scale-105';
-                              } else if (gradeOpt === 'MB') {
-                                activeClass = 'bg-blue-600 text-white font-extrabold shadow-sm shadow-blue-600/40 ring-1 ring-blue-700 scale-105';
-                              } else if (gradeOpt === 'B') {
-                                activeClass = 'bg-amber-500 text-white font-extrabold shadow-sm shadow-amber-500/40 ring-1 ring-amber-600 scale-105';
-                              } else if (gradeOpt === 'NM') {
-                                activeClass = 'bg-orange-500 text-white font-extrabold shadow-sm shadow-orange-500/40 ring-1 ring-orange-600 scale-105';
-                              } else if (gradeOpt === 'NI') {
-                                activeClass = 'bg-rose-600 text-white font-extrabold shadow-sm shadow-rose-600/40 ring-1 ring-rose-700 scale-105';
-                              }
-
-                              const inactiveClass = scoreValue
-                                ? 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 opacity-60 hover:opacity-100'
-                                : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-white';
-
-                              return (
-                                <button
-                                  key={gradeOpt}
-                                  type="button"
-                                  onClick={() =>
-                                    handleScoreChange(
-                                      currentStudent.id,
-                                      currentStudentFullName,
-                                      ind.id,
-                                      isSelected ? ('' as any) : gradeOpt
-                                    )
-                                  }
-                                  title={`${gradeOpt} - ${
-                                    gradeOpt === 'E'
-                                      ? 'Excelente'
-                                      : gradeOpt === 'MB'
-                                      ? 'Muy Bueno'
-                                      : gradeOpt === 'B'
-                                      ? 'Bueno'
-                                      : gradeOpt === 'NM'
-                                      ? 'Necesita Mejorar'
-                                      : 'No Muestra Interés'
-                                  }${isSelected ? ' (Clic para desmarcar)' : ''}`}
-                                  className={`px-2 py-1 text-xs rounded-lg transition-all cursor-pointer font-bold select-none leading-none min-w-[26px] ${
-                                    isSelected ? activeClass : inactiveClass
-                                  }`}
-                                >
-                                  {gradeOpt}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              {/* Columna Derecha (5 cols): Positivos, Negativos por Materia y Registro de Conducta Espacioso */}
-              <div className="lg:col-span-5 space-y-4">
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                        <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                        Historial de Conducta y Materias
-                      </h3>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        Méritos, positivos y llamados de atención
-                      </p>
+                {/* 2. Columna Central (~4.5 cols): Calificación de Criterios con Botones Toggles */}
+                <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-4 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                      <div>
+                        <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                          <Compass className="w-4 h-4 text-indigo-600" />
+                          Criterios de Acompañamiento
+                        </h3>
+                        <p className="text-[11px] text-slate-500 font-medium uppercase tracking-wider mt-0.5">
+                          {activeAreaTab === 'all' ? 'Todas las dimensiones' : currentTabArea?.name} ({selectedPeriod} - {selectedYear})
+                        </p>
+                      </div>
+                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                        {displayedIndicators.length} criterios
+                      </span>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => setShowAddConductModal(true)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold text-xs border border-indigo-200 dark:border-indigo-800 transition-all"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Agregar
-                    </button>
-                  </div>
-
-                  {/* Listado de Notas de Conducta Espacioso */}
-                  {currentStudentConductNotes.length === 0 ? (
-                    <div className="text-center py-12 px-6 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
-                      <MessageSquare className="w-9 h-9 text-slate-300 dark:text-slate-600 mx-auto mb-2.5" />
-                      <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                        Sin incidencias ni positivos registrados
-                      </p>
-                      <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
-                        Haz clic en &quot;Agregar&quot; para seleccionar un código del catálogo o registrar un mérito o llamado de atención por materia.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
-                      {currentStudentConductNotes.map((note) => {
-                        let noteBadgeClass = 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800';
-                        let NoteIcon = MessageSquare;
-
-                        if (note.type === 'positivo') {
-                          noteBadgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800';
-                          NoteIcon = ThumbsUp;
-                        } else if (note.type === 'negativo') {
-                          noteBadgeClass = 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800';
-                          NoteIcon = ThumbsDown;
-                        }
+                    {/* Lista de Criterios con Botones Toggles E | MB | B | NM | NI */}
+                    <div className="space-y-3 mt-3 max-h-[440px] overflow-y-auto pr-1">
+                      {displayedIndicators.map((ind) => {
+                        const studentScores = evaluations[currentStudent.id]?.scores || {};
+                        const scoreValue = studentScores[ind.id] || '';
 
                         return (
                           <div
-                            key={note.id}
-                            className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/60 space-y-2.5 hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-xs"
+                            key={ind.id}
+                            className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-slate-200 dark:hover:border-slate-700 transition-colors"
                           >
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
+                                {ind.name}
+                              </div>
+                              {ind.areaName && activeAreaTab === 'all' && (
+                                <div className="text-[10px] text-slate-400 font-medium uppercase mt-0.5">
+                                  {ind.areaName}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Botones Toggle Segmentados */}
+                            <div className="inline-flex items-center p-0.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 gap-1 shadow-xs shrink-0">
+                              {(['E', 'MB', 'B', 'NM', 'NI'] as AccompanimentGradeScale[]).map((gradeOpt) => {
+                                const isSelected = scoreValue === gradeOpt;
+
+                                let activeClass = '';
+                                if (gradeOpt === 'E') {
+                                  activeClass = 'bg-emerald-500 text-white font-extrabold shadow-sm shadow-emerald-500/40 ring-1 ring-emerald-600 scale-105';
+                                } else if (gradeOpt === 'MB') {
+                                  activeClass = 'bg-blue-600 text-white font-extrabold shadow-sm shadow-blue-600/40 ring-1 ring-blue-700 scale-105';
+                                } else if (gradeOpt === 'B') {
+                                  activeClass = 'bg-amber-500 text-white font-extrabold shadow-sm shadow-amber-500/40 ring-1 ring-amber-600 scale-105';
+                                } else if (gradeOpt === 'NM') {
+                                  activeClass = 'bg-orange-500 text-white font-extrabold shadow-sm shadow-orange-500/40 ring-1 ring-orange-600 scale-105';
+                                } else if (gradeOpt === 'NI') {
+                                  activeClass = 'bg-rose-600 text-white font-extrabold shadow-sm shadow-rose-600/40 ring-1 ring-rose-700 scale-105';
+                                }
+
+                                const inactiveClass = scoreValue
+                                  ? 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 opacity-60 hover:opacity-100'
+                                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-white';
+
+                                return (
+                                  <button
+                                    key={gradeOpt}
+                                    type="button"
+                                    onClick={() =>
+                                      handleScoreChange(
+                                        currentStudent.id,
+                                        currentStudentFullName,
+                                        ind.id,
+                                        isSelected ? ('' as any) : gradeOpt
+                                      )
+                                    }
+                                    title={`${gradeOpt} - ${
+                                      gradeOpt === 'E'
+                                        ? 'Excelente'
+                                        : gradeOpt === 'MB'
+                                        ? 'Muy Bueno'
+                                        : gradeOpt === 'B'
+                                        ? 'Bueno'
+                                        : gradeOpt === 'NM'
+                                        ? 'Necesita Mejorar'
+                                        : 'No Muestra Interés'
+                                    }${isSelected ? ' (Clic para desmarcar)' : ''}`}
+                                    className={`px-2 py-1 text-xs rounded-lg transition-all cursor-pointer font-bold select-none leading-none min-w-[26px] ${
+                                      isSelected ? activeClass : inactiveClass
+                                    }`}
+                                  >
+                                    {gradeOpt}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Columna Derecha (~4 cols): Tarjeta de Navegación del Alumno */}
+                <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm flex flex-col justify-between">
+                  <div className="space-y-4">
+                    {/* Header con alumno actual y flechas */}
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedStudentIndex(prev => Math.max(0, prev - 1))}
+                        disabled={selectedStudentIndex <= 0}
+                        className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 disabled:pointer-events-none transition-all"
+                        title="Alumno anterior"
+                      >
+                        <ChevronLeft className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                      </button>
+
+                      <div className="text-center px-2">
+                        <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest block">
+                          ALUMNO {filteredStudents.length > 0 ? selectedStudentIndex + 1 : 0} DE {filteredStudents.length}
+                        </span>
+                        <h4 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase truncate max-w-[180px] sm:max-w-[210px]">
+                          {currentStudentFullName}
+                        </h4>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedStudentIndex(prev => Math.min(filteredStudents.length - 1, prev + 1))}
+                        disabled={selectedStudentIndex >= filteredStudents.length - 1}
+                        className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 disabled:pointer-events-none transition-all"
+                        title="Siguiente alumno"
+                      >
+                        <ChevronRight className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                      </button>
+                    </div>
+
+                    {/* Pastillas numéricas de paginación */}
+                    <div className="p-3 bg-slate-50/60 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 text-center">
+                        Nómina de Estudiantes
+                      </div>
+                      <div className="flex flex-wrap items-center justify-center gap-1.5 max-h-[220px] overflow-y-auto p-1">
+                        {filteredStudents.map((st, idx) => (
+                          <button
+                            key={st.id}
+                            type="button"
+                            onClick={() => setSelectedStudentIndex(idx)}
+                            className={`w-8 h-8 rounded-xl font-bold text-xs transition-all shrink-0 flex items-center justify-center cursor-pointer ${
+                              selectedStudentIndex === idx
+                                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30 ring-2 ring-indigo-400 scale-105'
+                                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-slate-700'
+                            }`}
+                            title={`${idx + 1}. ${st.lastName || st.name}`}
+                          >
+                            {idx + 1}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Botones Anterior / Siguiente en la base */}
+                  <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedStudentIndex(prev => Math.max(0, prev - 1))}
+                      disabled={selectedStudentIndex <= 0}
+                      className="flex-1 py-2.5 px-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs border border-slate-200 dark:border-slate-700 disabled:opacity-40 transition-all text-center cursor-pointer"
+                    >
+                      ← Anterior
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedStudentIndex(prev => Math.min(filteredStudents.length - 1, prev + 1))}
+                      disabled={selectedStudentIndex >= filteredStudents.length - 1}
+                      className="flex-1 py-2.5 px-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-600/25 disabled:opacity-40 transition-all text-center cursor-pointer"
+                    >
+                      Siguiente →
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* FILA INFERIOR COMPLETA (ANCHO COMPLETO): HISTORIAL DE CONDUCTA Y MATERIAS */}
+              <div className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 rounded-2xl border border-emerald-200/60 dark:border-emerald-800">
+                      <ShieldCheck className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-extrabold text-slate-900 dark:text-white leading-tight">
+                        Historial de Conducta y Materias
+                      </h3>
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">
+                        Méritos, positivos y llamados de atención
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowAddConductModal(true)}
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-extrabold text-xs border border-indigo-200 dark:border-indigo-800 transition-all cursor-pointer shadow-xs"
+                  >
+                    <Plus className="w-4 h-4" />
+                    + Agregar
+                  </button>
+                </div>
+
+                {/* Listado de Notas de Conducta o Estado Vacío Espacioso */}
+                {currentStudentConductNotes.length === 0 ? (
+                  <div className="text-center py-16 px-6 bg-slate-50/60 dark:bg-slate-800/30 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 my-2">
+                    <MessageSquare className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+                    <p className="text-base font-extrabold text-slate-800 dark:text-slate-200">
+                      Sin incidencias ni positivos registrados
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1.5 max-w-md mx-auto leading-relaxed">
+                      Haz clic en &quot;Agregar&quot; para seleccionar un código del catálogo o registrar un mérito o llamado de atención por materia.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-1">
+                    {currentStudentConductNotes.map((note) => {
+                      let noteBadgeClass = 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800';
+                      let NoteIcon = MessageSquare;
+
+                      if (note.type === 'positivo') {
+                        noteBadgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800';
+                        NoteIcon = ThumbsUp;
+                      } else if (note.type === 'negativo') {
+                        noteBadgeClass = 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800';
+                        NoteIcon = ThumbsDown;
+                      }
+
+                      return (
+                        <div
+                          key={note.id}
+                          className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/60 space-y-2.5 hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-xs flex flex-col justify-between"
+                        >
+                          <div className="space-y-2.5">
                             <div className="flex items-center justify-between gap-2">
                               <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${noteBadgeClass}`}>
                                 <NoteIcon className="w-3.5 h-3.5" />
                                 {note.type}
                               </span>
-                              <div className="flex items-center gap-2.5 text-[11px] text-slate-400 font-medium">
+                              <div className="flex items-center gap-2 text-[11px] text-slate-400 font-medium">
                                 <span>{note.date}</span>
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteConductNote(currentStudent.id, note.id)}
-                                  className="text-slate-400 hover:text-rose-600 transition-colors p-1 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg"
+                                  className="text-slate-400 hover:text-rose-600 transition-colors p-1 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg cursor-pointer"
                                   title="Eliminar registro"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -1191,20 +1205,20 @@ export default function AccompanimentModule() {
                             <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-normal bg-white dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800/70">
                               {note.description}
                             </p>
-
-                            {note.teacherName && (
-                              <div className="text-[10px] text-slate-400 text-right font-medium italic">
-                                Registrado por: <span className="text-slate-600 dark:text-slate-300 font-semibold">{note.teacherName}</span>
-                              </div>
-                            )}
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+
+                          {note.teacherName && (
+                            <div className="text-[10px] text-slate-400 text-right font-medium italic pt-2 border-t border-slate-200/50 dark:border-slate-700/50">
+                              Registrado por: <span className="text-slate-600 dark:text-slate-300 font-semibold">{note.teacherName}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            </div>
+            </>
           )}
         </div>
       )}
