@@ -853,7 +853,7 @@ export default function AccompanimentModule() {
                 {/* 1. Columna Izquierda (~3.5 cols): Perfil del Alumno */}
                 <div className="lg:col-span-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm text-center flex flex-col justify-between">
                   <div>
-                    <div className="w-24 h-24 mx-auto rounded-2xl overflow-hidden border-2 border-indigo-100 dark:border-indigo-900/50 shadow-md mb-3 bg-slate-100 dark:bg-slate-800 relative group">
+                    <div className="w-36 h-36 sm:w-40 sm:h-40 mx-auto rounded-3xl overflow-hidden border-4 border-indigo-100 dark:border-indigo-900/60 shadow-lg mb-3.5 bg-slate-100 dark:bg-slate-800 relative group">
                       <img
                         src={getStudentPhoto(currentStudent)}
                         alt={currentStudentFullName}
@@ -866,10 +866,10 @@ export default function AccompanimentModule() {
                           }
                         }}
                       />
-                      <div className="absolute bottom-1 right-1 bg-emerald-500 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-900" title="Activo"></div>
+                      <div className="absolute bottom-2 right-2 bg-emerald-500 w-4 h-4 rounded-full border-2 border-white dark:border-slate-900 shadow-sm" title="Activo"></div>
                     </div>
 
-                    <h3 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase leading-snug tracking-tight">
+                    <h3 className="text-base font-extrabold text-slate-900 dark:text-white uppercase leading-snug tracking-tight">
                       {currentStudentFullName}
                     </h3>
                     <p className="text-xs font-mono text-indigo-600 dark:text-indigo-400 font-bold mt-0.5">
