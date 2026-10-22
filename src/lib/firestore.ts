@@ -70,7 +70,7 @@ export async function ensureAdminAccount(): Promise<void> {
     }
   } catch { /* Auth account already exists or will be created manually */ }
 }
-import { User, Grade, Section, Subject, Teacher, Student, BaccalaureateTypeDoc, Building, ComputerLab, RoleConfig, UserRole, UserStatus, ApprovalRequest, NewUserNotification, Proyecto, ActividadEvaluada, EvaluacionProyecto, LMSModule } from '../types';
+import { User, Grade, Section, Subject, Teacher, Student, BaccalaureateTypeDoc, Building, ComputerLab, RoleConfig, UserRole, UserStatus, ApprovalRequest, NewUserNotification, Proyecto, ActividadEvaluada, EvaluacionProyecto, LMSModule, BehaviorIndicator, StudentConductIncident } from '../types';
 import {
   validateUser,
   validateGrade,
@@ -2412,7 +2412,7 @@ export async function saveGuiones(moduleId: string, guiones: GuionDeClase[]): Pr
 
 // ==================== ACOMPAÑAMIENTO SALESIANO ====================
 
-import { AccompanimentArea, AccompanimentRecord, AccompanimentPeriod } from '../types';
+import { AccompanimentArea, AccompanimentRecord, AccompanimentPeriod, AccompanimentGradeScale } from '../types';
 
 const ACCOMPANIMENT_AREAS_COLLECTION = 'accompaniment_areas';
 const ACCOMPANIMENT_RECORDS_COLLECTION = 'accompaniment_records';
@@ -2651,5 +2651,269 @@ export async function seedAccompanimentScoresFromExcel(gradeId: string, sectionI
 
     await saveAccompanimentRecord(record);
   }
+}
+
+// ==================== CONDUCTA / INDICADORES (FIRESTORE) ====================
+
+const BEHAVIOR_INDICATORS_COLLECTION = 'behavior_indicators';
+const STUDENT_CONDUCT_INCIDENTS_COLLECTION = 'student_conduct_incidents';
+
+export const DEFAULT_BEHAVIOR_INDICATORS: Omit<BehaviorIndicator, 'createdAt' | 'updatedAt'>[] = [
+  // Faltas Leves (L)
+  {
+    id: 'ind_l01',
+    code: 'L-01',
+    name: 'Presentación del uniforme incorrecta o incompleta',
+    description: 'Portar el uniforme institucional o de educación física de manera incompleta o desaliñada.',
+    category: 'presentacion_uniforme',
+    categoryLabel: 'Uniforme / Presentación',
+    type: 'negativo',
+    value: -0.25,
+    order: 1,
+    applicableLevels: ['todos'],
+    status: 'ACTIVO',
+  },
+  {
+    id: 'ind_l02',
+    code: 'L-02',
+    name: 'Llegada tardía a la clase sin justificación',
+    description: 'Ingresar al aula después del docente sin pase de coordinación o justificación válida.',
+    category: 'puntualidad_asistencia',
+    categoryLabel: 'Puntualidad y Asistencia',
+    type: 'negativo',
+    value: -0.25,
+    order: 2,
+    applicableLevels: ['todos'],
+    status: 'ACTIVO',
+  },
+  {
+    id: 'ind_l03',
+    code: 'L-03',
+    name: 'Uso no autorizado de dispositivos electrónicos',
+    description: 'Utilizar el teléfono móvil, audífonos o juegos durante la explicación o actividad de clase.',
+    category: 'academico_laboratorio',
+    categoryLabel: 'Académico y Laboratorio',
+    type: 'negativo',
+    value: -0.5,
+    order: 3,
+    applicableLevels: ['todos'],
+    status: 'ACTIVO',
+  },
+  {
+    id: 'ind_l04',
+    code: 'L-04',
+    name: 'Falta de materiales o cuaderno de trabajo',
+    description: 'No presentar útiles esenciales o no trabajar en el aula en la materia asignada.',
+    category: 'academico_laboratorio',
+    categoryLabel: 'Académico y Laboratorio',
+    type: 'negativo',
+    value: -0.25,
+    order: 4,
+    applicableLevels: ['todos'],
+    status: 'ACTIVO',
+  },
+  {
+    id: 'ind_l05',
+    code: 'L-05',
+    name: 'Consumo de alimentos o bebidas en el aula o laboratorio',
+    description: 'Comer o beber dentro del salón o laboratorio sin permiso del docente.',
+    category: 'convivencia_respeto',
+    categoryLabel: 'Convivencia y Respeto',
+    type: 'negativo',
+    value: -0.25,
+    order: 5,
+    applicableLevels: ['todos'],
+    status: 'ACTIVO',
+  },
+
+  // Faltas Graves (G)
+  {
+    id: 'ind_g01',
+    code: 'G-01',
+    name: 'Falta de respeto a compañeros o lenguaje inapropiado',
+    description: 'Vocabulario soez, burlas, apodos o actitudes que vulneren la dignidad de los demás.',
+    category: 'convivencia_respeto',
+    categoryLabel: 'Convivencia y Respeto',
+    type: 'negativo',
+    value: -0.75,
+    order: 6,
+    applicableLevels: ['todos'],
+    status: 'ACTIVO',
+  },
+  {
+    id: 'ind_g02',
+    code: 'G-02',
+    name: 'Desobediencia reiterada o desacato al docente',
+    description: 'Negarse a cumplir instrucciones directas o reaccionar de forma desafiante.',
+    category: 'convivencia_respeto',
+    categoryLabel: 'Convivencia y Respeto',
+    type: 'negativo',
+    value: -1.0,
+    order: 7,
+    applicableLevels: ['todos'],
+    status: 'ACTIVO',
+  },
+  {
+    id: 'ind_g03',
+    code: 'G-03',
+    name: 'Daño o descuido negligente a equipo o instalaciones',
+    description: 'Maltratar mobiliario, cables, computadoras o material del laboratorio/aula.',
+    category: 'academico_laboratorio',
+    categoryLabel: 'Académico y Laboratorio',
+    type: 'negativo',
+    value: -1.0,
+    order: 8,
+    applicableLevels: ['todos'],
+    status: 'ACTIVO',
+  },
+
+  // Méritos y Positivos (POS / MER)
+  {
+    id: 'ind_pos01',
+    code: 'POS-01',
+    name: 'Participación destacada y colaboración en clase',
+    description: 'Aporte constructivo al desarrollo de la clase y apoyo a compañeros en dudas.',
+    category: 'positivo',
+    categoryLabel: 'Méritos y Positivos',
+    type: 'positivo',
+    value: +0.25,
+    order: 9,
+    applicableLevels: ['todos'],
+    status: 'ACTIVO',
+  },
+  {
+    id: 'ind_pos02',
+    code: 'POS-02',
+    name: 'Espíritu de servicio y valores salesianos',
+    description: 'Demostrar amabilidad, iniciativa en el orden y cuidado del entorno escolar.',
+    category: 'valores_salesianos',
+    categoryLabel: 'Valores Salesianos',
+    type: 'positivo',
+    value: +0.25,
+    order: 10,
+    applicableLevels: ['todos'],
+    status: 'ACTIVO',
+  },
+  {
+    id: 'ind_pos03',
+    code: 'POS-03',
+    name: 'Liderazgo positivo y responsabilidad encomendada',
+    description: 'Cumplimiento ejemplar en proyectos, coordinaciones de equipo o actividades especiales.',
+    category: 'merito',
+    categoryLabel: 'Mérito Académico / Convivencia',
+    type: 'positivo',
+    value: +0.5,
+    order: 11,
+    applicableLevels: ['todos'],
+    status: 'ACTIVO',
+  },
+];
+
+export async function getAllBehaviorIndicators(): Promise<BehaviorIndicator[]> {
+  try {
+    const q = query(collection(db, BEHAVIOR_INDICATORS_COLLECTION), orderBy('code', 'asc'));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as BehaviorIndicator));
+  } catch (error) {
+    console.error('Error fetching behavior indicators:', error);
+    return [];
+  }
+}
+
+export async function saveBehaviorIndicator(indicator: BehaviorIndicator): Promise<void> {
+  const ref = doc(db, BEHAVIOR_INDICATORS_COLLECTION, indicator.id);
+  const cleanData = Object.fromEntries(
+    Object.entries(indicator).filter(([, v]) => v !== undefined)
+  );
+  await setDoc(ref, {
+    ...cleanData,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+}
+
+export async function deleteBehaviorIndicator(id: string): Promise<void> {
+  await deleteDoc(doc(db, BEHAVIOR_INDICATORS_COLLECTION, id));
+}
+
+export async function seedDefaultBehaviorIndicators(): Promise<void> {
+  for (const item of DEFAULT_BEHAVIOR_INDICATORS) {
+    const ref = doc(db, BEHAVIOR_INDICATORS_COLLECTION, item.id);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
+      await setDoc(ref, {
+        ...item,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    }
+  }
+}
+
+// ==================== INCIDENCIAS DE CONDUCTA DEL ESTUDIANTE ====================
+
+export async function addStudentConductIncident(incident: Omit<StudentConductIncident, 'id' | 'createdAt'>): Promise<string> {
+  const ref = doc(collection(db, STUDENT_CONDUCT_INCIDENTS_COLLECTION));
+  const id = ref.id;
+  const cleanData = Object.fromEntries(
+    Object.entries({ ...incident, id }).filter(([, v]) => v !== undefined)
+  );
+  await setDoc(ref, {
+    ...cleanData,
+    createdAt: serverTimestamp(),
+  });
+  return id;
+}
+
+export async function getStudentConductIncidents(
+  studentId: string,
+  period?: AccompanimentPeriod,
+  year?: number
+): Promise<StudentConductIncident[]> {
+  try {
+    let q = query(
+      collection(db, STUDENT_CONDUCT_INCIDENTS_COLLECTION),
+      where('studentId', '==', studentId)
+    );
+    if (period) {
+      q = query(q, where('period', '==', period));
+    }
+    if (year) {
+      q = query(q, where('year', '==', year));
+    }
+    const snap = await getDocs(q);
+    const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as StudentConductIncident));
+    // Sort descending by date
+    return list.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  } catch (error) {
+    console.error('Error fetching student conduct incidents:', error);
+    return [];
+  }
+}
+
+export async function getSectionConductIncidents(
+  gradeId: string,
+  sectionId: string,
+  period: AccompanimentPeriod,
+  year: number
+): Promise<StudentConductIncident[]> {
+  try {
+    const q = query(
+      collection(db, STUDENT_CONDUCT_INCIDENTS_COLLECTION),
+      where('gradeId', '==', gradeId),
+      where('sectionId', '==', sectionId),
+      where('period', '==', period),
+      where('year', '==', year)
+    );
+    const snap = await getDocs(q);
+    const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as StudentConductIncident));
+    return list.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  } catch (error) {
+    console.error('Error fetching section conduct incidents:', error);
+    return [];
+  }
+}
+
+export async function deleteStudentConductIncident(incidentId: string): Promise<void> {
+  await deleteDoc(doc(db, STUDENT_CONDUCT_INCIDENTS_COLLECTION, incidentId));
 }
 

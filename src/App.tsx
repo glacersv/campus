@@ -25,6 +25,7 @@ import AttendanceReportsHistory from './components/admin/AttendanceReportsHistor
 import EstadisticasDashboard from './components/admin/EstadisticasDashboard';
 import InstitutionalCalendar from './components/admin/InstitutionalCalendar';
 import AccompanimentManager from './components/admin/AccompanimentManager';
+import BehaviorIndicatorsManager from './components/admin/BehaviorIndicatorsManager';
 import AccompanimentModule from './components/docente/AccompanimentModule';
 import NotasView from './components/notas/NotasView';
 import HorarioView from './components/horario/HorarioView';
@@ -212,6 +213,7 @@ function AppContent() {
           <Route path="users" element={<UsersManager />} />
           <Route path="coordinaciones-config" element={<CoordinacionesConfig />} />
           <Route path="convivencia" element={<ConvivenciaPanel />} />
+          <Route path="conducta-indicadores" element={<BehaviorIndicatorsManager />} />
           <Route path="attendance-reports" element={<AttendanceReportsHistory />} />
           <Route path="estadisticas" element={<EstadisticasDashboard />} />
           <Route path="school-year" element={<SchoolYearManager />} />

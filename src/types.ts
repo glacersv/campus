@@ -1198,3 +1198,74 @@ export interface AccompanimentRecord {
   updatedAt?: Timestamp;
   createdAt?: Timestamp;
 }
+
+// ==================== CONDUCTA / INDICADORES (CATÁLOGO Y REGISTROS) ====================
+
+export type BehaviorCategoryType = 
+  | 'leve' 
+  | 'grave' 
+  | 'muy_grave' 
+  | 'merito' 
+  | 'positivo' 
+  | 'presentacion_uniforme' 
+  | 'puntualidad_asistencia' 
+  | 'convivencia_respeto' 
+  | 'academico_laboratorio'
+  | 'valores_salesianos';
+
+export interface BehaviorIndicator {
+  id: string;
+  code: string;            // Ej: "L-01", "G-05", "POS-02", "MER-01"
+  name: string;            // Título breve del indicador
+  description?: string;     // Descripción detallada de la falta o mérito
+  category: BehaviorCategoryType;
+  categoryLabel?: string;   // Etiqueta legible (ej: "Falta Leve", "Mérito / Positivo")
+  type: 'positivo' | 'negativo'; // Determina si suma o resta
+  value: number;           // Valor numérico (+0.25, -0.5, -1.0, etc.)
+  order?: number;
+  applicableLevels?: string[]; // ['todos', 'primaria', 'tercer_ciclo', 'bachillerato_general', 'bachillerato_tecnico']
+  status: 'ACTIVO' | 'INACTIVO';
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+}
+
+export interface StudentConductIncident {
+  id: string;
+  studentId: string;
+  studentName: string;
+  carnet?: string;
+  gradeId: string;
+  gradeName?: string;
+  sectionId: string;
+  sectionName?: string;
+  period: AccompanimentPeriod; // 'PI' | 'PII' | 'PIII' | 'PIV'
+  year: number;
+  date: string;               // ISO o YYYY-MM-DD
+  subjectId?: string;
+  subjectName: string;        // Nombre de la materia (ej: "Matemáticas", "Desarrollo de Software")
+  indicatorId?: string;
+  code: string;               // Código del indicador (ej: "L-01")
+  indicatorName: string;      // Título del indicador
+  description?: string;        // Detalle u observación adicional del docente
+  value: number;              // Valor aplicado (-0.5, +0.25, etc.)
+  type: 'positivo' | 'negativo';
+  teacherId?: string;
+  teacherName: string;
+  createdAt?: Timestamp;
+}
+
+export interface StudentConductSummary {
+  studentId: string;
+  studentName: string;
+  carnet?: string;
+  gradeName?: string;
+  sectionName?: string;
+  period: AccompanimentPeriod;
+  year: number;
+  baseScore: number;          // 8.5 por defecto
+  finalScore: number;         // Calculado
+  totalPositives: number;
+  totalNegatives: number;
+  incidents: StudentConductIncident[];
+}
+

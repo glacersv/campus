@@ -24,6 +24,7 @@ import {
   Search,
   Medal,
   Compass,
+  ShieldAlert,
 } from 'lucide-react';
 import { useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -66,6 +67,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       { id: 'accompaniment', label: 'Acompañamiento', icon: Compass },
     ]},
     { title: 'CONVIVENCIA', items: [
+      { id: 'conducta-indicadores', label: 'Indicadores de Conducta', icon: ShieldAlert },
       { id: 'convivencia', label: 'Panel Convivencia', icon: Handshake },
     ]},
     { title: 'PROYECTOS', items: [

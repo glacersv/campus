@@ -279,9 +279,23 @@ service cloud.firestore {
       allow write: if isAdmin() || isDocente() || isCoordinacion();
     }
 
+    // Catálogo de Indicadores de Conducta (Admin gestiona, Docentes y Staff leen)
+    match /behavior_indicators/{indicatorId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Registros / Incidencias de Conducta asignados por materia y periodo
+    match /student_conduct_incidents/{incidentId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin() || isDocente() || isCoordinacion();
+      allow delete: if isAdmin() || isDocente();
+    }
+
     // Global Catch-All Safety Net (Default Deny)
     match /{document=**} {
       allow read, write: if false;
     }
   }
 }
+

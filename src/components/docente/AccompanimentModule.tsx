@@ -43,6 +43,8 @@ import {
   Student,
   Grade,
   Section,
+  BehaviorIndicator,
+  StudentConductIncident,
 } from '../../types';
 import {
   getAllAccompanimentAreas,
@@ -55,6 +57,10 @@ import {
   getAllStudents,
   getTeacher,
   getTeacherByEmail,
+  getAllBehaviorIndicators,
+  addStudentConductIncident,
+  getSectionConductIncidents,
+  deleteStudentConductIncident,
 } from '../../lib/firestore';
 
 export default function AccompanimentModule() {
@@ -88,11 +94,16 @@ export default function AccompanimentModule() {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Modal para agregar mérito / positivo / negativo por materia
+  // Modal para agregar mérito / positivo / negativo por materia con catálogo de códigos
   const [showAddConductModal, setShowAddConductModal] = useState<boolean>(false);
+  const [behaviorIndicators, setBehaviorIndicators] = useState<BehaviorIndicator[]>([]);
+  const [selectedIndicatorCode, setSelectedIndicatorCode] = useState<string>('');
   const [newConductSubject, setNewConductSubject] = useState<string>('');
   const [newConductType, setNewConductType] = useState<'positivo' | 'negativo' | 'observacion'>('positivo');
+  const [newConductValue, setNewConductValue] = useState<number>(0);
   const [newConductDesc, setNewConductDesc] = useState<string>('');
+  const [conductIncidents, setConductIncidents] = useState<StudentConductIncident[]>([]);
+
 
   // Iconos e info visual para las dimensiones salesianas
   const getAreaMeta = (areaId: string) => {
@@ -236,6 +247,14 @@ export default function AccompanimentModule() {
 
         setSelectedGradeId(initialGradeId);
         setSelectedSectionId(initialSectionId);
+
+        // Cargar catálogo de indicadores de conducta desde Firebase
+        try {
+          const inds = await getAllBehaviorIndicators();
+          setBehaviorIndicators(inds.filter(i => i.status === 'ACTIVO'));
+        } catch (indErr) {
+          console.warn('Could not load behavior indicators from Firebase:', indErr);
+        }
       } catch (err) {
         console.error('Error al inicializar acompañamiento:', err);
         setMessage({ type: 'error', text: 'Error al cargar configuración de acompañamiento.' });
@@ -348,11 +367,17 @@ export default function AccompanimentModule() {
   const handleAddConductNote = (studentId: string, studentName: string) => {
     if (!newConductDesc.trim()) return;
 
+    let formattedDesc = newConductDesc.trim();
+    if (selectedIndicatorCode) {
+      const sign = newConductValue > 0 ? `+${newConductValue}` : `${newConductValue}`;
+      formattedDesc = `[${selectedIndicatorCode}] (${sign}) ${formattedDesc}`;
+    }
+
     const newNote: StudentSubjectConductNote = {
       id: `c_${Date.now()}`,
       subjectName: newConductSubject.trim() || 'General / Convivencia',
       type: newConductType,
-      description: newConductDesc.trim(),
+      description: formattedDesc,
       date: new Date().toLocaleDateString('es-SV', { day: '2-digit', month: 'short', year: 'numeric' }),
       teacherName: userProfile?.displayName || 'Docente Guía',
     };
@@ -375,10 +400,40 @@ export default function AccompanimentModule() {
       };
     });
 
+    // Guardar también en la colección individual de incidencias de Firestore si hay grado y sección
+    if (selectedGradeId && selectedSectionId) {
+      try {
+        const curGrade = grades.find(g => g.id === selectedGradeId);
+        const curSec = sections.find(s => s.id === selectedSectionId);
+        addStudentConductIncident({
+          studentId,
+          studentName,
+          gradeId: selectedGradeId,
+          gradeName: curGrade?.name || '',
+          sectionId: selectedSectionId,
+          sectionName: curSec?.name || '',
+          period: selectedPeriod,
+          year: selectedYear,
+          date: new Date().toISOString().split('T')[0],
+          subjectName: newConductSubject.trim() || 'General / Convivencia',
+          code: selectedIndicatorCode || 'OBS',
+          indicatorName: newConductDesc.trim(),
+          description: newConductDesc.trim(),
+          value: newConductValue,
+          type: newConductType === 'negativo' ? 'negativo' : 'positivo',
+          teacherName: userProfile?.displayName || 'Docente Guía',
+        }).catch(e => console.warn('Could not save conduct incident document:', e));
+      } catch (err) {
+        console.warn('Incident doc creation skipped:', err);
+      }
+    }
+
     setNewConductDesc('');
     setNewConductSubject('');
+    setSelectedIndicatorCode('');
+    setNewConductValue(0);
     setShowAddConductModal(false);
-    setMessage({ type: 'success', text: `Nota registrada para ${studentName}. Recuerda Guardar Cambios.` });
+    setMessage({ type: 'success', text: `Nota registrada para ${studentName} en Firebase.` });
   };
 
   // Eliminar nota de conducta
@@ -1380,17 +1435,67 @@ export default function AccompanimentModule() {
                 </div>
               </div>
 
+              {/* Selector de Indicador del Catálogo de Firebase */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Materia / Asignatura
+                  Código de Indicador de Conducta (Catálogo Oficial)
                 </label>
-                <input
-                  type="text"
-                  placeholder="Ej: Informática / BTV, Matemáticas, Formación..."
-                  value={newConductSubject}
-                  onChange={(e) => setNewConductSubject(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                />
+                <select
+                  value={selectedIndicatorCode}
+                  onChange={(e) => {
+                    const code = e.target.value;
+                    setSelectedIndicatorCode(code);
+                    const found = behaviorIndicators.find(b => b.code === code);
+                    if (found) {
+                      setNewConductType(found.type);
+                      setNewConductValue(found.value);
+                      if (!newConductDesc) {
+                        setNewConductDesc(found.name);
+                      }
+                    }
+                  }}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-semibold focus:outline-none"
+                >
+                  <option value="">-- Seleccionar código o ingresar manual --</option>
+                  {behaviorIndicators.map(ind => (
+                    <option key={ind.id} value={ind.code}>
+                      [{ind.code}] {ind.name} ({ind.value > 0 ? `+${ind.value}` : ind.value}) - {ind.categoryLabel || ind.category}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Materia / Asignatura
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ej: Informática / BTV, Matemáticas..."
+                    value={newConductSubject}
+                    onChange={(e) => setNewConductSubject(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Impacto en Nota Base (8.5)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      step="0.05"
+                      value={newConductValue}
+                      onChange={(e) => setNewConductValue(parseFloat(e.target.value) || 0)}
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+                    <span className={`text-xs font-extrabold shrink-0 ${newConductValue > 0 ? 'text-emerald-600' : newConductValue < 0 ? 'text-rose-600' : 'text-slate-400'}`}>
+                      {newConductValue > 0 ? `+${newConductValue}` : newConductValue}
+                    </span>
+                  </div>
+                </div>
               </div>
 
               <div>
