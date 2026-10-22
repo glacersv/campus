@@ -900,7 +900,7 @@ export default function AccompanimentModule() {
             </div>
           ) : (
             /* Layout Principal de 3 Columnas */
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
               {/* Columna Izquierda (3 cols): Perfil, Foto Institucional y Datos del Alumno */}
               <div className="lg:col-span-3 space-y-4">
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm text-center relative overflow-hidden">
@@ -954,28 +954,34 @@ export default function AccompanimentModule() {
                     </div>
                   </div>
 
-                  {/* Resumen de Conducta y Méritos */}
-                  <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 grid grid-cols-3 gap-2 text-center">
-                    <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40">
-                      <ThumbsUp className="w-4 h-4 text-emerald-600 mx-auto mb-1" />
-                      <div className="text-base font-extrabold text-emerald-700 dark:text-emerald-300">
-                        {positivosCount}
+                  {/* Resumen de Conducta y Méritos Compacto */}
+                  <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-3 gap-1.5 text-center">
+                    <div className="py-1.5 px-2 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/70 dark:border-emerald-900/40">
+                      <div className="flex items-center justify-center gap-1">
+                        <ThumbsUp className="w-3 h-3 text-emerald-600" />
+                        <span className="text-xs font-black text-emerald-700 dark:text-emerald-300">
+                          {positivosCount}
+                        </span>
                       </div>
-                      <div className="text-[10px] font-bold text-emerald-600/80 uppercase">Positivos</div>
+                      <div className="text-[9px] font-bold text-emerald-600/80 uppercase tracking-tight mt-0.5">Positivos</div>
                     </div>
-                    <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40">
-                      <ThumbsDown className="w-4 h-4 text-rose-600 mx-auto mb-1" />
-                      <div className="text-base font-extrabold text-rose-700 dark:text-rose-300">
-                        {negativosCount}
+                    <div className="py-1.5 px-2 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200/70 dark:border-rose-900/40">
+                      <div className="flex items-center justify-center gap-1">
+                        <ThumbsDown className="w-3 h-3 text-rose-600" />
+                        <span className="text-xs font-black text-rose-700 dark:text-rose-300">
+                          {negativosCount}
+                        </span>
                       </div>
-                      <div className="text-[10px] font-bold text-rose-600/80 uppercase">Negativos</div>
+                      <div className="text-[9px] font-bold text-rose-600/80 uppercase tracking-tight mt-0.5">Negativos</div>
                     </div>
-                    <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/40">
-                      <Award className="w-4 h-4 text-indigo-600 mx-auto mb-1" />
-                      <div className="text-base font-extrabold text-indigo-700 dark:text-indigo-300">
-                        {observacionesCount}
+                    <div className="py-1.5 px-2 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/70 dark:border-indigo-900/40">
+                      <div className="flex items-center justify-center gap-1">
+                        <Award className="w-3 h-3 text-indigo-600" />
+                        <span className="text-xs font-black text-indigo-700 dark:text-indigo-300">
+                          {observacionesCount}
+                        </span>
                       </div>
-                      <div className="text-[10px] font-bold text-indigo-600/80 uppercase">Notas</div>
+                      <div className="text-[9px] font-bold text-indigo-600/80 uppercase tracking-tight mt-0.5">Notas</div>
                     </div>
                   </div>
                 </div>
@@ -1001,8 +1007,8 @@ export default function AccompanimentModule() {
                 </div>
               </div>
 
-              {/* Columna Central (5 cols): Calificación de Criterios con Botones Toggles */}
-              <div className="lg:col-span-5 space-y-4">
+              {/* Columna Central (4 cols): Calificación de Criterios con Botones Toggles */}
+              <div className="lg:col-span-4 space-y-4">
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
                   <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                     <div>
@@ -1098,8 +1104,8 @@ export default function AccompanimentModule() {
                 </div>
               </div>
 
-              {/* Columna Derecha (4 cols): Positivos, Negativos por Materia y Registro de Conducta */}
-              <div className="lg:col-span-4 space-y-4">
+              {/* Columna Derecha (5 cols): Positivos, Negativos por Materia y Registro de Conducta Espacioso */}
+              <div className="lg:col-span-5 space-y-4">
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
                   <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                     <div>
@@ -1122,19 +1128,19 @@ export default function AccompanimentModule() {
                     </button>
                   </div>
 
-                  {/* Listado de Notas de Conducta */}
+                  {/* Listado de Notas de Conducta Espacioso */}
                   {currentStudentConductNotes.length === 0 ? (
-                    <div className="text-center py-10 px-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
-                      <MessageSquare className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
-                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                    <div className="text-center py-12 px-6 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+                      <MessageSquare className="w-9 h-9 text-slate-300 dark:text-slate-600 mx-auto mb-2.5" />
+                      <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
                         Sin incidencias ni positivos registrados
                       </p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        Haz clic en &quot;Agregar&quot; para registrar un positivo o negativo por materia.
+                      <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
+                        Haz clic en &quot;Agregar&quot; para seleccionar un código del catálogo o registrar un mérito o llamado de atención por materia.
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
+                    <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
                       {currentStudentConductNotes.map((note) => {
                         let noteBadgeClass = 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800';
                         let NoteIcon = MessageSquare;
@@ -1150,37 +1156,40 @@ export default function AccompanimentModule() {
                         return (
                           <div
                             key={note.id}
-                            className="p-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 space-y-1.5 hover:border-slate-200 dark:hover:border-slate-700 transition-colors"
+                            className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/60 space-y-2.5 hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-xs"
                           >
                             <div className="flex items-center justify-between gap-2">
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${noteBadgeClass}`}>
-                                <NoteIcon className="w-3 h-3" />
+                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${noteBadgeClass}`}>
+                                <NoteIcon className="w-3.5 h-3.5" />
                                 {note.type}
                               </span>
-                              <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                              <div className="flex items-center gap-2.5 text-[11px] text-slate-400 font-medium">
                                 <span>{note.date}</span>
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteConductNote(currentStudent.id, note.id)}
-                                  className="text-slate-400 hover:text-rose-600 transition-colors"
+                                  className="text-slate-400 hover:text-rose-600 transition-colors p-1 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg"
                                   title="Eliminar registro"
                                 >
-                                  <Trash2 className="w-3 h-3" />
+                                  <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                               </div>
                             </div>
 
-                            <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                              Materia: <span className="text-indigo-600 dark:text-indigo-400">{note.subjectName}</span>
+                            <div className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                              <span className="text-slate-400 font-normal">Materia:</span>
+                              <span className="text-indigo-600 dark:text-indigo-400 font-extrabold bg-indigo-50/60 dark:bg-indigo-950/30 px-2 py-0.5 rounded-lg border border-indigo-100 dark:border-indigo-900/40">
+                                {note.subjectName}
+                              </span>
                             </div>
 
-                            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                            <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-normal bg-white dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800/70">
                               {note.description}
                             </p>
 
                             {note.teacherName && (
-                              <div className="text-[10px] text-slate-400 text-right italic">
-                                Registrado por: {note.teacherName}
+                              <div className="text-[10px] text-slate-400 text-right font-medium italic">
+                                Registrado por: <span className="text-slate-600 dark:text-slate-300 font-semibold">{note.teacherName}</span>
                               </div>
                             )}
                           </div>
